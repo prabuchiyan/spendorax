@@ -1,4 +1,4 @@
-package com.prabuchiyan.moneymanager
+package com.prabuchiyan.spendorax
 
 import android.os.Build
 import android.os.Bundle

@@ -1,4 +1,4 @@
-package com.prabuchiyan.moneymanager
+package com.prabuchiyan.spendorax
 
 import android.app.Application
 import android.content.res.Configuration

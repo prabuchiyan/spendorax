@@ -2,7 +2,8 @@
   "expo": {
     "name": "SpendoraX",
     "slug": "spendorax",
-    "version": "2.3.0",
+    "version": "2.3.1",
+    "runtimeVersion": "2.3.1",
     "icon": "./assets/logo.png",
     "platforms": [
       "ios",
@@ -22,19 +23,11 @@
         }
       ]
     ],
-    "extra": {
-      "eas": {
-        "projectId": "a644e973-ee5e-48e4-986b-b4e6fefa1342"
-      }
-    },
-    "runtimeVersion": {
-      "policy": "sdkVersion"
-    },
     "updates": {
       "url": "https://u.expo.dev/a644e973-ee5e-48e4-986b-b4e6fefa1342"
     },
     "android": {
-      "package": "com.prabuchiyan.moneymanager",
+      "package": "com.prabuchiyan.spendorax",
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#0B1F3A"
@@ -43,7 +36,12 @@
     },
     "ios": {
       "icon": "./assets/logo.png",
-      "buildNumber": "2.3.0"
+      "buildNumber": "2.3.1"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "59c7fae8-1b29-4ac9-9e48-66b6321820a3"
+      }
     }
   }
 }
