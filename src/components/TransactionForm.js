@@ -384,15 +384,19 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                       }
                       // user picked a date/time
                       if (pickerMode === 'date') {
-                        const picked = selected || new Date();
-                        const prev = new Date(date);
-                        // preserve previous time
-                        picked.setHours(prev.getHours(), prev.getMinutes(), 0, 0);
-                        setDate(picked.toISOString());
-                        // open time picker next
+                        if (selected) {
+                          const picked = selected;
+                          const prev = new Date(date);
+                          picked.setHours(
+                            prev.getHours(),
+                            prev.getMinutes(),
+                            0,
+                            0
+                          );
+                          setDate(picked.toISOString());
+                        }
                         setShowDateTimePicker(false);
-                        setPickerMode('time');
-                        setTimeout(() => setShowDateTimePicker(true), 50);
+                        setPickerMode('date');
                       } else {
                         const picked = selected || new Date();
                         const prev = new Date(date);
