@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { StatusBar } from 'expo-status-bar';
 import { Text, View, Image, BackHandler, ToastAndroid } from 'react-native';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -98,6 +99,10 @@ export default function App() {
           }
         }}
       >
+        <StatusBar
+          style="light"
+          backgroundColor="#0B1F3A"
+        />
         <NavigationContainer ref={navigationRef}>
           <Stack.Navigator>
             <Stack.Screen
