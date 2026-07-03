@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "timestamp": "2026-07-03T12:50:08.313Z",
+  "timestamp": "2026-07-03T13:10:11.200Z",
   "data": {
     "transactions": [
       {
@@ -214,7 +214,7 @@
       {
         "id": 109,
         "type": "expense",
-        "amount": null,
+        "amount": 7500,
         "category_id": 28,
         "source_id": 3,
         "date": "2017-06-07",
