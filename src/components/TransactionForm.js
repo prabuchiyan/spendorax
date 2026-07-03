@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, ScrollView, Modal, Text, Platform } from 'react-native';
+import { View, TouchableOpacity, ScrollView, Modal, Text, Platform, InteractionManager } from 'react-native';
 import { createTransaction, createTransfer } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
@@ -29,6 +29,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [notesError, setNotesError] = useState(false);
   const [toAccount, setToAccount] = useState(null);
   const [selectingFor, setSelectingFor] = useState('from');
+  const [openTimePicker, setOpenTimePicker] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -43,6 +44,15 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!openTimePicker) return;
+    setOpenTimePicker(false);
+    InteractionManager.runAfterInteractions(() => {
+      setPickerMode('time');
+      setShowDateTimePicker(true);
+    });
+  }, [openTimePicker]);
 
   async function submit() {
     const val = parseFloat(amount);
@@ -215,7 +225,10 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             right={
               <PaperTextInput.Icon
                 icon="calendar"
-                onPress={() => setShowDateTimePicker(true)}
+                onPress={() => {
+                  setPickerMode('date');
+                  setShowDateTimePicker(true);
+                }}
               />
             }
           />
@@ -373,41 +386,36 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   is24Hour={true}
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   onChange={(event, selected) => {
-                    // event may be undefined on some platforms
-                    const evType = event && (event.type || event.nativeEvent?.action);
                     if (Platform.OS === 'android') {
-                      // user dismissed
-                      if (evType === 'dismissed' || evType === 'dismiss') {
+                      if (event.type === 'dismissed') {
                         setShowDateTimePicker(false);
                         setPickerMode('date');
                         return;
                       }
-                      // user picked a date/time
+
                       if (pickerMode === 'date') {
                         if (selected) {
                           const picked = selected;
                           const prev = new Date(date);
-                          picked.setHours(
-                            prev.getHours(),
-                            prev.getMinutes(),
-                            0,
-                            0
-                          );
+                          picked.setHours(prev.getHours(), prev.getMinutes(), 0, 0);
                           setDate(picked.toISOString());
+
+                          setShowDateTimePicker(false);
+                          setOpenTimePicker(true);
                         }
-                        setShowDateTimePicker(false);
-                        setPickerMode('date');
                       } else {
-                        const picked = selected || new Date();
-                        const prev = new Date(date);
-                        prev.setHours(picked.getHours(), picked.getMinutes(), 0, 0);
-                        setDate(prev.toISOString());
+                        if (selected) {
+                          const prev = new Date(date);
+                          prev.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+                          setDate(prev.toISOString());
+                        }
                         setShowDateTimePicker(false);
                         setPickerMode('date');
                       }
                     } else {
-                      // iOS behavior
-                      if (selected) setDate((selected).toISOString());
+                      if (selected) {
+                        setDate(selected.toISOString());
+                      }
                       setShowDateTimePicker(false);
                       setPickerMode('date');
                     }
