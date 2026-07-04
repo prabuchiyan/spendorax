@@ -1,172 +1,152 @@
-const fs = require("fs");
-
-const raw = `
-01/12/17 : Balance : $123
-
-05/12/17 : Salary : $26826
-
-07/12/17 : App : $450
-
-10/12/17 : Get it From Abi : $3
-
-13/12/17 : App : $16
-
-13/12/17 : App : $51
-
-28/12/17 : Get it From Sathiya : $8000
-
-30/12/17 : Get it From Dinesh : $5000
-`;
-
-const categoryMap = {
-  // Food
-  "Breakfast": 16,
-  "Lunch": 16,
-  "Dinner": 16,
-  "dinner": 16,
-  "Dinner​": 16,
-  "Dinner Purchase": 16,
-
-  // Snacks
-  "Snacks": 41,
-  "Snack": 41,
-  "Juice": 41,
-
-  // Fruits
-  "Grapes": 17,
-
-  // Groceries
-  "Sugar, egg, Milk, Carrot": 21,
-  "Egg and washing soap": 21,
-  "Carrot": 21,
-  "Carrots": 21,
-  "Carrot & eggs & Banana": 21,
-  "Cashew and Try Grapes": 21,
-
-  // Mobile
-  "Mobile Back Cover": 29,
-  "Recharge": 30,
-
-  // Utilities
-  "Electricity Bill": 11,
-  "TV Recharge": 7,
-
-  // Savings
-  "Rd": 40,
-  "RD": 40,
-
-  // Rent
-  "Room Rent": 36,
-
-  // Loan
-  "Bike EMI": 27,
-
-  // Vehicle
-  "Petrol": 3,
-
-  // Money Given
-  "Give it Back": 31,
-  "Give it back": 31,
-  "Give it back Sasi": 31,
-
-  // Entertainment
-  "Gift": 20,
-  "Treat": 14,
-  "Movie Bike Ticket": 43,
-
-  // Vacation
-  "Trip Amount": 45,
-
-  // Transport
-  "Bus Fair": 43,
-
-  // Abi
-  "Spend With ABI": 19,
-
-  // Wallet
-  "Add Money": 46,
-  "Add Money to Paytm": 46,
-  "Add Paytm": 46,
-
-  // Electronics
-  "Watch Pin": 12,
-
-  // Water
-  "Water Cane": 47,
-
-  // Households
-  "Paste, dates & Shampoo": 25,
-
-  // Misc
-  "Default": 28
-};
-
-let id = 93;
-
-const transactions = raw
-  .trim()
-  .split("\n")
-  .filter(line => line.trim() && !line.trim().startsWith("//"))
-  // .map(line => {
-  //   const parts = line.split(" : ");
-
-  //   const date = parts[0].trim();
-  //   const notes = parts[1].trim();
-  //   const amount = Number(parts[2].replace("$", "").trim());
-
-  //   const [dd, mm, yy] = date.split("/");
-
-  //   const formattedDate = `20${yy}-${mm}-${dd}`;
-
-  //   return {
-  //     id: id++,
-  //     type: "expense",
-  //     amount,
-  //     category_id: categoryMap[notes] ?? categoryMap.Default,
-  //     source_id: 3,
-  //     date: formattedDate,
-  //     notes,
-  //     bill_id: null,
-  //     created_at: `${formattedDate} 00:00:00`,
-  //     transfer_group_id: null,
-  //     direction: null
-  //   };
-  // });
-  .map(line => {
-    const match = line.match(/^(\d{2}\/\d{2}\/\d{2})\s*:\s*(.*?)\s*:\s*\$(.+)$/);
-
-    if (!match) {
-      console.log("Invalid line:", line);
-      return null;
-    }
-
-    const [, date, notes, amountStr] = match;
-
-    const [dd, mm, yy] = date.split("/");
-
-    const formattedDate = `20${yy}-${mm}-${dd}`;
-
-    return {
-      id: id++,
-      type: "income", // expense OR income
-      amount: Number(amountStr.trim()),
-      category_id: categoryMap[notes] ?? categoryMap.Default,
-      source_id: 3,
-      date: formattedDate,
-      notes,
-      bill_id: null,
-      created_at: `${formattedDate} 00:00:00`,
-      transfer_group_id: null,
-      direction: null
-    };
-  })
-  .filter(Boolean);
-
-const backup = {
-  version: 1,
-  timestamp: new Date().toISOString(),
-  data: {
-    transactions,
+{
+  "version": 1,
+  "timestamp": "2026-07-04T08:04:48.916Z",
+  "data": {
+    "transactions": [
+      {
+        "id": 93,
+        "type": "income",
+        "amount": 27543,
+        "category_id": 28,
+        "source_id": 3,
+        "date": "2017-09-05",
+        "notes": "Salary",
+        "bill_id": null,
+        "created_at": "2017-09-05 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 94,
+        "type": "income",
+        "amount": 17000,
+        "category_id": 28,
+        "source_id": 3,
+        "date": "2017-09-06",
+        "notes": "Get it From Vivek",
+        "bill_id": null,
+        "created_at": "2017-09-06 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 95,
+        "type": "income",
+        "amount": 200,
+        "category_id": 28,
+        "source_id": 3,
+        "date": "2017-09-08",
+        "notes": "Get it From Abi",
+        "bill_id": null,
+        "created_at": "2017-09-08 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 96,
+        "type": "income",
+        "amount": 200,
+        "category_id": 28,
+        "source_id": 3,
+        "date": "2017-09-09",
+        "notes": "Get it From Mom",
+        "bill_id": null,
+        "created_at": "2017-09-09 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 97,
+        "type": "income",
+        "amount": 1000,
+        "category_id": 28,
+        "source_id": 3,
+        "date": "2017-09-09",
+        "notes": "Get it From Abi",
+        "bill_id": null,
+        "created_at": "2017-09-09 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 98,
+        "type": "income",
+        "amount": 20000,
+        "category_id": 28,
+        "source_id": 3,
+        "date": "2017-09-09",
+        "notes": "Get it From Dad",
+        "bill_id": null,
+        "created_at": "2017-09-09 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 99,
+        "type": "income",
+        "amount": 200,
+        "category_id": 28,
+        "source_id": 3,
+        "date": "2017-09-10",
+        "notes": "Get it From Mom",
+        "bill_id": null,
+        "created_at": "2017-09-10 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 100,
+        "type": "income",
+        "amount": 880,
+        "category_id": 28,
+        "source_id": 3,
+        "date": "2017-09-16",
+        "notes": "Get it From Thali Pirichu Potta Function",
+        "bill_id": null,
+        "created_at": "2017-09-16 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 101,
+        "type": "income",
+        "amount": 30000,
+        "category_id": 28,
+        "source_id": 3,
+        "date": "2017-09-20",
+        "notes": "Get it From Dad",
+        "bill_id": null,
+        "created_at": "2017-09-20 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 102,
+        "type": "income",
+        "amount": 130,
+        "category_id": 28,
+        "source_id": 3,
+        "date": "2017-09-20",
+        "notes": "Get it From Mom",
+        "bill_id": null,
+        "created_at": "2017-09-20 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 103,
+        "type": "income",
+        "amount": 1000,
+        "category_id": 28,
+        "source_id": 3,
+        "date": "2017-09-25",
+        "notes": "Get it From Naveen",
+        "bill_id": null,
+        "created_at": "2017-09-25 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      }
+    ],
     "categories": [
       {
         "id": 1,
@@ -610,7 +590,7 @@ const backup = {
         "created_at": "2026-06-24 18:20:55"
       }
     ],
-    sources: [
+    "sources": [
       {
         "name": "Axis Bank",
         "type": null,
@@ -644,15 +624,7 @@ const backup = {
         "id": 4
       }
     ],
-    budgets: [],
-    bills: []
+    "budgets": [],
+    "bills": []
   }
-};
-
-fs.writeFileSync(
-  "2017_12_income.json",
-  JSON.stringify(backup, null, 2),
-  "utf8"
-);
-
-console.log("2017_12_income.json created successfully.");
+}
