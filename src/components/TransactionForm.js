@@ -7,6 +7,9 @@ import { TextInput as PaperTextInput, Button as PaperButton, Chip } from 'react-
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import CategoryCreateModal from './CategoryCreateModal';
 import { updateTransaction } from '../services/transactions';
+import ConfirmDialog from './ConfirmDialog';
+import { deleteTransaction } from '../services/transactions';
+import { Feather } from '@expo/vector-icons';
 
 export default function TransactionForm({ onCreated, onCancel, transaction, isEdit }) {
   const [amount, setAmount] = useState(isEdit && transaction ? String(transaction.amount) : '');
@@ -30,6 +33,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [toAccount, setToAccount] = useState(null);
   const [selectingFor, setSelectingFor] = useState('from');
   const [openTimePicker, setOpenTimePicker] = useState(false);
+  const [confirmVisible, setConfirmVisible] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -113,6 +117,12 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
     setNotesError(false);
   }
 
+  const handleDelete = async () => {
+    await deleteTransaction(transaction.id);
+    setConfirmVisible(false);
+    onCancel?.();
+  };
+
   function formatDateTime(isoString) {
     if (!isoString) return '';
 
@@ -136,6 +146,39 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
   return (
     <ScrollView>
+
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 12,
+        }}
+      >
+        <TouchableOpacity onPress={onCancel}>
+          <Feather name="x" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text
+          style={{
+            fontSize: 18,
+            fontWeight: '700',
+          }}
+        >
+          {isEdit ? 'Edit Transaction' : 'Add Transaction'}
+        </Text>
+        {isEdit ? (
+          <TouchableOpacity onPress={() => setConfirmVisible(true)}>
+            <Feather
+              name="trash-2"
+              size={22}
+              color="#E46A6A"
+            />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 22 }} />
+        )}
+      </View>
+
       <View style={{ borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
         <View style={{
           backgroundColor:
@@ -449,6 +492,14 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           );
         })()
       )}
+
+      <ConfirmDialog
+        visible={confirmVisible}
+        title="Delete Transaction"
+        message={`Delete this ${type} transaction?`}
+        onCancel={() => setConfirmVisible(false)}
+        onConfirm={handleDelete}
+      />
 
       <CategoryCreateModal
         visible={showCategoryCreateModal}
