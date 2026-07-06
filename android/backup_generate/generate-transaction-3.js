@@ -1,104 +1,507 @@
 const fs = require("fs");
 
 const raw = `
-01/12/17 : Balance : $123
+01/12/17 : Milk : $11
 
-05/12/17 : Salary : $26826
+01/12/17 : DMart Grocery Shopping :  $599
 
-07/12/17 : App : $450
+01/12/17 : DMart Parking : $30
 
-10/12/17 : Get it From Abi : $3
+01/12/17 : Water Cane : $40
 
-13/12/17 : App : $16
+02/12/17 : TV EMI : $3723
 
-13/12/17 : App : $51
+02/12/17 : Milk : $11
 
-28/12/17 : Get it From Sathiya : $8000
+02/12/17 : Vegetables : $180
 
-30/12/17 : Get it From Dinesh : $5000
+02/12/17 : Deepam Lights : $40
+
+02/12/17 : Chenna & Deepam Oil : $201
+
+03/12/17 : Vegetables, Masala & Curd : $72
+
+03/12/17 : Milk : $11
+
+03/12/17 : Bingo : $5
+
+04/12/17 : Milk : $11
+
+04/12/17 : Evening Snacks : $10
+
+05/12/17 : Personal Loan EMI : $4917
+
+05/12/17 : Give it Back : $9000
+
+05/12/17 : Idly Rice : $80
+
+05/12/17 : Room Rent : $9450
+
+06/12/17 : Give Back to Vivek : $5000
+
+06/12/17 : Milk : $11
+
+06/12/17 : Water Cane : $40
+
+06/12/17 : Apples : $100
+
+06/12/17 : Evening Snacks : $20
+
+06/12/17 : Dinner : $30
+
+07/12/17 : Milk : $11
+
+08/12/17 : Milk : $11
+
+08/12/17 : Treat : $1155
+
+08/12/17 : Dinner : $100
+
+09/12/17 : Petrol : $300
+
+09/12/17 : Bike Air : $3
+
+09/12/17 : Vegetables & Coconut : $90
+
+09/12/17 : Milk : $11
+
+09/12/17 : Eggs: $23
+
+10/12/17 : Milk : $12
+
+10/12/17 : Electricity Bill : $236
+
+10/12/17 : Vegetables & Karuvadu : $210
+
+10/12/17 : Water Cane : $40
+
+10/12/17 : Garam Masala : $10
+
+10/12/17 : Curd : $11
+
+10/12/17 : Dinner Snacks : $55
+
+10/12/17 : Clothes for Abi : $260
+
+10/12/17 : Rice : $90
+
+10/12/17 : Pottu : $5
+
+11/12/17 : Milk : $11
+
+11/12/17 : Give Back to Ramya : $500
+
+11/12/17 : Evening Snacks : $10
+
+12/12/17 : Milk : $11
+
+13/12/17 : Milk : $11
+
+13/12/17 : Evening Snacks : $20
+
+14/12/17 : Semiya, Gee & cashews : $98
+
+14/12/17 : Milk : $22
+
+14/12/17 : Theeran Movie : $327
+
+14/12/17 : Lunch(KFC) : $450
+
+14/12/17 : Bike Parking : $20
+
+14/12/17 : Idly Rice, Biscuits & Ready Pop Corn : $198
+
+14/12/17 : Onions : $50
+
+15/12/17 : Movie Bike Parking : $50
+
+15/12/17 : Milk : $11
+
+15/12/17 : Give Back to Ramya : $500
+
+15/12/17 : Evening Snacks : $31
+
+15/12/17 : Dinner Snacks : $20
+
+16/12/17 : Milk : $11
+
+16/12/17 : Water Cane : $40
+
+17/12/17 : Milk : $11
+
+17/12/17 : Pomegranate & Cucumber : $110
+
+17/12/17 : Coconut, Dry Chilli & Vegetables : $194
+
+17/12/17 : Chicken, Egg, Masala & Curd : $150
+
+18/12/17 : Milk : $11
+
+18/12/17 : Evening Snacks : $10
+
+19/12/17 : Milk : $11
+
+19/12/17 : Curd : $11
+
+19/12/17 : Evening Snacks : $10
+
+20/12/17 : Mill : $11
+
+20/12/17 : Black Gram : $60
+
+20/12/17 : Evening Snacks : $10
+
+21/12/17 : Milk : $11
+
+21/12/17 : Water Cane : $40
+
+21/12/17 : Lunch : $32
+
+21/12/17 : Evening Snacks : $5
+
+22/12/17 : Milk : $11
+
+22/12/17 : Velaikkaran Movie : $189
+
+23/12/17 : Milk : $11
+
+23/12/17 : Movie Snacks : $20
+
+23/12/17 : Maidha, Ravai, Thuvaram Paruppu, Rice(2kg): $165
+
+23/12/17 : Bike Service : $2633
+
+23/12/17 : Bike Petrol : $500
+
+23/12/17 : Onions & Tomatoes : $50
+
+23/12/17 : Samosa & Vadai : $30
+
+24/12/17 : Belt & Underwear : $2046
+
+24/12/17 : Milk : $11
+
+24/12/17 : Hospital Bills : $1900
+
+24/12/17 : Vegetables & Coconut : $115
+
+24/12/17 : Kara Pori : $20
+
+24/12/17 : Pomegranate, Grapes, Gova & Sathukkatti : $190
+
+24/12/17 : Chat Masala, Pepper & Curd : $60
+
+25/12/17 : Milk : $11
+
+25/12/17 : Evening Snacks : $20
+
+25/12/17 : Cake : $70
+
+26/12/17 : Milk : $11
+
+26/12/17 : Tablets : $210
+
+27/12/17 : Milk : $11
+
+27/12/17 : Evening Snacks : $10
+
+28/12/17 : Credit Card Bill : $7499
+
+28/12/17 : Milk : $22
+
+28/12/17 : Evening Snacks : $10
+
+28/12/17 : Home DTH Recharge : $428
+
+29/12/17 : Evening Snacks : $8
+
+29/12/17 : Dinner Snacks : $52
+
+29/12/17 : Water Cane : $40
+
+30/12/17 : Milk : $11
+
+30/12/17 : Onions, Potatoes, Tomatoes & Coconuts : $180
+
+30/12/17 : Oil, Kadalai Mavu & Sodapu : $75
+
+31/12/17 : Milk : $11
+
+31/12/17 : Biscuits : $10
+
+31/12/17 : 2 Swear : $400
+
+31/12/17 : Pongal Shirt : $2016
+
+31/12/17 : Sweet Corn : $30
+
+31/12/17 : Dmart Parking : $30
+
+31/12/17 : Dmart Shopping : $710
 `;
 
 const categoryMap = {
   // Food
-  "Breakfast": 16,
-  "Lunch": 16,
-  "Dinner": 16,
-  "dinner": 16,
-  "Dinner​": 16,
-  "Dinner Purchase": 16,
-
-  // Snacks
-  "Snacks": 41,
-  "Snack": 41,
-  "Juice": 41,
+  "Breakfast": 17,
+  "Lunch": 17,
+  "Lunch : Briyani": 17,
+  "Dinner": 17,
+  "Dinner ": 17,
+  "Dinner​": 17,
+  "Dinner Purchase": 17,
+  "Burger & Nuggets": 17,
+  "Noodles": 17,
 
   // Fruits
-  "Grapes": 17,
+  "Fruits": 18,
+  "Apple & Orange": 18,
+  "Grapes": 18,
+  "Papaya": 18,
+  "Pomegranate": 18,
 
   // Groceries
-  "Sugar, egg, Milk, Carrot": 21,
-  "Egg and washing soap": 21,
-  "Carrot": 21,
-  "Carrots": 21,
-  "Carrot & eggs & Banana": 21,
-  "Cashew and Try Grapes": 21,
+  "Grocery": 22,
+  "Vegetables": 22,
+  "Vegetables & Fruits": 22,
+  "Vegetables & Chicken": 22,
+  "Mutton & Vegetables": 22,
+  "Milk": 22,
+  "Milk & Dry chilli": 22,
+  "Milk & Currie Leaves": 22,
+  "10Eggs": 22,
+  "Egg and washing soap": 22,
+  "Carrot": 22,
+  "Carrots": 22,
+  "Carrots ": 22,
+  "Carrots, Eggs & Banana": 22,
+  "Cashew and Dry Grapes": 22,
+  "Chicken, Masala & Coriander": 22,
+  "Beans, Rice, Pickle & Biscuits": 22,
+  "Black Gram": 22,
+  "Black Gram 1/4kg": 22,
+  "Bread, Jam, Water cane": 22,
+  "Cinthol Soaps": 22,
+  "Coconut": 22,
+  "Cooking Oil": 22,
+  "Dandruff Shampoo": 22,
+  "Dates & Ice Cream": 22,
+  "Dhall & Chilli": 22,
+  "Dustbin Cover": 22,
+  "Flour Mix": 22,
+  "Flour, Oil & Soaps": 22,
+  "Ice Cream & Washing Powder": 22,
+  "Idly Rice": 22,
+  "Plastic Bag": 22,
+  "Salt & Coffee Powder": 22,
+  "Shampoo": 22,
+  "Spinach, Coconut & Tomatoes": 22,
+  "Tender Coconut": 22,
 
-  // Mobile
-  "Mobile Back Cover": 29,
-  "Recharge": 30,
-
-  // Utilities
-  "Electricity Bill": 11,
-  "TV Recharge": 7,
-
-  // Savings
-  "Rd": 40,
-  "RD": 40,
-
-  // Rent
-  "Room Rent": 36,
-
-  // Loan
-  "Bike EMI": 27,
+  // Snacks
+  "Snack": 43,
+  "Snacks": 43,
+  "Evening Snacks": 43,
+  "Dinner Snacks": 43,
+  "Dinner Snacks & Parking": 43,
+  "Bakery Snacks": 43,
+  "Chocolate": 43,
+  "Cool Drinks": 43,
+  "Juice": 43,
+  "Lattu & Food": 43,
+  "Rusk": 43,
+  "Snacks For Abi": 43,
+  "Snacks Spend": 43,
+  "Sweets": 43,
+  "Water Bottles": 43,
 
   // Vehicle
-  "Petrol": 3,
+  "Petrol": 4,
+  "Bike Petrol": 4,
+  "Petrol & Air": 4,
+  "Bike Air": 4,
+  "Bike Parking": 4,
+  "Helmet": 4,
+  "Pulsar: Bike Repair": 4,
+  "Royal Enfield: Service": 4,
+  "Royal Enfield: Service & Insurance": 4,
+  "Water Wash": 4,
 
-  // Money Given
-  "Give it Back": 31,
-  "Give it back": 31,
-  "Give it back Sasi": 31,
-
-  // Entertainment
-  "Gift": 20,
-  "Treat": 14,
-  "Movie Bike Ticket": 43,
-
-  // Vacation
-  "Trip Amount": 45,
-
-  // Transport
-  "Bus Fair": 43,
-
-  // Abi
-  "Spend With ABI": 19,
-
-  // Wallet
-  "Add Money": 46,
-  "Add Money to Paytm": 46,
-  "Add Paytm": 46,
-
-  // Electronics
-  "Watch Pin": 12,
-
-  // Water
-  "Water Cane": 47,
+  // Medical
+  "Pregnancy Test": 6,
+  "Cold Medicine": 25,
+  "Eye Ointment": 25,
+  "Hospital Bill": 25,
+  "Medical Bill": 25,
+  "Medicare Shampoo": 25,
 
   // Households
-  "Paste, dates & Shampoo": 25,
+  "House Holds": 26,
+  "Household Things": 26,
+  "Households": 26,
+  "Knife & Washing Brush": 26,
+  "Tiffan Box": 26,
 
-  // Misc
-  "Default": 28
+  // Utilities
+  "Electricity Bill": 12,
+  "Pdkt Home Electricity Bill": 12,
+
+  // Electronics
+  "Watch Pin": 13,
+  "Purchased UPS": 13,
+  "Bang Sony TV 32 Inch: Bajaj Card": 13,
+  "Bang Sony TV 32 Inch: Initial Amount": 13,
+  "Bang Sony TV 32 Inch: Proof Approval": 13,
+  "Bang Sony TV 32 Inch: Stabilizer": 13,
+
+  // Clothing
+  "Dress": 7,
+  "Jacket & Inner For Abi": 7,
+  "Purchase Pant": 7,
+  "Purchase Shirt": 7,
+  "Sandals": 41,
+
+  // Entertainment
+  "Movie": 15,
+  "Party": 15,
+  "Park": 15,
+  "Park & Parking": 15,
+  "Exhibition": 15,
+  "Bike Parking in Theatre": 15,
+
+  // Gift
+  "Gift": 21,
+  "Birthday Gift": 21,
+  "Birthday Cake": 21,
+  "Birthday Presents": 21,
+  "Henry Marriage Gift": 21,
+  "Priya Adhiyamaan Marriage Gift": 21,
+  "Send Off": 21,
+
+  // Mobile
+  "Mobile Back Cover": 31,
+  "Back Cover": 31,
+  "Recharge": 31,
+  "Recharge Airtel": 31,
+  "Recharge For Abi": 31,
+  "Recharge For Mom": 31,
+  "Recharge to Airtel": 31,
+  "DTH Recharge": 31,
+  "Mi Mobile Service Tax": 31,
+  "Screen Card": 31,
+  "Sim Card": 31,
+  "Sim Card & Link Adhaar": 31,
+
+  // Loan
+  "Bike EMI": 29,
+  "Personal Loan EMI": 29,
+  "Capital First Loan Paid": 29,
+  "Spend for Loan": 29,
+  "Bang Sony TV 32 Inch: Auto Debit": 29,
+
+  // Savings
+  "RD": 42,
+  "Rd": 42,
+  "Recurring Deposit": 42,
+  "Recurring Deposit ": 42,
+  "Recurrent Deposit": 42,
+
+  // Money Given
+  "Give it Back": 33,
+  "Give it back": 33,
+  "Give it back Sasi": 33,
+  "Give it Back Vivek": 33,
+  "Give it Back Vetrivel": 33,
+  "Give back": 33,
+  "Give back ": 33,
+  "Give back to Deepak": 33,
+  "Give back to Dinesh": 33,
+  "Give back to KD": 33,
+  "Give back to Madhu": 33,
+  "Give back to Naveen": 33,
+  "Gave it Back": 33,
+  "Gave it to Ravi": 33,
+  "Gave to Ravi": 33,
+  "Gave to Naveen": 33,
+  "Gave to Mom": 33,
+  "Gave to Ram": 33,
+  "Gave to Sasi": 33,
+  "Gave to Dinesh": 33,
+  "Gave to Akka": 33,
+  "Gave to Madhu": 33,
+  "Gave to Aboo": 33,
+  "Gave to": 33,
+
+  // Money Received
+  "Get it From Abi": 34,
+  "Get it From Dad": 34,
+  "Get it From Mom": 34,
+  "Get it From Naveen": 34,
+  "Get it From Ramya": 34,
+  "Get it From Ravi": 34,
+  "Get it From Vetrivel": 34,
+  "Get it From Vivek": 34,
+  "Get it From Dinesh": 34,
+  "Get it From Mams": 34,
+  "Get it From Bag": 34,
+  "Get it From Thali Pirichu Potta Function": 34,
+  "Get From Deepak": 34,
+  "Get From Dinesh": 34,
+  "Get From Sasi": 34,
+  "Get From Shufil": 34,
+  "Lunch Amount": 34,
+  "Room Advance Returned ": 34,
+  "Available Amount ": 34,
+
+  // Rent
+  "Room Rent": 38,
+  "Room: Rent": 38,
+  "Room Advance": 38,
+  "Room Advance Returned": 38,
+  "Room Rental Agreement": 38,
+  "Room Shifting": 38,
+  "Room: EB Deposit": 38,
+  "Room: Electricity Bill": 38,
+  "Room: Internet Bill": 38,
+  "Room: Water": 38,
+  "Room: Water Bill": 38,
+  "Room: Water Cane": 38,
+  "Room: Hit Purchase": 38,
+  "Room: Spend": 38,
+  "House Warming": 38,
+  "Give Back to Dinesh & Room Rent": 38,
+
+  // Salary
+  "March Month 2017": 39,
+  "April Month 2017": 39,
+  "May Month 2017": 39,
+  "June Month 2017": 39,
+  "July Month 2017": 39,
+  "August Month 2017": 39,
+  "September Month 2017": 39,
+  "October Month 2017": 39,
+
+  // Personal Care
+  "Hair Cut": 40,
+  "Hair Cut For Abi": 40,
+  "Hair Cut For Myself ": 40,
+  "Hair Cut For Myself  ": 40,
+
+  // Travel
+  "Trip Amount": 47,
+  "Thirupathi Trip": 47,
+  "Bennargetta Zoo Spend": 47,
+  "Lalbagh": 47,
+  "Lalbagh Tickets": 47,
+  "Bus : Lalbagh to Room": 47,
+  "Bus : Room to Lalbagh": 47,
+  "Shiradi: Expenses": 47,
+  "Shiradi: Bus Booking & Others": 47,
+
+  // Water
+  "Water Cane": 49,
+
+  // Default
+  "Default": 30
 };
 
 let id = 93;
@@ -148,7 +551,7 @@ const transactions = raw
 
     return {
       id: id++,
-      type: "income", // expense OR income
+      type: "expense", // expense OR income
       amount: Number(amountStr.trim()),
       category_id: categoryMap[notes] ?? categoryMap.Default,
       source_id: 3,
@@ -170,444 +573,444 @@ const backup = {
     "categories": [
       {
         "id": 1,
-        "name": "Bank Charges",
-        "type": "expense",
-        "icon": "bank",
-        "color": "#374151",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 2,
-        "name": "Beauty Care",
-        "type": "expense",
-        "icon": "cards-heart-outline",
-        "color": "#DB2777",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 3,
-        "name": "Bike / Vehicle",
-        "type": "expense",
-        "icon": "motorbike",
-        "color": "#DC2626",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 4,
-        "name": "Cashback",
-        "type": "income",
-        "icon": "cash-plus",
-        "color": "#A3E635",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 5,
-        "name": "Child Birth",
-        "type": "expense",
-        "icon": "baby-carriage",
-        "color": "#22C55E",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 6,
-        "name": "Clothes",
-        "type": "expense",
-        "icon": "tshirt-v",
-        "color": "#FB923C",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 7,
-        "name": "DTH",
-        "type": "expense",
-        "icon": "television-play",
-        "color": "#8B5CF6",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 8,
-        "name": "Diwali",
-        "type": "expense",
-        "icon": "firework",
-        "color": "#DC2626",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 9,
-        "name": "Donations",
-        "type": "expense",
-        "icon": "hand-heart",
-        "color": "#22C55E",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 10,
-        "name": "Drinks",
-        "type": "expense",
-        "icon": "liquor",
-        "color": "#EF4444",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 11,
-        "name": "Electricity",
-        "type": "expense",
-        "icon": "power-plug",
-        "color": "#DC2626",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 12,
-        "name": "Electronics",
-        "type": "expense",
-        "icon": "devices",
-        "color": "#A78BFA",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 13,
-        "name": "Eniyan",
-        "type": "expense",
-        "icon": "human-female-dance",
-        "color": "#FBBF24",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 14,
-        "name": "Entertainment",
-        "type": "expense",
-        "icon": "movie-open",
-        "color": "#7C3AED",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 15,
-        "name": "Family",
-        "type": "expense",
-        "icon": "account-group",
-        "color": "#F43F5E",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 16,
-        "name": "Food & Dining",
-        "type": "expense",
-        "icon": "silverware-fork-knife",
-        "color": "#F59E0B",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 17,
-        "name": "Fruits",
-        "type": "expense",
-        "icon": "fruit-watermelon",
-        "color": "#84CC16",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 18,
-        "name": "Gas",
-        "type": "expense",
-        "icon": "gas-cylinder",
-        "color": "#DC2626",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 19,
-        "name": "Gave it to Abi",
-        "type": "expense",
-        "icon": "bank-transfer-out",
-        "color": "#DC2626",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 20,
-        "name": "Gifts",
-        "type": "expense",
-        "icon": "gift",
-        "color": "#EC4899",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 21,
-        "name": "Groceries",
-        "type": "expense",
-        "icon": "cart",
-        "color": "#F97316",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 22,
-        "name": "Guest Visit to Bangalore",
-        "type": "expense",
-        "icon": "account-group-outline",
-        "color": "#6366F1",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 23,
-        "name": "Home Improvement",
-        "type": "expense",
-        "icon": "hammer-wrench",
-        "color": "#A16207",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 24,
-        "name": "Hospital / Medicine",
-        "type": "expense",
-        "icon": "hospital-box-outline",
-        "color": "#EF4444",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 25,
-        "name": "Households",
-        "type": "expense",
-        "icon": "bus-stop-covered",
-        "color": "#14B8A6",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 26,
-        "name": "Interest",
-        "type": "income",
-        "icon": "percent",
-        "color": "#22C55E",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 27,
-        "name": "Loan / EMI",
-        "type": "expense",
-        "icon": "bank-transfer",
-        "color": "#B91C1C",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 28,
-        "name": "Misc",
-        "type": "expense",
-        "icon": "dots-horizontal",
-        "color": "#9CA3AF",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 29,
-        "name": "Mobile",
-        "type": "expense",
-        "icon": "cellphone",
-        "color": "#0EA5E9",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 30,
-        "name": "Mobile Recharge",
-        "type": "expense",
-        "icon": "cellphone",
-        "color": "#0EA5E9",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 31,
-        "name": "Money Given",
-        "type": "expense",
-        "icon": "arrow-up-bold-circle",
-        "color": "#EF4444",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 32,
-        "name": "Money Received",
-        "type": "income",
-        "icon": "arrow-down-bold-circle",
-        "color": "#10B981",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 33,
-        "name": "Parents",
-        "type": "expense",
-        "icon": "account-group",
-        "color": "#FB923C",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 34,
-        "name": "Printing & Stationery",
-        "type": "expense",
-        "icon": "printer",
-        "color": "#6B7280",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 35,
-        "name": "Relatives",
-        "type": "expense",
-        "icon": "account-group",
-        "color": "#F97316",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 36,
-        "name": "Rent",
-        "type": "expense",
-        "icon": "home-account",
-        "color": "#3B82F6",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 37,
-        "name": "Salary",
-        "type": "income",
-        "icon": "cash-multiple",
-        "color": "#16A34A",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 38,
-        "name": "Salon",
-        "type": "expense",
-        "icon": "content-cut",
-        "color": "#334155",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 39,
-        "name": "Sandals / Shoes",
-        "type": "expense",
-        "icon": "shoe-sneaker",
-        "color": "#DB2777",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 40,
-        "name": "Savings",
-        "type": "expense",
-        "icon": "piggy-bank",
-        "color": "#059669",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 41,
-        "name": "Snacks",
-        "type": "expense",
-        "icon": "food-variant",
-        "color": "#FBBF24",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 42,
-        "name": "Special Occasions",
-        "type": "expense",
-        "icon": "party-popper",
-        "color": "#06B6D4",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 43,
-        "name": "Transport",
-        "type": "expense",
-        "icon": "bus",
-        "color": "#14B8A6",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 44,
-        "name": "Utilities",
-        "type": "expense",
-        "icon": "lightning-bolt",
-        "color": "#64748B",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 45,
-        "name": "Vacation",
-        "type": "expense",
-        "icon": "earth",
-        "color": "#A3E635",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 46,
-        "name": "Wallet Transfer",
-        "type": "expense",
-        "icon": "swap-horizontal",
-        "color": "#6366F1",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 47,
-        "name": "Water / Purifier",
-        "type": "expense",
-        "icon": "cup-water",
-        "color": "#64748B",
-        "is_active": 1,
-        "created_at": "2026-06-23 16:28:34"
-      },
-      {
-        "id": 48,
         "name": "Abinaya Birthday",
         "type": "expense",
         "icon": "cake",
         "color": "#A78BFA",
         "is_active": 1,
-        "created_at": "2026-06-24 03:22:34"
+        "created_at": "2026-07-03 10:12:11"
       },
       {
-        "id": 49,
+        "id": 2,
+        "name": "Bank Charges",
+        "type": "expense",
+        "icon": "bank",
+        "color": "#374151",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 3,
+        "name": "Beauty Care",
+        "type": "expense",
+        "icon": "cards-heart-outline",
+        "color": "#DB2777",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 4,
+        "name": "Bike / Vehicle",
+        "type": "expense",
+        "icon": "motorbike",
+        "color": "#DC2626",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 5,
+        "name": "Cashback",
+        "type": "income",
+        "icon": "cash-plus",
+        "color": "#A3E635",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 6,
+        "name": "Child Birth",
+        "type": "expense",
+        "icon": "baby-carriage",
+        "color": "#22C55E",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 7,
+        "name": "Clothes",
+        "type": "expense",
+        "icon": "tshirt-v",
+        "color": "#FB923C",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 8,
+        "name": "DTH",
+        "type": "expense",
+        "icon": "television-play",
+        "color": "#8B5CF6",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 9,
+        "name": "Diwali",
+        "type": "expense",
+        "icon": "firework",
+        "color": "#DC2626",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 10,
+        "name": "Donations",
+        "type": "expense",
+        "icon": "hand-heart",
+        "color": "#22C55E",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 11,
+        "name": "Drinks",
+        "type": "expense",
+        "icon": "liquor",
+        "color": "#EF4444",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 12,
+        "name": "Electricity",
+        "type": "expense",
+        "icon": "power-plug",
+        "color": "#DC2626",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 13,
+        "name": "Electronics",
+        "type": "expense",
+        "icon": "devices",
+        "color": "#A78BFA",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 14,
+        "name": "Eniyan",
+        "type": "expense",
+        "icon": "human-female-dance",
+        "color": "#FBBF24",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 15,
+        "name": "Entertainment",
+        "type": "expense",
+        "icon": "movie-open",
+        "color": "#7C3AED",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 16,
+        "name": "Family",
+        "type": "expense",
+        "icon": "account-group",
+        "color": "#F43F5E",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 17,
+        "name": "Food & Dining",
+        "type": "expense",
+        "icon": "silverware-fork-knife",
+        "color": "#F59E0B",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 18,
+        "name": "Fruits",
+        "type": "expense",
+        "icon": "fruit-watermelon",
+        "color": "#84CC16",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 19,
+        "name": "Gas",
+        "type": "expense",
+        "icon": "gas-cylinder",
+        "color": "#DC2626",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 20,
+        "name": "Gave it to Abi",
+        "type": "expense",
+        "icon": "bank-transfer-out",
+        "color": "#DC2626",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 21,
+        "name": "Gifts",
+        "type": "expense",
+        "icon": "gift",
+        "color": "#EC4899",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 22,
+        "name": "Groceries",
+        "type": "expense",
+        "icon": "cart",
+        "color": "#F97316",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 23,
+        "name": "Guest Visit to Bangalore",
+        "type": "expense",
+        "icon": "account-group-outline",
+        "color": "#6366F1",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 24,
+        "name": "Home Improvement",
+        "type": "expense",
+        "icon": "hammer-wrench",
+        "color": "#A16207",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 25,
+        "name": "Hospital / Medicine",
+        "type": "expense",
+        "icon": "hospital-box-outline",
+        "color": "#EF4444",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 26,
+        "name": "Households",
+        "type": "expense",
+        "icon": "bus-stop-covered",
+        "color": "#14B8A6",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 27,
+        "name": "Interest",
+        "type": "income",
+        "icon": "percent",
+        "color": "#22C55E",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 28,
         "name": "Jewellery",
         "type": "expense",
         "icon": "gold",
         "color": "#FBBF24",
         "is_active": 1,
-        "created_at": "2026-06-24 18:20:55"
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 29,
+        "name": "Loan / EMI",
+        "type": "expense",
+        "icon": "bank-transfer",
+        "color": "#B91C1C",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 30,
+        "name": "Misc",
+        "type": "expense",
+        "icon": "dots-horizontal",
+        "color": "#9CA3AF",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 31,
+        "name": "Mobile",
+        "type": "expense",
+        "icon": "cellphone",
+        "color": "#0EA5E9",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 32,
+        "name": "Mobile Recharge",
+        "type": "expense",
+        "icon": "cellphone",
+        "color": "#0EA5E9",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 33,
+        "name": "Money Given",
+        "type": "expense",
+        "icon": "arrow-up-bold-circle",
+        "color": "#EF4444",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 34,
+        "name": "Money Received",
+        "type": "income",
+        "icon": "arrow-down-bold-circle",
+        "color": "#10B981",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 35,
+        "name": "Parents",
+        "type": "expense",
+        "icon": "account-group",
+        "color": "#FB923C",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 36,
+        "name": "Printing & Stationery",
+        "type": "expense",
+        "icon": "printer",
+        "color": "#6B7280",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 37,
+        "name": "Relatives",
+        "type": "expense",
+        "icon": "account-group",
+        "color": "#F97316",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 38,
+        "name": "Rent",
+        "type": "expense",
+        "icon": "home-account",
+        "color": "#3B82F6",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 39,
+        "name": "Salary",
+        "type": "income",
+        "icon": "cash-multiple",
+        "color": "#16A34A",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 40,
+        "name": "Salon",
+        "type": "expense",
+        "icon": "content-cut",
+        "color": "#334155",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:11"
+      },
+      {
+        "id": 41,
+        "name": "Sandals / Shoes",
+        "type": "expense",
+        "icon": "shoe-sneaker",
+        "color": "#DB2777",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:12"
+      },
+      {
+        "id": 42,
+        "name": "Savings",
+        "type": "expense",
+        "icon": "piggy-bank",
+        "color": "#059669",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:12"
+      },
+      {
+        "id": 43,
+        "name": "Snacks",
+        "type": "expense",
+        "icon": "food-variant",
+        "color": "#FBBF24",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:12"
+      },
+      {
+        "id": 44,
+        "name": "Special Occasions",
+        "type": "expense",
+        "icon": "party-popper",
+        "color": "#06B6D4",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:12"
+      },
+      {
+        "id": 45,
+        "name": "Transport",
+        "type": "expense",
+        "icon": "bus",
+        "color": "#14B8A6",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:12"
+      },
+      {
+        "id": 46,
+        "name": "Utilities",
+        "type": "expense",
+        "icon": "lightning-bolt",
+        "color": "#64748B",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:12"
+      },
+      {
+        "id": 47,
+        "name": "Vacation",
+        "type": "expense",
+        "icon": "earth",
+        "color": "#A3E635",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:12"
+      },
+      {
+        "id": 48,
+        "name": "Wallet Transfer",
+        "type": "expense",
+        "icon": "swap-horizontal",
+        "color": "#6366F1",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:12"
+      },
+      {
+        "id": 49,
+        "name": "Water / Purifier",
+        "type": "expense",
+        "icon": "cup-water",
+        "color": "#64748B",
+        "is_active": 1,
+        "created_at": "2026-07-03 10:12:12"
       }
     ],
     sources: [
@@ -650,9 +1053,9 @@ const backup = {
 };
 
 fs.writeFileSync(
-  "2017_12_income.json",
+  "2017_12.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2017_12_income.json created successfully.");
+console.log("2017_12.json created successfully.");
