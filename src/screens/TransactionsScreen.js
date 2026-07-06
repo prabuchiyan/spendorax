@@ -53,7 +53,7 @@ export default function TransactionsScreen({ navigation }) {
 
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ padding: Spacing.m, paddingBottom: 0 }}>
+      <View style={{ padding: Spacing.s, paddingBottom: 0 }}>
         <Searchbar
           placeholder="Search transactions..."
           onChangeText={setSearchQuery}
@@ -66,11 +66,27 @@ export default function TransactionsScreen({ navigation }) {
       <FlatList
         data={filteredItems}
         keyExtractor={(i) => String(i.id)}
-        contentContainerStyle={{ padding: Spacing.m, paddingBottom: 100 }}
+        contentContainerStyle={{
+          padding: Spacing.s,
+          paddingBottom: 80,
+          flexGrow: 1,
+        }}
         ListEmptyComponent={
-          <View style={{ alignItems: 'center', marginTop: 60 }}>
-            <MaterialCommunityIcons name="clipboard-text-outline" size={48} color="#ccc" />
-            <Text style={{ color: Colors.muted, marginTop: 12 }}>No transactions found</Text>
+          <View
+            style={{
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <MaterialCommunityIcons
+              name="clipboard-text-outline"
+              size={48}
+              color="#ccc"
+            />
+            <Text style={{ color: Colors.muted, marginTop: 12 }}>
+              No transactions found
+            </Text>
           </View>
         }
         renderItem={({ item }) => (
