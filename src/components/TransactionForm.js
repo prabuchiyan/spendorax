@@ -37,11 +37,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       setCategories(cats);
       const src = await getSources(true);
       setSources(src);
-      // Set default category/source if not in edit mode AND no category/source is selected yet
-      if (!isEdit) {
-        if (cats.length && categoryId === null) setCategoryId(cats[0].id);
-        if (src.length && sourceId === null) setSourceId(src[0].id);
-      }
     })();
   }, []);
 
@@ -60,12 +55,12 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       setAmountError(true);
       return;
     }
-    if (!categoryId && type !== 'transfer' && transferGroupId === null) {
+    if (!categoryId && type !== 'transfer') {
       alert('Please select a category.');
       return;
     }
     if (!sourceId) {
-      alert('Please select a source.'); // Simple alert for missing source
+      alert('Please select a source.');
       return;
     }
     if (!notes.trim()) {

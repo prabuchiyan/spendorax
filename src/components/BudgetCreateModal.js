@@ -56,55 +56,137 @@ export default function BudgetCreateModal({
                             {editData ? 'Edit Category Budget' : 'Add Category Budget'}
                         </Text>
 
-                        {/* Category */}
+                        <Text style={{ marginBottom: 6, color: '#666' }}>Category</Text>
+
                         <TouchableOpacity
-                            onPress={() => setShowCategoryDropdown(!showCategoryDropdown)}
-                            style={styles.dropdown}
+                            activeOpacity={0.8}
+                            onPress={() => setShowCategoryDropdown(true)}
+                            style={{
+                                borderWidth: 1,
+                                borderColor: '#eee',
+                                padding: 12,
+                                borderRadius: 8,
+                                backgroundColor: '#fff',
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                            }}
                         >
-                            <Text style={{ color: selectedCategory ? '#333' : '#999' }}>
-                                {selectedCategory
-                                    ? selectedCategory.name
-                                    : 'Select Category'}
+                            <View
+                                style={{
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 18,
+                                    backgroundColor: selectedCategory?.color || '#eee',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginRight: 12,
+                                }}
+                            >
+                                <Avatar.Icon
+                                    size={24}
+                                    icon={selectedCategory?.icon || 'tag'}
+                                    style={{
+                                        backgroundColor: 'transparent',
+                                    }}
+                                    color="#fff"
+                                />
+                            </View>
+
+                            <Text style={{ fontSize: 16 }}>
+                                {selectedCategory?.name || 'Select Category'}
                             </Text>
                         </TouchableOpacity>
 
-                        {showCategoryDropdown && (
-                            <View style={styles.dropdownContainer}>
-                                <PaperInput
-                                    placeholder="Search categories..."
-                                    value={searchText}
-                                    onChangeText={setSearchText}
-                                    mode="flat"
-                                    style={{ backgroundColor: '#fff' }}
-                                />
+                        <Modal
+                            visible={showCategoryDropdown}
+                            transparent
+                            animationType="slide"
+                            onRequestClose={() => setShowCategoryDropdown(false)}
+                        >
+                            <View
+                                style={{
+                                    flex: 1,
+                                    backgroundColor: 'rgba(0,0,0,0.4)',
+                                    justifyContent: 'center',
+                                    padding: 20,
+                                }}
+                            >
+                                <View
+                                    style={{
+                                        backgroundColor: '#fff',
+                                        padding: 12,
+                                        borderRadius: 8,
+                                        maxHeight: '80%',
+                                    }}
+                                >
+                                    <PaperInput
+                                        label="Search"
+                                        value={searchText}
+                                        onChangeText={setSearchText}
+                                        mode="outlined"
+                                        style={{ marginBottom: 8 }}
+                                    />
 
-                                <FlatList
-                                    data={filteredCategories}
-                                    keyExtractor={(item) => String(item.id)}
-                                    keyboardShouldPersistTaps="handled"
-                                    renderItem={({ item }) => (
-                                        <TouchableOpacity
-                                            style={styles.item}
-                                            onPress={() => {
-                                                setSelectedCategory(item);
-                                                setShowCategoryDropdown(false);
-                                                setSearchText('');
-                                            }}
-                                        >
-                                            <Avatar.Icon
-                                                size={32}
-                                                icon={item.icon}
-                                                style={{
-                                                    backgroundColor: item.color,
-                                                    marginRight: 10,
+                                    <FlatList
+                                        data={filteredCategories}
+                                        keyExtractor={(item) => item.id.toString()}
+                                        keyboardShouldPersistTaps="handled"
+                                        renderItem={({ item }) => (
+                                            <TouchableOpacity
+                                                onPress={() => {
+                                                    setSelectedCategory(item);
+                                                    setShowCategoryDropdown(false);
+                                                    setSearchText('');
                                                 }}
-                                            />
-                                            <Text>{item.name}</Text>
-                                        </TouchableOpacity>
-                                    )}
-                                />
+                                                style={{
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    padding: 10,
+                                                    borderBottomWidth: 1,
+                                                    borderColor: '#f3f3f3',
+                                                    backgroundColor:
+                                                        selectedCategory?.id === item.id
+                                                            ? '#FFF9F9'
+                                                            : '#fff',
+                                                }}
+                                            >
+                                                <View
+                                                    style={{
+                                                        width: 36,
+                                                        height: 36,
+                                                        borderRadius: 18,
+                                                        backgroundColor: item.color,
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        marginRight: 12,
+                                                    }}
+                                                >
+                                                    <Avatar.Icon
+                                                        size={22}
+                                                        icon={item.icon}
+                                                        style={{ backgroundColor: 'transparent' }}
+                                                        color="#fff"
+                                                    />
+                                                </View>
+
+                                                <Text style={{ fontSize: 16 }}>
+                                                    {item.name}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    />
+
+                                    <View style={{ height: 8 }} />
+
+                                    <Button
+                                        mode="outlined"
+                                        onPress={() => setShowCategoryDropdown(false)}
+                                    >
+                                        Close
+                                    </Button>
+                                </View>
                             </View>
-                        )}
+                        </Modal>
 
                         <PaperInput
                             label="Budget Amount"
