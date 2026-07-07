@@ -132,7 +132,7 @@ export default function TransactionsScreen({ navigation }) {
                     fontSize: 16,
                     color: item.type === 'expense' ? '#E46A6A' : '#36B37E'
                   }}>
-                    {item.type === 'expense' ? '-' : '+'}₹{Number(item.amount).toFixed(2)}
+                    ₹{Number(item.amount).toFixed(2)}
                   </Text>
 
                   <Text style={{ color: Colors.muted, fontSize: 10, marginTop: 2 }}>

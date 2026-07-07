@@ -59,6 +59,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   }, [openTimePicker]);
 
   useEffect(() => {
+    if (categories.length === 0) return;
     if (type === 'transfer') {
       setCategoryId(null);
       return;
@@ -191,22 +192,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
   return (
     <ScrollView>
-      {isEdit && (
-        <View
-          style={{
-            alignItems: 'flex-end',
-            marginBottom: 12,
-          }}
-        >
-          <TouchableOpacity onPress={() => setConfirmVisible(true)}>
-            <Feather
-              name="trash-2"
-              size={22}
-              color="#E46A6A"
-            />
-          </TouchableOpacity>
-        </View>
-      )}
 
       <View style={{ borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
         <View style={{
@@ -232,44 +217,80 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         </View>
       </View>
 
-      <View style={{ flexDirection: 'row', marginBottom: 12 }}>
-        <Chip
-          mode="outlined"
-          selected={type === 'expense'}
-          showSelectedCheck={false}
-          onPress={() => setType('expense')}
-          style={{ marginRight: 8, borderColor: type === 'expense' ? accent : undefined }}
-        >
-          Expense
-        </Chip>
-
-        <Chip
-          mode="outlined"
-          selected={type === 'income'}
-          showSelectedCheck={false}
-          onPress={() => setType('income')}
-          style={{ marginRight: 8, borderColor: type === 'income' ? accent : undefined }}
-        >
-          Income
-        </Chip>
-
-        {!isEdit &&
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 12,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Chip
             mode="outlined"
-            selected={type === 'transfer'}
+            selected={type === 'expense'}
             showSelectedCheck={false}
-            onPress={() => setType('transfer')}
+            onPress={() => setType('expense')}
             style={{
-              borderColor: type === 'transfer' ? '#000' : undefined
-            }}
-            textStyle={{
-              color: type === 'transfer' ? '#000' : undefined,
-              fontWeight: type === 'transfer' ? '700' : 'normal'
+              marginRight: 8,
+              borderColor: type === 'expense' ? accent : undefined,
             }}
           >
-            Transfer
+            Expense
           </Chip>
-        }
+
+          <Chip
+            mode="outlined"
+            selected={type === 'income'}
+            showSelectedCheck={false}
+            onPress={() => setType('income')}
+            style={{
+              marginRight: 8,
+              borderColor: type === 'income' ? accent : undefined,
+            }}
+          >
+            Income
+          </Chip>
+
+          {!isEdit && (
+            <Chip
+              mode="outlined"
+              selected={type === 'transfer'}
+              showSelectedCheck={false}
+              onPress={() => setType('transfer')}
+              style={{
+                borderColor: type === 'transfer' ? '#000' : undefined,
+              }}
+              textStyle={{
+                color: type === 'transfer' ? '#000' : undefined,
+                fontWeight: type === 'transfer' ? '700' : 'normal',
+              }}
+            >
+              Transfer
+            </Chip>
+          )}
+        </View>
+
+        {isEdit && (
+          <TouchableOpacity
+            onPress={() => setConfirmVisible(true)}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: '#E46A6A',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <Feather
+              name="trash-2"
+              size={20}
+              color="#E46A6A"
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       <PaperTextInput label="Amount" value={amount} onChangeText={(t) => { setAmount(t); if (amountError) setAmountError(false); }} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} error={amountError} contentStyle={{ fontSize: 24 }} />
