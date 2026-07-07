@@ -239,3 +239,50 @@ export async function createTransfer({
     direction: 'credit'
   });
 }
+
+export async function getTransactionNoteSuggestions() {
+  const transactions = await getTransactions(100000, 'No');
+  const categoriesRes = await executeSql(`SELECT * FROM categories`);
+
+  const categories = [];
+
+  for (let i = 0; i < categoriesRes.rows.length; i++) {
+    categories.push(categoriesRes.rows.item(i));
+  }
+
+  const map = {};
+
+  transactions.forEach(tx => {
+    if (!tx.notes || !tx.notes.trim()) return;
+
+    const key = `${tx.category_id}_${tx.notes.toLowerCase()}`;
+
+    if (!map[key]) {
+      const category = categories.find(c => c.id === tx.category_id);
+
+      map[key] = {
+        notes: tx.notes,
+        category_id: tx.category_id,
+        category_name: category?.name ?? '',
+        icon: category?.icon ?? 'tag',
+        color: category?.color ?? '#4B7CF3',
+        usage_count: 1,
+        last_used: tx.date
+      };
+    } else {
+      map[key].usage_count++;
+
+      if (new Date(tx.date) > new Date(map[key].last_used)) {
+        map[key].last_used = tx.date;
+      }
+    }
+  });
+
+  return Object.values(map).sort((a, b) => {
+    if (b.usage_count !== a.usage_count) {
+      return b.usage_count - a.usage_count;
+    }
+
+    return new Date(b.last_used) - new Date(a.last_used);
+  });
+}

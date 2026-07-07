@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, TouchableOpacity, ScrollView, Modal, Text, Platform, InteractionManager } from 'react-native';
-import { createTransaction, createTransfer } from '../services/transactions';
+import { createTransaction, createTransfer, getTransactionNoteSuggestions } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
 import { TextInput as PaperTextInput, Button as PaperButton, Chip } from 'react-native-paper';
@@ -34,6 +34,9 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [selectingFor, setSelectingFor] = useState('from');
   const [openTimePicker, setOpenTimePicker] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
+  const [noteSuggestions, setNoteSuggestions] = useState([]);
+  const [filteredSuggestions, setFilteredSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -41,6 +44,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       setCategories(cats);
       const src = await getSources(true);
       setSources(src);
+      const notes = await getTransactionNoteSuggestions();
+      setNoteSuggestions(notes);
     })();
   }, []);
 
@@ -140,9 +145,26 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
     return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm}`;
   }
-  const accent =
-    type === 'expense' ? '#E46A6A' :
-      type === 'income' ? '#36B37E' : '#000';
+
+  const handleNotesChange = (text) => {
+    setNotes(text);
+    setNotesError(false);
+
+    if (!text.trim()) {
+      setFilteredSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const matches = noteSuggestions.filter(item =>
+      item.notes.toLowerCase().includes(text.toLowerCase())
+    );
+
+    setFilteredSuggestions(matches);
+    setShowSuggestions(matches.length > 0);
+  };
+
+  const accent = type === 'expense' ? '#E46A6A' : type === 'income' ? '#36B37E' : '#000';
 
   return (
     <ScrollView>
@@ -229,6 +251,72 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         }
       </View>
 
+      <PaperTextInput
+        label="Notes"
+        value={notes}
+        onChangeText={handleNotesChange}
+        mode="outlined"
+        error={notesError}
+        autoCorrect={false}
+        autoCapitalize="sentences"
+        style={{ marginBottom: 12 }}
+      />
+      {notesError && <Text style={{ color: '#E46A6A', marginBottom: 8 }}>Notes cannot be empty.</Text>}
+      {showSuggestions && (
+        <View
+          style={{
+            borderWidth: 1,
+            borderColor: "#ddd",
+            borderRadius: 10,
+            backgroundColor: "#fff",
+            maxHeight: 220,
+            marginBottom: 12,
+            elevation: 4,
+          }}
+        >
+          <ScrollView keyboardShouldPersistTaps="handled">
+            {filteredSuggestions.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                onPress={() => {
+                  setNotes(item.notes);
+                  setCategoryId(item.category_id);
+                  setShowSuggestions(false);
+                }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  padding: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: "#f2f2f2",
+                }}
+              >
+                <View
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 17,
+                    backgroundColor: item.color,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    marginRight: 12,
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name={item.icon}
+                    size={18}
+                    color="#fff"
+                  />
+                </View>
+
+                <Text numberOfLines={1}>
+                  {item.notes}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
       <View style={{ marginBottom: 12 }}>
         <TouchableOpacity
           activeOpacity={0.8}
@@ -379,9 +467,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           </TouchableOpacity>
         </View>
       )}
-
-      <PaperTextInput label="Notes" value={notes} onChangeText={(t) => { setNotes(t); setNotesError(false); }} mode="outlined" multiline style={{ marginBottom: 12 }} error={notesError} />
-      {notesError && <Text style={{ color: '#E46A6A', marginBottom: 8 }}>Notes cannot be empty.</Text>}
 
       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
         <PaperButton mode="contained" onPress={submit} style={{ backgroundColor: accent }} labelStyle={{ color: '#fff' }}>
