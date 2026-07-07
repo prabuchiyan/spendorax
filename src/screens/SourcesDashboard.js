@@ -117,11 +117,6 @@ export default function SourcesDashboard({ navigation }) {
           )}
         </View>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Sources')} style={styles.addButton}>
-          <MaterialCommunityIcons name="plus" size={18} color="#fff" />
-          <Text style={styles.addButtonText}>Add New Source</Text>
-        </TouchableOpacity>
-
       </ScrollView>
     </View>
   );

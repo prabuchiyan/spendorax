@@ -146,27 +146,13 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
   return (
     <ScrollView>
-
       <View
         style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+          alignItems: 'flex-end',
           marginBottom: 12,
         }}
       >
-        <TouchableOpacity onPress={onCancel}>
-          <Feather name="x" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text
-          style={{
-            fontSize: 18,
-            fontWeight: '700',
-          }}
-        >
-          {isEdit ? 'Edit Transaction' : 'Add Transaction'}
-        </Text>
-        {isEdit ? (
+        {isEdit && (
           <TouchableOpacity onPress={() => setConfirmVisible(true)}>
             <Feather
               name="trash-2"
@@ -174,8 +160,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               color="#E46A6A"
             />
           </TouchableOpacity>
-        ) : (
-          <View style={{ width: 22 }} />
         )}
       </View>
 
@@ -401,7 +385,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
         <PaperButton mode="contained" onPress={submit} style={{ backgroundColor: accent }} labelStyle={{ color: '#fff' }}>
-          Save
+          {isEdit ? 'Update' : 'Save'}
         </PaperButton>
         <View style={{ width: 12 }} />
         <PaperButton mode="outlined" onPress={() => { if (onCancel) onCancel(); else { setAmount(''); setNotes(''); } }}>Cancel</PaperButton>
