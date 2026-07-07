@@ -232,6 +232,46 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         </View>
       </View>
 
+      <View style={{ flexDirection: 'row', marginBottom: 12 }}>
+        <Chip
+          mode="outlined"
+          selected={type === 'expense'}
+          showSelectedCheck={false}
+          onPress={() => setType('expense')}
+          style={{ marginRight: 8, borderColor: type === 'expense' ? accent : undefined }}
+        >
+          Expense
+        </Chip>
+
+        <Chip
+          mode="outlined"
+          selected={type === 'income'}
+          showSelectedCheck={false}
+          onPress={() => setType('income')}
+          style={{ marginRight: 8, borderColor: type === 'income' ? accent : undefined }}
+        >
+          Income
+        </Chip>
+
+        {!isEdit &&
+          <Chip
+            mode="outlined"
+            selected={type === 'transfer'}
+            showSelectedCheck={false}
+            onPress={() => setType('transfer')}
+            style={{
+              borderColor: type === 'transfer' ? '#000' : undefined
+            }}
+            textStyle={{
+              color: type === 'transfer' ? '#000' : undefined,
+              fontWeight: type === 'transfer' ? '700' : 'normal'
+            }}
+          >
+            Transfer
+          </Chip>
+        }
+      </View>
+
       <PaperTextInput label="Amount" value={amount} onChangeText={(t) => { setAmount(t); if (amountError) setAmountError(false); }} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} error={amountError} contentStyle={{ fontSize: 24 }} />
       {amountError ? <Text style={{ color: '#E46A6A', marginBottom: 8 }}>Enter an amount greater than 0</Text> : null}
 
@@ -302,46 +342,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           </ScrollView>
         </View>
       )}
-
-      <View style={{ flexDirection: 'row', marginBottom: 12 }}>
-        <Chip
-          mode="outlined"
-          selected={type === 'expense'}
-          showSelectedCheck={false}
-          onPress={() => setType('expense')}
-          style={{ marginRight: 8, borderColor: type === 'expense' ? accent : undefined }}
-        >
-          Expense
-        </Chip>
-
-        <Chip
-          mode="outlined"
-          selected={type === 'income'}
-          showSelectedCheck={false}
-          onPress={() => setType('income')}
-          style={{ marginRight: 8, borderColor: type === 'income' ? accent : undefined }}
-        >
-          Income
-        </Chip>
-
-        {!isEdit &&
-          <Chip
-            mode="outlined"
-            selected={type === 'transfer'}
-            showSelectedCheck={false}
-            onPress={() => setType('transfer')}
-            style={{
-              borderColor: type === 'transfer' ? '#000' : undefined
-            }}
-            textStyle={{
-              color: type === 'transfer' ? '#000' : undefined,
-              fontWeight: type === 'transfer' ? '700' : 'normal'
-            }}
-          >
-            Transfer
-          </Chip>
-        }
-      </View>
 
       <View style={{ marginBottom: 12 }}>
         <TouchableOpacity
