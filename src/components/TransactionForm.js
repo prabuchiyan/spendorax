@@ -1,10 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  View, TouchableOpacity,
-  ScrollView, Modal, Text,
-  Platform, InteractionManager,
-  Keyboard, TouchableWithoutFeedback
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, TouchableOpacity, ScrollView, Modal, Text, Platform, InteractionManager } from 'react-native';
 import { createTransaction, createTransfer, getTransactionNoteSuggestions } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
@@ -42,7 +37,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [noteSuggestions, setNoteSuggestions] = useState([]);
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const selectingSuggestion = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -63,6 +57,19 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       setShowDateTimePicker(true);
     });
   }, [openTimePicker]);
+
+  useEffect(() => {
+    if (type === 'transfer') {
+      setCategoryId(null);
+      return;
+    }
+    const exists = categories.some(
+      c => c.id === categoryId && c.type === type
+    );
+    if (!exists) {
+      setCategoryId(null);
+    }
+  }, [type, categories]);
 
   async function submit() {
     const val = parseFloat(amount);
@@ -162,25 +169,35 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       return;
     }
 
-    const matches = noteSuggestions.filter(item =>
-      item.notes.toLowerCase().includes(text.toLowerCase())
-    );
+    const matches = noteSuggestions.filter(item => {
+      const category = categories.find(c => c.id === item.category_id);
+
+      return (
+        item.notes.toLowerCase().includes(text.toLowerCase()) &&
+        category?.type === type
+      );
+    });
 
     setFilteredSuggestions(matches);
     setShowSuggestions(matches.length > 0);
   };
 
+  const filteredCategories = categories.filter(c => {
+    if (type === 'transfer') return false;
+    return c.type === type;
+  });
+
   const accent = type === 'expense' ? '#E46A6A' : type === 'income' ? '#36B37E' : '#000';
 
   return (
     <ScrollView>
-      <View
-        style={{
-          alignItems: 'flex-end',
-          marginBottom: 12,
-        }}
-      >
-        {isEdit && (
+      {isEdit && (
+        <View
+          style={{
+            alignItems: 'flex-end',
+            marginBottom: 12,
+          }}
+        >
           <TouchableOpacity onPress={() => setConfirmVisible(true)}>
             <Feather
               name="trash-2"
@@ -188,8 +205,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               color="#E46A6A"
             />
           </TouchableOpacity>
-        )}
-      </View>
+        </View>
+      )}
 
       <View style={{ borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
         <View style={{
@@ -215,8 +232,77 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         </View>
       </View>
 
-      <PaperTextInput label="Amount" value={amount} onChangeText={(t) => { setAmount(t); if (amountError) setAmountError(false); }} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12, fontSize: 20 }} error={amountError} contentStyle={{ fontSize: 24 }} />
+      <PaperTextInput label="Amount" value={amount} onChangeText={(t) => { setAmount(t); if (amountError) setAmountError(false); }} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} error={amountError} contentStyle={{ fontSize: 24 }} />
       {amountError ? <Text style={{ color: '#E46A6A', marginBottom: 8 }}>Enter an amount greater than 0</Text> : null}
+
+      <PaperTextInput
+        label={type === 'expense' ? 'Where did you spend?' : type === 'income'
+          ? 'How did you get this money?' : 'How much do you want to transfer?'}
+        value={notes}
+        onChangeText={handleNotesChange}
+        mode="outlined"
+        error={notesError}
+        autoCorrect={false}
+        autoCapitalize="sentences"
+        style={{ marginBottom: 12 }}
+      />
+      {notesError && <Text style={{ color: '#E46A6A', marginBottom: 8 }}>Notes cannot be empty.</Text>}
+      {showSuggestions && (
+        <View
+          style={{
+            borderWidth: 1,
+            borderColor: "#ddd",
+            borderRadius: 10,
+            backgroundColor: "#fff",
+            maxHeight: 220,
+            marginBottom: 12,
+            elevation: 4,
+          }}
+        >
+          <ScrollView keyboardShouldPersistTaps="handled">
+            {filteredSuggestions.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                onPress={() => {
+                  setNotes(item.notes);
+                  setCategoryId(item.category_id);
+                  setShowSuggestions(false);
+                }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  padding: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: "#f2f2f2",
+                }}
+              >
+                <View
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 17,
+                    backgroundColor: item.color,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    marginRight: 12,
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name={item.icon}
+                    size={18}
+                    color="#fff"
+                  />
+                </View>
+
+                <Text numberOfLines={1}>
+                  {item.notes}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       <View style={{ flexDirection: 'row', marginBottom: 12 }}>
         <Chip
           mode="outlined"
@@ -257,88 +343,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         }
       </View>
 
-      <PaperTextInput
-        label="Notes"
-        value={notes}
-        onChangeText={handleNotesChange}
-        onBlur={() => {
-          if (!selectingSuggestion.current) {
-            setShowSuggestions(false);
-          }
-        }}
-        mode="outlined"
-        error={notesError}
-        autoCorrect={false}
-        autoCapitalize="sentences"
-        style={{ marginBottom: 12 }}
-      />
-      {notesError && <Text style={{ color: '#E46A6A', marginBottom: 8 }}>Notes cannot be empty.</Text>}
-      {showSuggestions && (
-        <TouchableWithoutFeedback
-          onPress={() => {
-            Keyboard.dismiss();
-            setShowSuggestions(false);
-          }}
-        >
-          <View
-            style={{
-              borderWidth: 1,
-              borderColor: "#ddd",
-              borderRadius: 10,
-              backgroundColor: "#fff",
-              maxHeight: 220,
-              marginBottom: 12,
-              elevation: 4,
-            }}
-          >
-            <ScrollView keyboardShouldPersistTaps="handled">
-              {filteredSuggestions.map((item, index) => (
-                <TouchableOpacity
-                  key={index}
-                  onPressIn={() => {
-                    selectingSuggestion.current = true;
-                  }}
-                  onPress={() => {
-                    setNotes(item.notes);
-                    setCategoryId(item.category_id);
-                    setShowSuggestions(false);
-                    selectingSuggestion.current = false;
-                  }}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    padding: 12,
-                    borderBottomWidth: 1,
-                    borderBottomColor: "#f2f2f2",
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 17,
-                      backgroundColor: item.color,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      marginRight: 12,
-                    }}
-                  >
-                    <MaterialCommunityIcons
-                      name={item.icon}
-                      size={18}
-                      color="#fff"
-                    />
-                  </View>
-
-                  <Text numberOfLines={1}>
-                    {item.notes}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </TouchableWithoutFeedback>
-      )}
       <View style={{ marginBottom: 12 }}>
         <TouchableOpacity
           activeOpacity={0.8}
@@ -390,7 +394,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                     <MaterialCommunityIcons name="plus-circle-outline" size={20} color={'#4B7CF3'} style={{ marginRight: 12 }} />
                     <Text style={{ fontSize: 16, color: '#4B7CF3', fontWeight: '600' }}>Create New Category</Text>
                   </TouchableOpacity>
-                  {categories.filter(c => c.name.toLowerCase().includes(catSearch.toLowerCase())).map(c => (
+                  {filteredCategories.filter(c => c.name.toLowerCase().includes(catSearch.toLowerCase())).map(c => (
                     <TouchableOpacity key={c.id} onPress={() => { setCategoryId(c.id); setShowCategoryPicker(false); }} style={{ flexDirection: 'row', alignItems: 'center', padding: 10, borderBottomWidth: 1, borderColor: '#f3f3f3', backgroundColor: categoryId === c.id ? '#FFF9F9' : '#fff' }}>
                       <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.color || '#eee', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                         <MaterialCommunityIcons name={c.icon || 'tag'} size={18} color={'#fff'} />
