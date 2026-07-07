@@ -361,54 +361,39 @@ export default function CategoriesDetails({ route, navigation }) {
     const category = categoriesMap[item.category_id] || {};
 
     return (
-      <Card style={styles.txCard}>
-        <View style={styles.txContent}>
-          <View
-            style={[
-              styles.iconContainer,
-              { backgroundColor: rgbaFromColor(category.color || '#999999', 0.10) }
-            ]}
-          >
-            <MaterialCommunityIcons
-              name={category.icon || 'tag'}
-              size={22}
-              color={category.color || Colors.muted}
-            />
-          </View>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('TransactionAdd', { isEdit: true, transaction: item })}
+      >
+        <Card style={styles.txCard}>
+          <View style={styles.txContent}>
+            <View
+              style={[
+                styles.iconContainer,
+                { backgroundColor: rgbaFromColor(category.color || '#999999', 0.10) }
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={category.icon || 'tag'}
+                size={22}
+                color={category.color || Colors.muted}
+              />
+            </View>
 
-          <View style={styles.txTextBlock}>
-            <Text style={styles.title} numberOfLines={1}>
-              {item.notes || category.name || 'Untitled'}
-            </Text>
-            <Text style={styles.date}>{formatDate(item.date)}</Text>
-          </View>
+            <View style={styles.txTextBlock}>
+              <Text style={styles.title} numberOfLines={1}>
+                {item.notes || category.name || 'Untitled'}
+              </Text>
+              <Text style={styles.date}>{formatDate(item.date)}</Text>
+            </View>
 
-          <View style={styles.rightBlock}>
-            <Text style={[styles.amount, { color: isExpense ? '#D14343' : '#1E8E5A' }]}>
-              ₹{Number(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-            </Text>
-
-            <View style={styles.actions}>
-              <TouchableOpacity
-                style={styles.actionBtn}
-                onPress={() => navigation.navigate('TransactionAdd', { isEdit: true, transaction: item })}
-              >
-                <Feather name="edit-2" size={14} color={Colors.primary} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.deleteBtn]}
-                onPress={() => {
-                  setConfirmTargetId(item.id);
-                  setConfirmVisible(true);
-                }}
-              >
-                <Feather name="trash-2" size={14} color="#d32f2f" />
-              </TouchableOpacity>
+            <View style={styles.rightBlock}>
+              <Text style={[styles.amount, { color: isExpense ? '#D14343' : '#1E8E5A' }]}>
+                ₹{Number(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </Text>
             </View>
           </View>
-        </View>
-      </Card>
+        </Card>
+      </TouchableOpacity>
     );
   };
 
@@ -517,7 +502,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-    padding: Spacing.m
+    padding: Spacing.xs
   },
 
   chartCard: {
@@ -644,9 +629,8 @@ const styles = StyleSheet.create({
   },
 
   txCard: {
-    marginBottom: 12,
+    marginBottom: Spacing.s,
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(20,20,20,0.05)',
     shadowColor: '#0F172A',
@@ -659,7 +643,6 @@ const styles = StyleSheet.create({
   txContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 2
   },
 
   iconContainer: {

@@ -1,13 +1,12 @@
 import React, { useEffect, useState, useLayoutEffect, useCallback, useRef } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
-import { getTransactions, deleteTransaction } from '../services/transactions';
+import { getTransactions } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
 import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
-import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function SourcesDetails({ route, navigation }) {
   const { sourceId, sourceName } = route.params;
@@ -16,10 +15,6 @@ export default function SourcesDetails({ route, navigation }) {
   const [categoriesMap, setCategoriesMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [source, setSource] = useState(null);
-
-  const [confirmVisible, setConfirmVisible] = useState(false);
-  const [confirmTargetId, setConfirmTargetId] = useState(null);
-
   const flatListRef = useRef(null);
   const lastOffset = useRef(0);
 
@@ -73,21 +68,6 @@ export default function SourcesDetails({ route, navigation }) {
     }, [])
   );
 
-  // ✅ FIXED DELETE HANDLER
-  const handleDeleteConfirm = async () => {
-    if (!confirmTargetId) return;
-
-    try {
-      await deleteTransaction(confirmTargetId);
-      await loadTransactions(); // refresh list
-    } catch (e) {
-      console.error('Delete failed', e);
-    } finally {
-      setConfirmVisible(false);
-      setConfirmTargetId(null);
-    }
-  };
-
   const handleEdit = (item) => {
     navigation.navigate('TransactionAdd', {
       isEdit: true,
@@ -105,7 +85,7 @@ export default function SourcesDetails({ route, navigation }) {
     });
   };
 
-  // ✅ BALANCE CALCULATION
+  // BALANCE CALCULATION
   const totalBalance =
     Number(source?.initial_balance || 0) +
     transactions.reduce((sum, tx) => {
@@ -119,54 +99,40 @@ export default function SourcesDetails({ route, navigation }) {
   const renderItem = ({ item }) => {
     const isExpense = item.type === 'expense';
     const category = categoriesMap[item.category_id] || {};
-
     return (
-      <Card style={styles.txCard}>
-        <View style={styles.txContent}>
+      <TouchableOpacity
+        onPress={() => handleEdit(item)}
+      >
+        <Card style={styles.txCard}>
+          <View style={styles.txContent}>
 
-          <View style={[styles.iconContainer, { backgroundColor: (category.color || '#eee') + '15' }]}>
-            <MaterialCommunityIcons
-              name={category.icon || 'currency-usd'}
-              size={22}
-              color={category.color || Colors.muted}
-            />
-          </View>
-
-          <View style={{ flex: 1 }}>
-            <Text style={styles.title} numberOfLines={1}>
-              {item.notes || category.name || 'Untitled'}
-            </Text>
-            <Text style={styles.date}>{formatDate(item.date)}</Text>
-          </View>
-
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[
-              styles.amount,
-              { color: isExpense ? '#e53935' : '#2e7d32' }
-            ]}>
-              {isExpense ? '-' : '+'} ₹{Number(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-            </Text>
-
-            <View style={styles.actions}>
-              <TouchableOpacity onPress={() => handleEdit(item)} style={styles.actionBtn}>
-                <Feather name="edit-2" size={14} color={Colors.primary} />
-              </TouchableOpacity>
-
-              {/* DELETE TRIGGER */}
-              <TouchableOpacity
-                onPress={() => {
-                  setConfirmTargetId(item.id);
-                  setConfirmVisible(true);
-                }}
-                style={styles.actionBtn}
-              >
-                <Feather name="trash-2" size={14} color="#d32f2f" />
-              </TouchableOpacity>
+            <View style={[styles.iconContainer, { backgroundColor: (category.color || '#eee') + '15' }]}>
+              <MaterialCommunityIcons
+                name={category.icon || 'currency-usd'}
+                size={22}
+                color={category.color || Colors.muted}
+              />
             </View>
-          </View>
 
-        </View>
-      </Card>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.title} numberOfLines={1}>
+                {item.notes || category.name || 'Untitled'}
+              </Text>
+              <Text style={styles.date}>{formatDate(item.date)}</Text>
+            </View>
+
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={[
+                styles.amount,
+                { color: isExpense ? '#e53935' : '#2e7d32' }
+              ]}>
+                {isExpense ? '-' : '+'} ₹{Number(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </Text>
+            </View>
+
+          </View>
+        </Card>
+      </TouchableOpacity>
     );
   };
 
@@ -199,25 +165,13 @@ export default function SourcesDetails({ route, navigation }) {
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 2, }}
           onScroll={(e) => {
             lastOffset.current = e.nativeEvent.contentOffset.y;
           }}
           scrollEventThrottle={16}
         />
       )}
-
-      {/* CONFIRM DIALOG */}
-      <ConfirmDialog
-        visible={confirmVisible}
-        title="Delete Transaction"
-        message="Are you sure you want to delete?"
-        onCancel={() => {
-          setConfirmVisible(false);
-          setConfirmTargetId(null);
-        }}
-        onConfirm={handleDeleteConfirm}
-      />
 
     </View>
   );
@@ -227,7 +181,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-    padding: Spacing.m,
+    padding: Spacing.xs,
   },
   hero: {
     backgroundColor: '#fff',
@@ -260,8 +214,8 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   txCard: {
-    marginBottom: 12,
-    borderRadius: 16,
+    marginTop: 1,
+    marginBottom: 7,
   },
   txContent: {
     flexDirection: 'row',

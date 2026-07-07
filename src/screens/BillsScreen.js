@@ -142,7 +142,7 @@ export default function BillsScreen({ navigation }) {
           backgroundColor: '#FFF0F0',
           padding: 12,
           borderRadius: 10,
-          marginBottom: Spacing.m
+          marginBottom: Spacing.xs
         }}>
           <Text style={{ color: '#E46A6A', fontWeight: '700' }}>
             {summary.overdueCount} overdue — {formatCurrency(summary.overdueAmount)}
@@ -178,10 +178,10 @@ export default function BillsScreen({ navigation }) {
         placeholder="Search bills"
         value={search}
         onChangeText={setSearch}
-        style={{ marginBottom: Spacing.s }}
+        style={{ marginBottom: Spacing.xs }}
       />
 
-      <View style={{ flexDirection: 'row', marginBottom: Spacing.m }}>
+      <View style={{ flexDirection: 'row', marginBottom: Spacing.xs }}>
         <TouchableOpacity onPress={() => setSortBy('due_date')} style={{ marginRight: 16 }}>
           <Text style={{ color: sortBy === 'due_date' ? Colors.primary : Colors.muted }}>
             Sort: Due date
@@ -213,7 +213,7 @@ export default function BillsScreen({ navigation }) {
         keyExtractor={(i) => String(i.id)}
         renderItem={renderBill}
         ListHeaderComponent={listHeader}
-        contentContainerStyle={{ padding: Spacing.m, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 100 }}
       />
 
       {/* STATUS MODAL */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, ScrollView, Modal, Text, Platform } from 'react-native';
+import { View, TouchableOpacity, ScrollView, Modal, Text, Platform, InteractionManager } from 'react-native';
 import { createTransaction, createTransfer } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
@@ -7,6 +7,9 @@ import { TextInput as PaperTextInput, Button as PaperButton, Chip } from 'react-
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import CategoryCreateModal from './CategoryCreateModal';
 import { updateTransaction } from '../services/transactions';
+import ConfirmDialog from './ConfirmDialog';
+import { deleteTransaction } from '../services/transactions';
+import { Feather } from '@expo/vector-icons';
 
 export default function TransactionForm({ onCreated, onCancel, transaction, isEdit }) {
   const [amount, setAmount] = useState(isEdit && transaction ? String(transaction.amount) : '');
@@ -29,6 +32,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [notesError, setNotesError] = useState(false);
   const [toAccount, setToAccount] = useState(null);
   const [selectingFor, setSelectingFor] = useState('from');
+  const [openTimePicker, setOpenTimePicker] = useState(false);
+  const [confirmVisible, setConfirmVisible] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -36,13 +41,17 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       setCategories(cats);
       const src = await getSources(true);
       setSources(src);
-      // Set default category/source if not in edit mode AND no category/source is selected yet
-      if (!isEdit) {
-        if (cats.length && categoryId === null) setCategoryId(cats[0].id);
-        if (src.length && sourceId === null) setSourceId(src[0].id);
-      }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!openTimePicker) return;
+    setOpenTimePicker(false);
+    InteractionManager.runAfterInteractions(() => {
+      setPickerMode('time');
+      setShowDateTimePicker(true);
+    });
+  }, [openTimePicker]);
 
   async function submit() {
     const val = parseFloat(amount);
@@ -50,12 +59,12 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       setAmountError(true);
       return;
     }
-    if (!categoryId && type !== 'transfer' && transferGroupId === null) {
+    if (!categoryId && type !== 'transfer') {
       alert('Please select a category.');
       return;
     }
     if (!sourceId) {
-      alert('Please select a source.'); // Simple alert for missing source
+      alert('Please select a source.');
       return;
     }
     if (!notes.trim()) {
@@ -108,6 +117,12 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
     setNotesError(false);
   }
 
+  const handleDelete = async () => {
+    await deleteTransaction(transaction.id);
+    setConfirmVisible(false);
+    onCancel?.();
+  };
+
   function formatDateTime(isoString) {
     if (!isoString) return '';
 
@@ -131,6 +146,23 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
   return (
     <ScrollView>
+      <View
+        style={{
+          alignItems: 'flex-end',
+          marginBottom: 12,
+        }}
+      >
+        {isEdit && (
+          <TouchableOpacity onPress={() => setConfirmVisible(true)}>
+            <Feather
+              name="trash-2"
+              size={22}
+              color="#E46A6A"
+            />
+          </TouchableOpacity>
+        )}
+      </View>
+
       <View style={{ borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
         <View style={{
           backgroundColor:
@@ -215,7 +247,10 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             right={
               <PaperTextInput.Icon
                 icon="calendar"
-                onPress={() => setShowDateTimePicker(true)}
+                onPress={() => {
+                  setPickerMode('date');
+                  setShowDateTimePicker(true);
+                }}
               />
             }
           />
@@ -350,7 +385,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
         <PaperButton mode="contained" onPress={submit} style={{ backgroundColor: accent }} labelStyle={{ color: '#fff' }}>
-          Save
+          {isEdit ? 'Update' : 'Save'}
         </PaperButton>
         <View style={{ width: 12 }} />
         <PaperButton mode="outlined" onPress={() => { if (onCancel) onCancel(); else { setAmount(''); setNotes(''); } }}>Cancel</PaperButton>
@@ -373,37 +408,36 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   is24Hour={true}
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   onChange={(event, selected) => {
-                    // event may be undefined on some platforms
-                    const evType = event && (event.type || event.nativeEvent?.action);
                     if (Platform.OS === 'android') {
-                      // user dismissed
-                      if (evType === 'dismissed' || evType === 'dismiss') {
+                      if (event.type === 'dismissed') {
                         setShowDateTimePicker(false);
                         setPickerMode('date');
                         return;
                       }
-                      // user picked a date/time
+
                       if (pickerMode === 'date') {
-                        const picked = selected || new Date();
-                        const prev = new Date(date);
-                        // preserve previous time
-                        picked.setHours(prev.getHours(), prev.getMinutes(), 0, 0);
-                        setDate(picked.toISOString());
-                        // open time picker next
-                        setShowDateTimePicker(false);
-                        setPickerMode('time');
-                        setTimeout(() => setShowDateTimePicker(true), 50);
+                        if (selected) {
+                          const picked = selected;
+                          const prev = new Date(date);
+                          picked.setHours(prev.getHours(), prev.getMinutes(), 0, 0);
+                          setDate(picked.toISOString());
+
+                          setShowDateTimePicker(false);
+                          setOpenTimePicker(true);
+                        }
                       } else {
-                        const picked = selected || new Date();
-                        const prev = new Date(date);
-                        prev.setHours(picked.getHours(), picked.getMinutes(), 0, 0);
-                        setDate(prev.toISOString());
+                        if (selected) {
+                          const prev = new Date(date);
+                          prev.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+                          setDate(prev.toISOString());
+                        }
                         setShowDateTimePicker(false);
                         setPickerMode('date');
                       }
                     } else {
-                      // iOS behavior
-                      if (selected) setDate((selected).toISOString());
+                      if (selected) {
+                        setDate(selected.toISOString());
+                      }
                       setShowDateTimePicker(false);
                       setPickerMode('date');
                     }
@@ -442,6 +476,14 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           );
         })()
       )}
+
+      <ConfirmDialog
+        visible={confirmVisible}
+        title="Delete Transaction"
+        message={`Delete this ${type} transaction?`}
+        onCancel={() => setConfirmVisible(false)}
+        onConfirm={handleDelete}
+      />
 
       <CategoryCreateModal
         visible={showCategoryCreateModal}

@@ -116,7 +116,7 @@ export default function BackupScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: Spacing.m }}>
+      <ScrollView contentContainerStyle={{ padding: Spacing.xs }}>
         <Card style={styles.card}>
           <Card.Content>
             <Title style={styles.cardTitle}>
@@ -234,7 +234,7 @@ export default function BackupScreen() {
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: Spacing.m,
+    marginBottom: Spacing.xs,
     elevation: 2,
     borderRadius: 12,
   },

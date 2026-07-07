@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { getSources } from '../services/sources';
-import { getTransactions } from '../services/transactions'; // ✅ added
+import { getTransactions } from '../services/transactions';
 import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -116,11 +116,6 @@ export default function SourcesDashboard({ navigation }) {
             </View>
           )}
         </View>
-
-        <TouchableOpacity onPress={() => navigation.navigate('Sources')} style={styles.addButton}>
-          <MaterialCommunityIcons name="plus" size={18} color="#fff" />
-          <Text style={styles.addButtonText}>Add New Source</Text>
-        </TouchableOpacity>
 
       </ScrollView>
     </View>

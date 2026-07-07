@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-    padding: Spacing.m,
+    padding: Spacing.xs,
     alignSelf: 'center',
     width: '100%',
     maxWidth: 600,
@@ -291,7 +291,6 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 16,
     borderRadius: 16,
-    padding: 16,
   },
   chartTitle: {
     fontSize: 16,
@@ -375,7 +374,6 @@ const styles = StyleSheet.create({
   itemCard: {
     marginBottom: 12,
     borderRadius: 12,
-    padding: 16,
   },
   cardHeader: {
     flexDirection: 'row',

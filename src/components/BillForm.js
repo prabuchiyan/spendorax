@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, TouchableOpacity, ScrollView, Modal, Text, Platform } from 'react-native';
 import { TextInput as PaperTextInput, Button as PaperButton, Chip, Switch } from 'react-native-paper';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
@@ -312,11 +313,36 @@ export default function BillForm({ bill, onSaved, onCancel }) {
         </View>
       </Modal>
 
-      <Modal visible={showDuePicker} transparent animationType="fade">
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 16 }}>
-          <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16 }}>
-            <Text style={{ fontWeight: '700', marginBottom: 12 }}>Due date</Text>
-            {Platform.OS === 'web' ? (
+
+      {showDuePicker &&
+        Platform.OS !== 'web' ? (
+        <DateTimePicker
+          value={new Date(dueDate)}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={(event, selectedDate) => {
+            if (Platform.OS === 'android') {
+              setShowDuePicker(false);
+
+              if (event.type === 'dismissed') {
+                return;
+              }
+            }
+
+            if (selectedDate) {
+              setDueDate(selectedDate.toISOString().slice(0, 10));
+            }
+
+            if (Platform.OS === 'ios') {
+              setShowDuePicker(false);
+            }
+          }}
+        />
+      ) : (
+        <Modal visible={showDuePicker} transparent animationType="fade">
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 16 }}>
+            <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16 }}>
+              <Text style={{ fontWeight: '700', marginBottom: 12 }}>Due date</Text>
               <ManualDateTimePicker
                 year={dueParts[0]}
                 month={dueParts[1]}
@@ -329,19 +355,11 @@ export default function BillForm({ bill, onSaved, onCancel }) {
                 }}
                 onClose={() => setShowDuePicker(false)}
               />
-            ) : (
-              <PaperTextInput
-                label="YYYY-MM-DD"
-                value={dueDate}
-                onChangeText={setDueDate}
-                mode="outlined"
-                style={{ marginBottom: 12 }}
-              />
-            )}
-            <PaperButton onPress={() => setShowDuePicker(false)}>Done</PaperButton>
+              <PaperButton onPress={() => setShowDuePicker(false)}>Done</PaperButton>
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      )}
 
       <Modal visible={showEndPicker} transparent animationType="fade">
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 16 }}>

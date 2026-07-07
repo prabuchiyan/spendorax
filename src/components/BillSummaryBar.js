@@ -18,7 +18,7 @@ function BillSummaryBar({ summary }) {
   if (!summary) return null;
 
   return (
-    <Card style={{ marginBottom: Spacing.m }}>
+    <Card style={{ marginBottom: Spacing.xs }}>
       <Text style={{ fontWeight: '700', fontSize: 16, marginBottom: Spacing.s, color: Colors.text }}>
         Bills Overview
       </Text>

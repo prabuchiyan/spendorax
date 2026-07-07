@@ -8,6 +8,8 @@ import events from '../services/events';
 import Card from '../components/Card';
 import { Spacing } from '../components/Theme';
 import ConfirmDialog from '../components/ConfirmDialog';
+import BudgetCreateModal from '../components/BudgetCreateModal';
+import FAB from '../components/FAB';
 
 export default function BudgetsScreen({ route, navigation }) {
   const [tab, setTab] = useState('overall');
@@ -24,7 +26,8 @@ export default function BudgetsScreen({ route, navigation }) {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
   const [deletingBudgetId, setDeletingBudgetId] = useState(null);
-  const [editingBudgetId, setEditingBudgetId] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [editBudget, setEditBudget] = useState(null);
 
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
@@ -103,23 +106,28 @@ export default function BudgetsScreen({ route, navigation }) {
     }
   }
 
-  async function saveCategoryBudgetNow() {
+  async function handleSaveBudget() {
     if (!selectedCategory) {
       alert('Please select a category');
-      return;
+      return false;
     }
     const amount = parseFloat(categoryBudgetAmount) || 0;
     if (amount <= 0) {
       alert('Please enter valid amount');
-      return;
+      return false;
     }
-    await saveCategoryBudget(selectedCategory.id, amount, currentMonth, currentYear);
+    await saveCategoryBudget(
+      selectedCategory.id,
+      amount,
+      currentMonth,
+      currentYear
+    );
     await syncOverallBudget();
-    events.emit('budgetsChanged', null);
+    events.emit('budgetsChanged');
     await load();
     setSelectedCategory(null);
     setCategoryBudgetAmount('');
-    setEditingBudgetId(null);
+    return true;
   }
 
   const filteredCategories = categories.filter(c =>
@@ -178,9 +186,9 @@ export default function BudgetsScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: Spacing.m, paddingBottom: 80 }}>
+      <ScrollView contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 80 }}>
         {tab === 'overall' ? (
-          <Card style={{ paddingVertical: 28 }}>
+          <Card>
             <View style={{ alignItems: 'center' }}>
               <Avatar.Icon size={56} icon="cash" style={{ backgroundColor: '#E8F7EF', marginBottom: 12 }} />
               <Text style={{ fontSize: 22, fontWeight: '800', marginBottom: 6 }}>Monthly Budget</Text>
@@ -214,79 +222,6 @@ export default function BudgetsScreen({ route, navigation }) {
           </Card>
         ) : (
           <>
-            <Card style={{ marginBottom: 16 }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', marginBottom: 12 }}>Add Category Budget</Text>
-
-              {/* Category Dropdown */}
-              <TouchableOpacity
-                onPress={() => setShowCategoryDropdown(!showCategoryDropdown)}
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#ddd',
-                  borderRadius: 4,
-                  padding: 12,
-                  marginBottom: 12,
-                  backgroundColor: selectedCategory ? '#f9f9f9' : 'white'
-                }}
-              >
-                <Text style={{ color: selectedCategory ? '#333' : '#999' }}>
-                  {selectedCategory ? selectedCategory.name : 'Select Category'}
-                </Text>
-              </TouchableOpacity>
-
-              {showCategoryDropdown && (
-                <View style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 4, marginBottom: 12, maxHeight: 300 }}>
-                  <PaperInput
-                    placeholder="Search categories..."
-                    value={searchText}
-                    onChangeText={setSearchText}
-                    mode="flat"
-                    style={{ backgroundColor: 'white' }}
-                  />
-                  <FlatList
-                    data={filteredCategories}
-                    keyExtractor={item => String(item.id)}
-                    scrollEnabled={false}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        onPress={() => {
-                          setSelectedCategory(item);
-                          setShowCategoryDropdown(false);
-                          setSearchText('');
-                        }}
-                        style={{ padding: 12, borderTopWidth: 1, borderTopColor: '#eee', flexDirection: 'row', alignItems: 'center' }}
-                      >
-                        <Avatar.Icon size={32} icon={item.icon} style={{ backgroundColor: item.color, marginRight: 10 }} />
-                        <Text>{item.name}</Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                </View>
-              )}
-
-              {/* Amount Input */}
-              <PaperInput
-                label="Budget Amount"
-                mode="outlined"
-                value={categoryBudgetAmount}
-                keyboardType="numeric"
-                onChangeText={setCategoryBudgetAmount}
-                placeholder="e.g. 5000"
-                style={{ backgroundColor: 'white', marginBottom: 12 }}
-                theme={{ colors: { primary: '#36B37E' } }}
-                outlineColor="#eee"
-              />
-
-              <Button
-                mode="contained"
-                onPress={saveCategoryBudgetNow}
-                style={{ paddingVertical: 10, borderRadius: 10 }}
-                contentStyle={{ paddingVertical: 4 }}
-              >
-                {editingBudgetId ? 'Update Budget' : 'Save Budget'}
-              </Button>
-            </Card>
-
             {/* Existing Category Budgets */}
             {categoryBudgets.length > 0 ? (
               <Card>
@@ -393,11 +328,17 @@ export default function BudgetsScreen({ route, navigation }) {
                             icon="pencil"
                             size={20}
                             onPress={() => {
-                              setEditingBudgetId(budget.id);
-                              setSelectedCategory(
-                                categories.find(c => c.id === budget.categoryId)
-                              );
+                              setEditBudget(budget);
+                              setSelectedCategory({
+                                id: budget.categoryId,
+                                name: budget.categoryName,
+                                icon: budget.icon,
+                                color: budget.color,
+                              });
                               setCategoryBudgetAmount(String(budget.budget));
+                              setSearchText('');
+                              setShowCategoryDropdown(false);
+                              setShowModal(true);
                             }}
                           />
 
@@ -437,6 +378,39 @@ export default function BudgetsScreen({ route, navigation }) {
           </>
         )}
       </ScrollView>
+
+      <BudgetCreateModal
+        visible={showModal}
+        editData={editBudget}
+        onClose={() => {
+          setShowModal(false);
+          setEditBudget(null);
+        }}
+        onSave={() => {
+          setShowModal(false);
+          setEditBudget(null);
+          load();
+        }}
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
+        categoryBudgetAmount={categoryBudgetAmount}
+        setCategoryBudgetAmount={setCategoryBudgetAmount}
+        showCategoryDropdown={showCategoryDropdown}
+        setShowCategoryDropdown={setShowCategoryDropdown}
+        searchText={searchText}
+        setSearchText={setSearchText}
+        filteredCategories={filteredCategories}
+        handleSaveBudget={handleSaveBudget}
+      />
+
+      {tab === 'category' && (
+        <FAB
+          onPress={() => {
+            setEditBudget(null);
+            setShowModal(true);
+          }}
+        />
+      )}
 
       <ConfirmDialog
         visible={confirmVisible}

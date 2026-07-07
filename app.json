@@ -32,7 +32,11 @@
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#0B1F3A"
       },
-      "versionCode": 2
+      "versionCode": 2,
+      "statusBar": {
+        "backgroundColor": "#0B1F3A",
+        "barStyle": "light-content"
+      }
     },
     "ios": {
       "icon": "./assets/logo.png",
