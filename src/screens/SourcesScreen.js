@@ -73,7 +73,7 @@ export default function SourcesScreen({ route, navigation }) {
 
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ padding: Spacing.m, paddingBottom: 0 }}>
+      <View style={{ padding: Spacing.xs, paddingBottom: 0 }}>
         <Searchbar
           placeholder="Search source..."
           onChangeText={setSearchQuery}
@@ -85,7 +85,7 @@ export default function SourcesScreen({ route, navigation }) {
       <FlatList
         data={filteredItems}
         keyExtractor={(i) => String(i.id)}
-        contentContainerStyle={{ padding: Spacing.m, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 100 }}
         ListEmptyComponent={
           <View style={{ alignItems: 'center', marginTop: 60 }}>
             <MaterialCommunityIcons name="clipboard-text-outline" size={48} color="#ccc" />

@@ -72,9 +72,9 @@ export default function BillDetailScreen({ route, navigation }) {
   const display = getBillDisplayStatus(bill);
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: Colors.background }} contentContainerStyle={{ padding: Spacing.m }}>
+    <ScrollView style={{ flex: 1, backgroundColor: Colors.background }} contentContainerStyle={{ padding: Spacing.xs }}>
       <Card>
-        <View style={{ alignItems: 'center', marginBottom: Spacing.m }}>
+        <View style={{ alignItems: 'center', marginBottom: Spacing.xs }}>
           <View
             style={{
               width: 56,

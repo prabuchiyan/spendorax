@@ -186,9 +186,9 @@ export default function BudgetsScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: Spacing.m, paddingBottom: 80 }}>
+      <ScrollView contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 80 }}>
         {tab === 'overall' ? (
-          <Card style={{ paddingVertical: 28 }}>
+          <Card>
             <View style={{ alignItems: 'center' }}>
               <Avatar.Icon size={56} icon="cash" style={{ backgroundColor: '#E8F7EF', marginBottom: 12 }} />
               <Text style={{ fontSize: 22, fontWeight: '800', marginBottom: 6 }}>Monthly Budget</Text>

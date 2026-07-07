@@ -205,6 +205,7 @@ export default function HomeScreen({ navigation }) {
     // recent transactions
     try {
       const tx = await getTransactions(3, 'Yes');
+      console.log('Prabu tx', tx);
       setRecentTx(tx);
     } catch (e) {
       // ignore
@@ -273,7 +274,7 @@ export default function HomeScreen({ navigation }) {
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <ScrollView
         contentContainerStyle={{
-          padding: Spacing.m,
+          padding: Spacing.xs,
           paddingBottom: 120
         }}
       >
@@ -432,31 +433,73 @@ export default function HomeScreen({ navigation }) {
                   paddingVertical: 8
                 }}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                  <Avatar.Icon
-                    size={40}
-                    icon={cat.icon || 'currency-usd'}
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    flex: 1,
+                  }}
+                >
+                  <View
                     style={{
-                      backgroundColor: cat.color || Colors.card,
-                      marginRight: 12
+                      width: 52,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 12,
                     }}
-                  />
+                  >
+                    <Avatar.Icon
+                      size={50}
+                      icon={cat.icon || 'currency-usd'}
+                      style={{
+                        backgroundColor: cat.color || Colors.card,
+                      }}
+                    />
+                  </View>
+
                   <View style={{ flex: 1 }}>
+                    {!!r.notes && (
+                      <Text
+                        style={{
+                          color: '#1F2937',
+                          fontSize: 15,
+                          fontWeight: '700',
+                          lineHeight: 20,
+                          letterSpacing: 0.2,
+                        }}
+                        numberOfLines={2}
+                      >
+                        {r.notes}
+                      </Text>
+                    )}
+
                     <Text
-                      style={{ color: Colors.text, fontWeight: '600' }}
+                      style={{
+                        color: '#6B7280',
+                        fontSize: 13,
+                        fontWeight: '600',
+                        marginTop: 2,
+                        lineHeight: 18,
+                      }}
                       numberOfLines={1}
                     >
                       {cat.name || 'Uncategorized'}
                     </Text>
+
                     <Text
-                      style={{ color: Colors.muted, fontSize: 12 }}
+                      style={{
+                        color: '#9CA3AF',
+                        fontSize: 12,
+                        fontWeight: '500',
+                        marginTop: 2,
+                      }}
                       numberOfLines={1}
-                      ellipsizeMode="tail"
                     >
-                      {r.notes || ''}
+                      {sources.find(s => s.id === r.source_id)?.name || 'No source'}
                     </Text>
                   </View>
                 </View>
+
                 <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
                   <Text
                     style={{
@@ -465,8 +508,8 @@ export default function HomeScreen({ navigation }) {
                     }}
                   >
                     {r.type === 'expense'
-                      ? `- ${Number(r.amount).toFixed(2)}`
-                      : `+ ${Number(r.amount).toFixed(2)}`}
+                      ? `${formatCurrency(r.amount.toFixed(2))}`
+                      : `${formatCurrency(r.amount.toFixed(2))}`}
                   </Text>
                   <Text style={{ color: Colors.muted, fontSize: 12 }}>
                     {new Date(r.date).toLocaleDateString()}

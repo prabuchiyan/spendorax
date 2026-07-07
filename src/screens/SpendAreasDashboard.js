@@ -195,7 +195,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: Spacing.m, paddingBottom: 120 }}>
+      <ScrollView contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 120 }}>
         {/* MODE SELECTOR */}
         <View style={styles.tabContainer}>
           {['daily', 'weekly', 'monthly', 'yearly'].map((m) => (
