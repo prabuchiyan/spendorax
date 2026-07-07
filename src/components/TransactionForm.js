@@ -1,5 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, ScrollView, Modal, Text, Platform, InteractionManager } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View, TouchableOpacity,
+  ScrollView, Modal, Text,
+  Platform, InteractionManager,
+  Keyboard, TouchableWithoutFeedback
+} from 'react-native';
 import { createTransaction, createTransfer, getTransactionNoteSuggestions } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
@@ -37,6 +42,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [noteSuggestions, setNoteSuggestions] = useState([]);
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const selectingSuggestion = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -255,6 +261,11 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         label="Notes"
         value={notes}
         onChangeText={handleNotesChange}
+        onBlur={() => {
+          if (!selectingSuggestion.current) {
+            setShowSuggestions(false);
+          }
+        }}
         mode="outlined"
         error={notesError}
         autoCorrect={false}
@@ -263,59 +274,70 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       />
       {notesError && <Text style={{ color: '#E46A6A', marginBottom: 8 }}>Notes cannot be empty.</Text>}
       {showSuggestions && (
-        <View
-          style={{
-            borderWidth: 1,
-            borderColor: "#ddd",
-            borderRadius: 10,
-            backgroundColor: "#fff",
-            maxHeight: 220,
-            marginBottom: 12,
-            elevation: 4,
+        <TouchableWithoutFeedback
+          onPress={() => {
+            Keyboard.dismiss();
+            setShowSuggestions(false);
           }}
         >
-          <ScrollView keyboardShouldPersistTaps="handled">
-            {filteredSuggestions.map((item, index) => (
-              <TouchableOpacity
-                key={index}
-                onPress={() => {
-                  setNotes(item.notes);
-                  setCategoryId(item.category_id);
-                  setShowSuggestions(false);
-                }}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  padding: 12,
-                  borderBottomWidth: 1,
-                  borderBottomColor: "#f2f2f2",
-                }}
-              >
-                <View
+          <View
+            style={{
+              borderWidth: 1,
+              borderColor: "#ddd",
+              borderRadius: 10,
+              backgroundColor: "#fff",
+              maxHeight: 220,
+              marginBottom: 12,
+              elevation: 4,
+            }}
+          >
+            <ScrollView keyboardShouldPersistTaps="handled">
+              {filteredSuggestions.map((item, index) => (
+                <TouchableOpacity
+                  key={index}
+                  onPressIn={() => {
+                    selectingSuggestion.current = true;
+                  }}
+                  onPress={() => {
+                    setNotes(item.notes);
+                    setCategoryId(item.category_id);
+                    setShowSuggestions(false);
+                    selectingSuggestion.current = false;
+                  }}
                   style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 17,
-                    backgroundColor: item.color,
-                    justifyContent: "center",
+                    flexDirection: "row",
                     alignItems: "center",
-                    marginRight: 12,
+                    padding: 12,
+                    borderBottomWidth: 1,
+                    borderBottomColor: "#f2f2f2",
                   }}
                 >
-                  <MaterialCommunityIcons
-                    name={item.icon}
-                    size={18}
-                    color="#fff"
-                  />
-                </View>
+                  <View
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 17,
+                      backgroundColor: item.color,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginRight: 12,
+                    }}
+                  >
+                    <MaterialCommunityIcons
+                      name={item.icon}
+                      size={18}
+                      color="#fff"
+                    />
+                  </View>
 
-                <Text numberOfLines={1}>
-                  {item.notes}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+                  <Text numberOfLines={1}>
+                    {item.notes}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableWithoutFeedback>
       )}
       <View style={{ marginBottom: 12 }}>
         <TouchableOpacity
