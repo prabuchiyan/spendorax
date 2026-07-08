@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, ScrollView, Modal, Text, Platform, InteractionManager } from 'react-native';
 import { createTransaction, createTransfer, getTransactionNoteSuggestions } from '../services/transactions';
 import { getCategories } from '../services/categories';
@@ -22,11 +22,9 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [date, setDate] = useState(isEdit && transaction ? transaction.date : new Date().toISOString());
   const [notes, setNotes] = useState(isEdit && transaction ? transaction.notes : '');
   const [transferGroupId, setTransferGroupId] = useState(isEdit && transaction ? transaction.transfer_group_id : '');
-  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showSourcePicker, setShowSourcePicker] = useState(false);
   const [showDateTimePicker, setShowDateTimePicker] = useState(false);
   const [showCategoryCreateModal, setShowCategoryCreateModal] = useState(false);
-  const [catSearch, setCatSearch] = useState('');
   const [srcSearch, setSrcSearch] = useState('');
   const [pickerMode, setPickerMode] = useState('date');
   const [notesError, setNotesError] = useState(false);
@@ -37,6 +35,12 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [noteSuggestions, setNoteSuggestions] = useState([]);
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showCategoryGrid, setShowCategoryGrid] = useState(
+    !(isEdit && transaction?.category_id)
+  );
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
+  const categorySearchRef = useRef(null);
 
   useEffect(() => {
     (async () => {
@@ -71,6 +75,21 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       setCategoryId(null);
     }
   }, [type, categories]);
+
+  useEffect(() => {
+    if (showCategoryModal) {
+      setTimeout(() => {
+        categorySearchRef.current?.focus();
+      }, 250);
+    }
+  }, [showCategoryModal]);
+
+  useEffect(() => {
+    if (isEdit && transaction?.category_id) {
+      setCategoryId(transaction.category_id);
+      setShowCategoryGrid(false);
+    }
+  }, [isEdit, transaction]);
 
   async function submit() {
     const val = parseFloat(amount);
@@ -188,10 +207,22 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
     return c.type === type;
   });
 
+  const visibleCategories = filteredCategories.slice(0, 12);
+
+  const searchedCategories = filteredCategories.filter(c =>
+    c.name.toLowerCase().includes(categorySearch.toLowerCase())
+  );
+
   const accent = type === 'expense' ? '#E46A6A' : type === 'income' ? '#36B37E' : '#000';
 
   return (
-    <ScrollView>
+    <ScrollView
+      contentContainerStyle={{
+        paddingBottom: 120,
+      }}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
 
       <View style={{ borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
         <View style={{
@@ -394,41 +425,185 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
       {type !== 'transfer' && (
         <View style={{ marginBottom: 12 }}>
-          {!transferGroupId &&
+          {!transferGroupId && (
             <>
               <Text style={{ marginBottom: 6, color: '#666' }}>Category</Text>
-              <TouchableOpacity onPress={() => setShowCategoryPicker(true)} activeOpacity={0.8} style={{ borderWidth: 1, borderColor: '#eee', padding: 12, borderRadius: 8, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center' }}>
-                <MaterialCommunityIcons name={(categories.find(x => x.id === categoryId) || {}).icon || 'tag'} size={20} color={(categories.find(x => x.id === categoryId) || {}).color || '#4B7CF3'} style={{ marginRight: 10 }} />
-                <Text style={{ fontSize: 16 }}>{(categories.find(x => x.id === categoryId) || {}).name || 'Select category'}</Text>
-              </TouchableOpacity>
-            </>
-          }
-          <Modal visible={showCategoryPicker} transparent animationType="slide" onRequestClose={() => setShowCategoryPicker(false)}>
-            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 20 }}>
-              <View style={{ backgroundColor: '#fff', padding: 12, borderRadius: 8, maxHeight: '80%' }}>
-                <PaperTextInput label="Search" value={catSearch} onChangeText={setCatSearch} mode="outlined" style={{ marginBottom: 8 }} />
-                <ScrollView>
-                  <TouchableOpacity
-                    onPress={() => { setShowCategoryPicker(false); setShowCategoryCreateModal(true); }}
-                    style={{ flexDirection: 'row', alignItems: 'center', padding: 10, borderBottomWidth: 1, borderColor: '#f3f3f3', backgroundColor: '#e6f7ff' }}
+
+              {showCategoryGrid ? (
+                <>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      flexWrap: 'wrap',
+                      justifyContent: 'space-between',
+                      rowGap: 8,
+                      marginTop: 8,
+                    }}
                   >
-                    <MaterialCommunityIcons name="plus-circle-outline" size={20} color={'#4B7CF3'} style={{ marginRight: 12 }} />
-                    <Text style={{ fontSize: 16, color: '#4B7CF3', fontWeight: '600' }}>Create New Category</Text>
-                  </TouchableOpacity>
-                  {filteredCategories.filter(c => c.name.toLowerCase().includes(catSearch.toLowerCase())).map(c => (
-                    <TouchableOpacity key={c.id} onPress={() => { setCategoryId(c.id); setShowCategoryPicker(false); }} style={{ flexDirection: 'row', alignItems: 'center', padding: 10, borderBottomWidth: 1, borderColor: '#f3f3f3', backgroundColor: categoryId === c.id ? '#FFF9F9' : '#fff' }}>
-                      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.color || '#eee', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                        <MaterialCommunityIcons name={c.icon || 'tag'} size={18} color={'#fff'} />
-                      </View>
-                      <Text style={{ fontSize: 16 }}>{c.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-                <View style={{ height: 8 }} />
-                <PaperButton mode="outlined" onPress={() => setShowCategoryPicker(false)}>Close</PaperButton>
-              </View>
-            </View>
-          </Modal>
+                    {visibleCategories.map(c => (
+                      <TouchableOpacity
+                        key={c.id}
+                        onPress={() => {
+                          setCategoryId(c.id);
+                          setShowCategoryModal(false);
+                          setShowCategoryGrid(false);
+                          setCategorySearch('');
+                        }}
+                        style={{
+                          width: '23%',
+                          height: 72,
+                          borderRadius: 10,
+                          marginBottom: 8,
+                          backgroundColor: c.color || '#4B7CF3',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          paddingHorizontal: 4,
+                          paddingVertical: 6,
+                          borderWidth: categoryId === c.id ? 3 : 0,
+                          borderColor: '#111',
+                        }}
+                      >
+                        <MaterialCommunityIcons
+                          name={c.icon || 'tag'}
+                          size={18}
+                          color="#fff"
+                        />
+
+                        {categoryId === c.id && (
+                          <View
+                            style={{
+                              position: 'absolute',
+                              top: 4,
+                              right: 4,
+                              width: 18,
+                              height: 18,
+                              borderRadius: 9,
+                              backgroundColor: '#fff',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <MaterialCommunityIcons
+                              name="check"
+                              size={12}
+                              color="#2E7D32"
+                            />
+                          </View>
+                        )}
+                        <Text
+                          numberOfLines={2}
+                          style={{
+                            color: '#fff',
+                            textAlign: 'center',
+                            marginTop: 6,
+                            fontWeight: '600',
+                            fontSize: 12,
+                            lineHeight: 16,
+                          }}
+                        >
+                          {c.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => setShowCategoryModal(true)}
+                  activeOpacity={0.85}
+                  style={{
+                    backgroundColor: '#fff',
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: '#E6EAF2',
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    elevation: 2,
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      flex: 1,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 21,
+                        backgroundColor:
+                          categories.find(x => x.id === categoryId)?.color || '#4B7CF3',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        marginRight: 12,
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name={categories.find(x => x.id === categoryId)?.icon || 'tag'}
+                        size={22}
+                        color="#fff"
+                      />
+                    </View>
+
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: '#888',
+                        }}
+                      >
+                        Selected Category
+                      </Text>
+
+                      <Text
+                        numberOfLines={1}
+                        style={{
+                          fontSize: 16,
+                          fontWeight: '700',
+                          color: '#222',
+                        }}
+                      >
+                        {categories.find(x => x.id === categoryId)?.name}
+                      </Text>
+                    </View>
+
+                    <MaterialCommunityIcons
+                      name="pencil-outline"
+                      size={22}
+                      color="#4B7CF3"
+                    />
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {showCategoryGrid && filteredCategories.length > 12 && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setCategorySearch('');
+                    setShowCategoryModal(true);
+                  }}
+                  style={{
+                    alignItems: 'center',
+                    paddingVertical: 8,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: '#4B7CF3',
+                      fontWeight: '700',
+                    }}
+                  >
+                    See More
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
         </View>
       )}
 
@@ -472,6 +647,298 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           </View>
         </Modal>
       </View>
+
+      <Modal
+        visible={showCategoryModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCategoryModal(false)}
+      >
+        <View
+          style={{
+            alignItems: 'center',
+            marginBottom: 12,
+          }}
+        >
+          <View
+            style={{
+              width: 42,
+              height: 5,
+              borderRadius: 3,
+              backgroundColor: '#D8D8D8',
+            }}
+          />
+        </View>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.45)',
+            justifyContent: 'flex-end',
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: '#fff',
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 16,
+              height: '85%',
+              paddingBottom: 20,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 14,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: '700',
+                }}
+              >
+                Select Category
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => setShowCategoryModal(false)}
+              >
+                <MaterialCommunityIcons
+                  name="close"
+                  size={24}
+                  color="#666"
+                />
+              </TouchableOpacity>
+            </View>
+
+            <PaperTextInput
+              ref={categorySearchRef}
+              label="Search category"
+              value={categorySearch}
+              onChangeText={setCategorySearch}
+              mode="outlined"
+              left={<PaperTextInput.Icon icon="magnify" />}
+              style={{ marginBottom: 16 }}
+            />
+
+            <Text
+              style={{
+                marginBottom: 10,
+                color: '#666',
+                fontSize: 13,
+              }}
+            >
+              {searchedCategories.length} Categories
+            </Text>
+
+            <View style={{ flex: 1 }}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingBottom: 90 }}
+              >
+
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    flexWrap: 'wrap',
+                    justifyContent: 'flex-start',
+                  }}
+                >
+                  {searchedCategories.map((c, index) => (
+                    <TouchableOpacity
+                      key={c.id}
+                      onPress={() => {
+                        setCategoryId(c.id);
+                        setCategorySearch('');
+                        setShowCategoryModal(false);
+                        setShowCategoryGrid(false);
+                      }}
+                      activeOpacity={0.8}
+                      style={{
+                        width: '23%',
+                        height: 72,
+                        marginBottom: 10,
+                        marginRight: (index + 1) % 4 === 0 ? 0 : '2.66%',
+                        borderRadius: 10,
+                        backgroundColor: c.color || '#4B7CF3',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        paddingHorizontal: 4,
+                        paddingVertical: 6,
+                        borderWidth: categoryId === c.id ? 3 : 0,
+                        borderColor: '#111',
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name={c.icon || 'tag'}
+                        size={18}
+                        color="#fff"
+                      />
+
+                      <Text
+                        numberOfLines={2}
+                        style={{
+                          color: '#fff',
+                          fontSize: 10,
+                          fontWeight: '600',
+                          textAlign: 'center',
+                          marginTop: 4,
+                          lineHeight: 12,
+                        }}
+                      >
+                        {c.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {searchedCategories.length === 0 && (
+                  <Text
+                    style={{
+                      textAlign: 'center',
+                      color: '#999',
+                      marginVertical: 30,
+                    }}
+                  >
+                    No categories found
+                  </Text>
+                )}
+              </ScrollView>
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => {
+                  setCategorySearch('');
+                  setShowCategoryModal(true);
+                }}
+                style={{
+                  backgroundColor: '#fff',
+                  borderRadius: 18,
+                  borderWidth: 2,
+                  borderColor: categories.find(x => x.id === categoryId)?.color || accent,
+                  padding: 14,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  elevation: 4,
+                  shadowColor: '#000',
+                  shadowOpacity: 0.08,
+                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 3 },
+                }}
+              >
+                {/* Icon */}
+                <View
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 26,
+                    backgroundColor:
+                      categories.find(x => x.id === categoryId)?.color || accent,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    marginRight: 14,
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name={categories.find(x => x.id === categoryId)?.icon || 'tag'}
+                    size={26}
+                    color="#fff"
+                  />
+                </View>
+
+                {/* Text */}
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      color: '#777',
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    Selected Category
+                  </Text>
+
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      fontSize: 18,
+                      fontWeight: '700',
+                      color: '#222',
+                      marginTop: 2,
+                    }}
+                  >
+                    {categories.find(x => x.id === categoryId)?.name}
+                  </Text>
+                </View>
+
+                {/* Right side */}
+                <View
+                  style={{
+                    alignItems: 'center',
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 17,
+                      backgroundColor: '#EEF5FF',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <MaterialCommunityIcons
+                      name="pencil"
+                      size={18}
+                      color="#1976D2"
+                    />
+                  </View>
+
+                  <Text
+                    style={{
+                      marginTop: 4,
+                      fontSize: 10,
+                      color: '#1976D2',
+                      fontWeight: '600',
+                    }}
+                  >
+                    Edit
+                  </Text>
+                </View>
+
+                {/* Selected Badge */}
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: -8,
+                    right: -8,
+                    width: 26,
+                    height: 26,
+                    borderRadius: 13,
+                    backgroundColor: '#2E7D32',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    borderWidth: 2,
+                    borderColor: '#fff',
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name="check"
+                    size={16}
+                    color="#fff"
+                  />
+                </View>
+              </TouchableOpacity>
+            </View>
+
+          </View>
+        </View>
+      </Modal>
 
       {type === 'transfer' && (
         <View style={{ marginBottom: 12 }}>
@@ -622,8 +1089,15 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         onClose={() => setShowCategoryCreateModal(false)}
         onCategoryCreated={async (newCategory) => {
           const cats = await getCategories(true);
+
           setCategories(cats);
           setCategoryId(newCategory.id);
+
+          setShowCategoryCreateModal(false);
+          setShowCategoryGrid(false);
+
+          // Optional: reopen picker instead of closing
+          // setShowCategoryModal(true);
         }}
         currentType={type}
       />
