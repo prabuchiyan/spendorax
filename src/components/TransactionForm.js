@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, ScrollView, Modal, Text, Platform, InteractionManager } from 'react-native';
+import {
+  View,
+  TouchableOpacity,
+  ScrollView,
+  FlatList,
+  Modal,
+  Text,
+  Platform,
+  InteractionManager
+} from 'react-native';
 import { createTransaction, createTransfer, getTransactionNoteSuggestions } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
@@ -248,6 +257,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         paddingBottom: 120,
       }}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="none"
+      nestedScrollEnabled
       showsVerticalScrollIndicator={false}
     >
 
@@ -354,73 +365,98 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       <PaperTextInput label="Amount" value={amount} onChangeText={(t) => { setAmount(t); if (amountError) setAmountError(false); }} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} error={amountError} contentStyle={{ fontSize: 24 }} />
       {amountError ? <Text style={{ color: '#E46A6A', marginBottom: 8 }}>Enter an amount greater than 0</Text> : null}
 
-      <PaperTextInput
-        label={type === 'expense' ? 'Where did you spend?' : type === 'income'
-          ? 'How did you get this money?' : 'How much do you want to transfer?'}
-        value={notes}
-        onChangeText={handleNotesChange}
-        mode="outlined"
-        error={notesError}
-        autoCorrect={false}
-        autoCapitalize="sentences"
-        style={{ marginBottom: 12 }}
-      />
-      {notesError && <Text style={{ color: '#E46A6A', marginBottom: 8 }}>Notes cannot be empty.</Text>}
-      {showSuggestions && (
-        <View
-          style={{
-            borderWidth: 1,
-            borderColor: "#ddd",
-            borderRadius: 10,
-            backgroundColor: "#fff",
-            maxHeight: 220,
-            marginBottom: 12,
-            elevation: 4,
-          }}
-        >
-          <ScrollView keyboardShouldPersistTaps="handled">
-            {filteredSuggestions.map((item, index) => (
-              <TouchableOpacity
-                key={index}
-                onPress={() => {
-                  setNotes(item.notes);
-                  setCategoryId(item.category_id);
-                  setShowSuggestions(false);
-                }}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  padding: 12,
-                  borderBottomWidth: 1,
-                  borderBottomColor: "#f2f2f2",
-                }}
-              >
-                <View
+      <View
+        style={{
+          position: 'relative',
+          marginBottom: 12,
+          zIndex: 999,
+        }}
+      >
+        <PaperTextInput
+          label={
+            type === 'expense'
+              ? 'Where did you spend?'
+              : type === 'income'
+                ? 'How did you get this money?'
+                : 'How much do you want to transfer?'
+          }
+          value={notes}
+          onChangeText={handleNotesChange}
+          mode="outlined"
+          error={notesError}
+          autoCorrect={false}
+          autoCapitalize="sentences"
+        />
+
+        {showSuggestions && (
+          <View
+            style={{
+              position: 'absolute',
+              top: 62,          // Immediately below the TextInput
+              left: 0,
+              right: 0,
+              backgroundColor: '#fff',
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: '#E6EAF2',
+              maxHeight: 220,
+              zIndex: 9999,
+              elevation: 10,
+            }}
+          >
+            <FlatList
+              data={filteredSuggestions}
+              keyExtractor={(item, index) => `${item.notes}-${index}`}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator
+              persistentScrollbar
+              style={{ maxHeight: 220 }}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  onPress={() => {
+                    setNotes(item.notes);
+                    setCategoryId(item.category_id);
+                    setShowSuggestions(false);
+                  }}
                   style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 17,
-                    backgroundColor: item.color,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    marginRight: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: 12,
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#F2F2F2',
                   }}
                 >
-                  <MaterialCommunityIcons
-                    name={item.icon}
-                    size={18}
-                    color="#fff"
-                  />
-                </View>
+                  <View
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 17,
+                      backgroundColor: item.color,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginRight: 12,
+                    }}
+                  >
+                    <MaterialCommunityIcons
+                      name={item.icon}
+                      size={18}
+                      color="#fff"
+                    />
+                  </View>
 
-                <Text numberOfLines={1}>
-                  {item.notes}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
+                  <Text
+                    style={{ flex: 1 }}
+                    numberOfLines={1}
+                  >
+                    {item.notes}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        )}
+      </View>
 
       <View style={{ marginBottom: 12 }}>
         <TouchableOpacity
