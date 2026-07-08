@@ -486,7 +486,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                           alignItems: 'center',
                           paddingHorizontal: 4,
                           paddingVertical: 6,
-                          borderWidth: categoryId === c.id ? 3 : 0,
                           borderColor: '#111',
                         }}
                       >
@@ -673,7 +672,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                     alignItems: 'center',
                     paddingHorizontal: 4,
                     paddingVertical: 6,
-                    borderWidth: sourceId === s.id ? 3 : 0,
                     borderColor: '#111',
                     transform: [
                       {
@@ -950,7 +948,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                         alignItems: 'center',
                         paddingHorizontal: 4,
                         paddingVertical: 6,
-                        borderWidth: categoryId === c.id ? 3 : 0,
                         borderColor: '#111',
                       }}
                     >
@@ -959,6 +956,28 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                         size={18}
                         color="#fff"
                       />
+
+                      {categoryId === c.id && (
+                        <View
+                          style={{
+                            position: 'absolute',
+                            top: 4,
+                            right: 4,
+                            width: 18,
+                            height: 18,
+                            borderRadius: 9,
+                            backgroundColor: '#fff',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <MaterialCommunityIcons
+                            name="check"
+                            size={12}
+                            color="#2E7D32"
+                          />
+                        </View>
+                      )}
 
                       <Text
                         numberOfLines={2}
@@ -990,131 +1009,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                 )}
               </ScrollView>
 
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => {
-                  setCategorySearch('');
-                  setShowCategoryModal(true);
-                }}
-                style={{
-                  backgroundColor: '#fff',
-                  borderRadius: 18,
-                  borderWidth: 2,
-                  borderColor: categories.find(x => x.id === categoryId)?.color || accent,
-                  padding: 14,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  elevation: 4,
-                  shadowColor: '#000',
-                  shadowOpacity: 0.08,
-                  shadowRadius: 8,
-                  shadowOffset: { width: 0, height: 3 },
-                }}
-              >
-                {/* Icon */}
-                <View
-                  style={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: 26,
-                    backgroundColor:
-                      categories.find(x => x.id === categoryId)?.color || accent,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    marginRight: 14,
-                  }}
-                >
-                  <MaterialCommunityIcons
-                    name={categories.find(x => x.id === categoryId)?.icon || 'tag'}
-                    size={26}
-                    color="#fff"
-                  />
-                </View>
-
-                {/* Text */}
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      color: '#777',
-                      textTransform: 'uppercase',
-                      letterSpacing: 0.5,
-                    }}
-                  >
-                    Selected Category
-                  </Text>
-
-                  <Text
-                    numberOfLines={1}
-                    style={{
-                      fontSize: 18,
-                      fontWeight: '700',
-                      color: '#222',
-                      marginTop: 2,
-                    }}
-                  >
-                    {categories.find(x => x.id === categoryId)?.name}
-                  </Text>
-                </View>
-
-                {/* Right side */}
-                <View
-                  style={{
-                    alignItems: 'center',
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 17,
-                      backgroundColor: '#EEF5FF',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <MaterialCommunityIcons
-                      name="pencil"
-                      size={18}
-                      color="#1976D2"
-                    />
-                  </View>
-
-                  <Text
-                    style={{
-                      marginTop: 4,
-                      fontSize: 10,
-                      color: '#1976D2',
-                      fontWeight: '600',
-                    }}
-                  >
-                    Edit
-                  </Text>
-                </View>
-
-                {/* Selected Badge */}
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: -8,
-                    right: -8,
-                    width: 26,
-                    height: 26,
-                    borderRadius: 13,
-                    backgroundColor: '#2E7D32',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    borderWidth: 2,
-                    borderColor: '#fff',
-                  }}
-                >
-                  <MaterialCommunityIcons
-                    name="check"
-                    size={16}
-                    color="#fff"
-                  />
-                </View>
-              </TouchableOpacity>
             </View>
 
           </View>
@@ -1232,7 +1126,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                         alignItems: 'center',
                         paddingHorizontal: 4,
                         paddingVertical: 6,
-                        borderWidth: sourceId === s.id ? 3 : 0,
                         borderColor: '#111',
                       }}
                     >
