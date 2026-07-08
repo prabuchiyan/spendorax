@@ -6,6 +6,7 @@ import { getSources } from '../services/sources';
 import { TextInput as PaperTextInput, Button as PaperButton, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import CategoryCreateModal from './CategoryCreateModal';
+import SourceCreateModal from './SourceCreateModal';
 import { updateTransaction } from '../services/transactions';
 import ConfirmDialog from './ConfirmDialog';
 import { deleteTransaction } from '../services/transactions';
@@ -41,6 +42,14 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
   const categorySearchRef = useRef(null);
+  const [showSourceGrid, setShowSourceGrid] = useState(
+    !(isEdit && transaction?.source_id)
+  );
+  const [showSourceModal, setShowSourceModal] = useState(false);
+  const [sourceSearch, setSourceSearch] = useState('');
+  const sourceSearchRef = useRef(null);
+  const [showSourceCreateModal, setShowSourceCreateModal] = useState(false);
+
 
   useEffect(() => {
     (async () => {
@@ -85,9 +94,21 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   }, [showCategoryModal]);
 
   useEffect(() => {
+    if (showSourceModal) {
+      setTimeout(() => {
+        sourceSearchRef.current?.focus();
+      }, 250);
+    }
+  }, [showSourceModal]);
+
+  useEffect(() => {
     if (isEdit && transaction?.category_id) {
       setCategoryId(transaction.category_id);
       setShowCategoryGrid(false);
+    }
+    if (isEdit && transaction?.source_id) {
+      setSourceId(transaction.source_id);
+      setShowSourceGrid(false);
     }
   }, [isEdit, transaction]);
 
@@ -212,6 +233,12 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const searchedCategories = filteredCategories.filter(c =>
     c.name.toLowerCase().includes(categorySearch.toLowerCase())
   );
+
+  const searchedSources = sources.filter(s =>
+    (s.is_active === undefined || s.is_active) &&
+    s.name.toLowerCase().includes(sourceSearch.toLowerCase())
+  );
+  const visibleSources = searchedSources.slice(0, 4);
 
   const accent = type === 'expense' ? '#E46A6A' : type === 'income' ? '#36B37E' : '#000';
 
@@ -608,44 +635,198 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       )}
 
       <View style={{ marginBottom: 12 }}>
-        <Text style={{ marginBottom: 6, color: '#666' }}>Payment Source</Text>
-        <TouchableOpacity onPress={() => { setSelectingFor('from'); setShowSourcePicker(true) }} activeOpacity={0.8} style={{ borderWidth: 1, borderColor: '#eee', padding: 12, borderRadius: 8, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#f0f4ff', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-            <MaterialCommunityIcons name={(sources.find(x => x.id === sourceId) || {}).icon || 'cash'} size={18} color={(sources.find(x => x.id === sourceId) || {}).color || '#4B7CF3'} />
-          </View>
-          <Text style={{ fontSize: 16 }}>{(sources.find(x => x.id === sourceId) || {}).name || 'Select source'}</Text>
-        </TouchableOpacity>
-        <Modal visible={showSourcePicker} transparent animationType="slide" onRequestClose={() => setShowSourcePicker(false)}>
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 20 }}>
-            <View style={{ backgroundColor: '#fff', padding: 12, borderRadius: 8, maxHeight: '80%' }}>
-              <PaperTextInput label="Search" value={srcSearch} onChangeText={setSrcSearch} mode="outlined" style={{ marginBottom: 8 }} />
-              <ScrollView>
-                {sources.filter(s =>
-                  s.name.toLowerCase().includes(srcSearch.toLowerCase()) &&
-                  (s.is_active === undefined || s.is_active)
-                ).map(s => ( // Filter active sources
-                  <TouchableOpacity key={s.id}
-                    onPress={() => {
-                      if (selectingFor === 'from') {
-                        setSourceId(s.id);
-                      } else {
-                        setToAccount(s.id);
-                      }
-                      setShowSourcePicker(false);
-                    }}
-                    style={{ flexDirection: 'row', alignItems: 'center', padding: 10, borderBottomWidth: 1, borderColor: '#f3f3f3', backgroundColor: sourceId === s.id ? '#F7FBFF' : '#fff' }}>
-                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#eef7ff', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                      <MaterialCommunityIcons name={s.icon || 'cash'} size={18} color={(s.color) || '#4B7CF3'} />
+        <Text
+          style={{
+            marginBottom: 8,
+            color: '#666'
+          }}
+        >
+          Payment Source
+        </Text>
+
+        {showSourceGrid ? (
+          <>
+            <View
+              style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between',
+                rowGap: 8,
+                marginTop: 8,
+              }}
+            >
+              {visibleSources.map(s => (
+                <TouchableOpacity
+                  key={s.id}
+                  onPress={() => {
+                    setSourceId(s.id);
+                    setShowSourceGrid(false);
+                    setSourceSearch('');
+                  }}
+                  style={{
+                    width: '23%',
+                    height: 72,
+                    borderRadius: 10,
+                    marginBottom: 8,
+                    backgroundColor: s.color || '#4B7CF3',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    paddingHorizontal: 4,
+                    paddingVertical: 6,
+                    borderWidth: sourceId === s.id ? 3 : 0,
+                    borderColor: '#111',
+                    transform: [
+                      {
+                        scale: sourceId === s.id ? 1.05 : 1,
+                      },
+                    ],
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name={s.icon || 'cash'}
+                    size={18}
+                    color="#fff"
+                  />
+
+                  {sourceId === s.id && (
+                    <View
+                      style={{
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        width: 18,
+                        height: 18,
+                        borderRadius: 9,
+                        backgroundColor: '#fff',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="check"
+                        size={12}
+                        color="#2E7D32"
+                      />
                     </View>
-                    <Text style={{ fontSize: 16 }}>{s.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-              <View style={{ height: 8 }} />
-              <PaperButton mode="outlined" onPress={() => setShowSourcePicker(false)}>Close</PaperButton>
+                  )}
+
+                  <Text
+                    numberOfLines={2}
+                    style={{
+                      color: '#fff',
+                      textAlign: 'center',
+                      marginTop: 6,
+                      fontWeight: '600',
+                      fontSize: 12,
+                      lineHeight: 16,
+                    }}
+                  >
+                    {s.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          </View>
-        </Modal>
+
+            {searchedSources.length > 4 && (
+              <TouchableOpacity
+                onPress={() => {
+                  setSourceSearch('');
+                  setShowSourceModal(true);
+                }}
+                style={{
+                  alignItems: 'center',
+                  paddingVertical: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    color: '#4B7CF3',
+                    fontWeight: '700',
+                  }}
+                >
+                  See More
+                </Text>
+              </TouchableOpacity>
+            )}
+          </>
+        ) : (
+
+          <TouchableOpacity
+            onPress={() => {
+              setSourceSearch('');
+              setShowSourceModal(true);
+            }}
+            activeOpacity={0.85}
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: '#E6EAF2',
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              elevation: 2,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                flex: 1,
+              }}
+            >
+              <View
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 21,
+                  backgroundColor:
+                    sources.find(x => x.id === sourceId)?.color || '#4B7CF3',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: 12,
+                }}
+              >
+                <MaterialCommunityIcons
+                  name={sources.find(x => x.id === sourceId)?.icon || 'cash'}
+                  size={22}
+                  color="#fff"
+                />
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: '#888',
+                  }}
+                >
+                  Selected Source
+                </Text>
+
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    fontSize: 16,
+                    fontWeight: '700',
+                    color: '#222',
+                  }}
+                >
+                  {sources.find(x => x.id === sourceId)?.name}
+                </Text>
+              </View>
+
+              <MaterialCommunityIcons
+                name="pencil-outline"
+                size={22}
+                color="#4B7CF3"
+              />
+            </View>
+          </TouchableOpacity>
+
+        )}
       </View>
 
       <Modal
@@ -940,13 +1121,225 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         </View>
       </Modal>
 
+      <Modal
+        visible={showSourceModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSourceModal(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(69, 48, 48, 0.45)',
+            justifyContent: 'flex-end',
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: '#fff',
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 16,
+              height: '85%',
+            }}
+          >
+
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 12,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: '700'
+                }}
+              >
+                Select Payment Source
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => setShowSourceModal(false)}
+              >
+                <MaterialCommunityIcons
+                  name="close"
+                  size={24}
+                  color="#666"
+                />
+              </TouchableOpacity>
+            </View>
+
+            <PaperTextInput
+              ref={sourceSearchRef}
+              label="Search Source"
+              value={sourceSearch}
+              onChangeText={setSourceSearch}
+              mode="outlined"
+              left={<PaperTextInput.Icon icon="magnify" />}
+              style={{ marginBottom: 12 }}
+            />
+
+            <Text
+              style={{
+                color: "#666",
+                marginBottom: 12
+              }}
+            >
+              {searchedSources.length} Sources
+            </Text>
+
+            <View style={{ flex: 1 }}>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{
+                  paddingBottom: 100
+                }}
+              >
+
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    flexWrap: 'wrap',
+                    justifyContent: 'flex-start',
+                  }}
+                >
+                  {searchedSources.map((s, index) => (
+                    <TouchableOpacity
+                      key={s.id}
+                      onPress={() => {
+                        if (selectingFor === 'from') {
+                          setSourceId(s.id);
+                          setShowSourceGrid(false);
+                        } else {
+                          setToAccount(s.id);
+                        }
+
+                        setSourceSearch('');
+                        setShowSourceModal(false);
+                      }}
+                      activeOpacity={0.8}
+                      style={{
+                        width: '23%',
+                        height: 72,
+                        marginBottom: 10,
+                        marginRight: (index + 1) % 4 === 0 ? 0 : '2.66%',
+                        borderRadius: 10,
+                        backgroundColor: s.color || accent,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        paddingHorizontal: 4,
+                        paddingVertical: 6,
+                        borderWidth: sourceId === s.id ? 3 : 0,
+                        borderColor: '#111',
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name={s.icon || 'cash'}
+                        size={18}
+                        color="#fff"
+                      />
+
+                      {sourceId === s.id && (
+                        <View
+                          style={{
+                            position: 'absolute',
+                            top: 4,
+                            right: 4,
+                            width: 18,
+                            height: 18,
+                            borderRadius: 9,
+                            backgroundColor: '#fff',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <MaterialCommunityIcons
+                            name="check"
+                            size={12}
+                            color="#2E7D32"
+                          />
+                        </View>
+                      )}
+
+                      <Text
+                        numberOfLines={2}
+                        style={{
+                          color: '#fff',
+                          textAlign: 'center',
+                          marginTop: 6,
+                          fontWeight: '600',
+                          fontSize: 12,
+                          lineHeight: 16,
+                        }}
+                      >
+                        {s.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+              </ScrollView>
+              {searchedSources.length === 0 && (
+                <Text
+                  style={{
+                    textAlign: "center",
+                    color: "#999",
+                    marginTop: 30
+                  }}
+                >
+                  No payment sources found
+                </Text>
+              )}
+            </View>
+
+          </View>
+        </View>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => {
+            setSourceSearch('');
+            setShowSourceModal(false);
+            setShowSourceCreateModal(true);
+          }}
+          style={{
+            position: 'absolute',
+            right: 20,
+            bottom: 20,
+            width: 58,
+            height: 58,
+            borderRadius: 29,
+            backgroundColor: accent,
+            justifyContent: 'center',
+            alignItems: 'center',
+            elevation: 8,
+            shadowColor: '#000',
+            shadowOpacity: 0.25,
+            shadowRadius: 6,
+            shadowOffset: {
+              width: 0,
+              height: 3,
+            },
+          }}
+        >
+          <MaterialCommunityIcons
+            name="plus"
+            size={30}
+            color="#fff"
+          />
+        </TouchableOpacity>
+      </Modal>
+
       {type === 'transfer' && (
         <View style={{ marginBottom: 12 }}>
           <Text style={{ marginBottom: 6, color: '#666' }}>To Account</Text>
           <TouchableOpacity
             onPress={() => {
               setSelectingFor('to');
-              setShowSourcePicker(true);
+              setSourceSearch('');
+              setShowSourceModal(true);
             }}
             activeOpacity={0.8}
             style={{
@@ -1101,6 +1494,31 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         }}
         currentType={type}
       />
+
+      <SourceCreateModal
+        visible={showSourceCreateModal}
+        onClose={() => setShowSourceCreateModal(false)}
+        onSourceCreated={async () => {
+          const updatedSources = await getSources(true);
+
+          setSources(updatedSources);
+
+          const newestSource = [...updatedSources].sort((a, b) => b.id - a.id)[0];
+
+          requestAnimationFrame(() => {
+            if (newestSource) {
+              setSourceId(newestSource.id);
+            }
+
+            setShowSourceGrid(false);
+            setSourceSearch('');
+
+            setShowSourceCreateModal(false);
+            setShowSourceModal(false);
+          });
+        }}
+      />
+
     </ScrollView>
   );
 }
