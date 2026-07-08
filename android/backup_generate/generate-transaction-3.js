@@ -1,13 +1,19 @@
 const fs = require("fs");
 
 const raw = `
-02/03/18 : Get it From Mom & Dad : $10000
+30/11/18 : Salary : $41050
 
-14/03/18 : Get it From Abi : $160
+03/12/18 : Capital First Refund : $592.22
 
-24/03/18 : Get it From Abi : $400
+03/12/18 : Get it From Vivek for Bike Repair : $2000
 
-26/03/18 : Get it From Abi : $500
+03/12/18 : Refund Food Panda : $19
+
+18/12/18 : Collection Money For Marriage Gift : $500
+
+18/12/18 : Bike Insurance : $92298
+
+26/12/18 : Get it From Abi : $200
 `;
 
 const categoryMap = {
@@ -280,45 +286,15 @@ const transactions = raw
   .trim()
   .split("\n")
   .filter(line => line.trim() && !line.trim().startsWith("//"))
-  // .map(line => {
-  //   const parts = line.split(" : ");
-
-  //   const date = parts[0].trim();
-  //   const notes = parts[1].trim();
-  //   const amount = Number(parts[2].replace("$", "").trim());
-
-  //   const [dd, mm, yy] = date.split("/");
-
-  //   const formattedDate = `20${yy}-${mm}-${dd}`;
-
-  //   return {
-  //     id: id++,
-  //     type: "expense",
-  //     amount,
-  //     category_id: categoryMap[notes] ?? categoryMap.Default,
-  //     source_id: 3,
-  //     date: formattedDate,
-  //     notes,
-  //     bill_id: null,
-  //     created_at: `${formattedDate} 00:00:00`,
-  //     transfer_group_id: null,
-  //     direction: null
-  //   };
-  // });
   .map(line => {
     const match = line.match(/^(\d{2}\/\d{2}\/\d{2})\s*:\s*(.*?)\s*:\s*\$(.+)$/);
-
     if (!match) {
       console.log("Invalid line:", line);
       return null;
     }
-
     const [, date, notes, amountStr] = match;
-
     const [dd, mm, yy] = date.split("/");
-
     const formattedDate = `20${yy}-${mm}-${dd}`;
-
     return {
       id: id++,
       type: "income", // expense OR income
@@ -823,9 +799,9 @@ const backup = {
 };
 
 fs.writeFileSync(
-  "2018_03_income.json",
+  "2018_12_income.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2018_03_income.json created successfully.");
+console.log("2018_12_income.json created successfully.");
