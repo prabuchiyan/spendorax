@@ -685,12 +685,11 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               style={{
                 flexDirection: 'row',
                 flexWrap: 'wrap',
-                justifyContent: 'space-between',
-                rowGap: 8,
+                justifyContent: 'flex-start',
                 marginTop: 8,
               }}
             >
-              {visibleSources.map(s => (
+              {visibleSources.map((s, index) => (
                 <TouchableOpacity
                   key={s.id}
                   onPress={() => {
@@ -701,8 +700,9 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   style={{
                     width: '23%',
                     height: 72,
-                    borderRadius: 10,
                     marginBottom: 8,
+                    marginRight: (index + 1) % 4 === 0 ? 0 : '2.66%',
+                    borderRadius: 10,
                     backgroundColor: s.color || '#4B7CF3',
                     justifyContent: 'center',
                     alignItems: 'center',
