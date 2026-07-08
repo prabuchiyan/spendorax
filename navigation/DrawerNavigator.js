@@ -170,15 +170,15 @@ export default function DrawerNavigator() {
         component={HomeScreen}
         options={({ navigation }) => ({
           title: 'SpendoraX',
-          // headerRight: () => (
-          //   <MaterialCommunityIcons
-          //     name="database-sync"
-          //     size={24}
-          //     color={Colors.primary || '#4B7CF3'}
-          //     onPress={() => navigation.navigate('Backup')}
-          //     style={{ marginRight: 16 }}
-          //   />
-          // ),
+          headerRight: () => (
+            <MaterialCommunityIcons
+              name="magnify"
+              size={24}
+              color={Colors.primary || '#4B7CF3'}
+              onPress={() => navigation.navigate('Search')}
+              style={{ marginRight: 16 }}
+            />
+          ),
         })}
       />
       <Drawer.Screen name="Transactions" component={TransactionsScreen} />

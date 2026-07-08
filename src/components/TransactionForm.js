@@ -378,7 +378,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               ? 'Where did you spend?'
               : type === 'income'
                 ? 'How did you get this money?'
-                : 'How much do you want to transfer?'
+                : 'Where do you want to transfer?'
           }
           value={notes}
           onChangeText={handleNotesChange}
