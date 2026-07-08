@@ -721,7 +721,7 @@
       {
         "id": 148,
         "type": "expense",
-        "amount": null,
+        "amount": 500,
         "category_id": 30,
         "source_id": 3,
         "date": "2018-04-21",
