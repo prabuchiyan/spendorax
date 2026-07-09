@@ -241,7 +241,7 @@ export async function createTransfer({
 }
 
 export async function getTransactionNoteSuggestions() {
-  const transactions = await getTransactions(100000, 'No');
+  const transactions = await getTransactions(100000, 'Yes');
   const categoriesRes = await executeSql(`SELECT * FROM categories`);
 
   const categories = [];

@@ -9,16 +9,14 @@ import {
   Platform,
   InteractionManager
 } from 'react-native';
-import { createTransaction, createTransfer, getTransactionNoteSuggestions } from '../services/transactions';
+import { createTransaction, createTransfer, getTransactionNoteSuggestions, updateTransaction, deleteTransaction } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
 import { TextInput as PaperTextInput, Button as PaperButton, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import CategoryCreateModal from './CategoryCreateModal';
 import SourceCreateModal from './SourceCreateModal';
-import { updateTransaction } from '../services/transactions';
 import ConfirmDialog from './ConfirmDialog';
-import { deleteTransaction } from '../services/transactions';
 import { Feather } from '@expo/vector-icons';
 
 export default function TransactionForm({ onCreated, onCancel, transaction, isEdit }) {
@@ -253,9 +251,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
   return (
     <ScrollView
-      contentContainerStyle={{
-        paddingBottom: 120,
-      }}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="none"
       nestedScrollEnabled
