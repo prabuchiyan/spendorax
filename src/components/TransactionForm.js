@@ -49,6 +49,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [showSourceGrid, setShowSourceGrid] = useState(
     !(isEdit && transaction?.source_id)
   );
+  const [showToAccountGrid, setShowToAccountGrid] = useState(true);
   const [showSourceModal, setShowSourceModal] = useState(false);
   const [sourceSearch, setSourceSearch] = useState('');
   const sourceSearchRef = useRef(null);
@@ -1055,6 +1056,41 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             </View>
 
           </View>
+
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => {
+              setCategorySearch('');
+              setShowCategoryModal(false);
+              setShowCategoryCreateModal(true);
+            }}
+            style={{
+              position: 'absolute',
+              right: 20,
+              bottom: 20,
+              width: 58,
+              height: 58,
+              borderRadius: 29,
+              backgroundColor: accent,
+              justifyContent: 'center',
+              alignItems: 'center',
+              elevation: 8,
+              shadowColor: '#000',
+              shadowOpacity: 0.25,
+              shadowRadius: 6,
+              shadowOffset: {
+                width: 0,
+                height: 3,
+              },
+            }}
+          >
+            <MaterialCommunityIcons
+              name="plus"
+              size={30}
+              color="#fff"
+            />
+          </TouchableOpacity>
+
         </View>
       </Modal>
 
@@ -1152,8 +1188,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                           setShowSourceGrid(false);
                         } else {
                           setToAccount(s.id);
+                          setShowToAccountGrid(false);
                         }
-
                         setSourceSearch('');
                         setShowSourceModal(false);
                       }}
@@ -1270,44 +1306,198 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
       {type === 'transfer' && (
         <View style={{ marginBottom: 12 }}>
-          <Text style={{ marginBottom: 6, color: '#666' }}>To Account</Text>
-          <TouchableOpacity
-            onPress={() => {
-              setSelectingFor('to');
-              setSourceSearch('');
-              setShowSourceModal(true);
-            }}
-            activeOpacity={0.8}
+          <Text
             style={{
-              borderWidth: 1,
-              borderColor: '#eee',
-              padding: 12,
-              borderRadius: 8,
-              backgroundColor: '#fff',
-              flexDirection: 'row',
-              alignItems: 'center'
+              marginBottom: 8,
+              color: '#666',
             }}
           >
-            <View style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: '#eef7ff',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 12
-            }}>
-              <MaterialCommunityIcons
-                name={(sources.find(x => x.id === toAccount) || {}).icon || 'cash'}
-                size={18}
-                color={(sources.find(x => x.id === toAccount) || {}).color || '#4B7CF3'}
-              />
-            </View>
+            To Account
+          </Text>
 
-            <Text style={{ fontSize: 16 }}>
-              {(sources.find(x => x.id === toAccount) || {}).name || 'Select destination account'}
-            </Text>
-          </TouchableOpacity>
+          {showToAccountGrid ? (
+            <>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  flexWrap: 'wrap',
+                  justifyContent: 'flex-start',
+                  marginTop: 8,
+                }}
+              >
+                {visibleSources
+                  .filter(s => s.id !== sourceId)
+                  .map((s, index) => (
+                    <TouchableOpacity
+                      key={s.id}
+                      onPress={() => {
+                        setToAccount(s.id);
+                        setShowToAccountGrid(false);
+                        setSourceSearch('');
+                      }}
+                      style={{
+                        width: '23%',
+                        height: 72,
+                        marginBottom: 8,
+                        marginRight: (index + 1) % 4 === 0 ? 0 : '2.66%',
+                        borderRadius: 10,
+                        backgroundColor: s.color || '#4B7CF3',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        paddingHorizontal: 4,
+                        paddingVertical: 6,
+                        transform: [
+                          {
+                            scale: toAccount === s.id ? 1.05 : 1,
+                          },
+                        ],
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name={s.icon || 'cash'}
+                        size={18}
+                        color="#fff"
+                      />
+
+                      {toAccount === s.id && (
+                        <View
+                          style={{
+                            position: 'absolute',
+                            top: 4,
+                            right: 4,
+                            width: 18,
+                            height: 18,
+                            borderRadius: 9,
+                            backgroundColor: '#fff',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <MaterialCommunityIcons
+                            name="check"
+                            size={12}
+                            color="#2E7D32"
+                          />
+                        </View>
+                      )}
+
+                      <Text
+                        numberOfLines={2}
+                        style={{
+                          color: '#fff',
+                          textAlign: 'center',
+                          marginTop: 6,
+                          fontWeight: '600',
+                          fontSize: 12,
+                          lineHeight: 16,
+                        }}
+                      >
+                        {s.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+              </View>
+
+              {searchedSources.filter(s => s.id !== sourceId).length > 4 && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectingFor('to');
+                    setSourceSearch('');
+                    setShowSourceModal(true);
+                  }}
+                  style={{
+                    alignItems: 'center',
+                    paddingVertical: 8,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: '#4B7CF3',
+                      fontWeight: '700',
+                    }}
+                  >
+                    See More
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
+          ) : (
+            <TouchableOpacity
+              onPress={() => {
+                setSelectingFor('to');
+                setSourceSearch('');
+                setShowSourceModal(true);
+              }}
+              activeOpacity={0.85}
+              style={{
+                backgroundColor: '#fff',
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: '#E6EAF2',
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                elevation: 2,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  flex: 1,
+                }}
+              >
+                <View
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 21,
+                    backgroundColor:
+                      sources.find(x => x.id === toAccount)?.color || '#4B7CF3',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    marginRight: 12,
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name={sources.find(x => x.id === toAccount)?.icon || 'cash'}
+                    size={22}
+                    color="#fff"
+                  />
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: '#888',
+                    }}
+                  >
+                    Destination Account
+                  </Text>
+
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      fontSize: 16,
+                      fontWeight: '700',
+                      color: '#222',
+                    }}
+                  >
+                    {sources.find(x => x.id === toAccount)?.name}
+                  </Text>
+                </View>
+
+                <MaterialCommunityIcons
+                  name="pencil-outline"
+                  size={22}
+                  color="#4B7CF3"
+                />
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -1426,11 +1616,12 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           setCategories(cats);
           setCategoryId(newCategory.id);
 
-          setShowCategoryCreateModal(false);
-          setShowCategoryGrid(false);
-
-          // Optional: reopen picker instead of closing
-          // setShowCategoryModal(true);
+          requestAnimationFrame(() => {
+            setShowCategoryCreateModal(false);
+            setShowCategoryModal(false);
+            setShowCategoryGrid(false);
+            setCategorySearch('');
+          });
         }}
         currentType={type}
       />
