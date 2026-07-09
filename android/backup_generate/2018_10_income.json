@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "timestamp": "2026-07-09T14:42:38.839Z",
+  "timestamp": "2026-07-09T15:24:03.407Z",
   "data": {
     "transactions": [
       {
         "id": 93,
         "type": "income",
         "amount": 41050,
-        "category_id": 34,
+        "category_id": 39,
         "source_id": 1,
         "date": "2018-10-28",
         "notes": "Salary",
@@ -20,7 +20,7 @@
         "id": 94,
         "type": "income",
         "amount": 18,
-        "category_id": 34,
+        "category_id": 5,
         "source_id": 1,
         "date": "2018-10-28",
         "notes": "Get it From Tez",
@@ -33,7 +33,7 @@
         "id": 95,
         "type": "income",
         "amount": 68,
-        "category_id": 34,
+        "category_id": 28,
         "source_id": 1,
         "date": "2018-10-29",
         "notes": "Interest",

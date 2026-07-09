@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "timestamp": "2026-07-08T11:47:14.900Z",
+  "timestamp": "2026-07-09T15:22:19.925Z",
   "data": {
     "transactions": [
       {
@@ -20,7 +20,7 @@
         "id": 94,
         "type": "expense",
         "amount": 20,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-01",
         "notes": "Jalebi",
@@ -33,7 +33,7 @@
         "id": 95,
         "type": "expense",
         "amount": 30,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-01",
         "notes": "Eggs",
@@ -46,7 +46,7 @@
         "id": 96,
         "type": "expense",
         "amount": 166,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-01",
         "notes": "Idly Rice, Kadalai Mavu, Noodles & Mix Powder",
@@ -59,7 +59,7 @@
         "id": 97,
         "type": "expense",
         "amount": 19,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-01",
         "notes": "Milk",
@@ -72,7 +72,7 @@
         "id": 98,
         "type": "expense",
         "amount": 196.5,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-02",
         "notes": "Chicken Biriyani",
@@ -85,7 +85,7 @@
         "id": 99,
         "type": "expense",
         "amount": 110,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-02",
         "notes": "Vegetables",
@@ -98,7 +98,7 @@
         "id": 100,
         "type": "expense",
         "amount": 16000,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-03",
         "notes": "Give Back to Radha",
@@ -111,7 +111,7 @@
         "id": 101,
         "type": "expense",
         "amount": 50,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-03",
         "notes": "Give Back to Kumaravel",
@@ -124,7 +124,7 @@
         "id": 102,
         "type": "expense",
         "amount": 84,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-03",
         "notes": "Refined Oil",
@@ -137,7 +137,7 @@
         "id": 103,
         "type": "expense",
         "amount": 30,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-03",
         "notes": "Bananas",
@@ -150,7 +150,7 @@
         "id": 104,
         "type": "expense",
         "amount": 19,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-03",
         "notes": "Milk",
@@ -163,7 +163,7 @@
         "id": 105,
         "type": "expense",
         "amount": 271.86,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-04",
         "notes": "Movie : 2.0",
@@ -176,7 +176,7 @@
         "id": 106,
         "type": "expense",
         "amount": 1132.03,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-04",
         "notes": "Bus : Pudukkottai to Bangalore",
@@ -189,7 +189,7 @@
         "id": 107,
         "type": "expense",
         "amount": 50,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-04",
         "notes": "Movie : 2.0 Parking",
@@ -228,7 +228,7 @@
         "id": 110,
         "type": "expense",
         "amount": 19,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-05",
         "notes": "Milk",
@@ -241,7 +241,7 @@
         "id": 111,
         "type": "expense",
         "amount": 50,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-05",
         "notes": "Onions",
@@ -254,7 +254,7 @@
         "id": 112,
         "type": "expense",
         "amount": 387,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-06",
         "notes": "Recharge Mom",
@@ -267,7 +267,7 @@
         "id": 113,
         "type": "expense",
         "amount": 131,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-07",
         "notes": "Cakes",
@@ -280,7 +280,7 @@
         "id": 114,
         "type": "expense",
         "amount": 22,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-07",
         "notes": "Milk",
@@ -293,7 +293,7 @@
         "id": 115,
         "type": "expense",
         "amount": 30,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-08",
         "notes": "Coriander, Mint & Lemons",
@@ -306,7 +306,7 @@
         "id": 116,
         "type": "expense",
         "amount": 160,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-08",
         "notes": "Boneless Chicken",
@@ -319,7 +319,7 @@
         "id": 117,
         "type": "expense",
         "amount": 10,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-08",
         "notes": "Curd",
@@ -332,7 +332,7 @@
         "id": 118,
         "type": "expense",
         "amount": 40,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-08",
         "notes": "Corn Flour, Turmeric Powder, Salt",
@@ -358,7 +358,7 @@
         "id": 120,
         "type": "expense",
         "amount": 150,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-10",
         "notes": "Vegetables",
@@ -371,7 +371,7 @@
         "id": 121,
         "type": "expense",
         "amount": 1158,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-10",
         "notes": "Groceries",
@@ -384,7 +384,7 @@
         "id": 122,
         "type": "expense",
         "amount": 349,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-11",
         "notes": "Airtel Recharge Myself",
@@ -397,7 +397,7 @@
         "id": 123,
         "type": "expense",
         "amount": 336,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-11",
         "notes": "Secret Santa Gift",
@@ -410,7 +410,7 @@
         "id": 124,
         "type": "expense",
         "amount": 22,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-11",
         "notes": "Milk",
@@ -423,7 +423,7 @@
         "id": 125,
         "type": "expense",
         "amount": 68,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-12",
         "notes": "Idly Rice (2kg)",
@@ -436,7 +436,7 @@
         "id": 126,
         "type": "expense",
         "amount": 52,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-12",
         "notes": "Pacharisi",
@@ -449,7 +449,7 @@
         "id": 127,
         "type": "expense",
         "amount": 20,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-12",
         "notes": "Sigaikkai",
@@ -462,7 +462,7 @@
         "id": 128,
         "type": "expense",
         "amount": 200,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-12",
         "notes": "Vegetables",
@@ -475,7 +475,7 @@
         "id": 129,
         "type": "expense",
         "amount": 19,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-13",
         "notes": "Milk",
@@ -488,7 +488,7 @@
         "id": 130,
         "type": "expense",
         "amount": 4,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-13",
         "notes": "Tablet",
@@ -501,7 +501,7 @@
         "id": 131,
         "type": "expense",
         "amount": 22,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-13",
         "notes": "Milk",
@@ -514,7 +514,7 @@
         "id": 132,
         "type": "expense",
         "amount": 1,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-13",
         "notes": "Matchbox",
@@ -527,7 +527,7 @@
         "id": 133,
         "type": "expense",
         "amount": 4763,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-14",
         "notes": "Clothes for Birthday",
@@ -540,7 +540,7 @@
         "id": 134,
         "type": "expense",
         "amount": 19,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-15",
         "notes": "Milk",
@@ -553,7 +553,7 @@
         "id": 135,
         "type": "expense",
         "amount": 200,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-15",
         "notes": "Bala & Aunty Vacation : OLA Money Added",
@@ -566,7 +566,7 @@
         "id": 136,
         "type": "expense",
         "amount": 80,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-15",
         "notes": "Bala & Aunty Vacation : Lalbagh Entrance",
@@ -579,7 +579,7 @@
         "id": 137,
         "type": "expense",
         "amount": 60,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-15",
         "notes": "Bala & Aunty Vacation : Snacks",
@@ -592,7 +592,7 @@
         "id": 138,
         "type": "expense",
         "amount": 200,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-15",
         "notes": "Bala & Aunty Vacation : OLA Money Added",
@@ -605,7 +605,7 @@
         "id": 139,
         "type": "expense",
         "amount": 500,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-15",
         "notes": "Clothes For Son",
@@ -618,7 +618,7 @@
         "id": 140,
         "type": "expense",
         "amount": 22,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-15",
         "notes": "Milk",
@@ -631,7 +631,7 @@
         "id": 141,
         "type": "expense",
         "amount": 20,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-16",
         "notes": "Milk",
@@ -644,7 +644,7 @@
         "id": 142,
         "type": "expense",
         "amount": 92500,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-18",
         "notes": "Fixed Deposit",
@@ -657,7 +657,7 @@
         "id": 143,
         "type": "expense",
         "amount": 19,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-18",
         "notes": "Milk",
@@ -670,7 +670,7 @@
         "id": 144,
         "type": "expense",
         "amount": 539,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-19",
         "notes": "Train : Bangalore to Thanjavur",
@@ -683,7 +683,7 @@
         "id": 145,
         "type": "expense",
         "amount": 70,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-19",
         "notes": "Vegetables From Market",
@@ -696,7 +696,7 @@
         "id": 146,
         "type": "expense",
         "amount": 68,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-19",
         "notes": "Idly Rice (2Kg)",
@@ -709,7 +709,7 @@
         "id": 147,
         "type": "expense",
         "amount": 801,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-20",
         "notes": "Groceries - Big Basket",
@@ -722,7 +722,7 @@
         "id": 148,
         "type": "expense",
         "amount": 19,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-20",
         "notes": "Milk",
@@ -735,7 +735,7 @@
         "id": 149,
         "type": "expense",
         "amount": 500,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-22",
         "notes": "Water Bill",
@@ -748,7 +748,7 @@
         "id": 150,
         "type": "expense",
         "amount": 19,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-22",
         "notes": "Milk",
@@ -761,7 +761,7 @@
         "id": 151,
         "type": "expense",
         "amount": 11,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-22",
         "notes": "Curd",
@@ -774,7 +774,7 @@
         "id": 152,
         "type": "expense",
         "amount": 850,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-23",
         "notes": "Hair Treatment Consulting",
@@ -787,7 +787,7 @@
         "id": 153,
         "type": "expense",
         "amount": 168,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-24",
         "notes": "DTH Recharge Pdkt Home",
@@ -800,7 +800,7 @@
         "id": 154,
         "type": "expense",
         "amount": 19,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-25",
         "notes": "Milk",
@@ -826,7 +826,7 @@
         "id": 156,
         "type": "expense",
         "amount": 50,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-26",
         "notes": "Coconuts",
@@ -839,7 +839,7 @@
         "id": 157,
         "type": "expense",
         "amount": 19,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-28",
         "notes": "Milk",
@@ -852,7 +852,7 @@
         "id": 158,
         "type": "expense",
         "amount": 800,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-29",
         "notes": "Groceries - Big Basket",
@@ -865,7 +865,7 @@
         "id": 159,
         "type": "expense",
         "amount": 19,
-        "category_id": 22,
+        "category_id": 23,
         "source_id": 3,
         "date": "2018-12-30",
         "notes": "Milk",
@@ -878,7 +878,7 @@
         "id": 160,
         "type": "expense",
         "amount": 10,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-30",
         "notes": "Curd",
@@ -891,7 +891,7 @@
         "id": 161,
         "type": "expense",
         "amount": 466,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-30",
         "notes": "Sarakku",
@@ -917,7 +917,7 @@
         "id": 163,
         "type": "expense",
         "amount": 16,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-30",
         "notes": "Cigarettes",
@@ -930,7 +930,7 @@
         "id": 164,
         "type": "expense",
         "amount": 10000,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
         "date": "2018-12-31",
         "notes": "Video Coverage",
@@ -948,7 +948,16 @@
         "icon": "cake",
         "color": "#A78BFA",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 50,
+        "name": "Anniversary",
+        "type": "expense",
+        "icon": "ring",
+        "color": "#E91E63",
+        "is_active": 1,
+        "created_at": "2026-07-09 10:52:07"
       },
       {
         "id": 2,
@@ -957,7 +966,7 @@
         "icon": "bank",
         "color": "#374151",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 3,
@@ -966,7 +975,7 @@
         "icon": "cards-heart-outline",
         "color": "#DB2777",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 4,
@@ -975,7 +984,7 @@
         "icon": "motorbike",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 5,
@@ -984,7 +993,7 @@
         "icon": "cash-plus",
         "color": "#A3E635",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 6,
@@ -993,7 +1002,7 @@
         "icon": "baby-carriage",
         "color": "#22C55E",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 7,
@@ -1002,7 +1011,7 @@
         "icon": "tshirt-v",
         "color": "#FB923C",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 8,
@@ -1011,7 +1020,7 @@
         "icon": "television-play",
         "color": "#8B5CF6",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 9,
@@ -1020,7 +1029,7 @@
         "icon": "firework",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 10,
@@ -1029,7 +1038,7 @@
         "icon": "hand-heart",
         "color": "#22C55E",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 11,
@@ -1038,7 +1047,7 @@
         "icon": "liquor",
         "color": "#EF4444",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 12,
@@ -1047,7 +1056,7 @@
         "icon": "power-plug",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 13,
@@ -1056,7 +1065,7 @@
         "icon": "devices",
         "color": "#A78BFA",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 14,
@@ -1065,7 +1074,7 @@
         "icon": "human-female-dance",
         "color": "#FBBF24",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 15,
@@ -1074,7 +1083,7 @@
         "icon": "movie-open",
         "color": "#7C3AED",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 16,
@@ -1083,7 +1092,7 @@
         "icon": "account-group",
         "color": "#F43F5E",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 17,
@@ -1092,7 +1101,7 @@
         "icon": "silverware-fork-knife",
         "color": "#F59E0B",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 18,
@@ -1101,7 +1110,7 @@
         "icon": "fruit-watermelon",
         "color": "#84CC16",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 19,
@@ -1110,7 +1119,7 @@
         "icon": "gas-cylinder",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 20,
@@ -1119,7 +1128,7 @@
         "icon": "bank-transfer-out",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 21,
@@ -1128,106 +1137,106 @@
         "icon": "gift",
         "color": "#EC4899",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 22,
-        "name": "Groceries",
-        "type": "expense",
-        "icon": "cart",
-        "color": "#F97316",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 23,
-        "name": "Guest Visit to Bangalore",
-        "type": "expense",
-        "icon": "account-group-outline",
-        "color": "#6366F1",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 24,
-        "name": "Home Improvement",
-        "type": "expense",
-        "icon": "hammer-wrench",
-        "color": "#A16207",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 25,
-        "name": "Hospital / Medicine",
-        "type": "expense",
-        "icon": "hospital-box-outline",
-        "color": "#EF4444",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 26,
-        "name": "Households",
-        "type": "expense",
-        "icon": "bus-stop-covered",
-        "color": "#14B8A6",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 27,
-        "name": "Interest",
-        "type": "income",
-        "icon": "percent",
-        "color": "#22C55E",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 28,
-        "name": "Jewellery",
-        "type": "expense",
-        "icon": "gold",
-        "color": "#FBBF24",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 29,
-        "name": "Loan / EMI",
-        "type": "expense",
-        "icon": "bank-transfer",
-        "color": "#B91C1C",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 30,
-        "name": "Misc",
-        "type": "expense",
-        "icon": "dots-horizontal",
-        "color": "#9CA3AF",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 31,
-        "name": "Mobile",
-        "type": "expense",
-        "icon": "cellphone",
-        "color": "#0EA5E9",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 32,
         "name": "Gold Loan",
         "type": "expense",
         "icon": "necklace",
         "color": "#FBBF24",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 23,
+        "name": "Groceries",
+        "type": "expense",
+        "icon": "cart",
+        "color": "#F97316",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 24,
+        "name": "Guest Visit to Bangalore",
+        "type": "expense",
+        "icon": "account-group-outline",
+        "color": "#6366F1",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 25,
+        "name": "Home Improvement",
+        "type": "expense",
+        "icon": "hammer-wrench",
+        "color": "#A16207",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 26,
+        "name": "Hospital / Medicine",
+        "type": "expense",
+        "icon": "hospital-box-outline",
+        "color": "#EF4444",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 27,
+        "name": "Households",
+        "type": "expense",
+        "icon": "bus-stop-covered",
+        "color": "#14B8A6",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 28,
+        "name": "Interest",
+        "type": "income",
+        "icon": "percent",
+        "color": "#22C55E",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 29,
+        "name": "Jewellery",
+        "type": "expense",
+        "icon": "gold",
+        "color": "#FBBF24",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 30,
+        "name": "Loan / EMI",
+        "type": "expense",
+        "icon": "bank-transfer",
+        "color": "#B91C1C",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 31,
+        "name": "Misc",
+        "type": "expense",
+        "icon": "dots-horizontal",
+        "color": "#9CA3AF",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 32,
+        "name": "Mobile",
+        "type": "expense",
+        "icon": "cellphone",
+        "color": "#0EA5E9",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 33,
@@ -1236,7 +1245,7 @@
         "icon": "arrow-up-bold-circle",
         "color": "#EF4444",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 34,
@@ -1245,7 +1254,7 @@
         "icon": "arrow-down-bold-circle",
         "color": "#10B981",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 35,
@@ -1254,7 +1263,7 @@
         "icon": "account-group",
         "color": "#FB923C",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 36,
@@ -1263,7 +1272,7 @@
         "icon": "printer",
         "color": "#6B7280",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 37,
@@ -1272,7 +1281,7 @@
         "icon": "account-group",
         "color": "#F97316",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 38,
@@ -1281,7 +1290,7 @@
         "icon": "home-account",
         "color": "#3B82F6",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 39,
@@ -1290,7 +1299,7 @@
         "icon": "cash-multiple",
         "color": "#16A34A",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 40,
@@ -1299,7 +1308,7 @@
         "icon": "content-cut",
         "color": "#334155",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 41,
@@ -1308,7 +1317,7 @@
         "icon": "shoe-sneaker",
         "color": "#DB2777",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 42,
@@ -1317,7 +1326,7 @@
         "icon": "piggy-bank",
         "color": "#059669",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 43,
@@ -1326,7 +1335,7 @@
         "icon": "food-variant",
         "color": "#FBBF24",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 44,
@@ -1335,7 +1344,7 @@
         "icon": "party-popper",
         "color": "#06B6D4",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 45,
@@ -1344,7 +1353,7 @@
         "icon": "bus",
         "color": "#14B8A6",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 46,
@@ -1353,7 +1362,7 @@
         "icon": "lightning-bolt",
         "color": "#64748B",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 47,
@@ -1362,7 +1371,7 @@
         "icon": "earth",
         "color": "#A3E635",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 48,
@@ -1371,7 +1380,7 @@
         "icon": "swap-horizontal",
         "color": "#6366F1",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 49,
@@ -1380,7 +1389,7 @@
         "icon": "cup-water",
         "color": "#64748B",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       }
     ],
     "sources": [
@@ -1397,7 +1406,7 @@
         "type": null,
         "initial_balance": 0,
         "icon": "bank",
-        "color": "#6366F1",
+        "color": "#FB923C",
         "id": 2
       },
       {

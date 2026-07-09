@@ -1,14 +1,14 @@
 {
   "version": 1,
-  "timestamp": "2026-07-08T11:57:33.829Z",
+  "timestamp": "2026-07-09T15:27:02.943Z",
   "data": {
     "transactions": [
       {
         "id": 93,
         "type": "income",
         "amount": 41050,
-        "category_id": 30,
-        "source_id": 3,
+        "category_id": 39,
+        "source_id": 1,
         "date": "2018-11-30",
         "notes": "Salary",
         "bill_id": null,
@@ -20,8 +20,8 @@
         "id": 94,
         "type": "income",
         "amount": 592.22,
-        "category_id": 30,
-        "source_id": 3,
+        "category_id": 34,
+        "source_id": 1,
         "date": "2018-12-03",
         "notes": "Capital First Refund",
         "bill_id": null,
@@ -33,8 +33,8 @@
         "id": 95,
         "type": "income",
         "amount": 2000,
-        "category_id": 30,
-        "source_id": 3,
+        "category_id": 34,
+        "source_id": 1,
         "date": "2018-12-03",
         "notes": "Get it From Vivek for Bike Repair",
         "bill_id": null,
@@ -46,8 +46,8 @@
         "id": 96,
         "type": "income",
         "amount": 19,
-        "category_id": 30,
-        "source_id": 3,
+        "category_id": 34,
+        "source_id": 1,
         "date": "2018-12-03",
         "notes": "Refund Food Panda",
         "bill_id": null,
@@ -59,8 +59,8 @@
         "id": 97,
         "type": "income",
         "amount": 500,
-        "category_id": 30,
-        "source_id": 3,
+        "category_id": 34,
+        "source_id": 1,
         "date": "2018-12-18",
         "notes": "Collection Money For Marriage Gift",
         "bill_id": null,
@@ -72,8 +72,8 @@
         "id": 98,
         "type": "income",
         "amount": 92298,
-        "category_id": 30,
-        "source_id": 3,
+        "category_id": 34,
+        "source_id": 1,
         "date": "2018-12-18",
         "notes": "Bike Insurance",
         "bill_id": null,
@@ -86,7 +86,7 @@
         "type": "income",
         "amount": 200,
         "category_id": 34,
-        "source_id": 3,
+        "source_id": 1,
         "date": "2018-12-26",
         "notes": "Get it From Abi",
         "bill_id": null,
@@ -103,7 +103,16 @@
         "icon": "cake",
         "color": "#A78BFA",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 50,
+        "name": "Anniversary",
+        "type": "expense",
+        "icon": "ring",
+        "color": "#E91E63",
+        "is_active": 1,
+        "created_at": "2026-07-09 10:52:07"
       },
       {
         "id": 2,
@@ -112,7 +121,7 @@
         "icon": "bank",
         "color": "#374151",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 3,
@@ -121,7 +130,7 @@
         "icon": "cards-heart-outline",
         "color": "#DB2777",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 4,
@@ -130,7 +139,7 @@
         "icon": "motorbike",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 5,
@@ -139,7 +148,7 @@
         "icon": "cash-plus",
         "color": "#A3E635",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 6,
@@ -148,7 +157,7 @@
         "icon": "baby-carriage",
         "color": "#22C55E",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 7,
@@ -157,7 +166,7 @@
         "icon": "tshirt-v",
         "color": "#FB923C",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 8,
@@ -166,7 +175,7 @@
         "icon": "television-play",
         "color": "#8B5CF6",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 9,
@@ -175,7 +184,7 @@
         "icon": "firework",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 10,
@@ -184,7 +193,7 @@
         "icon": "hand-heart",
         "color": "#22C55E",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 11,
@@ -193,7 +202,7 @@
         "icon": "liquor",
         "color": "#EF4444",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 12,
@@ -202,7 +211,7 @@
         "icon": "power-plug",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 13,
@@ -211,7 +220,7 @@
         "icon": "devices",
         "color": "#A78BFA",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 14,
@@ -220,7 +229,7 @@
         "icon": "human-female-dance",
         "color": "#FBBF24",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 15,
@@ -229,7 +238,7 @@
         "icon": "movie-open",
         "color": "#7C3AED",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 16,
@@ -238,7 +247,7 @@
         "icon": "account-group",
         "color": "#F43F5E",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 17,
@@ -247,7 +256,7 @@
         "icon": "silverware-fork-knife",
         "color": "#F59E0B",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 18,
@@ -256,7 +265,7 @@
         "icon": "fruit-watermelon",
         "color": "#84CC16",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 19,
@@ -265,7 +274,7 @@
         "icon": "gas-cylinder",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 20,
@@ -274,7 +283,7 @@
         "icon": "bank-transfer-out",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 21,
@@ -283,106 +292,106 @@
         "icon": "gift",
         "color": "#EC4899",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 22,
-        "name": "Groceries",
-        "type": "expense",
-        "icon": "cart",
-        "color": "#F97316",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 23,
-        "name": "Guest Visit to Bangalore",
-        "type": "expense",
-        "icon": "account-group-outline",
-        "color": "#6366F1",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 24,
-        "name": "Home Improvement",
-        "type": "expense",
-        "icon": "hammer-wrench",
-        "color": "#A16207",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 25,
-        "name": "Hospital / Medicine",
-        "type": "expense",
-        "icon": "hospital-box-outline",
-        "color": "#EF4444",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 26,
-        "name": "Households",
-        "type": "expense",
-        "icon": "bus-stop-covered",
-        "color": "#14B8A6",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 27,
-        "name": "Interest",
-        "type": "income",
-        "icon": "percent",
-        "color": "#22C55E",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 28,
-        "name": "Jewellery",
-        "type": "expense",
-        "icon": "gold",
-        "color": "#FBBF24",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 29,
-        "name": "Loan / EMI",
-        "type": "expense",
-        "icon": "bank-transfer",
-        "color": "#B91C1C",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 30,
-        "name": "Misc",
-        "type": "expense",
-        "icon": "dots-horizontal",
-        "color": "#9CA3AF",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 31,
-        "name": "Mobile",
-        "type": "expense",
-        "icon": "cellphone",
-        "color": "#0EA5E9",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 32,
         "name": "Gold Loan",
         "type": "expense",
         "icon": "necklace",
         "color": "#FBBF24",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 23,
+        "name": "Groceries",
+        "type": "expense",
+        "icon": "cart",
+        "color": "#F97316",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 24,
+        "name": "Guest Visit to Bangalore",
+        "type": "expense",
+        "icon": "account-group-outline",
+        "color": "#6366F1",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 25,
+        "name": "Home Improvement",
+        "type": "expense",
+        "icon": "hammer-wrench",
+        "color": "#A16207",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 26,
+        "name": "Hospital / Medicine",
+        "type": "expense",
+        "icon": "hospital-box-outline",
+        "color": "#EF4444",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 27,
+        "name": "Households",
+        "type": "expense",
+        "icon": "bus-stop-covered",
+        "color": "#14B8A6",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 28,
+        "name": "Interest",
+        "type": "income",
+        "icon": "percent",
+        "color": "#22C55E",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 29,
+        "name": "Jewellery",
+        "type": "expense",
+        "icon": "gold",
+        "color": "#FBBF24",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 30,
+        "name": "Loan / EMI",
+        "type": "expense",
+        "icon": "bank-transfer",
+        "color": "#B91C1C",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 31,
+        "name": "Misc",
+        "type": "expense",
+        "icon": "dots-horizontal",
+        "color": "#9CA3AF",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 32,
+        "name": "Mobile",
+        "type": "expense",
+        "icon": "cellphone",
+        "color": "#0EA5E9",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 33,
@@ -391,7 +400,7 @@
         "icon": "arrow-up-bold-circle",
         "color": "#EF4444",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 34,
@@ -400,7 +409,7 @@
         "icon": "arrow-down-bold-circle",
         "color": "#10B981",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 35,
@@ -409,7 +418,7 @@
         "icon": "account-group",
         "color": "#FB923C",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 36,
@@ -418,7 +427,7 @@
         "icon": "printer",
         "color": "#6B7280",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 37,
@@ -427,7 +436,7 @@
         "icon": "account-group",
         "color": "#F97316",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 38,
@@ -436,7 +445,7 @@
         "icon": "home-account",
         "color": "#3B82F6",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 39,
@@ -445,7 +454,7 @@
         "icon": "cash-multiple",
         "color": "#16A34A",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 40,
@@ -454,7 +463,7 @@
         "icon": "content-cut",
         "color": "#334155",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 41,
@@ -463,7 +472,7 @@
         "icon": "shoe-sneaker",
         "color": "#DB2777",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 42,
@@ -472,7 +481,7 @@
         "icon": "piggy-bank",
         "color": "#059669",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 43,
@@ -481,7 +490,7 @@
         "icon": "food-variant",
         "color": "#FBBF24",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 44,
@@ -490,7 +499,7 @@
         "icon": "party-popper",
         "color": "#06B6D4",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 45,
@@ -499,7 +508,7 @@
         "icon": "bus",
         "color": "#14B8A6",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 46,
@@ -508,7 +517,7 @@
         "icon": "lightning-bolt",
         "color": "#64748B",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 47,
@@ -517,7 +526,7 @@
         "icon": "earth",
         "color": "#A3E635",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 48,
@@ -526,7 +535,7 @@
         "icon": "swap-horizontal",
         "color": "#6366F1",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 49,
@@ -535,7 +544,7 @@
         "icon": "cup-water",
         "color": "#64748B",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       }
     ],
     "sources": [
@@ -552,7 +561,7 @@
         "type": null,
         "initial_balance": 0,
         "icon": "bank",
-        "color": "#6366F1",
+        "color": "#FB923C",
         "id": 2
       },
       {
