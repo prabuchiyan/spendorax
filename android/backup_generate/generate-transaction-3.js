@@ -1,17 +1,135 @@
 const fs = require("fs");
 
 const raw = `
-31/08/18 : Salary : $39734
+01/10/18 : Grocery : $2212
 
-01/09/18 : Get it Back From Abi : $300
+01/10/18 : Room Rent : $9000
 
-02/09/18 : Get it From Mom : $1000
+01/10/18 : Lunch : $35
 
-03/09/18 : Get it From Mom : $51
+01/10/18 : Bike Air : $3
 
-03/09/18 : Get it From Dad : $101
+01/10/18 : Petrol : $400
 
-04/09/18 : Get it Back From Santosh : $3000
+04/10/18 : Added to Paytm : $600
+
+05/10/18 : Personal Loan : $4917
+
+05/10/18 : Lunch : $30
+
+05/10/18 : Snacks : $10
+
+05/10/18 : Lunch : $50
+
+05/10/18 : 96 Movie : $150
+
+06/10/18 : Drinks : $467
+
+06/10/18 : Mutton : $200
+
+06/10/18 : Coriander & Ginger : $6
+
+08/10/18 : Recharge BSNL : $49
+
+09/10/18 : Lunch : $30
+
+09/10/18 : Dinner : $30
+
+10/10/18 : Lunch : $30
+
+11/10/18 : Water Bill : $400
+
+12/10/18 : Bus : Pudukkottai to Bangalore : $1660
+
+13/10/18 : Bus : Hosur to Bangalore : $60
+
+17/10/18 : Train : Bangalore to Thanjavur : $60
+
+17/10/18 : Lunch : $100
+
+17/10/18 : Rasagulla & Soanpapdi : $247
+
+18/10/18 : Bus : Room to Office : $17
+
+18/10/18 : Added to Paytm : $600
+
+18/10/18 : Snacks : $10
+
+18/10/18 : Bus : Bangalore to Salem : $230
+
+18/10/18 : Dinner : $40
+
+18/10/18 : Bus : Salem to Trichy : $122
+
+19/10/18 : Bus : Trichy to Thanjavur : $43
+
+19/10/18 : Bus : Thanjavur New Bus Stand to Old Bus Stand : $10
+
+19/10/18 : Group Photos : $200
+
+19/10/18 : Petrol For Abi Dad : $100
+
+19/10/18 : Bike Parking : $5
+
+19/10/18 : Cheppal Token : $5
+
+19/10/18 : For God : $8
+
+19/10/18 : Normal Baby Checkup & Medicine : $350
+
+20/10/18 : Ola Wallet Money Added : $200
+
+20/10/18 : Water Pocket : $9
+
+21/10/18 : Bus : Thanjavur to Pudukkottai : $90
+
+21/10/18 : Auto : Pudukkottai Bus Stand to Home : $70
+
+21/10/18 : Snacks For Akka Family : $180
+
+21/10/18 : Gift to Prasanna Function : $100
+
+21/10/18 : Petrol For Akka : $50
+
+22/10/18 : Lunch : $30
+
+24/10/18 : Lunch : $30
+
+24/10/18 : Bike Petrol : $400
+
+25/10/18 : Lunch : $30
+
+25/10/18 : Chips : $60
+
+26/10/18 : Lunch : $40
+
+26/10/18 : Eggs : $30
+
+27/10/18 : Dinner : $76.92
+
+28/10/18 : Drinks : $899
+
+28/10/18 : Again Drinks : $10
+
+28/10/18 : Cigarettes : $45
+
+29/10/18 : Breakfast : $20
+
+29/10/18 : Lunch : $10
+
+29/10/18 : Lassie : $30
+
+29/10/18 : Idly : $30
+
+30/10/18 : Breakfast : $30
+
+30/10/18 : Lunch : $30
+
+30/10/18 : Photos & Video Coverage : $15000
+
+31/10/18 : Breakfast : $25
+
+31/10/18 : Lunch : $40
 `;
 
 const categoryMap = {
@@ -310,7 +428,7 @@ const transactions = raw
       console.log("Invalid line:", line);
       return null;
     }
-    const type = "income"; // expense OR income
+    const type = "expense"; // expense OR income
     const [, date, notes, amountStr] = match;
     const [dd, mm, yy] = date.split("/");
     const formattedDate = `20${yy}-${mm}-${dd}`;
@@ -318,7 +436,9 @@ const transactions = raw
       id: id++,
       type,
       amount: Number(amountStr.trim()),
-      category_id: categoryMap[notes] ?? type === 'income' ? categoryMap.Default_income : categoryMap.Default_expense,
+      category_id: categoryMap[notes] ?? (type === "income"
+        ? categoryMap.Default_income
+        : categoryMap.Default_expense),
       source_id: type === 'income' ? 1 : 3,
       date: formattedDate,
       notes,
@@ -827,9 +947,9 @@ const backup = {
 };
 
 fs.writeFileSync(
-  "2018_09_income.json",
+  "2018_10.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2018_09_income.json created successfully.");
+console.log("2018_10.json created successfully.");
