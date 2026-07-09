@@ -1,18 +1,18 @@
 {
   "version": 1,
-  "timestamp": "2026-07-08T11:44:16.792Z",
+  "timestamp": "2026-07-09T14:40:05.728Z",
   "data": {
     "transactions": [
       {
         "id": 93,
         "type": "expense",
         "amount": 2212,
-        "category_id": 22,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-01",
+        "date": "2018-09-01",
         "notes": "Grocery",
         "bill_id": null,
-        "created_at": "2018-10-01 00:00:00",
+        "created_at": "2018-09-01 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -20,12 +20,12 @@
         "id": 94,
         "type": "expense",
         "amount": 9000,
-        "category_id": 38,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-01",
+        "date": "2018-09-01",
         "notes": "Room Rent",
         "bill_id": null,
-        "created_at": "2018-10-01 00:00:00",
+        "created_at": "2018-09-01 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -33,12 +33,12 @@
         "id": 95,
         "type": "expense",
         "amount": 35,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-01",
+        "date": "2018-09-01",
         "notes": "Lunch",
         "bill_id": null,
-        "created_at": "2018-10-01 00:00:00",
+        "created_at": "2018-09-01 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -46,12 +46,12 @@
         "id": 96,
         "type": "expense",
         "amount": 3,
-        "category_id": 4,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-01",
+        "date": "2018-09-01",
         "notes": "Bike Air",
         "bill_id": null,
-        "created_at": "2018-10-01 00:00:00",
+        "created_at": "2018-09-01 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -59,12 +59,12 @@
         "id": 97,
         "type": "expense",
         "amount": 400,
-        "category_id": 4,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-01",
+        "date": "2018-09-01",
         "notes": "Petrol",
         "bill_id": null,
-        "created_at": "2018-10-01 00:00:00",
+        "created_at": "2018-09-01 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -72,12 +72,12 @@
         "id": 98,
         "type": "expense",
         "amount": 600,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-04",
+        "date": "2018-09-04",
         "notes": "Added to Paytm",
         "bill_id": null,
-        "created_at": "2018-10-04 00:00:00",
+        "created_at": "2018-09-04 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -85,12 +85,12 @@
         "id": 99,
         "type": "expense",
         "amount": 4917,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-05",
+        "date": "2018-09-05",
         "notes": "Personal Loan",
         "bill_id": null,
-        "created_at": "2018-10-05 00:00:00",
+        "created_at": "2018-09-05 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -98,12 +98,12 @@
         "id": 100,
         "type": "expense",
         "amount": 30,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-05",
+        "date": "2018-09-05",
         "notes": "Lunch",
         "bill_id": null,
-        "created_at": "2018-10-05 00:00:00",
+        "created_at": "2018-09-05 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -111,12 +111,12 @@
         "id": 101,
         "type": "expense",
         "amount": 10,
-        "category_id": 43,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-05",
+        "date": "2018-09-05",
         "notes": "Snacks",
         "bill_id": null,
-        "created_at": "2018-10-05 00:00:00",
+        "created_at": "2018-09-05 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -124,12 +124,12 @@
         "id": 102,
         "type": "expense",
         "amount": 50,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-05",
+        "date": "2018-09-05",
         "notes": "Lunch",
         "bill_id": null,
-        "created_at": "2018-10-05 00:00:00",
+        "created_at": "2018-09-05 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -137,12 +137,12 @@
         "id": 103,
         "type": "expense",
         "amount": 150,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-05",
+        "date": "2018-09-05",
         "notes": "96 Movie",
         "bill_id": null,
-        "created_at": "2018-10-05 00:00:00",
+        "created_at": "2018-09-05 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -150,12 +150,12 @@
         "id": 104,
         "type": "expense",
         "amount": 467,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-06",
+        "date": "2018-09-06",
         "notes": "Drinks",
         "bill_id": null,
-        "created_at": "2018-10-06 00:00:00",
+        "created_at": "2018-09-06 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -163,12 +163,12 @@
         "id": 105,
         "type": "expense",
         "amount": 200,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-06",
+        "date": "2018-09-06",
         "notes": "Mutton",
         "bill_id": null,
-        "created_at": "2018-10-06 00:00:00",
+        "created_at": "2018-09-06 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -176,12 +176,12 @@
         "id": 106,
         "type": "expense",
         "amount": 6,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-06",
+        "date": "2018-09-06",
         "notes": "Coriander & Ginger",
         "bill_id": null,
-        "created_at": "2018-10-06 00:00:00",
+        "created_at": "2018-09-06 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -189,12 +189,12 @@
         "id": 107,
         "type": "expense",
         "amount": 49,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-08",
+        "date": "2018-09-08",
         "notes": "Recharge BSNL",
         "bill_id": null,
-        "created_at": "2018-10-08 00:00:00",
+        "created_at": "2018-09-08 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -202,12 +202,12 @@
         "id": 108,
         "type": "expense",
         "amount": 30,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-09",
+        "date": "2018-09-09",
         "notes": "Lunch",
         "bill_id": null,
-        "created_at": "2018-10-09 00:00:00",
+        "created_at": "2018-09-09 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -215,12 +215,12 @@
         "id": 109,
         "type": "expense",
         "amount": 30,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-09",
+        "date": "2018-09-09",
         "notes": "Dinner",
         "bill_id": null,
-        "created_at": "2018-10-09 00:00:00",
+        "created_at": "2018-09-09 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -228,12 +228,12 @@
         "id": 110,
         "type": "expense",
         "amount": 30,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-10",
+        "date": "2018-09-10",
         "notes": "Lunch",
         "bill_id": null,
-        "created_at": "2018-10-10 00:00:00",
+        "created_at": "2018-09-10 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -241,12 +241,12 @@
         "id": 111,
         "type": "expense",
         "amount": 400,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-11",
+        "date": "2018-09-11",
         "notes": "Water Bill",
         "bill_id": null,
-        "created_at": "2018-10-11 00:00:00",
+        "created_at": "2018-09-11 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -254,12 +254,12 @@
         "id": 112,
         "type": "expense",
         "amount": 1660,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-12",
+        "date": "2018-09-12",
         "notes": "Bus : Pudukkottai to Bangalore",
         "bill_id": null,
-        "created_at": "2018-10-12 00:00:00",
+        "created_at": "2018-09-12 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -267,12 +267,12 @@
         "id": 113,
         "type": "expense",
         "amount": 60,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-13",
+        "date": "2018-09-13",
         "notes": "Bus : Hosur to Bangalore",
         "bill_id": null,
-        "created_at": "2018-10-13 00:00:00",
+        "created_at": "2018-09-13 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -280,12 +280,12 @@
         "id": 114,
         "type": "expense",
         "amount": 60,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-17",
+        "date": "2018-09-17",
         "notes": "Train : Bangalore to Thanjavur",
         "bill_id": null,
-        "created_at": "2018-10-17 00:00:00",
+        "created_at": "2018-09-17 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -293,12 +293,12 @@
         "id": 115,
         "type": "expense",
         "amount": 100,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-17",
+        "date": "2018-09-17",
         "notes": "Lunch",
         "bill_id": null,
-        "created_at": "2018-10-17 00:00:00",
+        "created_at": "2018-09-17 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -306,12 +306,12 @@
         "id": 116,
         "type": "expense",
         "amount": 247,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-17",
+        "date": "2018-09-17",
         "notes": "Rasagulla & Soanpapdi",
         "bill_id": null,
-        "created_at": "2018-10-17 00:00:00",
+        "created_at": "2018-09-17 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -319,12 +319,12 @@
         "id": 117,
         "type": "expense",
         "amount": 17,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-18",
+        "date": "2018-09-18",
         "notes": "Bus : Room to Office",
         "bill_id": null,
-        "created_at": "2018-10-18 00:00:00",
+        "created_at": "2018-09-18 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -332,12 +332,12 @@
         "id": 118,
         "type": "expense",
         "amount": 600,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-18",
+        "date": "2018-09-18",
         "notes": "Added to Paytm",
         "bill_id": null,
-        "created_at": "2018-10-18 00:00:00",
+        "created_at": "2018-09-18 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -345,12 +345,12 @@
         "id": 119,
         "type": "expense",
         "amount": 10,
-        "category_id": 43,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-18",
+        "date": "2018-09-18",
         "notes": "Snacks",
         "bill_id": null,
-        "created_at": "2018-10-18 00:00:00",
+        "created_at": "2018-09-18 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -358,12 +358,12 @@
         "id": 120,
         "type": "expense",
         "amount": 230,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-18",
+        "date": "2018-09-18",
         "notes": "Bus : Bangalore to Salem",
         "bill_id": null,
-        "created_at": "2018-10-18 00:00:00",
+        "created_at": "2018-09-18 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -371,12 +371,12 @@
         "id": 121,
         "type": "expense",
         "amount": 40,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-18",
+        "date": "2018-09-18",
         "notes": "Dinner",
         "bill_id": null,
-        "created_at": "2018-10-18 00:00:00",
+        "created_at": "2018-09-18 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -384,12 +384,12 @@
         "id": 122,
         "type": "expense",
         "amount": 122,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-18",
+        "date": "2018-09-18",
         "notes": "Bus : Salem to Trichy",
         "bill_id": null,
-        "created_at": "2018-10-18 00:00:00",
+        "created_at": "2018-09-18 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -397,12 +397,12 @@
         "id": 123,
         "type": "expense",
         "amount": 43,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-19",
+        "date": "2018-09-19",
         "notes": "Bus : Trichy to Thanjavur",
         "bill_id": null,
-        "created_at": "2018-10-19 00:00:00",
+        "created_at": "2018-09-19 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -410,12 +410,12 @@
         "id": 124,
         "type": "expense",
         "amount": 10,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-19",
+        "date": "2018-09-19",
         "notes": "Bus : Thanjavur New Bus Stand to Old Bus Stand",
         "bill_id": null,
-        "created_at": "2018-10-19 00:00:00",
+        "created_at": "2018-09-19 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -423,12 +423,12 @@
         "id": 125,
         "type": "expense",
         "amount": 200,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-19",
+        "date": "2018-09-19",
         "notes": "Group Photos",
         "bill_id": null,
-        "created_at": "2018-10-19 00:00:00",
+        "created_at": "2018-09-19 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -436,12 +436,12 @@
         "id": 126,
         "type": "expense",
         "amount": 100,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-19",
+        "date": "2018-09-19",
         "notes": "Petrol For Abi Dad",
         "bill_id": null,
-        "created_at": "2018-10-19 00:00:00",
+        "created_at": "2018-09-19 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -449,12 +449,12 @@
         "id": 127,
         "type": "expense",
         "amount": 5,
-        "category_id": 4,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-19",
+        "date": "2018-09-19",
         "notes": "Bike Parking",
         "bill_id": null,
-        "created_at": "2018-10-19 00:00:00",
+        "created_at": "2018-09-19 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -462,12 +462,12 @@
         "id": 128,
         "type": "expense",
         "amount": 5,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-19",
+        "date": "2018-09-19",
         "notes": "Cheppal Token",
         "bill_id": null,
-        "created_at": "2018-10-19 00:00:00",
+        "created_at": "2018-09-19 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -475,12 +475,12 @@
         "id": 129,
         "type": "expense",
         "amount": 8,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-19",
+        "date": "2018-09-19",
         "notes": "For God",
         "bill_id": null,
-        "created_at": "2018-10-19 00:00:00",
+        "created_at": "2018-09-19 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -488,12 +488,12 @@
         "id": 130,
         "type": "expense",
         "amount": 350,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-19",
+        "date": "2018-09-19",
         "notes": "Normal Baby Checkup & Medicine",
         "bill_id": null,
-        "created_at": "2018-10-19 00:00:00",
+        "created_at": "2018-09-19 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -501,12 +501,12 @@
         "id": 131,
         "type": "expense",
         "amount": 200,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-20",
+        "date": "2018-09-20",
         "notes": "Ola Wallet Money Added",
         "bill_id": null,
-        "created_at": "2018-10-20 00:00:00",
+        "created_at": "2018-09-20 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -514,12 +514,12 @@
         "id": 132,
         "type": "expense",
         "amount": 9,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-20",
+        "date": "2018-09-20",
         "notes": "Water Pocket",
         "bill_id": null,
-        "created_at": "2018-10-20 00:00:00",
+        "created_at": "2018-09-20 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -527,12 +527,12 @@
         "id": 133,
         "type": "expense",
         "amount": 90,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-21",
+        "date": "2018-09-21",
         "notes": "Bus : Thanjavur to Pudukkottai",
         "bill_id": null,
-        "created_at": "2018-10-21 00:00:00",
+        "created_at": "2018-09-21 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -540,12 +540,12 @@
         "id": 134,
         "type": "expense",
         "amount": 70,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-21",
+        "date": "2018-09-21",
         "notes": "Auto : Pudukkottai Bus Stand to Home",
         "bill_id": null,
-        "created_at": "2018-10-21 00:00:00",
+        "created_at": "2018-09-21 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -553,12 +553,12 @@
         "id": 135,
         "type": "expense",
         "amount": 180,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-21",
+        "date": "2018-09-21",
         "notes": "Snacks For Akka Family",
         "bill_id": null,
-        "created_at": "2018-10-21 00:00:00",
+        "created_at": "2018-09-21 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -566,12 +566,12 @@
         "id": 136,
         "type": "expense",
         "amount": 100,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-21",
+        "date": "2018-09-21",
         "notes": "Gift to Prasanna Function",
         "bill_id": null,
-        "created_at": "2018-10-21 00:00:00",
+        "created_at": "2018-09-21 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -579,12 +579,12 @@
         "id": 137,
         "type": "expense",
         "amount": 50,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-21",
+        "date": "2018-09-21",
         "notes": "Petrol For Akka",
         "bill_id": null,
-        "created_at": "2018-10-21 00:00:00",
+        "created_at": "2018-09-21 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -592,12 +592,12 @@
         "id": 138,
         "type": "expense",
         "amount": 30,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-22",
+        "date": "2018-09-22",
         "notes": "Lunch",
         "bill_id": null,
-        "created_at": "2018-10-22 00:00:00",
+        "created_at": "2018-09-22 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -605,12 +605,12 @@
         "id": 139,
         "type": "expense",
         "amount": 30,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-24",
+        "date": "2018-09-24",
         "notes": "Lunch",
         "bill_id": null,
-        "created_at": "2018-10-24 00:00:00",
+        "created_at": "2018-09-24 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -618,12 +618,12 @@
         "id": 140,
         "type": "expense",
         "amount": 400,
-        "category_id": 4,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-24",
+        "date": "2018-09-24",
         "notes": "Bike Petrol",
         "bill_id": null,
-        "created_at": "2018-10-24 00:00:00",
+        "created_at": "2018-09-24 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -631,12 +631,12 @@
         "id": 141,
         "type": "expense",
         "amount": 30,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-25",
+        "date": "2018-09-25",
         "notes": "Lunch",
         "bill_id": null,
-        "created_at": "2018-10-25 00:00:00",
+        "created_at": "2018-09-25 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -644,12 +644,12 @@
         "id": 142,
         "type": "expense",
         "amount": 60,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-25",
+        "date": "2018-09-25",
         "notes": "Chips",
         "bill_id": null,
-        "created_at": "2018-10-25 00:00:00",
+        "created_at": "2018-09-25 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -657,12 +657,12 @@
         "id": 143,
         "type": "expense",
         "amount": 40,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-26",
+        "date": "2018-09-26",
         "notes": "Lunch",
         "bill_id": null,
-        "created_at": "2018-10-26 00:00:00",
+        "created_at": "2018-09-26 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -670,12 +670,12 @@
         "id": 144,
         "type": "expense",
         "amount": 30,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-26",
+        "date": "2018-09-26",
         "notes": "Eggs",
         "bill_id": null,
-        "created_at": "2018-10-26 00:00:00",
+        "created_at": "2018-09-26 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -683,12 +683,12 @@
         "id": 145,
         "type": "expense",
         "amount": 76.92,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-27",
+        "date": "2018-09-27",
         "notes": "Dinner",
         "bill_id": null,
-        "created_at": "2018-10-27 00:00:00",
+        "created_at": "2018-09-27 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -696,12 +696,12 @@
         "id": 146,
         "type": "expense",
         "amount": 899,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-28",
+        "date": "2018-09-28",
         "notes": "Drinks",
         "bill_id": null,
-        "created_at": "2018-10-28 00:00:00",
+        "created_at": "2018-09-28 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -709,12 +709,12 @@
         "id": 147,
         "type": "expense",
         "amount": 10,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-28",
+        "date": "2018-09-28",
         "notes": "Again Drinks",
         "bill_id": null,
-        "created_at": "2018-10-28 00:00:00",
+        "created_at": "2018-09-28 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -722,12 +722,12 @@
         "id": 148,
         "type": "expense",
         "amount": 45,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-28",
+        "date": "2018-09-28",
         "notes": "Cigarettes",
         "bill_id": null,
-        "created_at": "2018-10-28 00:00:00",
+        "created_at": "2018-09-28 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -735,12 +735,12 @@
         "id": 149,
         "type": "expense",
         "amount": 20,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-29",
+        "date": "2018-09-29",
         "notes": "Breakfast",
         "bill_id": null,
-        "created_at": "2018-10-29 00:00:00",
+        "created_at": "2018-09-29 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -748,12 +748,12 @@
         "id": 150,
         "type": "expense",
         "amount": 10,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-29",
+        "date": "2018-09-29",
         "notes": "Lunch",
         "bill_id": null,
-        "created_at": "2018-10-29 00:00:00",
+        "created_at": "2018-09-29 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -761,12 +761,12 @@
         "id": 151,
         "type": "expense",
         "amount": 30,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-29",
+        "date": "2018-09-29",
         "notes": "Lassie",
         "bill_id": null,
-        "created_at": "2018-10-29 00:00:00",
+        "created_at": "2018-09-29 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -774,12 +774,12 @@
         "id": 152,
         "type": "expense",
         "amount": 30,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-29",
+        "date": "2018-09-29",
         "notes": "Idly",
         "bill_id": null,
-        "created_at": "2018-10-29 00:00:00",
+        "created_at": "2018-09-29 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -787,12 +787,12 @@
         "id": 153,
         "type": "expense",
         "amount": 30,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-30",
+        "date": "2018-09-30",
         "notes": "Breakfast",
         "bill_id": null,
-        "created_at": "2018-10-30 00:00:00",
+        "created_at": "2018-09-30 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -800,12 +800,12 @@
         "id": 154,
         "type": "expense",
         "amount": 30,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-30",
+        "date": "2018-09-30",
         "notes": "Lunch",
         "bill_id": null,
-        "created_at": "2018-10-30 00:00:00",
+        "created_at": "2018-09-30 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -813,12 +813,12 @@
         "id": 155,
         "type": "expense",
         "amount": 15000,
-        "category_id": 30,
+        "category_id": 31,
         "source_id": 3,
-        "date": "2018-10-30",
+        "date": "2018-09-30",
         "notes": "Photos & Video Coverage",
         "bill_id": null,
-        "created_at": "2018-10-30 00:00:00",
+        "created_at": "2018-09-30 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -826,12 +826,12 @@
         "id": 156,
         "type": "expense",
         "amount": 25,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-31",
+        "date": "2018-09-31",
         "notes": "Breakfast",
         "bill_id": null,
-        "created_at": "2018-10-31 00:00:00",
+        "created_at": "2018-09-31 00:00:00",
         "transfer_group_id": null,
         "direction": null
       },
@@ -839,12 +839,12 @@
         "id": 157,
         "type": "expense",
         "amount": 40,
-        "category_id": 17,
+        "category_id": 34,
         "source_id": 3,
-        "date": "2018-10-31",
+        "date": "2018-09-31",
         "notes": "Lunch",
         "bill_id": null,
-        "created_at": "2018-10-31 00:00:00",
+        "created_at": "2018-09-31 00:00:00",
         "transfer_group_id": null,
         "direction": null
       }
@@ -857,7 +857,16 @@
         "icon": "cake",
         "color": "#A78BFA",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 50,
+        "name": "Anniversary",
+        "type": "expense",
+        "icon": "ring",
+        "color": "#E91E63",
+        "is_active": 1,
+        "created_at": "2026-07-09 10:52:07"
       },
       {
         "id": 2,
@@ -866,7 +875,7 @@
         "icon": "bank",
         "color": "#374151",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 3,
@@ -875,7 +884,7 @@
         "icon": "cards-heart-outline",
         "color": "#DB2777",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 4,
@@ -884,7 +893,7 @@
         "icon": "motorbike",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 5,
@@ -893,7 +902,7 @@
         "icon": "cash-plus",
         "color": "#A3E635",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 6,
@@ -902,7 +911,7 @@
         "icon": "baby-carriage",
         "color": "#22C55E",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 7,
@@ -911,7 +920,7 @@
         "icon": "tshirt-v",
         "color": "#FB923C",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 8,
@@ -920,7 +929,7 @@
         "icon": "television-play",
         "color": "#8B5CF6",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 9,
@@ -929,7 +938,7 @@
         "icon": "firework",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 10,
@@ -938,7 +947,7 @@
         "icon": "hand-heart",
         "color": "#22C55E",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 11,
@@ -947,7 +956,7 @@
         "icon": "liquor",
         "color": "#EF4444",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 12,
@@ -956,7 +965,7 @@
         "icon": "power-plug",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 13,
@@ -965,7 +974,7 @@
         "icon": "devices",
         "color": "#A78BFA",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 14,
@@ -974,7 +983,7 @@
         "icon": "human-female-dance",
         "color": "#FBBF24",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 15,
@@ -983,7 +992,7 @@
         "icon": "movie-open",
         "color": "#7C3AED",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 16,
@@ -992,7 +1001,7 @@
         "icon": "account-group",
         "color": "#F43F5E",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 17,
@@ -1001,7 +1010,7 @@
         "icon": "silverware-fork-knife",
         "color": "#F59E0B",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 18,
@@ -1010,7 +1019,7 @@
         "icon": "fruit-watermelon",
         "color": "#84CC16",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 19,
@@ -1019,7 +1028,7 @@
         "icon": "gas-cylinder",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 20,
@@ -1028,7 +1037,7 @@
         "icon": "bank-transfer-out",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 21,
@@ -1037,106 +1046,106 @@
         "icon": "gift",
         "color": "#EC4899",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 22,
-        "name": "Groceries",
-        "type": "expense",
-        "icon": "cart",
-        "color": "#F97316",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 23,
-        "name": "Guest Visit to Bangalore",
-        "type": "expense",
-        "icon": "account-group-outline",
-        "color": "#6366F1",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 24,
-        "name": "Home Improvement",
-        "type": "expense",
-        "icon": "hammer-wrench",
-        "color": "#A16207",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 25,
-        "name": "Hospital / Medicine",
-        "type": "expense",
-        "icon": "hospital-box-outline",
-        "color": "#EF4444",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 26,
-        "name": "Households",
-        "type": "expense",
-        "icon": "bus-stop-covered",
-        "color": "#14B8A6",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 27,
-        "name": "Interest",
-        "type": "income",
-        "icon": "percent",
-        "color": "#22C55E",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 28,
-        "name": "Jewellery",
-        "type": "expense",
-        "icon": "gold",
-        "color": "#FBBF24",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 29,
-        "name": "Loan / EMI",
-        "type": "expense",
-        "icon": "bank-transfer",
-        "color": "#B91C1C",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 30,
-        "name": "Misc",
-        "type": "expense",
-        "icon": "dots-horizontal",
-        "color": "#9CA3AF",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 31,
-        "name": "Mobile",
-        "type": "expense",
-        "icon": "cellphone",
-        "color": "#0EA5E9",
-        "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
-      },
-      {
-        "id": 32,
         "name": "Gold Loan",
         "type": "expense",
         "icon": "necklace",
         "color": "#FBBF24",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 23,
+        "name": "Groceries",
+        "type": "expense",
+        "icon": "cart",
+        "color": "#F97316",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 24,
+        "name": "Guest Visit to Bangalore",
+        "type": "expense",
+        "icon": "account-group-outline",
+        "color": "#6366F1",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 25,
+        "name": "Home Improvement",
+        "type": "expense",
+        "icon": "hammer-wrench",
+        "color": "#A16207",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 26,
+        "name": "Hospital / Medicine",
+        "type": "expense",
+        "icon": "hospital-box-outline",
+        "color": "#EF4444",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 27,
+        "name": "Households",
+        "type": "expense",
+        "icon": "bus-stop-covered",
+        "color": "#14B8A6",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 28,
+        "name": "Interest",
+        "type": "income",
+        "icon": "percent",
+        "color": "#22C55E",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 29,
+        "name": "Jewellery",
+        "type": "expense",
+        "icon": "gold",
+        "color": "#FBBF24",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 30,
+        "name": "Loan / EMI",
+        "type": "expense",
+        "icon": "bank-transfer",
+        "color": "#B91C1C",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 31,
+        "name": "Misc",
+        "type": "expense",
+        "icon": "dots-horizontal",
+        "color": "#9CA3AF",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 32,
+        "name": "Mobile",
+        "type": "expense",
+        "icon": "cellphone",
+        "color": "#0EA5E9",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 33,
@@ -1145,7 +1154,7 @@
         "icon": "arrow-up-bold-circle",
         "color": "#EF4444",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 34,
@@ -1154,7 +1163,7 @@
         "icon": "arrow-down-bold-circle",
         "color": "#10B981",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 35,
@@ -1163,7 +1172,7 @@
         "icon": "account-group",
         "color": "#FB923C",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 36,
@@ -1172,7 +1181,7 @@
         "icon": "printer",
         "color": "#6B7280",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 37,
@@ -1181,7 +1190,7 @@
         "icon": "account-group",
         "color": "#F97316",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 38,
@@ -1190,7 +1199,7 @@
         "icon": "home-account",
         "color": "#3B82F6",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 39,
@@ -1199,7 +1208,7 @@
         "icon": "cash-multiple",
         "color": "#16A34A",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 40,
@@ -1208,7 +1217,7 @@
         "icon": "content-cut",
         "color": "#334155",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:11"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 41,
@@ -1217,7 +1226,7 @@
         "icon": "shoe-sneaker",
         "color": "#DB2777",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 42,
@@ -1226,7 +1235,7 @@
         "icon": "piggy-bank",
         "color": "#059669",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 43,
@@ -1235,7 +1244,7 @@
         "icon": "food-variant",
         "color": "#FBBF24",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 44,
@@ -1244,7 +1253,7 @@
         "icon": "party-popper",
         "color": "#06B6D4",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 45,
@@ -1253,7 +1262,7 @@
         "icon": "bus",
         "color": "#14B8A6",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 46,
@@ -1262,7 +1271,7 @@
         "icon": "lightning-bolt",
         "color": "#64748B",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 47,
@@ -1271,7 +1280,7 @@
         "icon": "earth",
         "color": "#A3E635",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 48,
@@ -1280,7 +1289,7 @@
         "icon": "swap-horizontal",
         "color": "#6366F1",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       },
       {
         "id": 49,
@@ -1289,7 +1298,7 @@
         "icon": "cup-water",
         "color": "#64748B",
         "is_active": 1,
-        "created_at": "2026-07-03 10:12:12"
+        "created_at": "2026-07-09 08:19:40"
       }
     ],
     "sources": [
@@ -1306,7 +1315,7 @@
         "type": null,
         "initial_balance": 0,
         "icon": "bank",
-        "color": "#6366F1",
+        "color": "#FB923C",
         "id": 2
       },
       {
