@@ -6,8 +6,7 @@ import {
   FlatList,
   Modal,
   Text,
-  Platform,
-  InteractionManager
+  Platform
 } from 'react-native';
 import { createTransaction, createTransfer, getTransactionNoteSuggestions, updateTransaction, deleteTransaction } from '../services/transactions';
 import { getCategories } from '../services/categories';
@@ -30,10 +29,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [date, setDate] = useState(isEdit && transaction ? transaction.date : new Date().toISOString());
   const [notes, setNotes] = useState(isEdit && transaction ? transaction.notes : '');
   const [transferGroupId, setTransferGroupId] = useState(isEdit && transaction ? transaction.transfer_group_id : '');
-  const [showSourcePicker, setShowSourcePicker] = useState(false);
   const [showDateTimePicker, setShowDateTimePicker] = useState(false);
   const [showCategoryCreateModal, setShowCategoryCreateModal] = useState(false);
-  const [srcSearch, setSrcSearch] = useState('');
   const [pickerMode, setPickerMode] = useState('date');
   const [notesError, setNotesError] = useState(false);
   const [toAccount, setToAccount] = useState(null);
@@ -72,10 +69,11 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   useEffect(() => {
     if (!openTimePicker) return;
     setOpenTimePicker(false);
-    InteractionManager.runAfterInteractions(() => {
+    const timer = setTimeout(() => {
       setPickerMode('time');
       setShowDateTimePicker(true);
-    });
+    }, 300);
+    return () => clearTimeout(timer);
   }, [openTimePicker]);
 
   useEffect(() => {
@@ -1322,7 +1320,11 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   value={new Date(date)}
                   mode={pickerMode}
                   is24Hour={true}
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  display={
+                    Platform.OS === 'android'
+                      ? (pickerMode === 'date' ? 'calendar' : 'clock')
+                      : 'spinner'
+                  }
                   onChange={(event, selected) => {
                     if (Platform.OS === 'android') {
                       if (event.type === 'dismissed') {
