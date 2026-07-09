@@ -68,16 +68,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   }, []);
 
   useEffect(() => {
-    if (!openTimePicker) return;
-    setOpenTimePicker(false);
-    const timer = setTimeout(() => {
-      setPickerMode('time');
-      setShowDateTimePicker(true);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [openTimePicker]);
-
-  useEffect(() => {
     if (categories.length === 0) return;
     if (type === 'transfer') {
       setCategoryId(null);
@@ -1534,32 +1524,60 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                       if (event.type === 'dismissed') {
                         setShowDateTimePicker(false);
                         setPickerMode('date');
+                        setOpenTimePicker(false);
                         return;
                       }
 
-                      if (pickerMode === 'date') {
-                        if (selected) {
-                          const picked = selected;
-                          const prev = new Date(date);
-                          picked.setHours(prev.getHours(), prev.getMinutes(), 0, 0);
-                          setDate(picked.toISOString());
+                      if (!selected) return;
 
-                          setShowDateTimePicker(false);
-                          setOpenTimePicker(true);
-                        }
-                      } else {
-                        if (selected) {
-                          const prev = new Date(date);
-                          prev.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
-                          setDate(prev.toISOString());
-                        }
+                      if (pickerMode === 'date') {
+                        // Preserve existing time
+                        const current = new Date(date);
+                        const newDate = new Date(selected);
+
+                        newDate.setHours(
+                          current.getHours(),
+                          current.getMinutes(),
+                          current.getSeconds(),
+                          0
+                        );
+
+                        setDate(newDate.toISOString());
+
+                        // Close date picker first
                         setShowDateTimePicker(false);
-                        setPickerMode('date');
+
+                        // Open time picker after animation finishes
+                        requestAnimationFrame(() => {
+                          setTimeout(() => {
+                            setPickerMode('time');
+                            setShowDateTimePicker(true);
+                          }, 500);
+                        });
+
+                        return;
                       }
+
+                      // TIME PICKER
+                      const current = new Date(date);
+
+                      current.setHours(
+                        selected.getHours(),
+                        selected.getMinutes(),
+                        0,
+                        0
+                      );
+
+                      setDate(current.toISOString());
+
+                      setShowDateTimePicker(false);
+                      setPickerMode('date');
+                      setOpenTimePicker(false);
                     } else {
                       if (selected) {
                         setDate(selected.toISOString());
                       }
+
                       setShowDateTimePicker(false);
                       setPickerMode('date');
                     }
