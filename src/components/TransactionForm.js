@@ -379,6 +379,20 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           error={notesError}
           autoCorrect={false}
           autoCapitalize="sentences"
+          right={
+            notes.length > 0 ? (
+              <PaperTextInput.Icon
+                icon="close-circle-outline"
+                onPress={() => {
+                  setNotes('');
+                  setFilteredSuggestions([]);
+                  setShowSuggestions(false);
+                  setNotesError(false);
+                }}
+                forceTextInputFocus={false}
+              />
+            ) : null
+          }
         />
 
         {showSuggestions && (
