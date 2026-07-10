@@ -8,6 +8,7 @@ import { groupTransactions } from '../services/reports';
 import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import events from '../services/events';
 
 const ReportItemCard = React.memo(({ data, categoriesMap, onCategoryPress }) => {
   return (
@@ -67,32 +68,39 @@ export default function ReportsScreen() {
   const [loading, setLoading] = useState(true);
   const navigation = useNavigation();
 
-  useEffect(() => {
-    let active = true;
-    async function loadData() {
-      try {
-        setLoading(true);
-        const [tx, cats] = await Promise.all([
-          getTransactions(1000000),
-          getCategories(true)
-        ]);
-        if (active) {
-          const cmap = {};
-          cats.forEach(c => { cmap[c.id] = c; });
-          setCategoriesMap(cmap);
-          setTransactions(tx);
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [tx, cats] = await Promise.all([
+        getTransactions(1000000),
+        getCategories(true)
+      ]);
+      const cmap = {};
+      cats.forEach(c => {
+        cmap[c.id] = c;
+      });
+      setCategoriesMap(cmap);
+      setTransactions(tx);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
     }
-    loadData();
-    return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    const refresh = () => {
+      loadData();
+    };
+    events.on('transactionsChanged', refresh);
+    return () => {
+      events.off('transactionsChanged', refresh);
+    };
+  }, [loadData]);
 
   const handleModeChange = useCallback((newMode) => {
     setMode(newMode);

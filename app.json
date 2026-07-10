@@ -2,8 +2,8 @@
   "expo": {
     "name": "SpendoraX",
     "slug": "spendorax",
-    "version": "2.3.1",
-    "runtimeVersion": "2.3.1",
+    "version": "2.3.2",
+    "runtimeVersion": "2.3.2",
     "icon": "./assets/logo.png",
     "platforms": [
       "ios",
@@ -40,7 +40,7 @@
     },
     "ios": {
       "icon": "./assets/logo.png",
-      "buildNumber": "2.3.1"
+      "buildNumber": "2.3.2"
     },
     "extra": {
       "eas": {

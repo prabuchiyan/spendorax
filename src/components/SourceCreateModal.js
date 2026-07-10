@@ -8,7 +8,13 @@ import IconPicker from './IconPicker';
 import ColorPickerModal from './ColorPickerModal';
 import IconButton from './IconButton';
 
-export default function SourceCreateModal({ visible, onClose, onSave, editData }) {
+export default function SourceCreateModal({
+  visible,
+  onClose,
+  onSave,
+  onSourceCreated,
+  editData
+}) {
 
   const [name, setName] = useState('');
   const [initial, setInitial] = useState('0');
@@ -50,7 +56,11 @@ export default function SourceCreateModal({ visible, onClose, onSave, editData }
       await createSource(payload);
     }
 
-    onSave();
+    if (onSourceCreated) {
+      onSourceCreated();
+    } else if (onSave) {
+      onSave();
+    }
   }
 
   return (

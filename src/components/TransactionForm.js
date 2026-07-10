@@ -1,14 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, ScrollView, Modal, Text, Platform, InteractionManager } from 'react-native';
-import { createTransaction, createTransfer } from '../services/transactions';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  TouchableOpacity,
+  ScrollView,
+  FlatList,
+  Modal,
+  Text,
+  Platform
+} from 'react-native';
+import { createTransaction, createTransfer, getTransactionNoteSuggestions, updateTransaction, deleteTransaction } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
 import { TextInput as PaperTextInput, Button as PaperButton, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import CategoryCreateModal from './CategoryCreateModal';
-import { updateTransaction } from '../services/transactions';
+import SourceCreateModal from './SourceCreateModal';
 import ConfirmDialog from './ConfirmDialog';
-import { deleteTransaction } from '../services/transactions';
 import { Feather } from '@expo/vector-icons';
 
 export default function TransactionForm({ onCreated, onCancel, transaction, isEdit }) {
@@ -22,18 +29,32 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [date, setDate] = useState(isEdit && transaction ? transaction.date : new Date().toISOString());
   const [notes, setNotes] = useState(isEdit && transaction ? transaction.notes : '');
   const [transferGroupId, setTransferGroupId] = useState(isEdit && transaction ? transaction.transfer_group_id : '');
-  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
-  const [showSourcePicker, setShowSourcePicker] = useState(false);
   const [showDateTimePicker, setShowDateTimePicker] = useState(false);
   const [showCategoryCreateModal, setShowCategoryCreateModal] = useState(false);
-  const [catSearch, setCatSearch] = useState('');
-  const [srcSearch, setSrcSearch] = useState('');
   const [pickerMode, setPickerMode] = useState('date');
   const [notesError, setNotesError] = useState(false);
   const [toAccount, setToAccount] = useState(null);
   const [selectingFor, setSelectingFor] = useState('from');
   const [openTimePicker, setOpenTimePicker] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
+  const [noteSuggestions, setNoteSuggestions] = useState([]);
+  const [filteredSuggestions, setFilteredSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showCategoryGrid, setShowCategoryGrid] = useState(
+    !(isEdit && transaction?.category_id)
+  );
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
+  const categorySearchRef = useRef(null);
+  const [showSourceGrid, setShowSourceGrid] = useState(
+    !(isEdit && transaction?.source_id)
+  );
+  const [showToAccountGrid, setShowToAccountGrid] = useState(true);
+  const [showSourceModal, setShowSourceModal] = useState(false);
+  const [sourceSearch, setSourceSearch] = useState('');
+  const sourceSearchRef = useRef(null);
+  const [showSourceCreateModal, setShowSourceCreateModal] = useState(false);
+
 
   useEffect(() => {
     (async () => {
@@ -41,17 +62,51 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       setCategories(cats);
       const src = await getSources(true);
       setSources(src);
+      const notes = await getTransactionNoteSuggestions();
+      setNoteSuggestions(notes);
     })();
   }, []);
 
   useEffect(() => {
-    if (!openTimePicker) return;
-    setOpenTimePicker(false);
-    InteractionManager.runAfterInteractions(() => {
-      setPickerMode('time');
-      setShowDateTimePicker(true);
-    });
-  }, [openTimePicker]);
+    if (categories.length === 0) return;
+    if (type === 'transfer') {
+      setCategoryId(null);
+      return;
+    }
+    const exists = categories.some(
+      c => c.id === categoryId && c.type === type
+    );
+    if (!exists) {
+      setCategoryId(null);
+    }
+  }, [type, categories]);
+
+  useEffect(() => {
+    if (showCategoryModal) {
+      setTimeout(() => {
+        categorySearchRef.current?.focus();
+      }, 250);
+    }
+  }, [showCategoryModal]);
+
+  useEffect(() => {
+    if (showSourceModal) {
+      setTimeout(() => {
+        sourceSearchRef.current?.focus();
+      }, 250);
+    }
+  }, [showSourceModal]);
+
+  useEffect(() => {
+    if (isEdit && transaction?.category_id) {
+      setCategoryId(transaction.category_id);
+      setShowCategoryGrid(false);
+    }
+    if (isEdit && transaction?.source_id) {
+      setSourceId(transaction.source_id);
+      setShowSourceGrid(false);
+    }
+  }, [isEdit, transaction]);
 
   async function submit() {
     const val = parseFloat(amount);
@@ -140,28 +195,56 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
     return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm}`;
   }
-  const accent =
-    type === 'expense' ? '#E46A6A' :
-      type === 'income' ? '#36B37E' : '#000';
+
+  const handleNotesChange = (text) => {
+    setNotes(text);
+    setNotesError(false);
+
+    if (!text.trim()) {
+      setFilteredSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const matches = noteSuggestions.filter(item => {
+      const category = categories.find(c => c.id === item.category_id);
+
+      return (
+        item.notes.toLowerCase().includes(text.toLowerCase()) &&
+        category?.type === type
+      );
+    });
+
+    setFilteredSuggestions(matches);
+    setShowSuggestions(matches.length > 0);
+  };
+
+  const filteredCategories = categories.filter(c => {
+    if (type === 'transfer') return false;
+    return c.type === type;
+  });
+
+  const visibleCategories = filteredCategories.slice(0, 12);
+
+  const searchedCategories = filteredCategories.filter(c =>
+    c.name.toLowerCase().includes(categorySearch.toLowerCase())
+  );
+
+  const searchedSources = sources.filter(s =>
+    (s.is_active === undefined || s.is_active) &&
+    s.name.toLowerCase().includes(sourceSearch.toLowerCase())
+  );
+  const visibleSources = searchedSources.slice(0, 4);
+
+  const accent = type === 'expense' ? '#E46A6A' : type === 'income' ? '#36B37E' : '#000';
 
   return (
-    <ScrollView>
-      <View
-        style={{
-          alignItems: 'flex-end',
-          marginBottom: 12,
-        }}
-      >
-        {isEdit && (
-          <TouchableOpacity onPress={() => setConfirmVisible(true)}>
-            <Feather
-              name="trash-2"
-              size={22}
-              color="#E46A6A"
-            />
-          </TouchableOpacity>
-        )}
-      </View>
+    <ScrollView
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="none"
+      nestedScrollEnabled
+      showsVerticalScrollIndicator={false}
+    >
 
       <View style={{ borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
         <View style={{
@@ -187,46 +270,190 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         </View>
       </View>
 
-      <PaperTextInput label="Amount" value={amount} onChangeText={(t) => { setAmount(t); if (amountError) setAmountError(false); }} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12, fontSize: 20 }} error={amountError} contentStyle={{ fontSize: 24 }} />
-      {amountError ? <Text style={{ color: '#E46A6A', marginBottom: 8 }}>Enter an amount greater than 0</Text> : null}
-      <View style={{ flexDirection: 'row', marginBottom: 12 }}>
-        <Chip
-          mode="outlined"
-          selected={type === 'expense'}
-          showSelectedCheck={false}
-          onPress={() => setType('expense')}
-          style={{ marginRight: 8, borderColor: type === 'expense' ? accent : undefined }}
-        >
-          Expense
-        </Chip>
-
-        <Chip
-          mode="outlined"
-          selected={type === 'income'}
-          showSelectedCheck={false}
-          onPress={() => setType('income')}
-          style={{ marginRight: 8, borderColor: type === 'income' ? accent : undefined }}
-        >
-          Income
-        </Chip>
-
-        {!isEdit &&
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 12,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Chip
             mode="outlined"
-            selected={type === 'transfer'}
+            selected={type === 'expense'}
             showSelectedCheck={false}
-            onPress={() => setType('transfer')}
+            onPress={() => setType('expense')}
             style={{
-              borderColor: type === 'transfer' ? '#000' : undefined
-            }}
-            textStyle={{
-              color: type === 'transfer' ? '#000' : undefined,
-              fontWeight: type === 'transfer' ? '700' : 'normal'
+              marginRight: 8,
+              borderColor: type === 'expense' ? accent : undefined,
             }}
           >
-            Transfer
+            Expense
           </Chip>
-        }
+
+          <Chip
+            mode="outlined"
+            selected={type === 'income'}
+            showSelectedCheck={false}
+            onPress={() => setType('income')}
+            style={{
+              marginRight: 8,
+              borderColor: type === 'income' ? accent : undefined,
+            }}
+          >
+            Income
+          </Chip>
+
+          {!isEdit && (
+            <Chip
+              mode="outlined"
+              selected={type === 'transfer'}
+              showSelectedCheck={false}
+              onPress={() => setType('transfer')}
+              style={{
+                borderColor: type === 'transfer' ? '#000' : undefined,
+              }}
+              textStyle={{
+                color: type === 'transfer' ? '#000' : undefined,
+                fontWeight: type === 'transfer' ? '700' : 'normal',
+              }}
+            >
+              Transfer
+            </Chip>
+          )}
+        </View>
+
+        {isEdit && (
+          <TouchableOpacity
+            onPress={() => setConfirmVisible(true)}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: '#E46A6A',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <Feather
+              name="trash-2"
+              size={20}
+              color="#E46A6A"
+            />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <PaperTextInput label="Amount" value={amount} onChangeText={(t) => { setAmount(t); if (amountError) setAmountError(false); }} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} error={amountError} contentStyle={{ fontSize: 24 }} />
+      {amountError ? <Text style={{ color: '#E46A6A', marginBottom: 8 }}>Enter an amount greater than 0</Text> : null}
+
+      <View
+        style={{
+          position: 'relative',
+          marginBottom: 12,
+          zIndex: 999,
+        }}
+      >
+        <PaperTextInput
+          label={
+            type === 'expense'
+              ? 'Where did you spend?'
+              : type === 'income'
+                ? 'How did you get this money?'
+                : 'Where do you want to transfer?'
+          }
+          value={notes}
+          onChangeText={handleNotesChange}
+          mode="outlined"
+          error={notesError}
+          autoCorrect={false}
+          autoCapitalize="sentences"
+          right={
+            notes.length > 0 ? (
+              <PaperTextInput.Icon
+                icon="close-circle-outline"
+                onPress={() => {
+                  setNotes('');
+                  setFilteredSuggestions([]);
+                  setShowSuggestions(false);
+                  setNotesError(false);
+                }}
+                forceTextInputFocus={false}
+              />
+            ) : null
+          }
+        />
+
+        {showSuggestions && (
+          <View
+            style={{
+              position: 'absolute',
+              top: 62,          // Immediately below the TextInput
+              left: 0,
+              right: 0,
+              backgroundColor: '#fff',
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: '#E6EAF2',
+              maxHeight: 220,
+              zIndex: 9999,
+              elevation: 10,
+            }}
+          >
+            <FlatList
+              data={filteredSuggestions}
+              keyExtractor={(item, index) => `${item.notes}-${index}`}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator
+              persistentScrollbar
+              style={{ maxHeight: 220 }}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  onPress={() => {
+                    setNotes(item.notes);
+                    setCategoryId(item.category_id);
+                    setShowSuggestions(false);
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: 12,
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#F2F2F2',
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 17,
+                      backgroundColor: item.color,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginRight: 12,
+                    }}
+                  >
+                    <MaterialCommunityIcons
+                      name={item.icon}
+                      size={18}
+                      color="#fff"
+                    />
+                  </View>
+
+                  <Text
+                    style={{ flex: 1 }}
+                    numberOfLines={1}
+                  >
+                    {item.notes}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        )}
       </View>
 
       <View style={{ marginBottom: 12 }}>
@@ -259,129 +486,1010 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
       {type !== 'transfer' && (
         <View style={{ marginBottom: 12 }}>
-          {!transferGroupId &&
+          {!transferGroupId && (
             <>
               <Text style={{ marginBottom: 6, color: '#666' }}>Category</Text>
-              <TouchableOpacity onPress={() => setShowCategoryPicker(true)} activeOpacity={0.8} style={{ borderWidth: 1, borderColor: '#eee', padding: 12, borderRadius: 8, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center' }}>
-                <MaterialCommunityIcons name={(categories.find(x => x.id === categoryId) || {}).icon || 'tag'} size={20} color={(categories.find(x => x.id === categoryId) || {}).color || '#4B7CF3'} style={{ marginRight: 10 }} />
-                <Text style={{ fontSize: 16 }}>{(categories.find(x => x.id === categoryId) || {}).name || 'Select category'}</Text>
-              </TouchableOpacity>
-            </>
-          }
-          <Modal visible={showCategoryPicker} transparent animationType="slide" onRequestClose={() => setShowCategoryPicker(false)}>
-            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 20 }}>
-              <View style={{ backgroundColor: '#fff', padding: 12, borderRadius: 8, maxHeight: '80%' }}>
-                <PaperTextInput label="Search" value={catSearch} onChangeText={setCatSearch} mode="outlined" style={{ marginBottom: 8 }} />
-                <ScrollView>
-                  <TouchableOpacity
-                    onPress={() => { setShowCategoryPicker(false); setShowCategoryCreateModal(true); }}
-                    style={{ flexDirection: 'row', alignItems: 'center', padding: 10, borderBottomWidth: 1, borderColor: '#f3f3f3', backgroundColor: '#e6f7ff' }}
+
+              {showCategoryGrid ? (
+                <>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      flexWrap: 'wrap',
+                      justifyContent: 'space-between',
+                      rowGap: 8,
+                      marginTop: 8,
+                    }}
                   >
-                    <MaterialCommunityIcons name="plus-circle-outline" size={20} color={'#4B7CF3'} style={{ marginRight: 12 }} />
-                    <Text style={{ fontSize: 16, color: '#4B7CF3', fontWeight: '600' }}>Create New Category</Text>
-                  </TouchableOpacity>
-                  {categories.filter(c => c.name.toLowerCase().includes(catSearch.toLowerCase())).map(c => (
-                    <TouchableOpacity key={c.id} onPress={() => { setCategoryId(c.id); setShowCategoryPicker(false); }} style={{ flexDirection: 'row', alignItems: 'center', padding: 10, borderBottomWidth: 1, borderColor: '#f3f3f3', backgroundColor: categoryId === c.id ? '#FFF9F9' : '#fff' }}>
-                      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.color || '#eee', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                        <MaterialCommunityIcons name={c.icon || 'tag'} size={18} color={'#fff'} />
-                      </View>
-                      <Text style={{ fontSize: 16 }}>{c.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-                <View style={{ height: 8 }} />
-                <PaperButton mode="outlined" onPress={() => setShowCategoryPicker(false)}>Close</PaperButton>
-              </View>
-            </View>
-          </Modal>
+                    {visibleCategories.map(c => (
+                      <TouchableOpacity
+                        key={c.id}
+                        onPress={() => {
+                          setCategoryId(c.id);
+                          setShowCategoryModal(false);
+                          setShowCategoryGrid(false);
+                          setCategorySearch('');
+                        }}
+                        style={{
+                          width: '23%',
+                          height: 72,
+                          borderRadius: 10,
+                          marginBottom: 8,
+                          backgroundColor: c.color || '#4B7CF3',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          paddingHorizontal: 4,
+                          paddingVertical: 6,
+                          borderColor: '#111',
+                        }}
+                      >
+                        <MaterialCommunityIcons
+                          name={c.icon || 'tag'}
+                          size={18}
+                          color="#fff"
+                        />
+
+                        {categoryId === c.id && (
+                          <View
+                            style={{
+                              position: 'absolute',
+                              top: 4,
+                              right: 4,
+                              width: 18,
+                              height: 18,
+                              borderRadius: 9,
+                              backgroundColor: '#fff',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <MaterialCommunityIcons
+                              name="check"
+                              size={12}
+                              color="#2E7D32"
+                            />
+                          </View>
+                        )}
+                        <Text
+                          numberOfLines={2}
+                          style={{
+                            color: '#fff',
+                            textAlign: 'center',
+                            marginTop: 6,
+                            fontWeight: '600',
+                            fontSize: 12,
+                            lineHeight: 16,
+                          }}
+                        >
+                          {c.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => setShowCategoryModal(true)}
+                  activeOpacity={0.85}
+                  style={{
+                    backgroundColor: '#fff',
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: '#E6EAF2',
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    elevation: 2,
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      flex: 1,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 21,
+                        backgroundColor:
+                          categories.find(x => x.id === categoryId)?.color || '#4B7CF3',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        marginRight: 12,
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name={categories.find(x => x.id === categoryId)?.icon || 'tag'}
+                        size={22}
+                        color="#fff"
+                      />
+                    </View>
+
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: '#888',
+                        }}
+                      >
+                        Selected Category
+                      </Text>
+
+                      <Text
+                        numberOfLines={1}
+                        style={{
+                          fontSize: 16,
+                          fontWeight: '700',
+                          color: '#222',
+                        }}
+                      >
+                        {categories.find(x => x.id === categoryId)?.name}
+                      </Text>
+                    </View>
+
+                    <MaterialCommunityIcons
+                      name="pencil-outline"
+                      size={22}
+                      color="#4B7CF3"
+                    />
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {showCategoryGrid && filteredCategories.length > 12 && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setCategorySearch('');
+                    setShowCategoryModal(true);
+                  }}
+                  style={{
+                    alignItems: 'center',
+                    paddingVertical: 8,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: '#4B7CF3',
+                      fontWeight: '700',
+                    }}
+                  >
+                    See More
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
         </View>
       )}
 
       <View style={{ marginBottom: 12 }}>
-        <Text style={{ marginBottom: 6, color: '#666' }}>Payment Source</Text>
-        <TouchableOpacity onPress={() => { setSelectingFor('from'); setShowSourcePicker(true) }} activeOpacity={0.8} style={{ borderWidth: 1, borderColor: '#eee', padding: 12, borderRadius: 8, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#f0f4ff', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-            <MaterialCommunityIcons name={(sources.find(x => x.id === sourceId) || {}).icon || 'cash'} size={18} color={(sources.find(x => x.id === sourceId) || {}).color || '#4B7CF3'} />
-          </View>
-          <Text style={{ fontSize: 16 }}>{(sources.find(x => x.id === sourceId) || {}).name || 'Select source'}</Text>
-        </TouchableOpacity>
-        <Modal visible={showSourcePicker} transparent animationType="slide" onRequestClose={() => setShowSourcePicker(false)}>
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 20 }}>
-            <View style={{ backgroundColor: '#fff', padding: 12, borderRadius: 8, maxHeight: '80%' }}>
-              <PaperTextInput label="Search" value={srcSearch} onChangeText={setSrcSearch} mode="outlined" style={{ marginBottom: 8 }} />
-              <ScrollView>
-                {sources.filter(s =>
-                  s.name.toLowerCase().includes(srcSearch.toLowerCase()) &&
-                  (s.is_active === undefined || s.is_active)
-                ).map(s => ( // Filter active sources
-                  <TouchableOpacity key={s.id}
-                    onPress={() => {
-                      if (selectingFor === 'from') {
-                        setSourceId(s.id);
-                      } else {
-                        setToAccount(s.id);
-                      }
-                      setShowSourcePicker(false);
-                    }}
-                    style={{ flexDirection: 'row', alignItems: 'center', padding: 10, borderBottomWidth: 1, borderColor: '#f3f3f3', backgroundColor: sourceId === s.id ? '#F7FBFF' : '#fff' }}>
-                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#eef7ff', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                      <MaterialCommunityIcons name={s.icon || 'cash'} size={18} color={(s.color) || '#4B7CF3'} />
+        <Text
+          style={{
+            marginBottom: 8,
+            color: '#666'
+          }}
+        >
+          Payment Source
+        </Text>
+
+        {showSourceGrid ? (
+          <>
+            <View
+              style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                justifyContent: 'flex-start',
+                marginTop: 8,
+              }}
+            >
+              {visibleSources.map((s, index) => (
+                <TouchableOpacity
+                  key={s.id}
+                  onPress={() => {
+                    setSourceId(s.id);
+                    setShowSourceGrid(false);
+                    setSourceSearch('');
+                  }}
+                  style={{
+                    width: '23%',
+                    height: 72,
+                    marginBottom: 8,
+                    marginRight: (index + 1) % 4 === 0 ? 0 : '2.66%',
+                    borderRadius: 10,
+                    backgroundColor: s.color || '#4B7CF3',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    paddingHorizontal: 4,
+                    paddingVertical: 6,
+                    borderColor: '#111',
+                    transform: [
+                      {
+                        scale: sourceId === s.id ? 1.05 : 1,
+                      },
+                    ],
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name={s.icon || 'cash'}
+                    size={18}
+                    color="#fff"
+                  />
+
+                  {sourceId === s.id && (
+                    <View
+                      style={{
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        width: 18,
+                        height: 18,
+                        borderRadius: 9,
+                        backgroundColor: '#fff',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="check"
+                        size={12}
+                        color="#2E7D32"
+                      />
                     </View>
-                    <Text style={{ fontSize: 16 }}>{s.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-              <View style={{ height: 8 }} />
-              <PaperButton mode="outlined" onPress={() => setShowSourcePicker(false)}>Close</PaperButton>
+                  )}
+
+                  <Text
+                    numberOfLines={2}
+                    style={{
+                      color: '#fff',
+                      textAlign: 'center',
+                      marginTop: 6,
+                      fontWeight: '600',
+                      fontSize: 12,
+                      lineHeight: 16,
+                    }}
+                  >
+                    {s.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          </View>
-        </Modal>
+
+            {searchedSources.length > 4 && (
+              <TouchableOpacity
+                onPress={() => {
+                  setSourceSearch('');
+                  setShowSourceModal(true);
+                }}
+                style={{
+                  alignItems: 'center',
+                  paddingVertical: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    color: '#4B7CF3',
+                    fontWeight: '700',
+                  }}
+                >
+                  See More
+                </Text>
+              </TouchableOpacity>
+            )}
+          </>
+        ) : (
+
+          <TouchableOpacity
+            onPress={() => {
+              setSourceSearch('');
+              setShowSourceModal(true);
+            }}
+            activeOpacity={0.85}
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: '#E6EAF2',
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              elevation: 2,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                flex: 1,
+              }}
+            >
+              <View
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 21,
+                  backgroundColor:
+                    sources.find(x => x.id === sourceId)?.color || '#4B7CF3',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: 12,
+                }}
+              >
+                <MaterialCommunityIcons
+                  name={sources.find(x => x.id === sourceId)?.icon || 'cash'}
+                  size={22}
+                  color="#fff"
+                />
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: '#888',
+                  }}
+                >
+                  Selected Source
+                </Text>
+
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    fontSize: 16,
+                    fontWeight: '700',
+                    color: '#222',
+                  }}
+                >
+                  {sources.find(x => x.id === sourceId)?.name}
+                </Text>
+              </View>
+
+              <MaterialCommunityIcons
+                name="pencil-outline"
+                size={22}
+                color="#4B7CF3"
+              />
+            </View>
+          </TouchableOpacity>
+
+        )}
       </View>
+
+      <Modal
+        visible={showCategoryModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCategoryModal(false)}
+      >
+        <View
+          style={{
+            alignItems: 'center',
+            marginBottom: 12,
+          }}
+        >
+          <View
+            style={{
+              width: 42,
+              height: 5,
+              borderRadius: 3,
+              backgroundColor: '#D8D8D8',
+            }}
+          />
+        </View>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.45)',
+            justifyContent: 'flex-end',
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: '#fff',
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 16,
+              height: '85%',
+              paddingBottom: 20,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 14,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: '700',
+                }}
+              >
+                Select Category
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => setShowCategoryModal(false)}
+              >
+                <MaterialCommunityIcons
+                  name="close"
+                  size={24}
+                  color="#666"
+                />
+              </TouchableOpacity>
+            </View>
+
+            <PaperTextInput
+              ref={categorySearchRef}
+              label="Search category"
+              value={categorySearch}
+              onChangeText={setCategorySearch}
+              mode="outlined"
+              left={<PaperTextInput.Icon icon="magnify" />}
+              style={{ marginBottom: 16 }}
+            />
+
+            <Text
+              style={{
+                marginBottom: 10,
+                color: '#666',
+                fontSize: 13,
+              }}
+            >
+              {searchedCategories.length} Categories
+            </Text>
+
+            <View style={{ flex: 1 }}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingBottom: 90 }}
+              >
+
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    flexWrap: 'wrap',
+                    justifyContent: 'flex-start',
+                  }}
+                >
+                  {searchedCategories.map((c, index) => (
+                    <TouchableOpacity
+                      key={c.id}
+                      onPress={() => {
+                        setCategoryId(c.id);
+                        setCategorySearch('');
+                        setShowCategoryModal(false);
+                        setShowCategoryGrid(false);
+                      }}
+                      activeOpacity={0.8}
+                      style={{
+                        width: '23%',
+                        height: 72,
+                        marginBottom: 10,
+                        marginRight: (index + 1) % 4 === 0 ? 0 : '2.66%',
+                        borderRadius: 10,
+                        backgroundColor: c.color || '#4B7CF3',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        paddingHorizontal: 4,
+                        paddingVertical: 6,
+                        borderColor: '#111',
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name={c.icon || 'tag'}
+                        size={18}
+                        color="#fff"
+                      />
+
+                      {categoryId === c.id && (
+                        <View
+                          style={{
+                            position: 'absolute',
+                            top: 4,
+                            right: 4,
+                            width: 18,
+                            height: 18,
+                            borderRadius: 9,
+                            backgroundColor: '#fff',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <MaterialCommunityIcons
+                            name="check"
+                            size={12}
+                            color="#2E7D32"
+                          />
+                        </View>
+                      )}
+
+                      <Text
+                        numberOfLines={2}
+                        style={{
+                          color: '#fff',
+                          fontSize: 10,
+                          fontWeight: '600',
+                          textAlign: 'center',
+                          marginTop: 4,
+                          lineHeight: 12,
+                        }}
+                      >
+                        {c.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {searchedCategories.length === 0 && (
+                  <Text
+                    style={{
+                      textAlign: 'center',
+                      color: '#999',
+                      marginVertical: 30,
+                    }}
+                  >
+                    No categories found
+                  </Text>
+                )}
+              </ScrollView>
+
+            </View>
+
+          </View>
+
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => {
+              setCategorySearch('');
+              setShowCategoryModal(false);
+              setShowCategoryCreateModal(true);
+            }}
+            style={{
+              position: 'absolute',
+              right: 20,
+              bottom: 20,
+              width: 58,
+              height: 58,
+              borderRadius: 29,
+              backgroundColor: accent,
+              justifyContent: 'center',
+              alignItems: 'center',
+              elevation: 8,
+              shadowColor: '#000',
+              shadowOpacity: 0.25,
+              shadowRadius: 6,
+              shadowOffset: {
+                width: 0,
+                height: 3,
+              },
+            }}
+          >
+            <MaterialCommunityIcons
+              name="plus"
+              size={30}
+              color="#fff"
+            />
+          </TouchableOpacity>
+
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showSourceModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSourceModal(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(69, 48, 48, 0.45)',
+            justifyContent: 'flex-end',
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: '#fff',
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 16,
+              height: '85%',
+            }}
+          >
+
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 12,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: '700'
+                }}
+              >
+                Select Payment Source
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => setShowSourceModal(false)}
+              >
+                <MaterialCommunityIcons
+                  name="close"
+                  size={24}
+                  color="#666"
+                />
+              </TouchableOpacity>
+            </View>
+
+            <PaperTextInput
+              ref={sourceSearchRef}
+              label="Search Source"
+              value={sourceSearch}
+              onChangeText={setSourceSearch}
+              mode="outlined"
+              left={<PaperTextInput.Icon icon="magnify" />}
+              style={{ marginBottom: 12 }}
+            />
+
+            <Text
+              style={{
+                color: "#666",
+                marginBottom: 12
+              }}
+            >
+              {searchedSources.length} Sources
+            </Text>
+
+            <View style={{ flex: 1 }}>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{
+                  paddingBottom: 100
+                }}
+              >
+
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    flexWrap: 'wrap',
+                    justifyContent: 'flex-start',
+                  }}
+                >
+                  {searchedSources.map((s, index) => (
+                    <TouchableOpacity
+                      key={s.id}
+                      onPress={() => {
+                        if (selectingFor === 'from') {
+                          setSourceId(s.id);
+                          setShowSourceGrid(false);
+                        } else {
+                          setToAccount(s.id);
+                          setShowToAccountGrid(false);
+                        }
+                        setSourceSearch('');
+                        setShowSourceModal(false);
+                      }}
+                      activeOpacity={0.8}
+                      style={{
+                        width: '23%',
+                        height: 72,
+                        marginBottom: 10,
+                        marginRight: (index + 1) % 4 === 0 ? 0 : '2.66%',
+                        borderRadius: 10,
+                        backgroundColor: s.color || accent,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        paddingHorizontal: 4,
+                        paddingVertical: 6,
+                        borderColor: '#111',
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name={s.icon || 'cash'}
+                        size={18}
+                        color="#fff"
+                      />
+
+                      {sourceId === s.id && (
+                        <View
+                          style={{
+                            position: 'absolute',
+                            top: 4,
+                            right: 4,
+                            width: 18,
+                            height: 18,
+                            borderRadius: 9,
+                            backgroundColor: '#fff',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <MaterialCommunityIcons
+                            name="check"
+                            size={12}
+                            color="#2E7D32"
+                          />
+                        </View>
+                      )}
+
+                      <Text
+                        numberOfLines={2}
+                        style={{
+                          color: '#fff',
+                          textAlign: 'center',
+                          marginTop: 6,
+                          fontWeight: '600',
+                          fontSize: 12,
+                          lineHeight: 16,
+                        }}
+                      >
+                        {s.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+              </ScrollView>
+              {searchedSources.length === 0 && (
+                <Text
+                  style={{
+                    textAlign: "center",
+                    color: "#999",
+                    marginTop: 30
+                  }}
+                >
+                  No payment sources found
+                </Text>
+              )}
+            </View>
+
+          </View>
+        </View>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => {
+            setSourceSearch('');
+            setShowSourceModal(false);
+            setShowSourceCreateModal(true);
+          }}
+          style={{
+            position: 'absolute',
+            right: 20,
+            bottom: 20,
+            width: 58,
+            height: 58,
+            borderRadius: 29,
+            backgroundColor: accent,
+            justifyContent: 'center',
+            alignItems: 'center',
+            elevation: 8,
+            shadowColor: '#000',
+            shadowOpacity: 0.25,
+            shadowRadius: 6,
+            shadowOffset: {
+              width: 0,
+              height: 3,
+            },
+          }}
+        >
+          <MaterialCommunityIcons
+            name="plus"
+            size={30}
+            color="#fff"
+          />
+        </TouchableOpacity>
+      </Modal>
 
       {type === 'transfer' && (
         <View style={{ marginBottom: 12 }}>
-          <Text style={{ marginBottom: 6, color: '#666' }}>To Account</Text>
-          <TouchableOpacity
-            onPress={() => {
-              setSelectingFor('to');
-              setShowSourcePicker(true);
-            }}
-            activeOpacity={0.8}
+          <Text
             style={{
-              borderWidth: 1,
-              borderColor: '#eee',
-              padding: 12,
-              borderRadius: 8,
-              backgroundColor: '#fff',
-              flexDirection: 'row',
-              alignItems: 'center'
+              marginBottom: 8,
+              color: '#666',
             }}
           >
-            <View style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: '#eef7ff',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 12
-            }}>
-              <MaterialCommunityIcons
-                name={(sources.find(x => x.id === toAccount) || {}).icon || 'cash'}
-                size={18}
-                color={(sources.find(x => x.id === toAccount) || {}).color || '#4B7CF3'}
-              />
-            </View>
+            To Account
+          </Text>
 
-            <Text style={{ fontSize: 16 }}>
-              {(sources.find(x => x.id === toAccount) || {}).name || 'Select destination account'}
-            </Text>
-          </TouchableOpacity>
+          {showToAccountGrid ? (
+            <>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  flexWrap: 'wrap',
+                  justifyContent: 'flex-start',
+                  marginTop: 8,
+                }}
+              >
+                {visibleSources
+                  .filter(s => s.id !== sourceId)
+                  .map((s, index) => (
+                    <TouchableOpacity
+                      key={s.id}
+                      onPress={() => {
+                        setToAccount(s.id);
+                        setShowToAccountGrid(false);
+                        setSourceSearch('');
+                      }}
+                      style={{
+                        width: '23%',
+                        height: 72,
+                        marginBottom: 8,
+                        marginRight: (index + 1) % 4 === 0 ? 0 : '2.66%',
+                        borderRadius: 10,
+                        backgroundColor: s.color || '#4B7CF3',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        paddingHorizontal: 4,
+                        paddingVertical: 6,
+                        transform: [
+                          {
+                            scale: toAccount === s.id ? 1.05 : 1,
+                          },
+                        ],
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name={s.icon || 'cash'}
+                        size={18}
+                        color="#fff"
+                      />
+
+                      {toAccount === s.id && (
+                        <View
+                          style={{
+                            position: 'absolute',
+                            top: 4,
+                            right: 4,
+                            width: 18,
+                            height: 18,
+                            borderRadius: 9,
+                            backgroundColor: '#fff',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <MaterialCommunityIcons
+                            name="check"
+                            size={12}
+                            color="#2E7D32"
+                          />
+                        </View>
+                      )}
+
+                      <Text
+                        numberOfLines={2}
+                        style={{
+                          color: '#fff',
+                          textAlign: 'center',
+                          marginTop: 6,
+                          fontWeight: '600',
+                          fontSize: 12,
+                          lineHeight: 16,
+                        }}
+                      >
+                        {s.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+              </View>
+
+              {searchedSources.filter(s => s.id !== sourceId).length > 4 && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectingFor('to');
+                    setSourceSearch('');
+                    setShowSourceModal(true);
+                  }}
+                  style={{
+                    alignItems: 'center',
+                    paddingVertical: 8,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: '#4B7CF3',
+                      fontWeight: '700',
+                    }}
+                  >
+                    See More
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
+          ) : (
+            <TouchableOpacity
+              onPress={() => {
+                setSelectingFor('to');
+                setSourceSearch('');
+                setShowSourceModal(true);
+              }}
+              activeOpacity={0.85}
+              style={{
+                backgroundColor: '#fff',
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: '#E6EAF2',
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                elevation: 2,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  flex: 1,
+                }}
+              >
+                <View
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 21,
+                    backgroundColor:
+                      sources.find(x => x.id === toAccount)?.color || '#4B7CF3',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    marginRight: 12,
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name={sources.find(x => x.id === toAccount)?.icon || 'cash'}
+                    size={22}
+                    color="#fff"
+                  />
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: '#888',
+                    }}
+                  >
+                    Destination Account
+                  </Text>
+
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      fontSize: 16,
+                      fontWeight: '700',
+                      color: '#222',
+                    }}
+                  >
+                    {sources.find(x => x.id === toAccount)?.name}
+                  </Text>
+                </View>
+
+                <MaterialCommunityIcons
+                  name="pencil-outline"
+                  size={22}
+                  color="#4B7CF3"
+                />
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
       )}
-
-      <PaperTextInput label="Notes" value={notes} onChangeText={(t) => { setNotes(t); setNotesError(false); }} mode="outlined" multiline style={{ marginBottom: 12 }} error={notesError} />
-      {notesError && <Text style={{ color: '#E46A6A', marginBottom: 8 }}>Notes cannot be empty.</Text>}
 
       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
         <PaperButton mode="contained" onPress={submit} style={{ backgroundColor: accent }} labelStyle={{ color: '#fff' }}>
@@ -406,38 +1514,70 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   value={new Date(date)}
                   mode={pickerMode}
                   is24Hour={true}
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  display={
+                    Platform.OS === 'android'
+                      ? (pickerMode === 'date' ? 'calendar' : 'clock')
+                      : 'spinner'
+                  }
                   onChange={(event, selected) => {
                     if (Platform.OS === 'android') {
                       if (event.type === 'dismissed') {
                         setShowDateTimePicker(false);
                         setPickerMode('date');
+                        setOpenTimePicker(false);
                         return;
                       }
 
-                      if (pickerMode === 'date') {
-                        if (selected) {
-                          const picked = selected;
-                          const prev = new Date(date);
-                          picked.setHours(prev.getHours(), prev.getMinutes(), 0, 0);
-                          setDate(picked.toISOString());
+                      if (!selected) return;
 
-                          setShowDateTimePicker(false);
-                          setOpenTimePicker(true);
-                        }
-                      } else {
-                        if (selected) {
-                          const prev = new Date(date);
-                          prev.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
-                          setDate(prev.toISOString());
-                        }
+                      if (pickerMode === 'date') {
+                        // Preserve existing time
+                        const current = new Date(date);
+                        const newDate = new Date(selected);
+
+                        newDate.setHours(
+                          current.getHours(),
+                          current.getMinutes(),
+                          current.getSeconds(),
+                          0
+                        );
+
+                        setDate(newDate.toISOString());
+
+                        // Close date picker first
                         setShowDateTimePicker(false);
-                        setPickerMode('date');
+
+                        // Open time picker after animation finishes
+                        requestAnimationFrame(() => {
+                          setTimeout(() => {
+                            setPickerMode('time');
+                            setShowDateTimePicker(true);
+                          }, 500);
+                        });
+
+                        return;
                       }
+
+                      // TIME PICKER
+                      const current = new Date(date);
+
+                      current.setHours(
+                        selected.getHours(),
+                        selected.getMinutes(),
+                        0,
+                        0
+                      );
+
+                      setDate(current.toISOString());
+
+                      setShowDateTimePicker(false);
+                      setPickerMode('date');
+                      setOpenTimePicker(false);
                     } else {
                       if (selected) {
                         setDate(selected.toISOString());
                       }
+
                       setShowDateTimePicker(false);
                       setPickerMode('date');
                     }
@@ -490,11 +1630,44 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         onClose={() => setShowCategoryCreateModal(false)}
         onCategoryCreated={async (newCategory) => {
           const cats = await getCategories(true);
+
           setCategories(cats);
           setCategoryId(newCategory.id);
+
+          requestAnimationFrame(() => {
+            setShowCategoryCreateModal(false);
+            setShowCategoryModal(false);
+            setShowCategoryGrid(false);
+            setCategorySearch('');
+          });
         }}
         currentType={type}
       />
+
+      <SourceCreateModal
+        visible={showSourceCreateModal}
+        onClose={() => setShowSourceCreateModal(false)}
+        onSourceCreated={async () => {
+          const updatedSources = await getSources(true);
+
+          setSources(updatedSources);
+
+          const newestSource = [...updatedSources].sort((a, b) => b.id - a.id)[0];
+
+          requestAnimationFrame(() => {
+            if (newestSource) {
+              setSourceId(newestSource.id);
+            }
+
+            setShowSourceGrid(false);
+            setSourceSearch('');
+
+            setShowSourceCreateModal(false);
+            setShowSourceModal(false);
+          });
+        }}
+      />
+
     </ScrollView>
   );
 }

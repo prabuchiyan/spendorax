@@ -1,7 +1,6 @@
 import React, { useLayoutEffect } from 'react';
-import { View } from 'react-native';
+import { View, ScrollView } from 'react-native';
 import TransactionForm from '../components/TransactionForm';
-import { Spacing } from '../components/Theme';
 import Card from '../components/Card';
 
 export default function TransactionAddScreen({ navigation, route }) {
@@ -9,15 +8,23 @@ export default function TransactionAddScreen({ navigation, route }) {
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: isEdit ? 'Edit Transaction' : 'Add Transaction'
+      title: isEdit ? 'Edit Transaction' : 'Add Transaction',
     });
   }, [navigation, isEdit]);
 
   return (
-    <View style={{flex:1}}>
-      <Card style={{margin: 4}}>
-        <TransactionForm onCreated={() => navigation.goBack()} onCancel={() => navigation.goBack()} {...route.params} />
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={{ padding: 4 }}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Card style={{ margin: 0 }}>
+        <TransactionForm
+          onCreated={() => navigation.goBack()}
+          onCancel={() => navigation.goBack()}
+          {...route.params}
+        />
       </Card>
-    </View>
+    </ScrollView>
   );
 }

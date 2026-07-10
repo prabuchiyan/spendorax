@@ -205,7 +205,6 @@ export default function HomeScreen({ navigation }) {
     // recent transactions
     try {
       const tx = await getTransactions(3, 'Yes');
-      console.log('Prabu tx', tx);
       setRecentTx(tx);
     } catch (e) {
       // ignore

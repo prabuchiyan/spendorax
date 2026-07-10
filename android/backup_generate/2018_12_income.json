@@ -1,0 +1,587 @@
+{
+  "version": 1,
+  "timestamp": "2026-07-09T15:27:02.943Z",
+  "data": {
+    "transactions": [
+      {
+        "id": 93,
+        "type": "income",
+        "amount": 41050,
+        "category_id": 39,
+        "source_id": 1,
+        "date": "2018-11-30",
+        "notes": "Salary",
+        "bill_id": null,
+        "created_at": "2018-11-30 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 94,
+        "type": "income",
+        "amount": 592.22,
+        "category_id": 34,
+        "source_id": 1,
+        "date": "2018-12-03",
+        "notes": "Capital First Refund",
+        "bill_id": null,
+        "created_at": "2018-12-03 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 95,
+        "type": "income",
+        "amount": 2000,
+        "category_id": 34,
+        "source_id": 1,
+        "date": "2018-12-03",
+        "notes": "Get it From Vivek for Bike Repair",
+        "bill_id": null,
+        "created_at": "2018-12-03 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 96,
+        "type": "income",
+        "amount": 19,
+        "category_id": 34,
+        "source_id": 1,
+        "date": "2018-12-03",
+        "notes": "Refund Food Panda",
+        "bill_id": null,
+        "created_at": "2018-12-03 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 97,
+        "type": "income",
+        "amount": 500,
+        "category_id": 34,
+        "source_id": 1,
+        "date": "2018-12-18",
+        "notes": "Collection Money For Marriage Gift",
+        "bill_id": null,
+        "created_at": "2018-12-18 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 98,
+        "type": "income",
+        "amount": 92298,
+        "category_id": 34,
+        "source_id": 1,
+        "date": "2018-12-18",
+        "notes": "Bike Insurance",
+        "bill_id": null,
+        "created_at": "2018-12-18 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 99,
+        "type": "income",
+        "amount": 200,
+        "category_id": 34,
+        "source_id": 1,
+        "date": "2018-12-26",
+        "notes": "Get it From Abi",
+        "bill_id": null,
+        "created_at": "2018-12-26 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      }
+    ],
+    "categories": [
+      {
+        "id": 1,
+        "name": "Abinaya Birthday",
+        "type": "expense",
+        "icon": "cake",
+        "color": "#A78BFA",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 50,
+        "name": "Anniversary",
+        "type": "expense",
+        "icon": "ring",
+        "color": "#E91E63",
+        "is_active": 1,
+        "created_at": "2026-07-09 10:52:07"
+      },
+      {
+        "id": 2,
+        "name": "Bank Charges",
+        "type": "expense",
+        "icon": "bank",
+        "color": "#374151",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 3,
+        "name": "Beauty Care",
+        "type": "expense",
+        "icon": "cards-heart-outline",
+        "color": "#DB2777",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 4,
+        "name": "Bike / Vehicle",
+        "type": "expense",
+        "icon": "motorbike",
+        "color": "#DC2626",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 5,
+        "name": "Cashback",
+        "type": "income",
+        "icon": "cash-plus",
+        "color": "#A3E635",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 6,
+        "name": "Child Birth",
+        "type": "expense",
+        "icon": "baby-carriage",
+        "color": "#22C55E",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 7,
+        "name": "Clothes",
+        "type": "expense",
+        "icon": "tshirt-v",
+        "color": "#FB923C",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 8,
+        "name": "DTH",
+        "type": "expense",
+        "icon": "television-play",
+        "color": "#8B5CF6",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 9,
+        "name": "Diwali",
+        "type": "expense",
+        "icon": "firework",
+        "color": "#DC2626",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 10,
+        "name": "Donations",
+        "type": "expense",
+        "icon": "hand-heart",
+        "color": "#22C55E",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 11,
+        "name": "Drinks",
+        "type": "expense",
+        "icon": "liquor",
+        "color": "#EF4444",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 12,
+        "name": "Electricity",
+        "type": "expense",
+        "icon": "power-plug",
+        "color": "#DC2626",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 13,
+        "name": "Electronics",
+        "type": "expense",
+        "icon": "devices",
+        "color": "#A78BFA",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 14,
+        "name": "Eniyan",
+        "type": "expense",
+        "icon": "human-female-dance",
+        "color": "#FBBF24",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 15,
+        "name": "Entertainment",
+        "type": "expense",
+        "icon": "movie-open",
+        "color": "#7C3AED",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 16,
+        "name": "Family",
+        "type": "expense",
+        "icon": "account-group",
+        "color": "#F43F5E",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 17,
+        "name": "Food & Dining",
+        "type": "expense",
+        "icon": "silverware-fork-knife",
+        "color": "#F59E0B",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 18,
+        "name": "Fruits",
+        "type": "expense",
+        "icon": "fruit-watermelon",
+        "color": "#84CC16",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 19,
+        "name": "Gas",
+        "type": "expense",
+        "icon": "gas-cylinder",
+        "color": "#DC2626",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 20,
+        "name": "Gave it to Abi",
+        "type": "expense",
+        "icon": "bank-transfer-out",
+        "color": "#DC2626",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 21,
+        "name": "Gifts",
+        "type": "expense",
+        "icon": "gift",
+        "color": "#EC4899",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 23,
+        "name": "Gold Loan",
+        "type": "expense",
+        "icon": "necklace",
+        "color": "#FBBF24",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 23,
+        "name": "Groceries",
+        "type": "expense",
+        "icon": "cart",
+        "color": "#F97316",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 24,
+        "name": "Guest Visit to Bangalore",
+        "type": "expense",
+        "icon": "account-group-outline",
+        "color": "#6366F1",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 25,
+        "name": "Home Improvement",
+        "type": "expense",
+        "icon": "hammer-wrench",
+        "color": "#A16207",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 26,
+        "name": "Hospital / Medicine",
+        "type": "expense",
+        "icon": "hospital-box-outline",
+        "color": "#EF4444",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 27,
+        "name": "Households",
+        "type": "expense",
+        "icon": "bus-stop-covered",
+        "color": "#14B8A6",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 28,
+        "name": "Interest",
+        "type": "income",
+        "icon": "percent",
+        "color": "#22C55E",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 29,
+        "name": "Jewellery",
+        "type": "expense",
+        "icon": "gold",
+        "color": "#FBBF24",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 30,
+        "name": "Loan / EMI",
+        "type": "expense",
+        "icon": "bank-transfer",
+        "color": "#B91C1C",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 31,
+        "name": "Misc",
+        "type": "expense",
+        "icon": "dots-horizontal",
+        "color": "#9CA3AF",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 32,
+        "name": "Mobile",
+        "type": "expense",
+        "icon": "cellphone",
+        "color": "#0EA5E9",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 33,
+        "name": "Money Given",
+        "type": "expense",
+        "icon": "arrow-up-bold-circle",
+        "color": "#EF4444",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 34,
+        "name": "Money Received",
+        "type": "income",
+        "icon": "arrow-down-bold-circle",
+        "color": "#10B981",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 35,
+        "name": "Parents",
+        "type": "expense",
+        "icon": "account-group",
+        "color": "#FB923C",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 36,
+        "name": "Printing & Stationery",
+        "type": "expense",
+        "icon": "printer",
+        "color": "#6B7280",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 37,
+        "name": "Relatives",
+        "type": "expense",
+        "icon": "account-group",
+        "color": "#F97316",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 38,
+        "name": "Rent",
+        "type": "expense",
+        "icon": "home-account",
+        "color": "#3B82F6",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 39,
+        "name": "Salary",
+        "type": "income",
+        "icon": "cash-multiple",
+        "color": "#16A34A",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 40,
+        "name": "Salon",
+        "type": "expense",
+        "icon": "content-cut",
+        "color": "#334155",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 41,
+        "name": "Sandals / Shoes",
+        "type": "expense",
+        "icon": "shoe-sneaker",
+        "color": "#DB2777",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 42,
+        "name": "Savings",
+        "type": "expense",
+        "icon": "piggy-bank",
+        "color": "#059669",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 43,
+        "name": "Snacks",
+        "type": "expense",
+        "icon": "food-variant",
+        "color": "#FBBF24",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 44,
+        "name": "Special Occasions",
+        "type": "expense",
+        "icon": "party-popper",
+        "color": "#06B6D4",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 45,
+        "name": "Transport",
+        "type": "expense",
+        "icon": "bus",
+        "color": "#14B8A6",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 46,
+        "name": "Utilities",
+        "type": "expense",
+        "icon": "lightning-bolt",
+        "color": "#64748B",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 47,
+        "name": "Vacation",
+        "type": "expense",
+        "icon": "earth",
+        "color": "#A3E635",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 48,
+        "name": "Wallet Transfer",
+        "type": "expense",
+        "icon": "swap-horizontal",
+        "color": "#6366F1",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      },
+      {
+        "id": 49,
+        "name": "Water / Purifier",
+        "type": "expense",
+        "icon": "cup-water",
+        "color": "#64748B",
+        "is_active": 1,
+        "created_at": "2026-07-09 08:19:40"
+      }
+    ],
+    "sources": [
+      {
+        "name": "Axis Bank",
+        "type": null,
+        "initial_balance": 0,
+        "icon": "bank",
+        "color": "#DC2626",
+        "id": 1
+      },
+      {
+        "name": "Bank of Baroda",
+        "type": null,
+        "initial_balance": 0,
+        "icon": "bank",
+        "color": "#FB923C",
+        "id": 2
+      },
+      {
+        "name": "Cash",
+        "type": null,
+        "initial_balance": 0,
+        "icon": "cash",
+        "color": "#A3E635",
+        "id": 3
+      },
+      {
+        "name": "State Bank of India",
+        "type": null,
+        "initial_balance": 0,
+        "icon": "bank",
+        "color": "#6366F1",
+        "id": 4
+      }
+    ],
+    "budgets": [],
+    "bills": []
+  }
+}
