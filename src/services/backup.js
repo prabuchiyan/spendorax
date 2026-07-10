@@ -9,6 +9,7 @@ import { getSources, createSource } from './sources';
 import { getTransactions, createTransaction } from './transactions';
 import { getBudgets, createBudget } from './budgets';
 import { getBills, createBill, updateBill } from './bills';
+import { getLoans, createLoan } from './loans';
 
 const BACKUP_VERSION = 1;
 
@@ -19,6 +20,15 @@ export async function exportBackup() {
     const transactions = await getTransactions(1000000, 'Yes');
     const budgets = await getBudgets();
     const bills = await getBills();
+    const loans = await getLoans();
+    // fetch all loan payments directly (if table exists)
+    let loanPayments = [];
+    try {
+      const lp = await executeSql('SELECT * FROM loan_payments');
+      for (let i = 0; i < lp.rows.length; i++) loanPayments.push(lp.rows.item(i));
+    } catch (e) {
+      loanPayments = [];
+    }
 
     const backupData = {
       version: BACKUP_VERSION,
@@ -29,6 +39,8 @@ export async function exportBackup() {
         sources,
         budgets,
         bills,
+        loans,
+        loan_payments: loanPayments
       },
     };
 
@@ -98,7 +110,7 @@ export async function pickBackupFile() {
       throw new Error('Invalid backup version');
     }
 
-    const requiredKeys = ['transactions', 'categories', 'sources', 'budgets', 'bills'];
+    const requiredKeys = ['transactions', 'categories', 'sources', 'budgets', 'bills', 'loans', 'loan_payments'];
     for (const key of requiredKeys) {
       if (!backupData.data || !backupData.data[key]) {
         throw new Error(`Missing required data: ${key}`);
@@ -131,7 +143,9 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
     sources: [],
     budgets: [],
     bills: [],
-    transactions: []
+    transactions: [],
+    loans: [],
+    loan_payments: []
   };
 
   try {
@@ -149,6 +163,22 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
 
     const txs = await executeSql('SELECT * FROM transactions');
     for (let i = 0; i < txs.rows.length; i++) originalData.transactions.push(txs.rows.item(i));
+  
+    // Snapshot loans (if table exists)
+    try {
+      const lns = await executeSql('SELECT * FROM loans');
+      for (let i = 0; i < lns.rows.length; i++) originalData.loans.push(lns.rows.item(i));
+    } catch (e) {
+      // ignore if loans table missing
+    }
+
+    // Snapshot loan payments (if table exists)
+    try {
+      const lps = await executeSql('SELECT * FROM loan_payments');
+      for (let i = 0; i < lps.rows.length; i++) originalData.loan_payments.push(lps.rows.item(i));
+    } catch (e) {
+      // ignore if table missing
+    }
   } catch (snapshotErr) {
     console.error('Failed to snapshot original database:', snapshotErr);
   }
@@ -205,6 +235,36 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         );
       }
 
+      // Restore loans
+      for (const loan of originalData.loans) {
+        try {
+          await executeSql(
+            `INSERT INTO loans (id, loan_name, loan_type, lender, principal_amount, interest_rate, loan_start_date, loan_end_date, tenure_months, emi_amount, emi_day, outstanding_amount, principal_paid, interest_paid, total_paid, total_prepayment, remaining_months, status, notes, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            [
+              loan.id, loan.loan_name, loan.loan_type, loan.lender, loan.principal_amount,
+              loan.interest_rate, loan.loan_start_date, loan.loan_end_date, loan.tenure_months,
+              loan.emi_amount, loan.emi_day, loan.outstanding_amount, loan.principal_paid,
+              loan.interest_paid, loan.total_paid, loan.total_prepayment, loan.remaining_months,
+              loan.status, loan.notes, loan.created_at, loan.updated_at
+            ]
+          );
+        } catch (e) {
+          console.warn('Failed to restore loan', loan.id, e);
+        }
+      }
+
+      // Restore loan payments
+      for (const p of originalData.loan_payments) {
+        try {
+          await executeSql(
+            `INSERT INTO loan_payments (id, loan_id, payment_date, payment_amount, principal_component, interest_component, remaining_balance, payment_type, payment_source_id, transaction_id, remarks, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+            [p.id, p.loan_id, p.payment_date, p.payment_amount, p.principal_component, p.interest_component, p.remaining_balance, p.payment_type, p.payment_source_id, p.transaction_id, p.remarks, p.created_at]
+          );
+        } catch (e) {
+          console.warn('Failed to restore loan payment', p.id, e);
+        }
+      }
+
       console.log('Database rollback completed.');
       safeOnProgress(lastPercentage, 'Rollback completed.');
     } catch (rollbackErr) {
@@ -222,9 +282,9 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       await yieldToEventLoop();
     }
 
-    const { categories = [], sources = [], budgets = [], bills = [], transactions = [] } = backupData.data || {};
+    const { categories = [], sources = [], budgets = [], bills = [], transactions = [], loans = [], loan_payments = [] } = backupData.data || {};
     const billsWithLinkedTx = bills.filter(b => b.linked_transaction_id);
-    const totalItems = categories.length + sources.length + bills.length + transactions.length + budgets.length + billsWithLinkedTx.length;
+    const totalItems = categories.length + sources.length + bills.length + transactions.length + budgets.length + billsWithLinkedTx.length + loans.length + loan_payments.length;
     let processedItems = 0;
 
     const updateProgress = (completedInChunk, stepMessage) => {
@@ -339,6 +399,62 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         }));
         updateProgress(chunk.length, 'Linking transactions to bills...');
         await yieldToEventLoop();
+      }
+    }
+
+    // 6. Loans
+    const loanMap = {};
+    for (let i = 0; i < loans.length; i += BATCH_SIZE) {
+      const chunk = loans.slice(i, i + BATCH_SIZE);
+      await Promise.all(chunk.map(async (ln) => {
+        if (mode === 'merge') {
+          const existing = await executeSql(`SELECT id FROM loans WHERE loan_name = ? AND lender = ? AND principal_amount = ?`, [ln.loan_name, ln.lender, ln.principal_amount]);
+          if (existing.rows.length > 0) {
+            loanMap[ln.id] = existing.rows.item(0).id;
+            return;
+          }
+        }
+        const newId = await createLoan(ln);
+        loanMap[ln.id] = newId;
+      }));
+      updateProgress(chunk.length, 'Importing loans...');
+      await yieldToEventLoop();
+    }
+
+    // 7. Loan payments
+    const loanPaymentsArr = loan_payments || [];
+    for (let i = 0; i < loanPaymentsArr.length; i += BATCH_SIZE) {
+      const chunk = loanPaymentsArr.slice(i, i + BATCH_SIZE);
+      await Promise.all(chunk.map(async (p) => {
+        const newLoanId = loanMap[p.loan_id];
+        if (!newLoanId) return;
+
+        if (mode === 'merge') {
+          const exists = await executeSql(`SELECT id FROM loan_payments WHERE loan_id = ? AND payment_date = ? AND payment_amount = ? AND payment_type = ? LIMIT 1`, [newLoanId, p.payment_date, p.payment_amount, p.payment_type]);
+          if (exists.rows.length > 0) return;
+        }
+
+        const newTxId = p.transaction_id ? transactionMap[p.transaction_id] : null;
+        await executeSql(
+          `INSERT INTO loan_payments (loan_id, payment_date, payment_amount, principal_component, interest_component, remaining_balance, payment_type, payment_source_id, transaction_id, remarks, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+          [newLoanId, p.payment_date, p.payment_amount, p.principal_component, p.interest_component, p.remaining_balance, p.payment_type, p.payment_source_id, newTxId || null, p.remarks, p.created_at]
+        );
+      }));
+      updateProgress(chunk.length, 'Importing loan payments...');
+      await yieldToEventLoop();
+    }
+
+    // 8. Recalculate loan aggregates from payments (best-effort)
+    for (const oldId in loanMap) {
+      const newId = loanMap[oldId];
+      try {
+        const agg = await executeSql('SELECT COALESCE(SUM(principal_component),0) as principal_paid, COALESCE(SUM(interest_component),0) as interest_paid, COALESCE(SUM(payment_amount),0) as total_paid, (SELECT remaining_balance FROM loan_payments WHERE loan_id = ? ORDER BY payment_date DESC LIMIT 1) as last_remaining FROM loan_payments WHERE loan_id = ?', [newId, newId]);
+        const row = agg.rows.item(0);
+        const outstanding = row.last_remaining !== null ? row.last_remaining : undefined;
+        const newStatus = outstanding !== undefined && outstanding <= 0 ? 'Closed' : 'Active';
+        await executeSql('UPDATE loans SET principal_paid = ?, interest_paid = ?, total_paid = ?, outstanding_amount = COALESCE(?, outstanding_amount), status = ? WHERE id = ?', [row.principal_paid, row.interest_paid, row.total_paid, outstanding, newStatus, newId]);
+      } catch (e) {
+        // ignore per-loan failures
       }
     }
 
