@@ -1,4 +1,5 @@
 import { executeSql } from './db';
+import { createLoanTables } from './loanTables';
 import { Platform } from 'react-native';
 
 export async function initDB() {
@@ -108,6 +109,11 @@ export async function initDB() {
     }
 
     console.log('Database initialized');
+    try {
+      await createLoanTables();
+    } catch (e) {
+      console.warn('Loan tables creation failed', e);
+    }
     // Seed defaults if empty (helpful for web/local dev)
     try {
       const cats = await executeSql('SELECT * FROM categories', []);

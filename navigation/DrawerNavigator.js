@@ -10,6 +10,7 @@ import TransactionsScreen from '../src/screens/TransactionsScreen';
 import BudgetsScreen from '../src/screens/BudgetsScreen';
 import CategoriesScreen from '../src/screens/CategoriesScreen';
 import SourcesScreen from '../src/screens/SourcesScreen';
+import LoanDashboardScreen from '../src/screens/LoanDashboardScreen';
 
 import { Colors } from '../src/components/Theme';
 
@@ -56,6 +57,12 @@ function CustomDrawerContent(props) {
       label: 'Transactions',
       icon: 'format-list-bulleted',
       activeIcon: 'format-list-bulleted',
+    },
+    {
+      name: 'Loans',
+      label: 'Loans',
+      icon: 'bank-outline',
+      activeIcon: 'bank',
     },
   ];
 
@@ -182,6 +189,7 @@ export default function DrawerNavigator() {
         })}
       />
       <Drawer.Screen name="Transactions" component={TransactionsScreen} />
+      <Drawer.Screen name="Loans" component={LoanDashboardScreen} />
       <Drawer.Screen name="Budgets" component={BudgetsScreen} />
       <Drawer.Screen name="Categories" component={CategoriesScreen} />
       <Drawer.Screen name="Sources" component={SourcesScreen} />
