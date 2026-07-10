@@ -33,6 +33,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
         <Text style={{ fontSize: 18, fontWeight: '800' }}>{loan.loan_name}</Text>
         <Text style={{ color: '#666', marginTop: 6 }}>{loan.lender}</Text>
         <View style={{ height: 12 }} />
+        <Text>Status: {loan.status || 'Active'}</Text>
         <Text>Outstanding: ₹{Number(loan.outstanding_amount || 0).toLocaleString('en-IN')}</Text>
         <Text>EMI: ₹{Number(loan.emi_amount || 0).toLocaleString('en-IN')}</Text>
         <Text>Interest Rate: {Number(loan.interest_rate || 0)}%</Text>

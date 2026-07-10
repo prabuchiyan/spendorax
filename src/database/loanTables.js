@@ -37,6 +37,7 @@ export async function createLoanTables() {
     remaining_balance REAL DEFAULT 0,
     payment_type TEXT,
     payment_source_id INTEGER,
+    payment_category_id INTEGER,
     transaction_id INTEGER,
     remarks TEXT,
     created_at TEXT DEFAULT (datetime('now')),

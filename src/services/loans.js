@@ -54,7 +54,7 @@ export async function getLoanById(id) {
     return res.rows.item(0);
 }
 
-export async function recordPayment({ loanId, date, amount, paymentType = 'EMI', sourceId = null, notes = '' }) {
+export async function recordPayment({ loanId, date, amount, paymentType = 'EMI', sourceId = null, categoryId = null, notes = '' }) {
     // Fetch loan
     const loan = await getLoanById(loanId);
     if (!loan) throw new Error('Loan not found');
@@ -72,8 +72,8 @@ export async function recordPayment({ loanId, date, amount, paymentType = 'EMI',
     }
 
     // Insert payment
-    const pRes = await executeSql(`INSERT INTO loan_payments (loan_id, payment_date, payment_amount, principal_component, interest_component, remaining_balance, payment_type, payment_source_id, remarks) VALUES (?,?,?,?,?,?,?,?,?)`,
-        [loanId, date || new Date().toISOString(), amount, principalComponent, interestComponent, remaining, paymentType, sourceId || null, notes || null]
+    const pRes = await executeSql(`INSERT INTO loan_payments (loan_id, payment_date, payment_amount, principal_component, interest_component, remaining_balance, payment_type, payment_source_id, payment_category_id, remarks) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+        [loanId, date || new Date().toISOString(), amount, principalComponent, interestComponent, remaining, paymentType, sourceId || null, categoryId || null, notes || null]
     );
 
     // Update loan aggregates
@@ -92,7 +92,7 @@ export async function recordPayment({ loanId, date, amount, paymentType = 'EMI',
         const txId = await createTransaction({
             type: 'expense',
             amount: amount,
-            category_id: null,
+            category_id: categoryId || null,
             source_id: sourceId || null,
             date: date || new Date().toISOString(),
             notes: `Loan payment: ${loan.loan_name}`,
@@ -112,7 +112,7 @@ export async function recordPayment({ loanId, date, amount, paymentType = 'EMI',
     return pRes.insertId;
 }
 
-export async function recordPrepayment({ loanId, date, amount, reduceEMI = false, sourceId = null, notes = '' }) {
+export async function recordPrepayment({ loanId, date, amount, reduceEMI = false, sourceId = null, categoryId = null, notes = '' }) {
     // Prepayment treated as extra principal payment, can choose to reduce EMI or tenure
     const loan = await getLoanById(loanId);
     if (!loan) throw new Error('Loan not found');
@@ -128,8 +128,8 @@ export async function recordPrepayment({ loanId, date, amount, reduceEMI = false
         throw new Error('Duplicate prepayment detected for the same date/amount');
     }
 
-    const pRes = await executeSql(`INSERT INTO loan_payments (loan_id, payment_date, payment_amount, principal_component, interest_component, remaining_balance, payment_type, payment_source_id, remarks) VALUES (?,?,?,?,?,?,?,?,?)`,
-        [loanId, date || new Date().toISOString(), amount, principalComponent, interestComponent, remaining, 'PREPAYMENT', sourceId || null, notes || null]
+    const pRes = await executeSql(`INSERT INTO loan_payments (loan_id, payment_date, payment_amount, principal_component, interest_component, remaining_balance, payment_type, payment_source_id, payment_category_id, remarks) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+        [loanId, date || new Date().toISOString(), amount, principalComponent, interestComponent, remaining, 'PREPAYMENT', sourceId || null, categoryId || null, notes || null]
     );
 
     const newPrincipalPaid = +(Number(loan.principal_paid || 0) + principalComponent).toFixed(2);
@@ -151,22 +151,41 @@ export async function recordPrepayment({ loanId, date, amount, reduceEMI = false
         [remaining < 0 ? 0 : remaining, newPrincipalPaid, newTotalPrepayment, newInterestPaid, newTotalPaid, newEmi, newRemainingMonths, newStatus, loanId]
     );
 
+    // Create linked expense transaction for prepayment
+    try {
+        const txId = await createTransaction({
+            type: 'expense',
+            amount: amount,
+            category_id: categoryId || null,
+            source_id: sourceId || null,
+            date: date || new Date().toISOString(),
+            notes: `Loan prepayment: ${loan.loan_name}`,
+            bill_id: null,
+            transfer_group_id: null,
+            direction: 'debit'
+        });
+        await executeSql('UPDATE loan_payments SET transaction_id = ? WHERE id = ?', [txId, pRes.insertId]);
+    } catch (e) {
+        console.warn('Failed to create linked prepayment transaction', e);
+    }
+
     try { events.emit('loanPaymentsChanged', { action: 'prepayment', id: pRes.insertId, loanId }); } catch (e) { }
     try { events.emit('loansChanged', { action: 'update', id: loanId }); } catch (e) { }
 
     return pRes.insertId;
 }
 
-export async function forecloseLoan({ loanId, date, finalPaymentAmount, foreclosureCharges = 0, sourceId = null, notes = '' }) {
+export async function forecloseLoan({ loanId, date, finalPaymentAmount, foreclosureCharges = 0, sourceId = null, categoryId = null, notes = '' }) {
     const loan = await getLoanById(loanId);
     if (!loan) throw new Error('Loan not found');
 
     const amount = Number(finalPaymentAmount || loan.outstanding_amount || 0) + Number(foreclosureCharges || 0);
-
-    const interestComponent = calc.calculateInterestComponent(loan.outstanding_amount, loan.interest_rate);
-    let principalComponent = +(amount - interestComponent).toFixed(2);
-    if (principalComponent < 0) principalComponent = Number(amount);
-
+    const outstandingPrincipal = Number(loan.outstanding_amount || 0);
+    const interestComponent =
+        outstandingPrincipal != null
+            ? Math.max(0, +(amount - outstandingPrincipal).toFixed(2))
+            : 0;
+    const principalComponent = outstandingPrincipal;
     const remaining = 0;
 
     // guard duplicate
@@ -174,8 +193,8 @@ export async function forecloseLoan({ loanId, date, finalPaymentAmount, foreclos
         throw new Error('Duplicate foreclosure detected for the same date/amount');
     }
 
-    const pRes = await executeSql(`INSERT INTO loan_payments (loan_id, payment_date, payment_amount, principal_component, interest_component, remaining_balance, payment_type, payment_source_id, remarks) VALUES (?,?,?,?,?,?,?,?,?)`,
-        [loanId, date || new Date().toISOString(), amount, principalComponent, interestComponent, remaining, 'FORECLOSURE', sourceId || null, notes || null]
+    const pRes = await executeSql(`INSERT INTO loan_payments (loan_id, payment_date, payment_amount, principal_component, interest_component, remaining_balance, payment_type, payment_source_id, payment_category_id, remarks) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+        [loanId, date || new Date().toISOString(), amount, principalComponent, interestComponent, remaining, 'FORECLOSURE', sourceId || null, categoryId || null, notes || null]
     );
 
     const newPrincipalPaid = +(Number(loan.principal_paid || 0) + principalComponent).toFixed(2);
@@ -185,6 +204,24 @@ export async function forecloseLoan({ loanId, date, finalPaymentAmount, foreclos
     await executeSql(`UPDATE loans SET outstanding_amount = 0, principal_paid = ?, interest_paid = ?, total_paid = ?, remaining_months = 0, status = 'Closed', updated_at = datetime('now') WHERE id = ?`,
         [newPrincipalPaid, newInterestPaid, newTotalPaid, loanId]
     );
+
+    // Create linked expense transaction for foreclosure
+    try {
+        const txId = await createTransaction({
+            type: 'expense',
+            amount: amount,
+            category_id: categoryId || null,
+            source_id: sourceId || null,
+            date: date || new Date().toISOString(),
+            notes: `Loan foreclosure: ${loan.loan_name}`,
+            bill_id: null,
+            transfer_group_id: null,
+            direction: 'debit'
+        });
+        await executeSql('UPDATE loan_payments SET transaction_id = ? WHERE id = ?', [txId, pRes.insertId]);
+    } catch (e) {
+        console.warn('Failed to create linked foreclosure transaction', e);
+    }
 
     try { events.emit('loanPaymentsChanged', { action: 'foreclosure', id: pRes.insertId, loanId }); } catch (e) { }
     try { events.emit('loansChanged', { action: 'update', id: loanId }); } catch (e) { }

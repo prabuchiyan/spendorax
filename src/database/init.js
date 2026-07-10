@@ -114,6 +114,12 @@ export async function initDB() {
     } catch (e) {
       console.warn('Loan tables creation failed', e);
     }
+
+    try {
+      await executeSql('ALTER TABLE loan_payments ADD COLUMN payment_category_id INTEGER');
+    } catch (e) {
+      // Column already exists or DB platform does not support ALTER TABLE
+    }
     // Seed defaults if empty (helpful for web/local dev)
     try {
       const cats = await executeSql('SELECT * FROM categories', []);

@@ -77,7 +77,7 @@ export default function LoanDashboardScreen({ navigation }) {
         return arr.slice(0, 5);
     }, [loans]);
 
-    const activeLoans = useMemo(() => loans.filter(l => l.outstanding_amount > 0), [loans]);
+    const activeLoans = useMemo(() => loans.filter(l => Number(l.outstanding_amount || 0) > 0 && (l.status || 'Active') === 'Active'), [loans]);
 
     return (
         <View style={{ flex: 1, backgroundColor: Colors.background }}>
