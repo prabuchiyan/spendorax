@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ScrollView } from 'react-native';
 import { getLoans, getLoanPayments } from '../services/loans';
+import events from '../services/events';
 import FAB from '../components/FAB';
 import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
@@ -46,7 +47,9 @@ export default function LoanDashboardScreen({ navigation }) {
   useEffect(() => {
     load();
     const unsub = navigation.addListener('focus', load);
-    return unsub;
+    const off1 = events.on('loansChanged', load);
+    const off2 = events.on('loanPaymentsChanged', load);
+    return () => { unsub(); off1(); off2(); };
   }, [navigation, load]);
 
   const summary = useMemo(() => {

@@ -25,14 +25,37 @@ export default function LoanFormScreen({ navigation, route }) {
       return;
     }
 
-    const payload = {
-      ...loan,
-      principal_amount: Number(loan.principal_amount),
-      interest_rate: Number(loan.interest_rate || 0),
-      tenure_months: Number(loan.tenure_months || 0),
-      emi_amount: Number(loan.emi_amount || 0),
-    };
+    // Build a payload with only allowed DB columns to avoid UPDATE failures
+    const allowed = [
+      'loan_name','loan_type','lender','principal_amount','interest_rate','loan_start_date','loan_end_date','tenure_months','emi_amount','emi_day','outstanding_amount','notes'
+    ];
 
+    const payload = {};
+    allowed.forEach(k => {
+      if (loan[k] !== undefined && loan[k] !== null) {
+        payload[k] = loan[k];
+      }
+    });
+
+    // ensure numeric fields are numbers
+    if (payload.principal_amount !== undefined) payload.principal_amount = Number(payload.principal_amount);
+    if (payload.interest_rate !== undefined) payload.interest_rate = Number(payload.interest_rate || 0);
+    if (payload.tenure_months !== undefined) payload.tenure_months = Number(payload.tenure_months || 0);
+    if (payload.emi_amount !== undefined) payload.emi_amount = Number(payload.emi_amount || 0);
+
+    // When editing, if principal changed and no principal has been paid yet,
+    // keep outstanding_amount in sync with principal to avoid stale outstanding values
+    if (editId && payload.principal_amount !== undefined) {
+      const prevPrincipalPaid = Number(loan.principal_paid || 0);
+      if (prevPrincipalPaid === 0) {
+        payload.outstanding_amount = payload.principal_amount;
+      }
+    }
+
+    // For new loans, default outstanding to principal when not explicitly provided
+    if (!editId && payload.outstanding_amount === undefined && payload.principal_amount !== undefined) {
+      payload.outstanding_amount = payload.principal_amount;
+    }
     try {
       if (editId) {
         await updateLoan(editId, payload);
@@ -42,7 +65,7 @@ export default function LoanFormScreen({ navigation, route }) {
       navigation.goBack();
     } catch (e) {
       console.error('Save loan failed', e);
-      alert('Failed to save loan');
+      alert(e?.message || 'Failed to save loan');
     }
   }
 
