@@ -1,135 +1,19 @@
 const fs = require("fs");
 
 const raw = `
-01/10/18 : Grocery : $2212
+30/11/18 : Salary : $41050
 
-01/10/18 : Room Rent : $9000
+03/12/18 : Capital First Refund : $592.22
 
-01/10/18 : Lunch : $35
+03/12/18 : Get it From Vivek for Bike Repair : $2000
 
-01/10/18 : Bike Air : $3
+03/12/18 : Refund Food Panda : $19
 
-01/10/18 : Petrol : $400
+18/12/18 : Collection Money For Marriage Gift : $500
 
-04/10/18 : Added to Paytm : $600
+18/12/18 : Bike Insurance : $92298
 
-05/10/18 : Personal Loan : $4917
-
-05/10/18 : Lunch : $30
-
-05/10/18 : Snacks : $10
-
-05/10/18 : Lunch : $50
-
-05/10/18 : 96 Movie : $150
-
-06/10/18 : Drinks : $467
-
-06/10/18 : Mutton : $200
-
-06/10/18 : Coriander & Ginger : $6
-
-08/10/18 : Recharge BSNL : $49
-
-09/10/18 : Lunch : $30
-
-09/10/18 : Dinner : $30
-
-10/10/18 : Lunch : $30
-
-11/10/18 : Water Bill : $400
-
-12/10/18 : Bus : Pudukkottai to Bangalore : $1660
-
-13/10/18 : Bus : Hosur to Bangalore : $60
-
-17/10/18 : Train : Bangalore to Thanjavur : $60
-
-17/10/18 : Lunch : $100
-
-17/10/18 : Rasagulla & Soanpapdi : $247
-
-18/10/18 : Bus : Room to Office : $17
-
-18/10/18 : Added to Paytm : $600
-
-18/10/18 : Snacks : $10
-
-18/10/18 : Bus : Bangalore to Salem : $230
-
-18/10/18 : Dinner : $40
-
-18/10/18 : Bus : Salem to Trichy : $122
-
-19/10/18 : Bus : Trichy to Thanjavur : $43
-
-19/10/18 : Bus : Thanjavur New Bus Stand to Old Bus Stand : $10
-
-19/10/18 : Group Photos : $200
-
-19/10/18 : Petrol For Abi Dad : $100
-
-19/10/18 : Bike Parking : $5
-
-19/10/18 : Cheppal Token : $5
-
-19/10/18 : For God : $8
-
-19/10/18 : Normal Baby Checkup & Medicine : $350
-
-20/10/18 : Ola Wallet Money Added : $200
-
-20/10/18 : Water Pocket : $9
-
-21/10/18 : Bus : Thanjavur to Pudukkottai : $90
-
-21/10/18 : Auto : Pudukkottai Bus Stand to Home : $70
-
-21/10/18 : Snacks For Akka Family : $180
-
-21/10/18 : Gift to Prasanna Function : $100
-
-21/10/18 : Petrol For Akka : $50
-
-22/10/18 : Lunch : $30
-
-24/10/18 : Lunch : $30
-
-24/10/18 : Bike Petrol : $400
-
-25/10/18 : Lunch : $30
-
-25/10/18 : Chips : $60
-
-26/10/18 : Lunch : $40
-
-26/10/18 : Eggs : $30
-
-27/10/18 : Dinner : $76.92
-
-28/10/18 : Drinks : $899
-
-28/10/18 : Again Drinks : $10
-
-28/10/18 : Cigarettes : $45
-
-29/10/18 : Breakfast : $20
-
-29/10/18 : Lunch : $10
-
-29/10/18 : Lassie : $30
-
-29/10/18 : Idly : $30
-
-30/10/18 : Breakfast : $30
-
-30/10/18 : Lunch : $30
-
-30/10/18 : Photos & Video Coverage : $15000
-
-31/10/18 : Breakfast : $25
-
-31/10/18 : Lunch : $40
+26/12/18 : Get it From Abi : $200
 `;
 
 const categoryMap = {
@@ -428,7 +312,7 @@ const transactions = raw
       console.log("Invalid line:", line);
       return null;
     }
-    const type = "expense"; // expense OR income
+    const type = "income"; // expense OR income
     const [, date, notes, amountStr] = match;
     const [dd, mm, yy] = date.split("/");
     const formattedDate = `20${yy}-${mm}-${dd}`;
@@ -463,196 +347,196 @@ const backup = {
         "icon": "cake",
         "color": "#A78BFA",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:03"
       },
       {
-        "id": 50,
+        "id": 2,
         "name": "Anniversary",
         "type": "expense",
         "icon": "ring",
         "color": "#E91E63",
         "is_active": 1,
-        "created_at": "2026-07-09 10:52:07"
+        "created_at": "2026-07-09 15:18:03"
       },
       {
-        "id": 2,
+        "id": 3,
         "name": "Bank Charges",
         "type": "expense",
         "icon": "bank",
         "color": "#374151",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:03"
       },
       {
-        "id": 3,
+        "id": 4,
         "name": "Beauty Care",
         "type": "expense",
         "icon": "cards-heart-outline",
         "color": "#DB2777",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:03"
       },
       {
-        "id": 4,
+        "id": 5,
         "name": "Bike / Vehicle",
         "type": "expense",
         "icon": "motorbike",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:03"
       },
       {
-        "id": 5,
+        "id": 6,
         "name": "Cashback",
         "type": "income",
         "icon": "cash-plus",
         "color": "#A3E635",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:03"
       },
       {
-        "id": 6,
+        "id": 7,
         "name": "Child Birth",
         "type": "expense",
         "icon": "baby-carriage",
         "color": "#22C55E",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:03"
       },
       {
-        "id": 7,
+        "id": 8,
         "name": "Clothes",
         "type": "expense",
         "icon": "tshirt-v",
         "color": "#FB923C",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:03"
       },
       {
-        "id": 8,
+        "id": 9,
         "name": "DTH",
         "type": "expense",
         "icon": "television-play",
         "color": "#8B5CF6",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:03"
       },
       {
-        "id": 9,
+        "id": 10,
         "name": "Diwali",
         "type": "expense",
         "icon": "firework",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:03"
       },
       {
-        "id": 10,
+        "id": 11,
         "name": "Donations",
         "type": "expense",
         "icon": "hand-heart",
         "color": "#22C55E",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:03"
       },
       {
-        "id": 11,
+        "id": 12,
         "name": "Drinks",
         "type": "expense",
         "icon": "liquor",
         "color": "#EF4444",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:03"
       },
       {
-        "id": 12,
+        "id": 13,
         "name": "Electricity",
         "type": "expense",
         "icon": "power-plug",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:03"
       },
       {
-        "id": 13,
+        "id": 14,
         "name": "Electronics",
         "type": "expense",
         "icon": "devices",
         "color": "#A78BFA",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:03"
       },
       {
-        "id": 14,
+        "id": 15,
         "name": "Eniyan",
         "type": "expense",
         "icon": "human-female-dance",
         "color": "#FBBF24",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 15,
+        "id": 16,
         "name": "Entertainment",
         "type": "expense",
         "icon": "movie-open",
         "color": "#7C3AED",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 16,
+        "id": 17,
         "name": "Family",
         "type": "expense",
         "icon": "account-group",
         "color": "#F43F5E",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 17,
+        "id": 18,
         "name": "Food & Dining",
         "type": "expense",
         "icon": "silverware-fork-knife",
         "color": "#F59E0B",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 18,
+        "id": 19,
         "name": "Fruits",
         "type": "expense",
         "icon": "fruit-watermelon",
         "color": "#84CC16",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 19,
+        "id": 20,
         "name": "Gas",
         "type": "expense",
         "icon": "gas-cylinder",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 20,
+        "id": 21,
         "name": "Gave it to Abi",
         "type": "expense",
         "icon": "bank-transfer-out",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 21,
+        "id": 22,
         "name": "Gifts",
         "type": "expense",
         "icon": "gift",
         "color": "#EC4899",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
         "id": 23,
@@ -661,250 +545,268 @@ const backup = {
         "icon": "necklace",
         "color": "#FBBF24",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 23,
+        "id": 24,
         "name": "Groceries",
         "type": "expense",
         "icon": "cart",
         "color": "#F97316",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 24,
+        "id": 25,
         "name": "Guest Visit to Bangalore",
         "type": "expense",
         "icon": "account-group-outline",
         "color": "#6366F1",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 25,
+        "id": 51,
+        "name": "Hair Maintenance",
+        "type": "expense",
+        "icon": "face-man-shimmer",
+        "color": "#334155",
+        "is_active": 1,
+        "created_at": "2026-07-12 18:10:39"
+      },
+      {
+        "id": 26,
         "name": "Home Improvement",
         "type": "expense",
         "icon": "hammer-wrench",
         "color": "#A16207",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 26,
+        "id": 27,
         "name": "Hospital / Medicine",
         "type": "expense",
         "icon": "hospital-box-outline",
         "color": "#EF4444",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 27,
+        "id": 28,
         "name": "Households",
         "type": "expense",
         "icon": "bus-stop-covered",
         "color": "#14B8A6",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 28,
+        "id": 29,
         "name": "Interest",
         "type": "income",
         "icon": "percent",
         "color": "#22C55E",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 29,
+        "id": 30,
         "name": "Jewellery",
         "type": "expense",
         "icon": "gold",
         "color": "#FBBF24",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 30,
+        "id": 31,
         "name": "Loan / EMI",
         "type": "expense",
         "icon": "bank-transfer",
         "color": "#B91C1C",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 31,
+        "id": 32,
         "name": "Misc",
         "type": "expense",
         "icon": "dots-horizontal",
         "color": "#9CA3AF",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 32,
+        "id": 33,
         "name": "Mobile",
         "type": "expense",
         "icon": "cellphone",
         "color": "#0EA5E9",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 33,
+        "id": 34,
         "name": "Money Given",
         "type": "expense",
         "icon": "arrow-up-bold-circle",
         "color": "#EF4444",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 34,
+        "id": 35,
         "name": "Money Received",
         "type": "income",
         "icon": "arrow-down-bold-circle",
         "color": "#10B981",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 35,
+        "id": 36,
         "name": "Parents",
         "type": "expense",
         "icon": "account-group",
         "color": "#FB923C",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 36,
+        "id": 52,
+        "name": "Prabu Birthday",
+        "type": "expense",
+        "icon": "cake-layered",
+        "color": "#3B82F6",
+        "is_active": 1,
+        "created_at": "2026-07-12 18:15:00"
+      },
+      {
+        "id": 37,
         "name": "Printing & Stationery",
         "type": "expense",
         "icon": "printer",
         "color": "#6B7280",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 37,
+        "id": 38,
         "name": "Relatives",
         "type": "expense",
         "icon": "account-group",
         "color": "#F97316",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 38,
+        "id": 39,
         "name": "Rent",
         "type": "expense",
         "icon": "home-account",
         "color": "#3B82F6",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 39,
+        "id": 40,
         "name": "Salary",
         "type": "income",
         "icon": "cash-multiple",
         "color": "#16A34A",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 40,
+        "id": 41,
         "name": "Salon",
         "type": "expense",
         "icon": "content-cut",
         "color": "#334155",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 41,
+        "id": 42,
         "name": "Sandals / Shoes",
         "type": "expense",
         "icon": "shoe-sneaker",
         "color": "#DB2777",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 42,
+        "id": 43,
         "name": "Savings",
         "type": "expense",
         "icon": "piggy-bank",
         "color": "#059669",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 43,
+        "id": 44,
         "name": "Snacks",
         "type": "expense",
         "icon": "food-variant",
         "color": "#FBBF24",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 44,
+        "id": 45,
         "name": "Special Occasions",
         "type": "expense",
         "icon": "party-popper",
         "color": "#06B6D4",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 45,
+        "id": 46,
         "name": "Transport",
         "type": "expense",
         "icon": "bus",
         "color": "#14B8A6",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 46,
+        "id": 47,
         "name": "Utilities",
         "type": "expense",
         "icon": "lightning-bolt",
         "color": "#64748B",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 47,
+        "id": 48,
         "name": "Vacation",
         "type": "expense",
         "icon": "earth",
         "color": "#A3E635",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 48,
+        "id": 49,
         "name": "Wallet Transfer",
         "type": "expense",
         "icon": "swap-horizontal",
         "color": "#6366F1",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       },
       {
-        "id": 49,
+        "id": 50,
         "name": "Water / Purifier",
         "type": "expense",
         "icon": "cup-water",
         "color": "#64748B",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-09 15:18:04"
       }
     ],
     "sources": [
@@ -941,15 +843,163 @@ const backup = {
         "id": 4
       }
     ],
-    budgets: [],
-    bills: []
+    "budgets": [],
+    "bills": [],
+    "loans": [
+      {
+        "id": 1,
+        "loan_name": "Gold Loan 1",
+        "loan_type": "Other",
+        "lender": "Bank of Baroda",
+        "loan_direction": "BORROWED",
+        "principal_amount": 100000,
+        "interest_rate": 0.75,
+        "loan_start_date": "2018-01-22",
+        "loan_end_date": null,
+        "tenure_months": 12,
+        "emi_amount": 0,
+        "emi_day": 6,
+        "outstanding_amount": 0,
+        "principal_paid": 104157.62,
+        "interest_paid": 426.41,
+        "total_paid": 104572,
+        "total_prepayment": 0,
+        "remaining_months": null,
+        "status": "Closed",
+        "notes": "1st Gold Loan ",
+        "created_at": "2026-07-13 16:08:41",
+        "updated_at": "2026-07-13 16:14:19"
+      }
+    ],
+    "loan_payments": [
+      {
+        "id": 1,
+        "loan_id": 1,
+        "payment_date": "2018-01-22T05:30:00.000Z",
+        "payment_amount": 282,
+        "principal_component": 219.5,
+        "interest_component": 62.5,
+        "remaining_balance": 99780.5,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 2276,
+        "remarks": "1st Loan: Processing Fee",
+        "created_at": "2026-07-13 16:09:22"
+      },
+      {
+        "id": 2,
+        "loan_id": 1,
+        "payment_date": "2018-01-23T04:30:00.000Z",
+        "payment_amount": 590,
+        "principal_component": 527.64,
+        "interest_component": 62.36,
+        "remaining_balance": 99252.86,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 2277,
+        "remarks": "1st Loan: Processing Fee",
+        "created_at": "2026-07-13 16:10:10"
+      },
+      {
+        "id": 3,
+        "loan_id": 1,
+        "payment_date": "2018-05-21T05:30:00.000Z",
+        "payment_amount": 50,
+        "principal_component": 0,
+        "interest_component": 62.03,
+        "remaining_balance": 99252.86,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 364,
+        "remarks": "1st Loan: 1st Payment",
+        "created_at": "2026-07-13 16:10:43"
+      },
+      {
+        "id": 4,
+        "loan_id": 1,
+        "payment_date": "2018-05-21T05:30:00.000Z",
+        "payment_amount": 9650,
+        "principal_component": 9587.97,
+        "interest_component": 62.03,
+        "remaining_balance": 89664.89,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 365,
+        "remarks": "1st Loan: 1st Payment",
+        "created_at": "2026-07-13 16:12:31"
+      },
+      {
+        "id": 5,
+        "loan_id": 1,
+        "payment_date": "2018-06-01T05:00:00.000Z",
+        "payment_amount": 5000,
+        "principal_component": 4943.96,
+        "interest_component": 56.04,
+        "remaining_balance": 84720.93,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 319,
+        "remarks": "1st Loan: 2nd Payment",
+        "created_at": "2026-07-13 16:13:39"
+      },
+      {
+        "id": 6,
+        "loan_id": 1,
+        "payment_date": "2018-09-03T05:30:00.000Z",
+        "payment_amount": 5000,
+        "principal_component": 4947.05,
+        "interest_component": 52.95,
+        "remaining_balance": 79773.88,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 2278,
+        "remarks": "1st Loan: 3rd Payment",
+        "created_at": "2026-07-13 16:13:57"
+      },
+      {
+        "id": 7,
+        "loan_id": 1,
+        "payment_date": "2018-09-03T05:30:00.000Z",
+        "payment_amount": 50000,
+        "principal_component": 49950.14,
+        "interest_component": 49.86,
+        "remaining_balance": 29823.74,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 2279,
+        "remarks": "1st Loan: 4th Payment",
+        "created_at": "2026-07-13 16:14:09"
+      },
+      {
+        "id": 8,
+        "loan_id": 1,
+        "payment_date": "2018-11-03",
+        "payment_amount": 34000,
+        "principal_component": 33981.36,
+        "interest_component": 18.64,
+        "remaining_balance": 0,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 2173,
+        "remarks": "1st Loan: 5th Payment Closing",
+        "created_at": "2026-07-13 16:14:19"
+      }
+    ]
   }
 };
 
 fs.writeFileSync(
-  "2018_10.json",
+  "2018_12_income.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2018_10.json created successfully.");
+console.log("2018_12_income.json created successfully.");
