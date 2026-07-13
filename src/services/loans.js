@@ -1,6 +1,6 @@
 import { executeSql } from '../database/db';
 import events from './events';
-import { createTransaction } from './transactions';
+import { createTransaction, getTransactionById } from './transactions';
 import calc from './loanCalculations';
 
 export async function createLoan(loan) {
@@ -98,7 +98,13 @@ export async function recordPayment({ loanId, date, amount, paymentType = 'EMI',
             notes: `Loan payment: ${loan.loan_name}`,
             bill_id: null,
             transfer_group_id: null,
-            direction: 'debit'
+            direction: 'debit',
+            loan_id: loanId,
+            loan_payment_type: paymentType,
+            principal_component: principalComponent,
+            interest_component: interestComponent,
+            outstanding_after_payment: remaining < 0 ? 0 : remaining,
+            linked_date: date || new Date().toISOString()
         });
         // Link transaction id to payment row
         await executeSql('UPDATE loan_payments SET transaction_id = ? WHERE id = ?', [txId, pRes.insertId]);
@@ -162,7 +168,13 @@ export async function recordPrepayment({ loanId, date, amount, reduceEMI = false
             notes: `Loan prepayment: ${loan.loan_name}`,
             bill_id: null,
             transfer_group_id: null,
-            direction: 'debit'
+            direction: 'debit',
+            loan_id: loanId,
+            loan_payment_type: 'PREPAYMENT',
+            principal_component: principalComponent,
+            interest_component: interestComponent,
+            outstanding_after_payment: remaining < 0 ? 0 : remaining,
+            linked_date: date || new Date().toISOString()
         });
         await executeSql('UPDATE loan_payments SET transaction_id = ? WHERE id = ?', [txId, pRes.insertId]);
     } catch (e) {
@@ -216,7 +228,13 @@ export async function forecloseLoan({ loanId, date, finalPaymentAmount, foreclos
             notes: `Loan foreclosure: ${loan.loan_name}`,
             bill_id: null,
             transfer_group_id: null,
-            direction: 'debit'
+            direction: 'debit',
+            loan_id: loanId,
+            loan_payment_type: 'FORECLOSURE',
+            principal_component: principalComponent,
+            interest_component: interestComponent,
+            outstanding_after_payment: remaining,
+            linked_date: date || new Date().toISOString()
         });
         await executeSql('UPDATE loan_payments SET transaction_id = ? WHERE id = ?', [txId, pRes.insertId]);
     } catch (e) {
@@ -246,6 +264,111 @@ export async function hasDuplicatePayment(loanId, date, amount, paymentType) {
     return res.rows.length > 0;
 }
 
+export async function recalculateLoanFromLinkedTransactions(loanId) {
+    const loan = await getLoanById(loanId);
+    if (!loan) throw new Error('Loan not found');
+
+    // Start from original principal amount to rebuild state
+    const originalPrincipal = Number(loan.principal_amount || 0);
+    let outstanding = originalPrincipal;
+    let principalPaid = 0;
+    let interestPaid = 0;
+    let totalPaid = 0;
+
+    const res = await executeSql('SELECT * FROM transactions WHERE loan_id = ? ORDER BY date ASC, id ASC', [loanId]);
+    const txs = [];
+    for (let i = 0; i < res.rows.length; i++) txs.push(res.rows.item(i));
+
+    for (const tx of txs) {
+        const amount = Number(tx.amount || 0);
+        const interestComponent = calc.calculateInterestComponent(outstanding, loan.interest_rate);
+        let principalComponent = +(amount - interestComponent).toFixed(2);
+        if (principalComponent < 0) principalComponent = 0;
+        const newOutstanding = +(outstanding - principalComponent).toFixed(2);
+
+        // update transactions with calculated allocation
+        await executeSql(`UPDATE transactions SET principal_component = ?, interest_component = ?, outstanding_after_payment = ?, linked_date = ? WHERE id = ?`,
+            [principalComponent, interestComponent, newOutstanding < 0 ? 0 : newOutstanding, tx.linked_date || tx.date || new Date().toISOString(), tx.id]
+        );
+
+        // upsert loan_payments row for this transaction
+        const exists = await executeSql('SELECT id FROM loan_payments WHERE transaction_id = ? LIMIT 1', [tx.id]);
+        if (exists.rows.length > 0) {
+            const lpId = exists.rows.item(0).id;
+            await executeSql(`UPDATE loan_payments SET payment_date = ?, payment_amount = ?, principal_component = ?, interest_component = ?, remaining_balance = ?, payment_type = ?, payment_source_id = ?, payment_category_id = ?, remarks = ? WHERE id = ?`,
+                [tx.date || new Date().toISOString(), amount, principalComponent, interestComponent, newOutstanding < 0 ? 0 : newOutstanding, tx.loan_payment_type || 'LINKED', tx.source_id || null, tx.category_id || null, tx.notes || null, lpId]
+            );
+        } else {
+            await executeSql(`INSERT INTO loan_payments (loan_id, payment_date, payment_amount, principal_component, interest_component, remaining_balance, payment_type, payment_source_id, payment_category_id, transaction_id, remarks) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+                [loanId, tx.date || new Date().toISOString(), amount, principalComponent, interestComponent, newOutstanding < 0 ? 0 : newOutstanding, tx.loan_payment_type || 'LINKED', tx.source_id || null, tx.category_id || null, tx.id, tx.notes || null]
+            );
+        }
+
+        outstanding = newOutstanding;
+        principalPaid = +(principalPaid + principalComponent).toFixed(2);
+        interestPaid = +(interestPaid + interestComponent).toFixed(2);
+        totalPaid = +(totalPaid + amount).toFixed(2);
+    }
+
+    const newStatus = outstanding <= 0 ? 'Closed' : 'Active';
+    const remainingMonths = calc.calculateRemainingMonths(outstanding, loan.emi_amount || 0, loan.interest_rate);
+
+    await executeSql(`UPDATE loans SET outstanding_amount = ?, principal_paid = ?, interest_paid = ?, total_paid = ?, remaining_months = ?, status = ?, updated_at = datetime('now') WHERE id = ?`,
+        [outstanding < 0 ? 0 : outstanding, principalPaid, interestPaid, totalPaid, remainingMonths, newStatus, loanId]
+    );
+
+    try { events.emit('loanPaymentsChanged', { action: 'recalculate', loanId }); } catch (e) { }
+    try { events.emit('loansChanged', { action: 'recalculate', id: loanId }); } catch (e) { }
+
+    return {
+        outstanding: outstanding < 0 ? 0 : outstanding,
+        principalPaid,
+        interestPaid,
+        totalPaid,
+        remainingMonths,
+        status: newStatus
+    };
+}
+
+export async function linkTransactionToLoan(transactionId, loanId, opts = {}) {
+    if (!transactionId || !loanId) throw new Error('Missing params');
+    const tx = await getTransactionById(transactionId);
+    if (!tx) throw new Error('Transaction not found');
+    if (tx.transfer_group_id) throw new Error('Cannot link transfer transaction');
+
+    // update transaction with loan info
+    const fields = {
+        loan_id: loanId,
+        loan_payment_type: opts.paymentType || tx.loan_payment_type || 'LINKED',
+        linked_date: opts.linkedDate || tx.date || new Date().toISOString()
+    };
+    await executeSql(`UPDATE transactions SET loan_id = ?, loan_payment_type = ?, linked_date = ? WHERE id = ?`, [fields.loan_id, fields.loan_payment_type, fields.linked_date, transactionId]);
+
+    // run recalculation for the loan
+    await recalculateLoanFromLinkedTransactions(loanId);
+
+    try { events.emit('transactionsChanged', { action: 'link', id: transactionId, loanId }); } catch (e) { }
+}
+
+export async function unlinkTransactionFromLoan(transactionId) {
+    if (!transactionId) throw new Error('Missing transactionId');
+    const tx = await getTransactionById(transactionId);
+    if (!tx) throw new Error('Transaction not found');
+    const loanId = tx.loan_id;
+    if (!loanId) return;
+
+    // remove loan-specific fields
+    await executeSql(`UPDATE transactions SET loan_id = NULL, loan_payment_type = NULL, principal_component = NULL, interest_component = NULL, outstanding_after_payment = NULL, linked_date = NULL WHERE id = ?`, [transactionId]);
+
+    // remove loan_payments row linked to this transaction
+    await executeSql('DELETE FROM loan_payments WHERE transaction_id = ?', [transactionId]);
+
+    // recalc loan
+    await recalculateLoanFromLinkedTransactions(loanId);
+
+    try { events.emit('transactionsChanged', { action: 'unlink', id: transactionId, loanId }); } catch (e) { }
+}
+
 export default {
     createLoan,
     updateLoan,
@@ -255,5 +378,9 @@ export default {
     recordPrepayment,
     forecloseLoan,
     getLoanPayments,
-    hasDuplicatePayment
+    hasDuplicatePayment,
+    recalculateLoanFromLinkedTransactions,
+    linkTransactionToLoan,
+    unlinkTransactionFromLoan
 };
+

@@ -9,9 +9,10 @@ import {
   Platform
 } from 'react-native';
 import { createTransaction, createTransfer, getTransactionNoteSuggestions, updateTransaction, deleteTransaction } from '../services/transactions';
+import { getLoans, linkTransactionToLoan, unlinkTransactionFromLoan } from '../services/loans';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
-import { TextInput as PaperTextInput, Button as PaperButton, Chip } from 'react-native-paper';
+import { TextInput as PaperTextInput, Button as PaperButton, Chip, Snackbar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import CategoryCreateModal from './CategoryCreateModal';
 import SourceCreateModal from './SourceCreateModal';
@@ -54,6 +55,12 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [sourceSearch, setSourceSearch] = useState('');
   const sourceSearchRef = useRef(null);
   const [showSourceCreateModal, setShowSourceCreateModal] = useState(false);
+  const [loansList, setLoansList] = useState([]);
+  const [showLoanModal, setShowLoanModal] = useState(false);
+  const [linkedLoanId, setLinkedLoanId] = useState(isEdit && transaction ? transaction.loan_id : null);
+  const [linking, setLinking] = useState(false);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMsg, setSnackbarMsg] = useState('');
 
 
   useEffect(() => {
@@ -64,6 +71,13 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       setSources(src);
       const notes = await getTransactionNoteSuggestions();
       setNoteSuggestions(notes);
+      // load loans for possible linking (keep small list)
+      try {
+        const lns = await getLoans();
+        setLoansList(lns);
+      } catch (e) {
+        // ignore
+      }
     })();
   }, []);
 
@@ -115,11 +129,13 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       return;
     }
     if (!categoryId && type !== 'transfer') {
-      alert('Please select a category.');
+      setSnackbarMsg('Please select a category.');
+      setSnackbarVisible(true);
       return;
     }
     if (!sourceId) {
-      alert('Please select a source.');
+      setSnackbarMsg('Please select a source.');
+      setSnackbarVisible(true);
       return;
     }
     if (!notes.trim()) {
@@ -130,12 +146,14 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
     let id;
     if (type === 'transfer') {
       if (!sourceId || !toAccount) {
-        alert('Select both accounts');
+        setSnackbarMsg('Select both accounts');
+        setSnackbarVisible(true);
         return;
       }
 
       if (sourceId === toAccount) {
-        alert('Cannot transfer to same account');
+        setSnackbarMsg('Cannot transfer to same account');
+        setSnackbarVisible(true);
         return;
       }
 
@@ -149,7 +167,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         });
       } catch (e) {
         console.log(e);
-        alert(e.message);
+        setSnackbarMsg(e?.message || 'Operation failed');
+        setSnackbarVisible(true);
       }
       id = 'transfer';
     } else {
@@ -341,6 +360,45 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               name="trash-2"
               size={20}
               color="#E46A6A"
+            />
+          </TouchableOpacity>
+        )}
+        {isEdit && (
+          <TouchableOpacity
+            onPress={async () => {
+              if (linkedLoanId) {
+                // confirm via Alert, then unlink
+                setLinking(true);
+                try {
+                  await unlinkTransactionFromLoan(transaction.id);
+                  setLinkedLoanId(null);
+                  setSnackbarMsg('Transaction unlinked from loan');
+                  setSnackbarVisible(true);
+                } catch (e) {
+                  console.warn(e);
+                  setSnackbarMsg(e.message || 'Failed to unlink');
+                  setSnackbarVisible(true);
+                }
+                setLinking(false);
+              } else {
+                setShowLoanModal(true);
+              }
+            }}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: '#4B7CF3',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginLeft: 8
+            }}
+          >
+            <MaterialCommunityIcons
+              name={linkedLoanId ? 'link-off' : 'link'}
+              size={18}
+              color="#4B7CF3"
             />
           </TouchableOpacity>
         )}
@@ -1625,6 +1683,39 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         onConfirm={handleDelete}
       />
 
+      <Modal visible={showLoanModal} transparent animationType="slide" onRequestClose={() => setShowLoanModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#fff', padding: 12, borderRadius: 8, maxHeight: '80%' }}>
+            <Text style={{ fontWeight: '700', marginBottom: 8 }}>Link to Loan</Text>
+            <ScrollView>
+              {loansList.map(l => (
+                <TouchableOpacity key={l.id} onPress={async () => {
+                  setLinking(true);
+                    try {
+                    await linkTransactionToLoan(transaction.id, l.id, { paymentType: 'LINKED', linkedDate: transaction.date });
+                    setLinkedLoanId(l.id);
+                    setShowLoanModal(false);
+                    setSnackbarMsg('Transaction linked to loan');
+                    setSnackbarVisible(true);
+                  } catch (e) {
+                    console.warn(e);
+                    setSnackbarMsg(e.message || 'Failed to link transaction');
+                    setSnackbarVisible(true);
+                  }
+                  setLinking(false);
+                }} style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F2F2F2' }}>
+                  <Text style={{ fontSize: 16, fontWeight: '600' }}>{l.loan_name} <Text style={{ fontWeight: '400', color: '#666' }}>({l.status})</Text></Text>
+                  <Text style={{ color: '#666', marginTop: 4 }}>Outstanding: {Number(l.outstanding_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <View style={{ marginTop: 8, flexDirection: 'row', justifyContent: 'flex-end' }}>
+              <PaperButton onPress={() => setShowLoanModal(false)}>Close</PaperButton>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <CategoryCreateModal
         visible={showCategoryCreateModal}
         onClose={() => setShowCategoryCreateModal(false)}
@@ -1668,6 +1759,11 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         }}
       />
 
+      <Snackbar visible={snackbarVisible} onDismiss={() => setSnackbarVisible(false)} duration={3000} action={{ label: 'OK', onPress: () => setSnackbarVisible(false) }}>
+        {snackbarMsg}
+      </Snackbar>
+
     </ScrollView>
   );
 }
+

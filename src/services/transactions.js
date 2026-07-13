@@ -13,11 +13,18 @@ export async function createTransaction(tx) {
     transfer_group_id,
     direction
   } = tx;
+  // Support optional loan-linking fields without breaking existing callers
+  const loan_id = tx.loan_id || null;
+  const loan_payment_type = tx.loan_payment_type || null;
+  const principal_component = tx.principal_component != null ? tx.principal_component : null;
+  const interest_component = tx.interest_component != null ? tx.interest_component : null;
+  const outstanding_after_payment = tx.outstanding_after_payment != null ? tx.outstanding_after_payment : null;
+  const linked_date = tx.linked_date || null;
 
   const res = await executeSql(
     `INSERT INTO transactions 
-    (type, amount, category_id, source_id, date, notes, bill_id, transfer_group_id, direction)
-    VALUES (?,?,?,?,?,?,?,?,?)`,
+    (type, amount, category_id, source_id, date, notes, bill_id, transfer_group_id, direction, loan_id, loan_payment_type, principal_component, interest_component, outstanding_after_payment, linked_date)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       type,
       amount,
@@ -27,7 +34,13 @@ export async function createTransaction(tx) {
       notes || null,
       bill_id || null,
       transfer_group_id || null,
-      direction || null
+      direction || null,
+      loan_id,
+      loan_payment_type,
+      principal_component,
+      interest_component,
+      outstanding_after_payment,
+      linked_date
     ]
   );
 
@@ -285,4 +298,10 @@ export async function getTransactionNoteSuggestions() {
 
     return new Date(b.last_used) - new Date(a.last_used);
   });
+}
+
+export async function getTransactionById(id) {
+  const res = await executeSql('SELECT * FROM transactions WHERE id = ?', [id]);
+  if (res.rows.length === 0) return null;
+  return res.rows.item(0);
 }

@@ -26,7 +26,7 @@ export async function initDB() {
       color TEXT
     );`);
 
-    // Transactions
+    // Transactions (include loan-linking columns)
     await executeSql(`CREATE TABLE IF NOT EXISTS transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       type TEXT NOT NULL,
@@ -38,6 +38,13 @@ export async function initDB() {
       bill_id INTEGER,
       transfer_group_id TEXT,
       direction TEXT,
+      -- loan linking fields
+      loan_id INTEGER,
+      loan_payment_type TEXT,
+      principal_component REAL,
+      interest_component REAL,
+      outstanding_after_payment REAL,
+      linked_date TEXT,
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY(category_id) REFERENCES categories(id),
       FOREIGN KEY(source_id) REFERENCES sources(id)
@@ -120,6 +127,13 @@ export async function initDB() {
     } catch (e) {
       // Column already exists or DB platform does not support ALTER TABLE
     }
+    // Ensure transactions table has loan linking columns for older DBs
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN loan_id INTEGER'); } catch (e) {}
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN loan_payment_type TEXT'); } catch (e) {}
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN principal_component REAL'); } catch (e) {}
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN interest_component REAL'); } catch (e) {}
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN outstanding_after_payment REAL'); } catch (e) {}
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN linked_date TEXT'); } catch (e) {}
     // Seed defaults if empty (helpful for web/local dev)
     try {
       const cats = await executeSql('SELECT * FROM categories', []);
