@@ -5,12 +5,13 @@ import calc from './loanCalculations';
 
 export async function createLoan(loan) {
     const res = await executeSql(
-        `INSERT INTO loans (loan_name, loan_type, lender, principal_amount, interest_rate, loan_start_date, tenure_months, emi_amount, emi_day, outstanding_amount, remaining_months, status, notes)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO loans (loan_name, loan_type, lender, loan_direction, principal_amount, interest_rate, loan_start_date, tenure_months, emi_amount, emi_day, outstanding_amount, remaining_months, status, notes)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
             loan.loan_name,
             loan.loan_type,
             loan.lender,
+            loan.loan_direction || 'BORROWED',
             loan.principal_amount || 0,
             loan.interest_rate || 0,
             loan.loan_start_date || null,
@@ -87,18 +88,23 @@ export async function recordPayment({ loanId, date, amount, paymentType = 'EMI',
         [remaining < 0 ? 0 : remaining, newPrincipalPaid, newInterestPaid, newTotalPaid, calc.calculateRemainingMonths(remaining, loan.emi_amount || 0, loan.interest_rate), newStatus, loanId]
     );
 
-    // Create linked expense transaction
+    // Create linked transaction (expense for BORROWED, income for LENT)
     try {
+        const isLent = (loan.loan_direction || 'BORROWED') === 'LENT';
+        const txType = isLent ? 'income' : 'expense';
+        const direction = isLent ? 'credit' : 'debit';
+        const txNotes = isLent ? `Payment received: ${loan.loan_name}` : `Loan payment: ${loan.loan_name}`;
+
         const txId = await createTransaction({
-            type: 'expense',
+            type: txType,
             amount: amount,
             category_id: categoryId || null,
             source_id: sourceId || null,
             date: date || new Date().toISOString(),
-            notes: `Loan payment: ${loan.loan_name}`,
+            notes: txNotes,
             bill_id: null,
             transfer_group_id: null,
-            direction: 'debit',
+            direction,
             loan_id: loanId,
             loan_payment_type: paymentType,
             principal_component: principalComponent,
@@ -106,6 +112,7 @@ export async function recordPayment({ loanId, date, amount, paymentType = 'EMI',
             outstanding_after_payment: remaining < 0 ? 0 : remaining,
             linked_date: date || new Date().toISOString()
         });
+
         // Link transaction id to payment row
         await executeSql('UPDATE loan_payments SET transaction_id = ? WHERE id = ?', [txId, pRes.insertId]);
     } catch (e) {

@@ -16,7 +16,10 @@ const LOAN_TYPES = [
     { key: 'Education', label: 'Education', icon: 'school' },
     { key: 'Business', label: 'Business', icon: 'briefcase-outline' },
     { key: 'Credit Card', label: 'Credit Card', icon: 'credit-card-outline' },
-    { key: 'Friends', label: 'Friends', icon: 'handshake' },
+    { key: 'Friend', label: 'Friend', icon: 'handshake' },
+    { key: 'Family', label: 'Family', icon: 'account-multiple' },
+    { key: 'Employee', label: 'Employee', icon: 'account-tie' },
+    { key: 'Customer', label: 'Customer', icon: 'account-circle' },
     { key: 'Other', label: 'Other', icon: 'shape-outline' }
 ];
 
@@ -24,7 +27,7 @@ export default function LoanFormScreen({ navigation, route }) {
     const rawId = route?.params?.id ?? route?.params?.loanId;
     const editId = rawId != null && rawId !== '' ? Number(rawId) : null;
     const [loanData, setLoanData] = useState({
-        loan_name: '', loan_type: 'Other', lender: '', principal_amount: '', interest_rate: '', loan_start_date: '', tenure_months: '', emi_amount: '', emi_day: '', outstanding_amount: '', notes: ''
+        loan_name: '', loan_type: 'Other', lender: '', loan_direction: 'BORROWED', principal_amount: '', interest_rate: '', loan_start_date: '', tenure_months: '', emi_amount: '', emi_day: '', outstanding_amount: '', notes: ''
     });
 
     const [errors, setErrors] = useState({});
@@ -39,7 +42,7 @@ export default function LoanFormScreen({ navigation, route }) {
                 const d = await getLoanById(editId);
                 if (d) {
                     setLoanData({
-                        loan_name: d.loan_name || '', loan_type: d.loan_type || 'Other', lender: d.lender || '', principal_amount: d.principal_amount != null ? String(d.principal_amount) : '',
+                        loan_name: d.loan_name || '', loan_type: d.loan_type || 'Other', lender: d.lender || '', loan_direction: d.loan_direction || 'BORROWED', principal_amount: d.principal_amount != null ? String(d.principal_amount) : '',
                         interest_rate: d.interest_rate != null ? String(d.interest_rate) : '', loan_start_date: d.loan_start_date ? d.loan_start_date.slice(0, 10) : '', tenure_months: d.tenure_months != null ? String(d.tenure_months) : '',
                         emi_amount: d.emi_amount != null ? String(d.emi_amount) : '', emi_day: d.emi_day != null ? String(d.emi_day) : '', outstanding_amount: d.outstanding_amount != null ? String(d.outstanding_amount) : '', notes: d.notes || '', created_at: d.created_at, updated_at: d.updated_at, status: d.status
                     });
@@ -66,7 +69,7 @@ export default function LoanFormScreen({ navigation, route }) {
 
     async function submit() {
         if (!validate()) return;
-        const allowed = ['loan_name', 'loan_type', 'lender', 'principal_amount',
+        const allowed = ['loan_name', 'loan_type', 'lender', 'loan_direction', 'principal_amount',
             'interest_rate', 'loan_start_date', 'loan_end_date', 'tenure_months',
             'emi_amount', 'emi_day', 'outstanding_amount', 'notes'];
         const payload = {};
@@ -125,6 +128,14 @@ export default function LoanFormScreen({ navigation, route }) {
             style={styles.screen}
             contentContainerStyle={styles.content}
         >
+            {/* Money Direction */}
+            <Card style={styles.card}>
+                <Text style={styles.sectionTitle}>Money Direction</Text>
+                <View style={{ flexDirection: 'row', marginTop: 8 }}>
+                    <Chip selected={loanData.loan_direction === 'BORROWED'} onPress={() => setField('loan_direction', 'BORROWED')} style={{ marginRight: 8 }}>I Borrowed</Chip>
+                    <Chip selected={loanData.loan_direction === 'LENT'} onPress={() => setField('loan_direction', 'LENT')}>I Lent</Chip>
+                </View>
+            </Card>
             {/* Loan Information */}
             <Card style={styles.card}>
                 <Text style={styles.sectionTitle}>Loan Information</Text>
@@ -151,11 +162,11 @@ export default function LoanFormScreen({ navigation, route }) {
                 </TouchableOpacity>
 
                 <PaperTextInput
-                    label="Lender"
+                    label={loanData.loan_direction === 'LENT' ? 'Borrower' : 'Lender'}
                     value={loanData.lender}
                     onChangeText={(t) => setField('lender', t)}
                     mode="outlined"
-                    left={<PaperTextInput.Icon icon="bank-outline" />}
+                    left={<PaperTextInput.Icon icon={loanData.loan_direction === 'LENT' ? 'account-outline' : 'bank-outline'} />}
                 />
             </Card>
 

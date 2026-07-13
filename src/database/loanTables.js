@@ -7,6 +7,7 @@ export async function createLoanTables() {
     loan_name TEXT,
     loan_type TEXT,
     lender TEXT,
+    loan_direction TEXT DEFAULT 'BORROWED',
     principal_amount REAL DEFAULT 0,
     interest_rate REAL DEFAULT 0,
     loan_start_date TEXT,

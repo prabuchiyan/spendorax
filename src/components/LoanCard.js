@@ -32,6 +32,8 @@ export default function LoanCard({ loan }) {
       ? '#16A34A'
       : '#2563EB';
 
+  const isLent = (loan.loan_direction || 'BORROWED') === 'LENT';
+
   return (
     <Card style={styles.card}>
 
@@ -43,9 +45,9 @@ export default function LoanCard({ loan }) {
 
           <View style={styles.iconBox}>
             <MaterialCommunityIcons
-              name="bank-outline"
+              name={isLent ? 'hand-coin' : 'bank-outline'}
               size={24}
-              color="#2563EB"
+              color={isLent ? '#B45309' : '#2563EB'}
             />
           </View>
 
@@ -55,7 +57,7 @@ export default function LoanCard({ loan }) {
             </Text>
 
             <Text style={styles.lender}>
-              {loan.lender || 'Lender'}
+              {loan.lender || (isLent ? 'Borrower' : 'Lender')}
             </Text>
           </View>
 
@@ -125,7 +127,7 @@ export default function LoanCard({ loan }) {
 
         <View style={styles.infoBox}>
           <Text style={styles.smallLabel}>
-            Monthly EMI
+            {isLent ? 'Recovery Amount' : 'Monthly EMI'}
           </Text>
 
           <Text style={styles.value}>
@@ -145,7 +147,7 @@ export default function LoanCard({ loan }) {
 
         <View style={styles.infoBox}>
           <Text style={styles.smallLabel}>
-            EMI Day
+            {isLent ? 'Next Collection' : 'EMI Day'}
           </Text>
 
           <Text style={styles.value}>

@@ -15,6 +15,7 @@ export default function LoanListScreen({ navigation }) {
   const [loans, setLoans] = useState([]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('ALL');
+  const [directionFilter, setDirectionFilter] = useState('ALL');
 
   async function load() {
     const data = await getLoans();
@@ -47,9 +48,14 @@ export default function LoanListScreen({ navigation }) {
           ? true
           : (l.status || 'Active') === filter;
 
-      return matchesSearch && matchesFilter;
+      const matchesDirection =
+        directionFilter === 'ALL'
+          ? true
+          : (l.loan_direction || 'BORROWED') === directionFilter;
+
+      return matchesSearch && matchesFilter && matchesDirection;
     });
-  }, [loans, search, filter]);
+  }, [loans, search, filter, directionFilter]);
 
   const Chip = ({ title, value }) => (
     <View
@@ -172,6 +178,14 @@ export default function LoanListScreen({ navigation }) {
                   >
                     {f}
                   </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {/* Direction Filter */}
+            <View style={{ flexDirection: 'row', marginBottom: 18 }}>
+              {['ALL', 'BORROWED', 'LENT'].map(d => (
+                <TouchableOpacity key={d} onPress={() => setDirectionFilter(d)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: directionFilter === d ? Colors.primary : '#E5E7EB', marginRight: 10 }}>
+                  <Text style={{ color: directionFilter === d ? '#fff' : '#374151', fontWeight: '700' }}>{d === 'ALL' ? 'All' : (d === 'BORROWED' ? 'Borrowed' : 'Lent')}</Text>
                 </TouchableOpacity>
               ))}
             </View>

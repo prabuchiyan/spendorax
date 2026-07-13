@@ -404,62 +404,109 @@ export default function LoanDetailsScreen({ route, navigation }) {
                         marginTop: 8,
                     }}
                 >
+                    { (loan.loan_direction || 'BORROWED') === 'LENT' ? (
+                        <>
+                            <ActionButton
+                                color="#16A34A"
+                                icon="cash-plus"
+                                title="Receive Payment"
+                                onPress={() =>
+                                    navigation.navigate('LoanPayment', {
+                                        id: loan.id,
+                                    })
+                                }
+                            />
 
-                    <ActionButton
-                        color="#2563EB"
-                        icon="cash-fast"
-                        title="Pay EMI"
-                        onPress={() =>
-                            navigation.navigate('LoanPayment', {
-                                id: loan.id,
-                            })
-                        }
-                    />
+                            <ActionButton
+                                color="#7C3AED"
+                                icon="history"
+                                title="History"
+                                onPress={() =>
+                                    navigation.navigate('LoanHistory', {
+                                        id: loan.id,
+                                    })
+                                }
+                            />
 
-                    <ActionButton
-                        color="#16A34A"
-                        icon="cash-plus"
-                        title="Prepay"
-                        onPress={() => setShowPrepayment(true)}
-                    />
+                            <ActionButton
+                                color="#64748B"
+                                icon="file-chart"
+                                title="Reports"
+                                onPress={() =>
+                                    navigation.navigate('LoanReports')
+                                }
+                            />
 
-                    <ActionButton
-                        color="#EA580C"
-                        icon="bank-remove"
-                        title="Close"
-                        onPress={() => setShowForeclosure(true)}
-                    />
+                            <ActionButton
+                                color="#0F766E"
+                                icon="pencil"
+                                title="Edit"
+                                onPress={() =>
+                                    navigation.navigate('LoanForm', {
+                                        id: loan.id,
+                                    })
+                                }
+                            />
+                        </>
+                    ) : (
+                        <>
+                            <ActionButton
+                                color="#2563EB"
+                                icon="cash-fast"
+                                title="Pay EMI"
+                                onPress={() =>
+                                    navigation.navigate('LoanPayment', {
+                                        id: loan.id,
+                                    })
+                                }
+                            />
 
-                    <ActionButton
-                        color="#7C3AED"
-                        icon="history"
-                        title="History"
-                        onPress={() =>
-                            navigation.navigate('LoanHistory', {
-                                id: loan.id,
-                            })
-                        }
-                    />
+                            <ActionButton
+                                color="#16A34A"
+                                icon="cash-plus"
+                                title="Prepay"
+                                onPress={() => setShowPrepayment(true)}
+                            />
 
-                    <ActionButton
-                        color="#64748B"
-                        icon="file-chart"
-                        title="Reports"
-                        onPress={() =>
-                            navigation.navigate('LoanReports')
-                        }
-                    />
+                            <ActionButton
+                                color="#EA580C"
+                                icon="bank-remove"
+                                title="Close"
+                                onPress={() => setShowForeclosure(true)}
+                            />
 
-                    <ActionButton
-                        color="#0F766E"
-                        icon="pencil"
-                        title="Edit"
-                        onPress={() =>
-                            navigation.navigate('LoanForm', {
-                                id: loan.id,
-                            })
-                        }
-                    />
+                            <ActionButton
+                                color="#7C3AED"
+                                icon="history"
+                                title="History"
+                                onPress={() =>
+                                    navigation.navigate('LoanHistory', {
+                                        id: loan.id,
+                                    })
+                                }
+                            />
+
+                            <ActionButton
+                                color="#64748B"
+                                icon="file-chart"
+                                title="Reports"
+                                onPress={() =>
+                                    navigation.navigate('LoanReports')
+                                }
+                            />
+
+                            <ActionButton
+                                color="#0F766E"
+                                icon="pencil"
+                                title="Edit"
+                                onPress={() =>
+                                    navigation.navigate('LoanForm', {
+                                        id: loan.id,
+                                    })
+                                }
+                            />
+                        </>
+                    ) }
 
                 </View>
 
