@@ -5,8 +5,8 @@ import calc from './loanCalculations';
 
 export async function createLoan(loan) {
     const res = await executeSql(
-        `INSERT INTO loans (loan_name, loan_type, lender, loan_direction, principal_amount, interest_rate, loan_start_date, tenure_months, emi_amount, emi_day, outstanding_amount, remaining_months, status, notes)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO loans (loan_name, loan_type, lender, loan_direction, principal_amount, interest_rate, loan_start_date, loan_end_date, tenure_months, emi_amount, emi_day, outstanding_amount, remaining_months, status, notes)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
             loan.loan_name,
             loan.loan_type,
@@ -15,6 +15,7 @@ export async function createLoan(loan) {
             loan.principal_amount || 0,
             loan.interest_rate || 0,
             loan.loan_start_date || null,
+            loan.loan_end_date || null,
             loan.tenure_months || 0,
             loan.emi_amount || 0,
             loan.emi_day || null,

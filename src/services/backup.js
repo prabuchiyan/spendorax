@@ -257,8 +257,8 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       for (const p of originalData.loan_payments) {
         try {
           await executeSql(
-            `INSERT INTO loan_payments (id, loan_id, payment_date, payment_amount, principal_component, interest_component, remaining_balance, payment_type, payment_source_id, transaction_id, remarks, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-            [p.id, p.loan_id, p.payment_date, p.payment_amount, p.principal_component, p.interest_component, p.remaining_balance, p.payment_type, p.payment_source_id, p.transaction_id, p.remarks, p.created_at]
+            `INSERT INTO loan_payments (id, loan_id, payment_date, payment_amount, principal_component, interest_component, remaining_balance, payment_type, payment_source_id, payment_category_id, transaction_id, remarks, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            [p.id, p.loan_id, p.payment_date, p.payment_amount, p.principal_component, p.interest_component, p.remaining_balance, p.payment_type, p.payment_source_id, p.payment_category_id || null, p.transaction_id, p.remarks, p.created_at]
           );
         } catch (e) {
           console.warn('Failed to restore loan payment', p.id, e);
@@ -436,8 +436,8 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
 
         const newTxId = p.transaction_id ? transactionMap[p.transaction_id] : null;
         await executeSql(
-          `INSERT INTO loan_payments (loan_id, payment_date, payment_amount, principal_component, interest_component, remaining_balance, payment_type, payment_source_id, transaction_id, remarks, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-          [newLoanId, p.payment_date, p.payment_amount, p.principal_component, p.interest_component, p.remaining_balance, p.payment_type, p.payment_source_id, newTxId || null, p.remarks, p.created_at]
+          `INSERT INTO loan_payments (loan_id, payment_date, payment_amount, principal_component, interest_component, remaining_balance, payment_type, payment_source_id, payment_category_id, transaction_id, remarks, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [newLoanId, p.payment_date, p.payment_amount, p.principal_component, p.interest_component, p.remaining_balance, p.payment_type, p.payment_source_id, p.payment_category_id || null, newTxId || null, p.remarks, p.created_at]
         );
       }));
       updateProgress(chunk.length, 'Importing loan payments...');

@@ -98,7 +98,7 @@ export default function BackupScreen() {
 
   const renderStats = (data) => {
     if (!data || !data.data) return null;
-    const { transactions, categories, sources, budgets, bills } = data.data;
+    const { transactions, categories, sources, budgets, bills, loans, loan_payments } = data.data;
     return (
       <View style={styles.statsContainer}>
         <List.Item title="Transactions" right={() => <Text>{transactions.length}</Text>} />
@@ -110,6 +110,10 @@ export default function BackupScreen() {
         <List.Item title="Budgets" right={() => <Text>{budgets.length}</Text>} />
         <Divider />
         <List.Item title="Bills" right={() => <Text>{bills.length}</Text>} />
+        <Divider />
+        <List.Item title="Loans" right={() => <Text>{loans.length}</Text>} />
+        <Divider />
+        <List.Item title="Loan payments" right={() => <Text>{loan_payments.length}</Text>} />
       </View>
     );
   };
@@ -123,7 +127,7 @@ export default function BackupScreen() {
               <MaterialCommunityIcons name="cloud-upload" size={24} color={Colors.primary} /> Export Data
             </Title>
             <Paragraph style={styles.description}>
-              Create a backup of all your transactions, categories, sources, budgets, and bills.
+              Create a backup of all your transactions, categories, sources, budgets, bills, loans, and loan payments.
             </Paragraph>
             <Button 
               mode="contained" 
