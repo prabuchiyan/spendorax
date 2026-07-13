@@ -60,13 +60,26 @@ export default function LoanDashboardScreen({ navigation }) {
         return { totalOutstanding, totalEMI, principalPaid, interestPaid };
     }, [loans]);
 
+    // portfolio aggregates
+    const portfolio = useMemo(() => {
+        const borrowedLoans = loans.filter(l => (l.loan_direction || 'BORROWED') === 'BORROWED');
+        const lentLoans = loans.filter(l => (l.loan_direction || 'BORROWED') === 'LENT');
+
+        const borrowedOutstanding = borrowedLoans.reduce((s, l) => s + Number(l.outstanding_amount || 0), 0);
+        const pendingRecovery = lentLoans.reduce((s, l) => s + Number(l.outstanding_amount || 0), 0);
+        const netPosition = borrowedOutstanding - pendingRecovery;
+
+        return { borrowedOutstanding, pendingRecovery, netPosition, borrowedLoans, lentLoans };
+    }, [loans]);
+
+    // compute health only for borrowed loans (liabilities)
     const health = useMemo(() => {
-        const active = loans.filter(l => (l.status || 'Active') === 'Active').length;
-        const closed = loans.filter(l => (l.status || '') === 'Closed').length;
-        const overdue = loans.filter(l => l.isOverdue).length;
-        // percent paid across loans
-        const paid = loans.reduce((s, l) => s + (Number(l.principal_paid || 0) + Number(l.interest_paid || 0)), 0);
-        const total = loans.reduce((s, l) => s + (Number(l.principal_paid || 0) + Number(l.interest_paid || 0) + Number(l.outstanding_amount || 0)), 0);
+        const borrowed = loans.filter(l => (l.loan_direction || 'BORROWED') === 'BORROWED');
+        const active = borrowed.filter(l => (l.status || 'Active') === 'Active').length;
+        const closed = borrowed.filter(l => (l.status || '') === 'Closed').length;
+        const overdue = borrowed.filter(l => l.isOverdue).length;
+        const paid = borrowed.reduce((s, l) => s + (Number(l.principal_paid || 0) + Number(l.interest_paid || 0)), 0);
+        const total = borrowed.reduce((s, l) => s + (Number(l.principal_paid || 0) + Number(l.interest_paid || 0) + Number(l.outstanding_amount || 0)), 0);
         const pct = total > 0 ? Math.round((paid / total) * 100) : 0;
         return { pct, active, closed, overdue };
     }, [loans]);
@@ -78,6 +91,8 @@ export default function LoanDashboardScreen({ navigation }) {
     }, [loans]);
 
     const activeLoans = useMemo(() => loans.filter(l => Number(l.outstanding_amount || 0) > 0 && (l.status || 'Active') === 'Active'), [loans]);
+    const borrowedActiveLoans = useMemo(() => activeLoans.filter(l => (l.loan_direction || 'BORROWED') === 'BORROWED'), [activeLoans]);
+    const lentActiveLoans = useMemo(() => activeLoans.filter(l => (l.loan_direction || 'BORROWED') === 'LENT'), [activeLoans]);
 
     return (
         <View style={{ flex: 1, backgroundColor: Colors.background }}>
@@ -87,12 +102,12 @@ export default function LoanDashboardScreen({ navigation }) {
 
                 {/* Portfolio Summary */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <LoanSummaryCard title="Outstanding" amount={summary.totalOutstanding} icon="bank" />
-                    <LoanSummaryCard title="Monthly EMI" amount={summary.totalEMI} icon="calendar-month" />
+                    <LoanSummaryCard title="Borrowed Outstanding" amount={portfolio.borrowedOutstanding} icon="bank" />
+                    <LoanSummaryCard title="Pending Recovery" amount={portfolio.pendingRecovery} icon="cash-refund" />
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <LoanSummaryCard title="Principal Paid" amount={summary.principalPaid} icon="currency-inr" />
-                    <LoanSummaryCard title="Interest Paid" amount={summary.interestPaid} icon="percent" />
+                    <LoanSummaryCard title="Net Position" amount={portfolio.netPosition} icon="scale-balance" />
+                    <LoanSummaryCard title="Monthly EMI" amount={summary.totalEMI} icon="calendar-month" />
                 </View>
 
                 {/* Loan Health */}
@@ -108,21 +123,37 @@ export default function LoanDashboardScreen({ navigation }) {
                     />
                 </View>
 
-                {/* Upcoming EMI */}
+                {/* Upcoming Payments */}
                 <View style={{ marginTop: 20 }}>
-                    <Text style={{ fontWeight: '800', marginBottom: 12 }}>Upcoming EMI</Text>
+                    <Text style={{ fontWeight: '800', marginBottom: 12 }}>Upcoming Payments</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         {upcoming.length === 0 ? (
-                            <Card style={{ padding: 0, marginLeft: 1, marginTop: 1 }}><Text style={{ color: Colors.muted }}>No upcoming EMIs</Text></Card>
+                            <Card style={{ padding: 0, marginLeft: 1, marginTop: 1 }}><Text style={{ color: Colors.muted }}>No upcoming payments</Text></Card>
                         ) : upcoming.map(l => <UpcomingEMICard key={l.id} loan={l} />)}
                     </ScrollView>
                 </View>
 
-                {/* Active Loans */}
+                {/* Borrowed Loans */}
                 <View style={{ marginTop: 20 }}>
-                    <Text style={{ fontWeight: '800', marginBottom: 12 }}>Active Loans</Text>
+                    <Text style={{ fontWeight: '800', marginBottom: 12 }}>Borrowed Loans</Text>
                     <FlatList
-                        data={activeLoans}
+                        data={borrowedActiveLoans}
+                        keyExtractor={(i) => String(i.id)}
+                        renderItem={({ item }) => (
+                            <TouchableOpacity onPress={() => navigation.navigate('LoanDetails', { id: item.id })}>
+                                <ActiveLoanCard loan={item} />
+                            </TouchableOpacity>
+                        )}
+                        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+                        scrollEnabled={false}
+                    />
+                </View>
+
+                {/* Money Lent (Assets) */}
+                <View style={{ marginTop: 20 }}>
+                    <Text style={{ fontWeight: '800', marginBottom: 12 }}>Money Lent</Text>
+                    <FlatList
+                        data={lentActiveLoans}
                         keyExtractor={(i) => String(i.id)}
                         renderItem={({ item }) => (
                             <TouchableOpacity onPress={() => navigation.navigate('LoanDetails', { id: item.id })}>

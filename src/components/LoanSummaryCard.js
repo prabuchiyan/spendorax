@@ -9,6 +9,21 @@ const THEMES = {
     bg: '#FEE2E2',
     subtitle: 'Remaining Balance',
   },
+  'Borrowed Outstanding': {
+    color: '#DC2626',
+    bg: '#FEE2E2',
+    subtitle: 'Total Borrowed',
+  },
+  'Pending Recovery': {
+    color: '#047857',
+    bg: '#ECFDF5',
+    subtitle: 'Amount to recover',
+  },
+  'Net Position': {
+    color: '#6B21A8',
+    bg: '#F3E8FF',
+    subtitle: 'Assets − Liabilities',
+  },
   'Monthly EMI': {
     color: '#2563EB',
     bg: '#DBEAFE',
