@@ -146,7 +146,7 @@ export default function LoanFormScreen({ navigation, route }) {
                         editable={false}
                         mode="outlined"
                         left={<PaperTextInput.Icon icon="shape-outline" />}
-                        right={<PaperTextInput.Icon icon="chevron-down" />}
+                        right={<PaperTextInput.Icon icon="chevron-down" onPress={() => setShowTypePicker(true)} />}
                     />
                 </TouchableOpacity>
 
@@ -215,7 +215,7 @@ export default function LoanFormScreen({ navigation, route }) {
                         editable={false}
                         mode="outlined"
                         left={<PaperTextInput.Icon icon="calendar-month" />}
-                        right={<PaperTextInput.Icon icon="chevron-down" />}
+                        right={<PaperTextInput.Icon icon="chevron-down" onPress={() => setShowDueDayPicker(true)} />}
                         style={styles.input}
                     />
                 </TouchableOpacity>
@@ -227,7 +227,7 @@ export default function LoanFormScreen({ navigation, route }) {
                         editable={false}
                         mode="outlined"
                         left={<PaperTextInput.Icon icon="calendar-range" />}
-                        right={<PaperTextInput.Icon icon="chevron-down" />}
+                        right={<PaperTextInput.Icon icon="chevron-down" onPress={() => setShowStartPicker(true)} />}
                         style={styles.input}
                     />
                 </TouchableOpacity>

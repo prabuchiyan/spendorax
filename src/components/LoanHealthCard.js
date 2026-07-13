@@ -30,7 +30,7 @@ export default function LoanHealthCard({ percent = 0, active = 0, closed = 0, ov
 }
 
 const styles = StyleSheet.create({
-  card: { padding: 16, borderRadius: 18 },
+  card: { borderRadius: 18 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontWeight: '800', fontSize: 16 },
   percent: { fontWeight: '900', fontSize: 20, color: Colors.primary },

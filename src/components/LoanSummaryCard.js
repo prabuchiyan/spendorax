@@ -21,7 +21,7 @@ export default function LoanSummaryCard({ title, amount, icon }) {
 }
 
 const styles = StyleSheet.create({
-  card: { width: '48%', padding: 14, borderRadius: 18 },
+  card: { width: '48%', borderRadius: 18 },
   row: { flexDirection: 'row', alignItems: 'center' },
   iconWrap: { width: 44, height: 44, borderRadius: 12, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 12, color: Colors.muted, fontWeight: '600' },

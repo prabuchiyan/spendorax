@@ -20,7 +20,7 @@ export default function RecentActivityItem({ item }) {
 }
 
 const styles = StyleSheet.create({
-  card: { padding: 12, borderRadius: 14, marginBottom: 8 },
+  card: { borderRadius: 14, marginBottom: 8 },
   row: { flexDirection: 'row', alignItems: 'center' },
   title: { fontWeight: '700' },
   meta: { color: Colors.muted, fontSize: 12, marginTop: 4 }

@@ -86,11 +86,11 @@ export default function LoanDashboardScreen({ navigation }) {
                 <Text style={{ fontSize: 20, fontWeight: '900', marginBottom: 8 }}>Your Loans</Text>
 
                 {/* Portfolio Summary */}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                     <LoanSummaryCard title="Outstanding" amount={summary.totalOutstanding} icon="bank" />
                     <LoanSummaryCard title="Monthly EMI" amount={summary.totalEMI} icon="calendar-month" />
                 </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                     <LoanSummaryCard title="Principal Paid" amount={summary.principalPaid} icon="currency-inr" />
                     <LoanSummaryCard title="Interest Paid" amount={summary.interestPaid} icon="percent" />
                 </View>
@@ -113,7 +113,7 @@ export default function LoanDashboardScreen({ navigation }) {
                     <Text style={{ fontWeight: '800', marginBottom: 12 }}>Upcoming EMI</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         {upcoming.length === 0 ? (
-                            <Card style={{ padding: 16 }}><Text style={{ color: Colors.muted }}>No upcoming EMIs</Text></Card>
+                            <Card style={{ padding: 0, marginLeft: 1, marginTop: 1 }}><Text style={{ color: Colors.muted }}>No upcoming EMIs</Text></Card>
                         ) : upcoming.map(l => <UpcomingEMICard key={l.id} loan={l} />)}
                     </ScrollView>
                 </View>
@@ -138,7 +138,7 @@ export default function LoanDashboardScreen({ navigation }) {
                 <View style={{ marginTop: 20 }}>
                     <Text style={{ fontWeight: '800', marginBottom: 12 }}>Recent Activity</Text>
                     {payments.length === 0 ? (
-                        <Card style={{ padding: 16 }}><Text style={{ color: Colors.muted }}>No recent activity</Text></Card>
+                        <Card><Text style={{ color: Colors.muted }}>No recent activity</Text></Card>
                     ) : payments.map(p => <RecentActivityItem key={p.id} item={p} />)}
                 </View>
             </ScrollView>
