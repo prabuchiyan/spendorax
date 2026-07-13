@@ -5,24 +5,46 @@ import calc from './loanCalculations';
 
 export async function createLoan(loan) {
     const res = await executeSql(
-        `INSERT INTO loans (loan_name, loan_type, lender, loan_direction, principal_amount, interest_rate, loan_start_date, loan_end_date, tenure_months, emi_amount, emi_day, outstanding_amount, remaining_months, status, notes)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO loans (
+            loan_name,
+            loan_type,
+            lender,
+            loan_direction,
+            principal_amount,
+            interest_rate,
+            loan_start_date,
+            loan_end_date,
+            tenure_months,
+            emi_amount,
+            emi_day,
+            outstanding_amount,
+            principal_paid,
+            interest_paid,
+            total_paid,
+            remaining_months,
+            status,
+            notes
+        )
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
             loan.loan_name,
             loan.loan_type,
             loan.lender,
-            loan.loan_direction || 'BORROWED',
-            loan.principal_amount || 0,
-            loan.interest_rate || 0,
-            loan.loan_start_date || null,
-            loan.loan_end_date || null,
-            loan.tenure_months || 0,
-            loan.emi_amount || 0,
-            loan.emi_day || null,
-            loan.outstanding_amount || loan.principal_amount || 0,
-            loan.remaining_months || loan.tenure_months || 0,
-            loan.status || 'Active',
-            loan.notes || null
+            loan.loan_direction ?? 'BORROWED',
+            loan.principal_amount ?? 0,
+            loan.interest_rate ?? 0,
+            loan.loan_start_date ?? null,
+            loan.loan_end_date ?? null,
+            loan.tenure_months ?? 0,
+            loan.emi_amount ?? 0,
+            loan.emi_day ?? null,
+            loan.outstanding_amount ?? loan.principal_amount ?? 0,
+            loan.principal_paid ?? 0,
+            loan.interest_paid ?? 0,
+            loan.total_paid ?? 0,
+            loan.remaining_months ?? loan.tenure_months ?? 0,
+            loan.status ?? 'Active',
+            loan.notes ?? null
         ]
     );
 

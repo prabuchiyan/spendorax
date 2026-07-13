@@ -444,20 +444,6 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       await yieldToEventLoop();
     }
 
-    // 8. Recalculate loan aggregates from payments (best-effort)
-    for (const oldId in loanMap) {
-      const newId = loanMap[oldId];
-      try {
-        const agg = await executeSql('SELECT COALESCE(SUM(principal_component),0) as principal_paid, COALESCE(SUM(interest_component),0) as interest_paid, COALESCE(SUM(payment_amount),0) as total_paid, (SELECT remaining_balance FROM loan_payments WHERE loan_id = ? ORDER BY payment_date DESC LIMIT 1) as last_remaining FROM loan_payments WHERE loan_id = ?', [newId, newId]);
-        const row = agg.rows.item(0);
-        const outstanding = row.last_remaining !== null ? row.last_remaining : undefined;
-        const newStatus = outstanding !== undefined && outstanding <= 0 ? 'Closed' : 'Active';
-        await executeSql('UPDATE loans SET principal_paid = ?, interest_paid = ?, total_paid = ?, outstanding_amount = COALESCE(?, outstanding_amount), status = ? WHERE id = ?', [row.principal_paid, row.interest_paid, row.total_paid, outstanding, newStatus, newId]);
-      } catch (e) {
-        // ignore per-loan failures
-      }
-    }
-
     // 6. Budgets
     for (let i = 0; i < budgets.length; i += BATCH_SIZE) {
       const chunk = budgets.slice(i, i + BATCH_SIZE);
