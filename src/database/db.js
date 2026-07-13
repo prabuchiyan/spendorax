@@ -158,12 +158,21 @@ function createWebExecuteSql() {
       for (const assignment of assignments) {
         const parts = assignment.split('=');
         const col = parts[0].trim();
-        const valueExpr = parts[1].trim().toLowerCase();
-        // Handle datetime('now')
-        if (valueExpr.startsWith("datetime(")) {
-          updates[col] = new Date().toISOString();
-        } else {
+        const valueExpr = parts.slice(1).join('=').trim().toLowerCase();
+        if (valueExpr === '?') {
           updates[col] = params[pIndex++];
+        } else if (valueExpr === 'null') {
+          updates[col] = null;
+        } else if (valueExpr === 'true') {
+          updates[col] = true;
+        } else if (valueExpr === 'false') {
+          updates[col] = false;
+        } else if (valueExpr.startsWith('datetime(')) {
+          updates[col] = new Date().toISOString();
+        } else if (!isNaN(Number(valueExpr))) {
+          updates[col] = Number(valueExpr);
+        } else {
+          updates[col] = valueExpr.replace(/^['"]|['"]$/g, '');
         }
       }
       // support where id = ?

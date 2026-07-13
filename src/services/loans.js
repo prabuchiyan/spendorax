@@ -354,19 +354,53 @@ export async function unlinkTransactionFromLoan(transactionId) {
     if (!transactionId) throw new Error('Missing transactionId');
     const tx = await getTransactionById(transactionId);
     if (!tx) throw new Error('Transaction not found');
-    const loanId = tx.loan_id;
-    if (!loanId) return;
+    const loanId = Number(tx.loan_id);
+    if (!loanId) {
+        throw new Error('Transaction is not linked to any loan');
+    }
+    // Remove loan fields from transaction
+    await executeSql(
+        `UPDATE transactions
+     SET loan_id = NULL,
+         loan_payment_type = NULL,
+         principal_component = NULL,
+         interest_component = NULL,
+         outstanding_after_payment = NULL,
+         linked_date = NULL
+     WHERE id = ?`,
+        [transactionId]
+    );
+    // Remove linked payment record
+    await executeSql(
+        `DELETE FROM loan_payments
+         WHERE transaction_id = ?`,
+        [transactionId]
+    );
 
-    // remove loan-specific fields
-    await executeSql(`UPDATE transactions SET loan_id = NULL, loan_payment_type = NULL, principal_component = NULL, interest_component = NULL, outstanding_after_payment = NULL, linked_date = NULL WHERE id = ?`, [transactionId]);
-
-    // remove loan_payments row linked to this transaction
-    await executeSql('DELETE FROM loan_payments WHERE transaction_id = ?', [transactionId]);
-
-    // recalc loan
+    // Recalculate loan
     await recalculateLoanFromLinkedTransactions(loanId);
 
-    try { events.emit('transactionsChanged', { action: 'unlink', id: transactionId, loanId }); } catch (e) { }
+    try {
+        events.emit('transactionsChanged', {
+            action: 'unlink',
+            id: transactionId,
+            loanId,
+        });
+
+        events.emit('loanPaymentsChanged', {
+            action: 'unlink',
+            transactionId,
+            loanId,
+        });
+
+        events.emit('loansChanged', {
+            action: 'update',
+            id: loanId,
+        });
+    } catch (e) {
+        console.warn(e);
+    }
+    return true;
 }
 
 export default {

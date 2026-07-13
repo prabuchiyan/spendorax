@@ -690,55 +690,19 @@ export default function LoanDetailsScreen({ route, navigation }) {
                                         alignSelf: 'flex-end',
                                         marginTop: 14,
                                     }}
-                                    onPress={() => {
-
-                                        Alert.alert(
-                                            'Unlink Transaction',
-                                            'Unlink this transaction from the loan?',
-                                            [
-                                                {
-                                                    text: 'Cancel',
-                                                    style: 'cancel',
-                                                },
-                                                {
-                                                    text: 'Unlink',
-                                                    style: 'destructive',
-                                                    onPress: async () => {
-
-                                                        try {
-
-                                                            await unlinkTransactionFromLoan(
-                                                                tx.id
-                                                            );
-
-                                                            await loadLinkedTransactions();
-
-                                                            await refresh();
-
-                                                            setSnackbarMsg(
-                                                                'Transaction unlinked'
-                                                            );
-
-                                                            setSnackbarVisible(true);
-
-                                                        } catch (e) {
-
-                                                            setSnackbarMsg(
-                                                                e.message
-                                                            );
-
-                                                            setSnackbarVisible(true);
-
-                                                        }
-
-                                                    },
-                                                },
-                                            ]
-                                        );
-
+                                    onPress={async () => {
+                                        try {
+                                            await unlinkTransactionFromLoan(tx.id);
+                                            await loadLinkedTransactions();
+                                            await refresh();
+                                            setSnackbarMsg("Transaction unlinked");
+                                        } catch (e) {
+                                            console.error(e);
+                                            setSnackbarMsg(e.message);
+                                        }
+                                        setSnackbarVisible(true);
                                     }}
                                 >
-
                                     <Text
                                         style={{
                                             color: '#DC2626',
@@ -747,7 +711,6 @@ export default function LoanDetailsScreen({ route, navigation }) {
                                     >
                                         Unlink
                                     </Text>
-
                                 </TouchableOpacity>
 
                             </View>
