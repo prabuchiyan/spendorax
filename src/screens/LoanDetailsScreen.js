@@ -23,6 +23,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
     (async () => {
       if (!id) return;
       const l = await getLoanById(id);
+      console.log('Prabu  l', l);
       setLoan(l);
     })();
   }, [id]);

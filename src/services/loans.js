@@ -213,8 +213,8 @@ export async function forecloseLoan({ loanId, date, finalPaymentAmount, foreclos
     const newInterestPaid = +(Number(loan.interest_paid || 0) + interestComponent).toFixed(2);
     const newTotalPaid = +(Number(loan.total_paid || 0) + Number(amount)).toFixed(2);
 
-    await executeSql(`UPDATE loans SET outstanding_amount = 0, principal_paid = ?, interest_paid = ?, total_paid = ?, remaining_months = 0, status = 'Closed', updated_at = datetime('now') WHERE id = ?`,
-        [newPrincipalPaid, newInterestPaid, newTotalPaid, loanId]
+    await executeSql(`UPDATE loans SET outstanding_amount = ?, principal_paid = ?, interest_paid = ?, total_paid = ?, remaining_months = ?, status = ?, updated_at = ? WHERE id = ?`,
+        [0, newPrincipalPaid, newInterestPaid, newTotalPaid, 0, 'Closed', new Date().toISOString(), loanId]
     );
 
     // Create linked expense transaction for foreclosure

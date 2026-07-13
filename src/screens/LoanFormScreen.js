@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Platform, StyleSheet } from 'react-native';
 import { TextInput as PaperTextInput, Button as PaperButton, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -121,17 +121,20 @@ export default function LoanFormScreen({ navigation, route }) {
     }), [loanData]);
 
     return (
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+        <ScrollView
+            style={styles.screen}
+            contentContainerStyle={styles.content}
+        >
             {/* Loan Information */}
-            <Card style={{ marginBottom: 12 }}>
-                <Text style={{ fontWeight: '700', marginBottom: 8 }}>Loan Information</Text>
+            <Card style={styles.card}>
+                <Text style={styles.sectionTitle}>Loan Information</Text>
                 <PaperTextInput
                     label="Loan name"
                     value={loanData.loan_name}
                     onChangeText={(t) => setField('loan_name', t)}
                     mode="outlined"
-                    left={<PaperTextInput.Icon name={() => <MaterialCommunityIcons name="file-document-outline" size={20} color={Colors.primary} />} />}
-                    style={{ marginBottom: 8 }}
+                    left={<PaperTextInput.Icon icon="file-document-outline" />}
+                    style={styles.input}
                     error={!!errors.loan_name}
                 />
                 {errors.loan_name ? <Text style={{ color: '#E46A6A', marginBottom: 8 }}>{errors.loan_name}</Text> : null}
@@ -142,8 +145,8 @@ export default function LoanFormScreen({ navigation, route }) {
                         value={loanData.loan_type}
                         editable={false}
                         mode="outlined"
-                        left={<PaperTextInput.Icon name={() => <MaterialCommunityIcons name="shape-outline" size={20} color={Colors.primary} />} />}
-                        right={<PaperTextInput.Icon name={() => <MaterialCommunityIcons name="chevron-down" size={20} color={Colors.muted} />} />}
+                        left={<PaperTextInput.Icon icon="shape-outline" />}
+                        right={<PaperTextInput.Icon icon="chevron-down" />}
                     />
                 </TouchableOpacity>
 
@@ -152,21 +155,21 @@ export default function LoanFormScreen({ navigation, route }) {
                     value={loanData.lender}
                     onChangeText={(t) => setField('lender', t)}
                     mode="outlined"
-                    left={<PaperTextInput.Icon name={() => <MaterialCommunityIcons name="bank-outline" size={20} color={Colors.primary} />} />}
+                    left={<PaperTextInput.Icon icon="bank-outline" />}
                 />
             </Card>
 
             {/* Financial Details */}
-            <Card style={{ marginBottom: 12 }}>
-                <Text style={{ fontWeight: '700', marginBottom: 8 }}>Financial Details</Text>
+            <Card style={styles.card}>
+                <Text style={styles.sectionTitle}>Financial Details</Text>
                 <PaperTextInput
                     label="Principal amount"
                     value={loanData.principal_amount}
                     onChangeText={(t) => setField('principal_amount', t)}
                     keyboardType="numeric"
                     mode="outlined"
-                    left={<PaperTextInput.Icon name={() => <MaterialCommunityIcons name="cash" size={20} color={Colors.primary} />} />}
-                    style={{ marginBottom: 8 }}
+                    left={<PaperTextInput.Icon icon="cash" />}
+                    style={styles.input}
                     error={!!errors.principal_amount}
                 />
                 {errors.principal_amount ? <Text style={{ color: '#E46A6A', marginBottom: 8 }}>{errors.principal_amount}</Text> : null}
@@ -177,8 +180,8 @@ export default function LoanFormScreen({ navigation, route }) {
                     onChangeText={(t) => setField('interest_rate', t)}
                     keyboardType="numeric"
                     mode="outlined"
-                    left={<PaperTextInput.Icon name={() => <MaterialCommunityIcons name="percent-outline" size={20} color={Colors.primary} />} />}
-                    style={{ marginBottom: 8 }}
+                    left={<PaperTextInput.Icon icon="percent-outline" />}
+                    style={styles.input}
                     error={!!errors.interest_rate}
                 />
 
@@ -188,21 +191,21 @@ export default function LoanFormScreen({ navigation, route }) {
                     onChangeText={(t) => setField('outstanding_amount', t)}
                     keyboardType="numeric"
                     mode="outlined"
-                    left={<PaperTextInput.Icon name={() => <MaterialCommunityIcons name="wallet-outline" size={20} color={Colors.primary} />} />}
+                    left={<PaperTextInput.Icon icon="wallet-outline" />}
                 />
             </Card>
 
             {/* EMI Details */}
-            <Card style={{ marginBottom: 12 }}>
-                <Text style={{ fontWeight: '700', marginBottom: 8 }}>EMI Information</Text>
+            <Card style={styles.card}>
+                <Text style={styles.sectionTitle}>EMI Information</Text>
                 <PaperTextInput
                     label="EMI amount"
                     value={loanData.emi_amount}
                     onChangeText={(t) => setField('emi_amount', t)}
                     keyboardType="numeric"
                     mode="outlined"
-                    left={<PaperTextInput.Icon name={() => <MaterialCommunityIcons name="calendar-sync" size={20} color={Colors.primary} />} />}
-                    style={{ marginBottom: 8 }}
+                    left={<PaperTextInput.Icon icon="calendar-sync" />}
+                    style={styles.input}
                 />
 
                 <TouchableOpacity onPress={() => setShowDueDayPicker(true)}>
@@ -211,9 +214,9 @@ export default function LoanFormScreen({ navigation, route }) {
                         value={loanData.emi_day ? String(loanData.emi_day) : ''}
                         editable={false}
                         mode="outlined"
-                        left={<PaperTextInput.Icon name={() => <MaterialCommunityIcons name="calendar-month" size={20} color={Colors.primary} />} />}
-                        right={<PaperTextInput.Icon name={() => <MaterialCommunityIcons name="chevron-down" size={20} color={Colors.muted} />} />}
-                        style={{ marginBottom: 8 }}
+                        left={<PaperTextInput.Icon icon="calendar-month" />}
+                        right={<PaperTextInput.Icon icon="chevron-down" />}
+                        style={styles.input}
                     />
                 </TouchableOpacity>
 
@@ -223,9 +226,9 @@ export default function LoanFormScreen({ navigation, route }) {
                         value={loanData.loan_start_date}
                         editable={false}
                         mode="outlined"
-                        left={<PaperTextInput.Icon name={() => <MaterialCommunityIcons name="calendar-range" size={20} color={Colors.primary} />} />}
-                        right={<PaperTextInput.Icon name={() => <MaterialCommunityIcons name="chevron-down" size={20} color={Colors.muted} />} />}
-                        style={{ marginBottom: 8 }}
+                        left={<PaperTextInput.Icon icon="calendar-range" />}
+                        right={<PaperTextInput.Icon icon="chevron-down" />}
+                        style={styles.input}
                     />
                 </TouchableOpacity>
 
@@ -235,13 +238,13 @@ export default function LoanFormScreen({ navigation, route }) {
                     onChangeText={(t) => setField('tenure_months', t)}
                     keyboardType="numeric"
                     mode="outlined"
-                    left={<PaperTextInput.Icon name={() => <MaterialCommunityIcons name="calendar-range" size={20} color={Colors.primary} />} />}
+                    left={<PaperTextInput.Icon icon="calendar-range" />}
                 />
             </Card>
 
             {/* Additional Details */}
-            <Card style={{ marginBottom: 12 }}>
-                <Text style={{ fontWeight: '700', marginBottom: 8 }}>Additional Details</Text>
+            <Card style={styles.card}>
+                <Text style={styles.sectionTitle}>Additional Details</Text>
                 <PaperTextInput
                     label="Notes (optional)"
                     value={loanData.notes}
@@ -249,29 +252,77 @@ export default function LoanFormScreen({ navigation, route }) {
                     mode="outlined"
                     multiline
                     numberOfLines={3}
-                    style={{ marginBottom: 8 }}
-                    left={<PaperTextInput.Icon name={() => <MaterialCommunityIcons name="note-text-outline" size={20} color={Colors.primary} />} />}
+                    style={styles.input}
+                    left={<PaperTextInput.Icon icon="note-text-outline" />}
                 />
             </Card>
 
-            {/* Live Summary */}
-            <Card style={{ marginBottom: 12 }}>
-                <Text style={{ fontWeight: '700', marginBottom: 8 }}>Loan Summary</Text>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <Text style={{ color: Colors.muted }}>Principal</Text>
-                    <Text>₹{summary.principal}</Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <Text style={{ color: Colors.muted }}>Outstanding</Text>
-                    <Text>₹{summary.outstanding}</Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <Text style={{ color: Colors.muted }}>Interest</Text>
-                    <Text>{summary.interest}%</Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ color: Colors.muted }}>EMI</Text>
-                    <Text>₹{summary.emi}</Text>
+            {/* Loan Summary */}
+            <Card style={styles.card}>
+                <Text style={styles.sectionTitle}>Loan Summary</Text>
+
+                <View style={styles.summaryGrid}>
+
+                    <View style={styles.summaryTile}>
+                        <MaterialCommunityIcons
+                            name="cash-multiple"
+                            size={26}
+                            color="#2563EB"
+                        />
+
+                        <Text style={styles.summaryTileLabel}>
+                            Principal
+                        </Text>
+
+                        <Text style={styles.summaryTileValue}>
+                            ₹{summary.principal}
+                        </Text>
+                    </View>
+
+                    <View style={styles.summaryTile}>
+                        <MaterialCommunityIcons
+                            name="wallet-outline"
+                            size={26}
+                            color="#16A34A"
+                        />
+
+                        <Text style={styles.summaryTileLabel}>
+                            Outstanding
+                        </Text>
+
+                        <Text style={styles.summaryTileValue}>
+                            ₹{summary.outstanding}
+                        </Text>
+                    </View>
+
+                    <View style={styles.summaryTile}>
+                        <MaterialCommunityIcons
+                            name="percent-outline"
+                            size={26}
+                            color="#F59E0B"
+                        />
+                        <Text style={styles.summaryTileLabel}>
+                            Interest
+                        </Text>
+                        <Text style={styles.summaryTileValue}>
+                            {summary.interest}%
+                        </Text>
+                    </View>
+
+                    <View style={styles.summaryTile}>
+                        <MaterialCommunityIcons
+                            name="calendar-check-outline"
+                            size={26}
+                            color="#7C3AED"
+                        />
+                        <Text style={styles.summaryTileLabel}>
+                            EMI
+                        </Text>
+                        <Text style={styles.summaryTileValue}>
+                            ₹{summary.emi}
+                        </Text>
+                    </View>
+
                 </View>
             </Card>
 
@@ -343,3 +394,249 @@ export default function LoanFormScreen({ navigation, route }) {
         </ScrollView>
     );
 }
+
+const styles = StyleSheet.create({
+    screen: {
+        flex: 1,
+        backgroundColor: '#EEF4FF',
+    },
+
+    content: {
+        paddingHorizontal: 12,
+        paddingTop: 12,
+        paddingBottom: 120,
+    },
+
+    /* ---------- Cards ---------- */
+
+    card: {
+        marginBottom: 12,
+        padding: 12,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 28,
+        borderLeftWidth: 5,
+        borderLeftColor: '#4F46E5',
+        shadowColor: '#4F46E5',
+        shadowOffset: {
+            width: 0,
+            height: 10,
+        },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+        elevation: 8,
+    },
+
+    sectionTitle: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#1E293B',
+        marginBottom: 18,
+        paddingBottom: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEF2FF',
+    },
+
+    subtitle: {
+        color: '#64748B',
+        fontSize: 13,
+        marginBottom: 16,
+    },
+
+    /* ---------- Inputs ---------- */
+
+    input: {
+        marginBottom: 16,
+        backgroundColor: '#F8FAFF',
+        overflow: 'hidden',
+    },
+
+    inputDense: {
+        height: 58,
+    },
+
+    error: {
+        color: '#EF4444',
+        fontSize: 12,
+        marginTop: -10,
+        marginBottom: 12,
+        marginLeft: 8,
+        fontWeight: '600',
+    },
+
+    /* ---------- Layout ---------- */
+
+    row: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+
+    half: {
+        width: '48%',
+    },
+
+    divider: {
+        height: 1,
+        backgroundColor: '#E7ECF7',
+        marginVertical: 18,
+    },
+
+    /* ---------- Summary ---------- */
+
+    summaryGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+    },
+
+    summaryTile: {
+        width: '48%',
+        borderRadius: 22,
+        paddingVertical: 22,
+        marginBottom: 14,
+        alignItems: 'center',
+        backgroundColor: '#F8FAFF',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#4F46E5',
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+        elevation: 3,
+    },
+
+    summaryTileLabel: {
+        marginTop: 10,
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#64748B',
+    },
+
+    summaryTileValue: {
+        marginTop: 6,
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#111827',
+    },
+
+    summaryCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        padding: 18,
+    },
+
+    summaryRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEF2F7',
+    },
+
+    summaryLabel: {
+        color: '#64748B',
+        fontWeight: '600',
+        fontSize: 14,
+    },
+
+    summaryValue: {
+        color: '#111827',
+        fontWeight: '700',
+        fontSize: 16,
+    },
+
+    /* ---------- Buttons ---------- */
+
+    buttonRow: {
+        flexDirection: 'row',
+        marginTop: 16,
+        marginBottom: 30,
+    },
+
+    primaryButton: {
+        flex: 1,
+        height: 56,
+        borderRadius: 20,
+        justifyContent: 'center',
+        backgroundColor: '#4F46E5',
+        shadowColor: '#4F46E5',
+        shadowOffset: {
+            width: 0,
+            height: 8,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 15,
+        elevation: 6,
+    },
+
+    secondaryButton: {
+        flex: 1,
+        height: 56,
+        borderRadius: 20,
+        marginRight: 12,
+        backgroundColor: '#FFF5F5',
+        borderWidth: 1,
+        borderColor: '#FCA5A5',
+    },
+
+    /* ---------- Bottom Sheet ---------- */
+
+    sheetOverlay: {
+        flex: 1,
+        justifyContent: 'flex-end',
+        backgroundColor: 'rgba(15,23,42,0.45)',
+    },
+
+    sheet: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        paddingHorizontal: 24,
+        paddingTop: 24,
+        paddingBottom: 30,
+        maxHeight: '78%',
+    },
+
+    sheetTitle: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#111827',
+        marginBottom: 18,
+    },
+
+    /* ---------- Chips ---------- */
+
+    chipContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+    },
+
+    chip: {
+        marginRight: 10,
+        marginBottom: 10,
+        borderRadius: 25,
+        backgroundColor: '#EEF2FF',
+        height: 42,
+        borderWidth: 1,
+        borderColor: '#C7D2FE',
+    },
+
+    chipSelected: {
+        backgroundColor: '#4F46E5',
+        borderColor: '#4F46E5',
+    },
+
+    shadowLight: {
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+});
