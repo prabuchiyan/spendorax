@@ -1,568 +1,61 @@
-const fs = require("fs");
-
-const raw = `
-01/05/19 : Gave it to Abi : $200
-
-01/05/19 : Room Rent & Water Bill : $9850
-
-01/05/19 : Agalya Birthday Saree : $875
-
-02/05/19 : Bus : Bangalore to Pudukkottai : $1470
-
-02/05/19 : Milk : $18
-
-02/05/19 : Eggs : $50
-
-02/05/19 : Idly Rice & Noodles Masala : $84
-
-03/05/19 : Curd : $10
-
-03/05/19 : Milk : $23
-
-03/05/19 : Biriyani : $202
-
-04/05/19 : RD : $2500
-
-04/05/19 : Vaccination Parking : $10
-
-04/05/19 : Tomatoes : $20
-
-04/05/19 : Ice Cream : $40
-
-04/05/19 : Kadalamittai : $110
-
-05/05/19 : Milk : $10
-
-05/05/19 : Biscuits : $10
-
-05/05/19 : Vegetables : $260
-
-05/05/19 : Mangoes : $100
-
-05/05/19 : Pomegranate : $110
-
-05/05/19 : Milk : $22
-
-06/05/19 : Milk : $21
-
-07/05/19 : Give it Back to Abi : $200
-
-08/05/19 : Gave it to Abi : $200
-
-08/05/19 : Milk : $22
-
-08/05/19 : Tomatoes : $20
-
-08/05/19 : Bike Air : $5
-
-08/05/19 : Bike Petrol : $250
-
-08/05/19 : Milk : $25
-
-08/05/19 : Black Grams : $90
-
-09/05/19 : Groceries - Grofers : $719
-
-09/05/19 : Groceries - Flipkart : $1229
-
-09/05/19 : ML Vacation : Bus : Thanjavur to Bangalore : $904
-
-09/05/19 : Gobi Manchurian : $40
-
-09/05/19 : Milk : $21
-
-09/05/19 : Pampers : $50
-
-10/05/19 : Give it Back to Abi : $20
-
-10/05/19 : Lunch : $30
-
-10/05/19 : Butter Milk : $15
-
-10/05/19 : Milk : $21
-
-12/05/19 : Water Tank : $100
-
-12/05/19 : Milk : $22
-
-12/05/19 : Pepsi : $40
-
-12/05/19 : Kulfi : $5
-
-12/05/19 : Eggs : $54
-
-12/05/19 : Cigarettes & Candy : $17
-
-13/05/19 : Bananas : $40
-
-13/05/19 : Sappotta : $30
-
-13/05/19 : Milk : $22
-
-14/05/19 : Lunch : $30
-
-14/05/19 : Snacks : $20
-
-14/05/19 : Milk : $21
-
-14/05/19 : Egg Buffs : $30
-
-15/05/19 : Gave it to Abi : $200
-
-15/05/19 : Bike Petrol : $250
-
-16/05/19 : Vegetables : $110
-
-16/05/19 : Milk : $22
-
-16/05/19 : Fruit Bowl : $20
-
-16/05/19 : ML Vacation : Grilled Chicken & Shawarma Roll : $420
-
-16/05/19 : Fan Connected : $150
-
-16/05/19 : Milk : $22
-
-16/05/19 : Idly Rice : $70
-
-16/05/19 : Vegetables & Groceries : $83
-
-17/05/19 : Milk : $22
-
-17/05/19 : Sprite Cool Drinks : $40
-
-18/05/19 : ML Vacation : Movie : $695
-
-18/05/19 : Mutton : $300
-
-18/05/19 : ML Vacation : Ice Cream : $140
-
-18/05/19 : Curd : $23
-
-18/05/19 : Gee : $67
-
-18/05/19 : Maida : $9
-
-18/05/19 : ML Vacation : Movie - Auto : $50
-
-18/05/19 : ML Vacation : Bike Parking : $20
-
-18/05/19 : Milk : $22
-
-19/05/19 : ML Vacation : Cab : $330
-
-19/05/19 : ML Vacation : Pani Poori : $80
-
-19/05/19 : Milk : $22
-
-20/05/19 : Biriyani & Tandoori : $508
-
-20/05/19 : Clothes, Clips & Travel : $1800
-
-21/05/19 : Water Tank : $200
-
-22/05/19 : ML : Lunch : Barbeque Nation : $3070
-
-23/05/19 : Vegetables : $90
-
-23/05/19 : Milk : $10
-
-23/05/19 : Gas : $750
-
-23/05/19 : Gurka : $5
-
-23/05/19 : Tea Powder : $58
-
-23/05/19 : Gave it to Abi : $200
-
-23/05/19 : Recharge For Mom : $928
-
-23/05/19 : Milk : $22
-
-23/05/19 : Idly Rice : $70
-
-23/05/19 : Pattani & Sugar : $56
-
-23/05/19 : Vegetables : $500
-
-24/05/19 : Milk : $10
-
-24/05/19 : Biscuits : $36
-
-24/05/19 : Milk : $22
-
-25/05/19 : Samosa & Vadai : $40
-
-25/05/19 : Milk : $21
-
-26/05/19 : Milk : $22
-
-26/05/19 : Clothes : $200
-
-26/05/19 : Snacks : $200
-
-27/05/19 : Vegetables : $50
-
-27/05/19 : Milk : $21
-
-28/05/19 : Milk : $21
-
-29/05/19 : Gave it to Abi : $200
-
-29/05/19 : Vegetables : $25
-
-29/05/19 : Bus : Bangalore to Pudukkottai : $456
-
-29/05/19 : Bike Air : $3
-
-29/05/19 : Bike Petrol : $300
-
-29/05/19 : Milk : $21
-
-29/05/19 : Curd : $9
-
-29/05/19 : Snacks : $40
-
-30/05/19 : Abi Phone Cover : $424
-
-30/05/19 : Bananas : $30
-
-30/05/19 : Milk : $22
-
-30/05/19 : Shawarma : $110
-
-31/05/19 : Onions : $30
-
-31/05/19 : Milk : $22
-
-31/05/19 : Idly Rice : $76
-
-31/05/19 : Sunflower Oil : $92
-`;
-
-const categoryMap = {
-  // Vehicle
-  "Petrol": 5,
-  "Bike Petrol": 5,
-  "Petrol & Air": 5,
-  "Bike Air": 5,
-  "Bike Parking": 5,
-  "Helmet": 5,
-  "Pulsar: Bike Repair": 5,
-  "Royal Enfield: Service": 5,
-  "Royal Enfield: Service & Insurance": 5,
-  "Water Wash": 5,
-
-  // Cashback
-  "Get it From Tez": 6,
-  "Petrol Surcharge": 6,
-
-  // Child Birth
-  "Pregnancy Test": 7,
-
-  // Clothes
-  "Dress": 8,
-  "Jacket & Inner For Abi": 8,
-  "Purchase Pant": 8,
-  "Purchase Shirt": 8,
-
-  // Utilities
-  "Electricity Bill": 13,
-  "Pdkt Home Electricity Bill": 13,
-
-  // Electronics
-  "Watch Pin": 14,
-  "Purchased UPS": 14,
-  "Bang Sony TV 32 Inch: Bajaj Card": 14,
-  "Bang Sony TV 32 Inch: Initial Amount": 14,
-  "Bang Sony TV 32 Inch: Proof Approval": 14,
-  "Bang Sony TV 32 Inch: Stabilizer": 14,
-
-  // Entertainment
-  "Movie": 16,
-  "Party": 16,
-  "Park": 16,
-  "Park & Parking": 16,
-  "Exhibition": 16,
-  "Bike Parking in Theatre": 16,
-
-  // Food
-  "Breakfast": 18,
-  "Lunch": 18,
-  "Lunch : Briyani": 18,
-  "Dinner": 18,
-  "Dinner ": 18,
-  "Dinner​": 18,
-  "Dinner Purchase": 18,
-  "Burger & Nuggets": 18,
-  "Noodles": 18,
-
-  // Fruits
-  "Fruits": 19,
-  "Apple & Orange": 19,
-  "Grapes": 19,
-  "Papaya": 19,
-  "Pomegranate": 19,
-
-  // Gift
-  "Gift": 22,
-  "Birthday Gift": 22,
-  "Birthday Cake": 22,
-  "Birthday Presents": 22,
-  "Henry Marriage Gift": 22,
-  "Priya Adhiyamaan Marriage Gift": 22,
-  "Send Off": 22,
-
-  // Groceries
-  "Grocery": 24,
-  "Vegetables": 24,
-  "Vegetables & Fruits": 24,
-  "Vegetables & Chicken": 24,
-  "Mutton & Vegetables": 24,
-  "Milk": 24,
-  "Milk & Dry chilli": 24,
-  "Milk & Currie Leaves": 24,
-  "10Eggs": 24,
-  "Egg and washing soap": 24,
-  "Carrot": 24,
-  "Carrots": 24,
-  "Carrots ": 24,
-  "Carrots, Eggs & Banana": 24,
-  "Cashew and Dry Grapes": 24,
-  "Chicken, Masala & Coriander": 24,
-  "Beans, Rice, Pickle & Biscuits": 24,
-  "Black Gram": 24,
-  "Black Gram 1/4kg": 24,
-  "Bread, Jam, Water cane": 24,
-  "Cinthol Soaps": 24,
-  "Coconut": 24,
-  "Cooking Oil": 24,
-  "Dandruff Shampoo": 24,
-  "Dates & Ice Cream": 24,
-  "Dhall & Chilli": 24,
-  "Dustbin Cover": 24,
-  "Flour Mix": 24,
-  "Flour, Oil & Soaps": 24,
-  "Ice Cream & Washing Powder": 24,
-  "Idly Rice": 24,
-  "Plastic Bag": 24,
-  "Salt & Coffee Powder": 24,
-  "Shampoo": 24,
-  "Spinach, Coconut & Tomatoes": 24,
-  "Tender Coconut": 24,
-
-  // Medical
-  "Cold Medicine": 27,
-  "Eye Ointment": 27,
-  "Hospital Bill": 27,
-  "Medical Bill": 27,
-  "Medicare Shampoo": 27,
-
-  // Households
-  "House Holds": 28,
-  "Household Things": 28,
-  "Households": 28,
-  "Knife & Washing Brush": 28,
-  "Tiffan Box": 28,
-
-  //Interest
-  "Interest": 29,
-
-  // Loan
-  "Bike EMI": 31,
-  "Personal Loan EMI": 31,
-  "Capital First Loan Paid": 31,
-  "Spend for Loan": 31,
-  "Bang Sony TV 32 Inch: Auto Debit": 31,
-
-  // Mobile
-  "Mobile Back Cover": 33,
-  "Back Cover": 33,
-  "Recharge": 33,
-  "Recharge Airtel": 33,
-  "Recharge For Abi": 33,
-  "Recharge For Mom": 33,
-  "Recharge to Airtel": 33,
-  "DTH Recharge": 33,
-  "Mi Mobile Service Tax": 33,
-  "Screen Card": 33,
-  "Sim Card": 33,
-  "Sim Card & Link Adhaar": 33,
-
-  // Money Given
-  "Give it Back": 34,
-  "Give it back": 34,
-  "Give it back Sasi": 34,
-  "Give it Back Vivek": 34,
-  "Give it Back Vetrivel": 34,
-  "Give back": 34,
-  "Give back ": 34,
-  "Give back to Deepak": 34,
-  "Give back to Dinesh": 34,
-  "Give back to KD": 34,
-  "Give back to Madhu": 34,
-  "Give back to Naveen": 34,
-  "Gave it Back": 34,
-  "Gave it to Ravi": 34,
-  "Gave to Ravi": 34,
-  "Gave to Naveen": 34,
-  "Gave to Mom": 34,
-  "Gave to Ram": 34,
-  "Gave to Sasi": 34,
-  "Gave to Dinesh": 34,
-  "Gave to Akka": 34,
-  "Gave to Madhu": 34,
-  "Gave to Aboo": 34,
-  "Gave to": 34,
-
-  // Money Received
-  "Get it From Abi": 35,
-  "Get it From Dad": 35,
-  "Get it From Mom": 35,
-  "Get it From Naveen": 35,
-  "Get it From Ramya": 35,
-  "Get it From Ravi": 35,
-  "Get it From Vetrivel": 35,
-  "Get it From Vivek": 35,
-  "Get it From Dinesh": 35,
-  "Get it From Mams": 35,
-  "Get it From Bag": 35,
-  "Get it From Thali Pirichu Potta Function": 35,
-  "Get From Deepak": 35,
-  "Get From Dinesh": 35,
-  "Get From Sasi": 35,
-  "Get From Shufil": 35,
-  "Lunch Amount": 35,
-  "Room Advance Returned ": 35,
-  "Available Amount ": 35,
-  "Found it From Home": 35,
-  "Get it From Eniyan": 35,
-  "Get it From Sister": 35,
-  "Get it From Akka": 35,
-  "Get it From Son": 35,
-  "Get it From Wife": 35,
-
-  // Rent
-  "Room Rent": 39,
-  "Room: Rent": 39,
-  "Room Advance": 39,
-  "Room Advance Returned": 39,
-  "Room Rental Agreement": 39,
-  "Room Shifting": 39,
-  "Room: EB Deposit": 39,
-  "Room: Electricity Bill": 39,
-  "Room: Internet Bill": 39,
-  "Room: Water": 39,
-  "Room: Water Bill": 39,
-  "Room: Water Cane": 39,
-  "Room: Hit Purchase": 39,
-  "Room: Spend": 39,
-  "House Warming": 39,
-  "Give Back to Dinesh & Room Rent": 39,
-
-  // Salary
-  "March Month 2017": 40,
-  "April Month 2017": 40,
-  "May Month 2017": 40,
-  "June Month 2017": 40,
-  "July Month 2017": 40,
-  "August Month 2017": 40,
-  "September Month 2017": 40,
-  "October Month 2017": 40,
-  "Salary": 40,
-
-  // Saloon
-  "Haircut": 41,
-  "Hair Cut": 41,
-  "Hair Cut For Abi": 41,
-  "Hair Cut For Myself ": 41,
-  "Hair Cut For Myself  ": 41,
-
-  // Sandals / Shoes
-  "Sandals": 42,
-
-  // Savings
-  "RD": 43,
-  "Rd": 43,
-  "Recurring Deposit": 43,
-  "Recurring Deposit ": 43,
-  "Recurrent Deposit": 43,
-
-  // Snacks
-  "Snack": 44,
-  "Snacks": 44,
-  "Evening Snacks": 44,
-  "Dinner Snacks": 44,
-  "Dinner Snacks & Parking": 44,
-  "Bakery Snacks": 44,
-  "Chocolate": 44,
-  "Cool Drinks": 44,
-  "Juice": 44,
-  "Lattu & Food": 44,
-  "Rusk": 44,
-  "Snacks For Abi": 44,
-  "Snacks Spend": 44,
-  "Sweets": 44,
-  "Water Bottles": 44,
-
-  // Travel
-  "Trip Amount": 48,
-  "Thirupathi Trip": 48,
-  "Bennargetta Zoo Spend": 48,
-  "Lalbagh": 48,
-  "Lalbagh Tickets": 48,
-  "Bus : Lalbagh to Room": 48,
-  "Bus : Room to Lalbagh": 48,
-  "Shiradi: Expenses": 48,
-  "Shiradi: Bus Booking & Others": 48,
-
-  // Water
-  "Water Cane": 50,
-
-  // Default
-  "Default_expense": 32,
-  "Default_income": 35
-};
-
-let id = 93;
-
-const transactions = raw
-  .trim()
-  .split("\n")
-  .filter(line => line.trim() && !line.trim().startsWith("//"))
-  .map(line => {
-    const match = line.match(/^(\d{2}\/\d{2}\/\d{2})\s*:\s*(.*?)\s*:\s*\$(.+)$/);
-    if (!match) {
-      console.log("Invalid line:", line);
-      return null;
-    }
-    const type = "expense"; // expense OR income
-    const [, date, notes, amountStr] = match;
-    const [dd, mm, yy] = date.split("/");
-    const formattedDate = `20${yy}-${mm}-${dd}`;
-    return {
-      id: id++,
-      type,
-      amount: Number(amountStr.trim()),
-      category_id: categoryMap[notes] ?? (type === "income"
-        ? categoryMap.Default_income
-        : categoryMap.Default_expense),
-      source_id: type === 'income' ? 1 : 3,
-      date: formattedDate,
-      notes,
-      bill_id: null,
-      created_at: `${formattedDate} 00:00:00`,
-      transfer_group_id: null,
-      direction: null
-    };
-  })
-  .filter(Boolean);
-
-const backup = {
-  version: 1,
-  timestamp: new Date().toISOString(),
-  data: {
-    transactions,
+{
+  "version": 1,
+  "timestamp": "2026-07-14T09:29:26.605Z",
+  "data": {
+    "transactions": [
+      {
+        "id": 93,
+        "type": "income",
+        "amount": 58000,
+        "category_id": 40,
+        "source_id": 1,
+        "date": "2019-06-29",
+        "notes": "Salary",
+        "bill_id": null,
+        "created_at": "2019-06-29 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 94,
+        "type": "income",
+        "amount": 118,
+        "category_id": 29,
+        "source_id": 1,
+        "date": "2019-06-01",
+        "notes": "Interest",
+        "bill_id": null,
+        "created_at": "2019-06-01 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 95,
+        "type": "income",
+        "amount": 14,
+        "category_id": 6,
+        "source_id": 1,
+        "date": "2019-06-04",
+        "notes": "Get it From Tez",
+        "bill_id": null,
+        "created_at": "2019-06-04 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 96,
+        "type": "income",
+        "amount": 35,
+        "category_id": 35,
+        "source_id": 1,
+        "date": "2019-06-26",
+        "notes": "Get it From Srikanth",
+        "bill_id": null,
+        "created_at": "2019-06-26 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      }
+    ],
     "categories": [
       {
         "id": 1,
@@ -1326,12 +819,4 @@ const backup = {
       }
     ]
   }
-};
-
-fs.writeFileSync(
-  "2019_05.json",
-  JSON.stringify(backup, null, 2),
-  "utf8"
-);
-
-console.log("2019_05.json created successfully.");
+}
