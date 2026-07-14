@@ -241,6 +241,10 @@ const raw = `
 `;
 
 const categoryMap = {
+  // Bank Charges
+  "Consolidate Charges": 3,
+
+
   // Vehicle
   "Petrol": 5,
   "Bike Petrol": 5,
@@ -252,6 +256,7 @@ const categoryMap = {
   "Royal Enfield: Service": 5,
   "Royal Enfield: Service & Insurance": 5,
   "Water Wash": 5,
+  "Petrol Air": 5,
 
   // Cashback
   "Get it From Tez": 6,
@@ -302,6 +307,8 @@ const categoryMap = {
   "Dinner Purchase": 18,
   "Burger & Nuggets": 18,
   "Noodles": 18,
+  "Biriyani": 18,
+  "Biriyani": 18,
 
   // Fruits
   "Fruits": 19,
@@ -361,11 +368,24 @@ const categoryMap = {
   "Spinach, Coconut & Tomatoes": 24,
   "Tender Coconut": 24,
   "Eggs": 24,
+  "Egg": 24,
   "Napkins": 24,
   "Pottukadalai": 24,
   "Black Grams": 24,
   "Curd": 24,
   "Sigaikkai": 24,
+  "Corn flour": 24,
+  "Corn Flour": 24,
+  "Capsicum": 24,
+  "Maida": 24,
+  "Gee & Raisin": 24,
+  "Mutton": 24,
+  "Groceries - Grofers": 24,
+  "Groceries - Flipkart": 24,
+  "Sugar": 24,
+  "Turmeric Powder": 24,
+  "Refined Oil": 24,
+  "Maida & Keshari Powder": 24,
 
   // Medical
   "Cold Medicine": 27,
@@ -373,6 +393,10 @@ const categoryMap = {
   "Hospital Bill": 27,
   "Medical Bill": 27,
   "Medicare Shampoo": 27,
+  "Fever Medicine": 27,
+  "Fever Medicine": 27,
+  "Doctor Fees": 27,
+  "Tonics": 27,
 
   // Households
   "House Holds": 28,
@@ -433,6 +457,9 @@ const categoryMap = {
   "Gave to": 34,
   "Gave it to Abi": 34,
   "Gave it to Boopathi": 34,
+  "Give it Back to Abi": 34,
+  "Give Back to Abi": 34,
+  "Give it to Abi": 34,
 
   // Money Received
   "Get it From Abi": 35,
@@ -504,6 +531,7 @@ const categoryMap = {
   // Savings
   "RD": 43,
   "Rd": 43,
+  "FD": 43,
   "Recurring Deposit": 43,
   "Recurring Deposit ": 43,
   "Recurrent Deposit": 43,
@@ -532,6 +560,22 @@ const categoryMap = {
   "Nenthra Chips": 44,
   "Pepsi": 44,
   "Gobi Manchurian": 44,
+  "Kadalamittai": 44,
+  "Vadai": 44,
+  "Coffee": 44,
+  "Egg Buffs & Kulfi": 44,
+  "Egg Buffs": 44,
+  "Samosa &Vadai": 44,
+  "Samosa & Vadai": 44,
+  "Samosa": 44,
+  "Samosas": 44,
+  "Chips & Murukku": 44,
+  "Chips & Mutukku": 44,
+  "Murukku": 44,
+  "Chips": 44,
+  "Masala Groundnuts": 44,
+  "Vadai & Egg Bonda": 44,
+  "Egg Bonda": 44,
 
   // Travel
   "Trip Amount": 48,
@@ -543,6 +587,9 @@ const categoryMap = {
   "Bus : Room to Lalbagh": 48,
   "Shiradi: Expenses": 48,
   "Shiradi: Bus Booking & Others": 48,
+
+  // Wallet Transfer
+  "Uber Wallets": 49,
 
   // Water
   "Water Cane": 50,
