@@ -266,6 +266,12 @@ const categoryMap = {
   "Purchase Pant": 8,
   "Purchase Shirt": 8,
 
+  // Donations
+  "Donated": 11,
+
+  // Drinks
+  "Sarakku": 12,
+
   // Utilities
   "Electricity Bill": 13,
   "Pdkt Home Electricity Bill": 13,
@@ -303,6 +309,10 @@ const categoryMap = {
   "Grapes": 19,
   "Papaya": 19,
   "Pomegranate": 19,
+  "Bananas": 19,
+  "Pineapple": 19,
+  "Sappotta": 19,
+  "Watermelon": 19,
 
   // Gift
   "Gift": 22,
@@ -350,6 +360,12 @@ const categoryMap = {
   "Shampoo": 24,
   "Spinach, Coconut & Tomatoes": 24,
   "Tender Coconut": 24,
+  "Eggs": 24,
+  "Napkins": 24,
+  "Pottukadalai": 24,
+  "Black Grams": 24,
+  "Curd": 24,
+  "Sigaikkai": 24,
 
   // Medical
   "Cold Medicine": 27,
@@ -388,6 +404,7 @@ const categoryMap = {
   "Screen Card": 33,
   "Sim Card": 33,
   "Sim Card & Link Adhaar": 33,
+  "Dth Recharge": 33,
 
   // Money Given
   "Give it Back": 34,
@@ -414,6 +431,8 @@ const categoryMap = {
   "Gave to Madhu": 34,
   "Gave to Aboo": 34,
   "Gave to": 34,
+  "Gave it to Abi": 34,
+  "Gave it to Boopathi": 34,
 
   // Money Received
   "Get it From Abi": 35,
@@ -459,6 +478,7 @@ const categoryMap = {
   "Room: Spend": 39,
   "House Warming": 39,
   "Give Back to Dinesh & Room Rent": 39,
+  "Water Bill": 39,
 
   // Salary
   "March Month 2017": 40,
@@ -504,6 +524,14 @@ const categoryMap = {
   "Snacks Spend": 44,
   "Sweets": 44,
   "Water Bottles": 44,
+  "Biscuits": 44,
+  "Fruit Bowl": 44,
+  "Sprite": 44,
+  "Uppattu": 44,
+  "Lattu": 44,
+  "Nenthra Chips": 44,
+  "Pepsi": 44,
+  "Gobi Manchurian": 44,
 
   // Travel
   "Trip Amount": 48,
