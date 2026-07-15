@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { Text, View, Image, BackHandler, ToastAndroid } from 'react-native';
+import { Text, View, Image, BackHandler } from 'react-native';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import ErrorBoundary from './src/screens/ErrorBoundary';
@@ -20,6 +20,8 @@ import LoanDetailsScreen from './src/screens/LoanDetailsScreen';
 import LoanPaymentScreen from './src/screens/LoanPaymentScreen';
 import LoanListScreen from './src/screens/LoanListScreen';
 import { initDB } from './src/database/init';
+import ExitConfirmationModal from './src/components/ExitConfirmationModal';
+import useExitConfirmation from './src/hooks/useExitConfirmation';
 import { runBillMaintenance } from './src/services/bills';
 import { Provider as PaperProvider, DefaultTheme as PaperDefaultTheme } from 'react-native-paper';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
@@ -29,8 +31,8 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   const navigationRef = useNavigationContainerRef();
-  const backPressCount = useRef(0);
   const [ready, setReady] = useState(false);
+  const { visible, hideDialog } = useExitConfirmation({ navigationRef, rootRouteNames: ['Dashboard'] });
 
   useEffect(() => {
     (async () => {
@@ -56,27 +58,6 @@ export default function App() {
         console.error('App init failed:', e);
       }
     })();
-  }, []);
-
-  useEffect(() => {
-    const onBackPress = () => {
-      const route = navigationRef.getCurrentRoute();
-      if (route?.name !== 'Drawer') {
-        return false;
-      }
-      if (backPressCount.current === 0) {
-        backPressCount.current += 1;
-        ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
-        setTimeout(() => {
-          backPressCount.current = 0;
-        }, 2000);
-        return true;
-      }
-      BackHandler.exitApp();
-      return true;
-    };
-    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-    return () => subscription.remove();
   }, []);
 
   if (!ready) {
@@ -133,6 +114,11 @@ export default function App() {
             <Stack.Screen name="LoanReports" component={require('./src/screens/LoanReportsScreen').default} options={{ title: 'Loan Reports' }} />
           </Stack.Navigator>
         </NavigationContainer>
+        <ExitConfirmationModal
+          visible={visible}
+          onCancel={hideDialog}
+          onExit={() => BackHandler.exitApp()}
+        />
       </PaperProvider>
     </ErrorBoundary>
   );
