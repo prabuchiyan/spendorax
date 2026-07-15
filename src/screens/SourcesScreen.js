@@ -98,6 +98,7 @@ export default function SourcesScreen({ route, navigation }) {
 
 
           <TouchableOpacity
+            activeOpacity={1}
             onPress={() => {
               const parent = navigation.getParent();
               parent?.navigate('SourcesDetails', {

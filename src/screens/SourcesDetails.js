@@ -101,6 +101,7 @@ export default function SourcesDetails({ route, navigation }) {
     const category = categoriesMap[item.category_id] || {};
     return (
       <TouchableOpacity
+        activeOpacity={1}
         onPress={() => handleEdit(item)}
       >
         <Card style={styles.txCard}>
@@ -108,7 +109,7 @@ export default function SourcesDetails({ route, navigation }) {
 
             <View style={[styles.iconContainer, { backgroundColor: (category.color || '#eee') + '15' }]}>
               <MaterialCommunityIcons
-                name={category.icon || 'currency-usd'}
+                name={category.icon || 'currency-inr'}
                 size={22}
                 color={category.color || Colors.muted}
               />

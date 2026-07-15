@@ -225,12 +225,19 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       return;
     }
 
+    const searchText = text.toLowerCase();
+
     const matches = noteSuggestions.filter(item => {
       const category = categories.find(c => c.id === item.category_id);
 
       return (
-        item.notes.toLowerCase().includes(text.toLowerCase()) &&
-        category?.type === type
+        item.notes.toLowerCase().includes(searchText) &&
+        (
+          // Match selected transaction type
+          category?.type === type ||
+          // Include suggestions that don't have a category
+          !item.category_id
+        )
       );
     });
 
@@ -278,7 +285,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ alignItems: 'center', marginRight: 12 }}>
-              <MaterialCommunityIcons name={type === 'transfer' ? 'currency-usd' : (categories.find(x => x.id === categoryId) || {}).icon || 'currency-usd'} size={26} color={(categories.find(x => x.id === categoryId) || {}).color || '#4B7CF3'} />
+              <MaterialCommunityIcons name={type === 'transfer' ? 'currency-inr' : (categories.find(x => x.id === categoryId) || {}).icon || 'currency-inr'} size={26} color={(categories.find(x => x.id === categoryId) || {}).color || '#4B7CF3'} />
               <Text style={{ fontSize: 12 }}>{type === 'transfer' ? 'Uncategorized' : (categories.find(x => x.id === categoryId) || {}).name || 'Uncategorized'}</Text>
             </View>
             <View style={{ alignItems: 'center' }}>
@@ -1691,7 +1698,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               {loansList.map(l => (
                 <TouchableOpacity key={l.id} onPress={async () => {
                   setLinking(true);
-                    try {
+                  try {
                     await linkTransactionToLoan(transaction.id, l.id, { paymentType: 'LINKED', linkedDate: transaction.date });
                     setLinkedLoanId(l.id);
                     setShowLoanModal(false);

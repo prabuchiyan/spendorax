@@ -449,7 +449,7 @@ export default function HomeScreen({ navigation }) {
                   >
                     <Avatar.Icon
                       size={50}
-                      icon={cat.icon || 'currency-usd'}
+                      icon={cat.icon || 'currency-inr'}
                       style={{
                         backgroundColor: cat.color || Colors.card,
                       }}

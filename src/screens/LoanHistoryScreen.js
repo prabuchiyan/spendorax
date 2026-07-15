@@ -46,7 +46,7 @@ export default function LoanHistoryScreen({ route }) {
       map[key] = map[key] || [];
       map[key].push(p);
     });
-    return Object.keys(map).sort((a,b) => b.localeCompare(a)).map(k => ({ title: k, data: map[k] }));
+    return Object.keys(map).sort((a, b) => b.localeCompare(a)).map(k => ({ title: k, data: map[k] }));
   }, [filtered]);
 
   return (
@@ -62,10 +62,12 @@ export default function LoanHistoryScreen({ route }) {
           <Text style={{ fontWeight: '700', marginTop: 12 }}>{title}</Text>
         )}
         renderItem={({ item }) => (
-          <TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={1}
+          >
             <Card>
               <Text style={{ fontWeight: '700' }}>{item.payment_type} — ₹{Number(item.payment_amount || 0).toLocaleString('en-IN')}</Text>
-              <Text style={{ color: '#666', marginTop: 6 }}>{item.payment_date} • Principal ₹{Number(item.principal_component||0)} • Interest ₹{Number(item.interest_component||0)}</Text>
+              <Text style={{ color: '#666', marginTop: 6 }}>{item.payment_date} • Principal ₹{Number(item.principal_component || 0)} • Interest ₹{Number(item.interest_component || 0)}</Text>
               {item.remarks ? <Text style={{ marginTop: 6, color: '#444' }}>{item.remarks}</Text> : null}
             </Card>
           </TouchableOpacity>

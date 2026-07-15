@@ -78,7 +78,7 @@ function CustomDrawerContent(props) {
         </View>
         <View style={styles.headerTextContainer}>
           <Text style={styles.appName}>SpendoraX</Text>
-          <Text style={styles.appVersion}>v2.3.2</Text>
+          <Text style={styles.appVersion}>v3.6.0</Text>
         </View>
       </View>
 

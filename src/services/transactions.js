@@ -255,6 +255,8 @@ export async function createTransfer({
 
 export async function getTransactionNoteSuggestions() {
   const transactions = await getTransactions(100000, 'Yes');
+  
+    console.log('Prabu transactions', transactions);
   const categoriesRes = await executeSql(`SELECT * FROM categories`);
 
   const categories = [];
@@ -268,19 +270,20 @@ export async function getTransactionNoteSuggestions() {
   transactions.forEach(tx => {
     if (!tx.notes || !tx.notes.trim()) return;
 
-    const key = `${tx.category_id}_${tx.notes.toLowerCase()}`;
+    const category = categories.find(c => c.id === tx.category_id);
+    console.log('Prabu category', category);
+    // Group by category if available, otherwise group only by note
+    const key = `${tx.category_id ?? 'uncategorized'}_${tx.notes.toLowerCase()}`;
 
     if (!map[key]) {
-      const category = categories.find(c => c.id === tx.category_id);
-
       map[key] = {
         notes: tx.notes,
-        category_id: tx.category_id,
-        category_name: category?.name ?? '',
-        icon: category?.icon ?? 'tag',
+        category_id: tx.category_id ?? null,
+        category_name: category?.name ?? 'Uncategorized',
+        icon: category?.icon ?? 'currency-inr',
         color: category?.color ?? '#4B7CF3',
         usage_count: 1,
-        last_used: tx.date
+        last_used: tx.date,
       };
     } else {
       map[key].usage_count++;
