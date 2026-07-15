@@ -195,26 +195,33 @@ function createWebExecuteSql() {
       };
     }
 
-    // DELETE FROM table WHERE id = ?
+    // DELETE FROM table WHERE column = ?
     if (l.startsWith('delete')) {
       const m = s.match(/delete from\s+([a-zA-Z0-9_]+)(\s+where\s+(.+))?/i);
       if (!m) throw new Error('Unsupported DELETE SQL: ' + sql);
 
       const table = m[1];
-      const where = m[3]; // optional
+      const where = m[3];
       let rows = readTable(table);
 
-      // Case 1: DELETE FROM table (clear all)
+      // DELETE FROM table
       if (!where) {
         writeTable(table, []);
-        return { rowsAffected: rows.length, rows: makeRows([]) };
+        return {
+          rowsAffected: rows.length,
+          rows: makeRows([])
+        };
       }
 
-      // Case 2: DELETE WHERE id = ?
-      const idMatch = where.match(/id\s*=\s*\?/i);
-      if (idMatch) {
-        const id = params[0];
-        const filtered = rows.filter(r => String(r.id) !== String(id));
+      // DELETE WHERE <column> = ?
+      const whereMatch = where.match(/([a-zA-Z0-9_]+)\s*=\s*\?/i);
+      if (whereMatch) {
+        const column = whereMatch[1];
+        const value = params[0];
+
+        const filtered = rows.filter(
+          r => String(r[column]) !== String(value)
+        );
         writeTable(table, filtered);
         return {
           rowsAffected: rows.length - filtered.length,
@@ -222,9 +229,7 @@ function createWebExecuteSql() {
         };
       }
 
-      // fallback
-      writeTable(table, rows);
-      return { rows: makeRows([]) };
+      throw new Error('Unsupported DELETE WHERE: ' + where);
     }
 
     // fallback: no-op
