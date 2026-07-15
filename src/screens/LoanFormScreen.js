@@ -91,8 +91,6 @@ export default function LoanFormScreen({ navigation, route }) {
         }
 
         try {
-            console.log('Prabu editId', editId);
-            console.log('Prabu payload', payload);
             if (editId) await updateLoan(editId, payload);
             else await createLoan(payload);
             navigation.goBack();

@@ -87,13 +87,16 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       setCategoryId(null);
       return;
     }
+    // Preserve category while editing.
+    // User can choose another category manually.
+    if (isEdit) return;
     const exists = categories.some(
       c => c.id === categoryId && c.type === type
     );
     if (!exists) {
       setCategoryId(null);
     }
-  }, [type, categories]);
+  }, [type, categories, isEdit]);
 
   useEffect(() => {
     if (showCategoryModal) {
@@ -128,7 +131,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       setAmountError(true);
       return;
     }
-    if (!categoryId && type !== 'transfer') {
+    // Category is mandatory only while creating a new transaction
+    if (!isEdit && !categoryId && type !== 'transfer') {
       setSnackbarMsg('Please select a category.');
       setSnackbarVisible(true);
       return;
@@ -172,8 +176,14 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       }
       id = 'transfer';
     } else {
-      const transactionData = { type, amount: val, category_id: categoryId, source_id: sourceId, date, notes };
-
+      const transactionData = {
+        type,
+        amount: val,
+        category_id: categoryId || null,
+        source_id: sourceId,
+        date,
+        notes
+      };
       if (isEdit && transaction && transaction.id) {
         id = await updateTransaction(transaction.id, transactionData);
       } else {

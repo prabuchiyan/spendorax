@@ -255,8 +255,6 @@ export async function createTransfer({
 
 export async function getTransactionNoteSuggestions() {
   const transactions = await getTransactions(100000, 'Yes');
-  
-    console.log('Prabu transactions', transactions);
   const categoriesRes = await executeSql(`SELECT * FROM categories`);
 
   const categories = [];
@@ -271,7 +269,6 @@ export async function getTransactionNoteSuggestions() {
     if (!tx.notes || !tx.notes.trim()) return;
 
     const category = categories.find(c => c.id === tx.category_id);
-    console.log('Prabu category', category);
     // Group by category if available, otherwise group only by note
     const key = `${tx.category_id ?? 'uncategorized'}_${tx.notes.toLowerCase()}`;
 

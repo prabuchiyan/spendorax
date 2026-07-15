@@ -40,7 +40,6 @@ export default function LoanDashboardScreen({ navigation }) {
             const p = await getLoanPayments(ln.id, 6, 0);
             recent = recent.concat(p.map(x => ({ ...x, loan_name: ln.loan_name })));
         }
-        console.log('Prabu recent', recent);
         recent.sort((a, b) => new Date(b.payment_date) - new Date(a.payment_date));
         setPayments(recent.slice(0, 6));
     }, []);
