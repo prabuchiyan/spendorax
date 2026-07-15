@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, InteractionManager } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
@@ -124,9 +124,90 @@ export async function pickBackupFile() {
   }
 }
 
+// =======================================================
+// Restore Helpers
+// =======================================================
+
+const MOBILE_BATCH_SIZE = 25;
+const WEB_BATCH_SIZE = 100;
+
+function getBatchSize() {
+  return Platform.OS === 'web'
+    ? WEB_BATCH_SIZE
+    : MOBILE_BATCH_SIZE;
+}
+
+async function yieldToUI() {
+  await new Promise(resolve => {
+    requestAnimationFrame(() => {
+      InteractionManager.runAfterInteractions(resolve);
+    });
+  });
+}
+
+async function beginDbTransaction() {
+  try {
+    await executeSql('BEGIN TRANSACTION');
+  } catch (_) {
+    // Web/localStorage shim ignores transactions
+  }
+}
+
+async function commitDbTransaction() {
+  try {
+    await executeSql('COMMIT');
+  } catch (_) {
+    // Web/localStorage shim ignores transactions
+  }
+}
+
+async function rollbackDbTransaction() {
+  try {
+    await executeSql('ROLLBACK');
+  } catch (_) {
+    // Web/localStorage shim ignores transactions
+  }
+}
+
+/**
+ * Generic batch processor
+ *
+ * items           -> array
+ * handler(item)   -> async function
+ * onChunkDone(n)  -> progress callback
+ */
+async function processBatch(items, handler, onChunkDone) {
+  const batchSize = getBatchSize();
+
+  for (let i = 0; i < items.length; i += batchSize) {
+    const chunk = items.slice(i, i + batchSize);
+    await beginDbTransaction();
+    try {
+      for (const item of chunk) {
+        await handler(item);
+      }
+
+      await commitDbTransaction();
+    } catch (err) {
+      await rollbackDbTransaction();
+      throw err;
+    }
+
+    if (onChunkDone) {
+      onChunkDone(chunk.length);
+    }
+
+    await yieldToUI();
+
+    // Keep UI responsive only on mobile
+    if (Platform.OS !== 'web') {
+      await yieldToUI();
+    }
+  }
+}
+
 export async function restoreBackup(backupData, mode = 'replace', onProgress = null) {
-  const yieldToEventLoop = () => new Promise(resolve => setTimeout(resolve, 0));
-  const BATCH_SIZE = 20;
+  const BATCH_SIZE = getBatchSize();
 
   let lastPercentage = 0;
   const safeOnProgress = (percentage, message) => {
@@ -275,12 +356,12 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
 
   try {
     safeOnProgress(0, 'Initializing restore...');
-    await yieldToEventLoop();
+    await yieldToUI();
 
     if (mode === 'replace') {
       safeOnProgress(0, 'Clearing database...');
       await clearAllTables();
-      await yieldToEventLoop();
+      await yieldToUI();
     }
 
     const { categories = [], sources = [], budgets = [], bills = [], transactions = [], loans = [], loan_payments = [] } = backupData.data || {};
@@ -300,176 +381,356 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
     const sourceMap = {};
     const billMap = {};
     const transactionMap = {};
+    const loanMap = {};
 
     // 1. Categories
-    for (let i = 0; i < categories.length; i += BATCH_SIZE) {
-      const chunk = categories.slice(i, i + BATCH_SIZE);
-      await Promise.all(chunk.map(async (cat) => {
+    await processBatch(
+      categories,
+      async (cat) => {
         if (mode === 'merge') {
-          const existing = await executeSql(`SELECT id FROM categories WHERE name = ? AND type = ?`, [cat.name, cat.type]);
+          const existing = await executeSql(
+            `SELECT id FROM categories WHERE name = ? AND type = ?`,
+            [cat.name, cat.type]
+          );
+
           if (existing.rows.length > 0) {
             categoryMap[cat.id] = existing.rows.item(0).id;
             return;
           }
         }
+
         const newId = await createCategory(cat);
         categoryMap[cat.id] = newId;
-      }));
-      updateProgress(chunk.length, 'Importing categories...');
-      await yieldToEventLoop();
-    }
+      },
+      (count) => {
+        updateProgress(count, 'Importing categories...');
+      }
+    );
 
     // 2. Sources
-    for (let i = 0; i < sources.length; i += BATCH_SIZE) {
-      const chunk = sources.slice(i, i + BATCH_SIZE);
-      await Promise.all(chunk.map(async (src) => {
+    await processBatch(
+      sources,
+      async (src) => {
         if (mode === 'merge') {
-          const existing = await executeSql(`SELECT id FROM sources WHERE name = ?`, [src.name]);
+          const existing = await executeSql(
+            `SELECT id FROM sources WHERE name = ?`,
+            [src.name]
+          );
+
           if (existing.rows.length > 0) {
             sourceMap[src.id] = existing.rows.item(0).id;
             return;
           }
         }
+
         const newId = await createSource(src);
         sourceMap[src.id] = newId;
-      }));
-      updateProgress(chunk.length, 'Importing sources...');
-      await yieldToEventLoop();
-    }
+      },
+      (count) => {
+        updateProgress(count, 'Importing sources...');
+      }
+    );
 
     // 3. Bills
-    for (let i = 0; i < bills.length; i += BATCH_SIZE) {
-      const chunk = bills.slice(i, i + BATCH_SIZE);
-      await Promise.all(chunk.map(async (bill) => {
+    await processBatch(
+      bills,
+      async (bill) => {
         if (mode === 'merge') {
-          const existing = await executeSql(`SELECT id FROM bills WHERE name = ? AND due_date = ?`, [bill.name, bill.due_date]);
+          const existing = await executeSql(
+            `SELECT id FROM bills WHERE name = ? AND due_date = ?`,
+            [bill.name, bill.due_date]
+          );
+
           if (existing.rows.length > 0) {
             billMap[bill.id] = existing.rows.item(0).id;
             return;
           }
         }
+
         const billToCreate = {
           ...bill,
           category_id: categoryMap[bill.category_id] || null,
-          source_id: sourceMap[bill.source_id] || null
+          source_id: sourceMap[bill.source_id] || null,
         };
+
         const newId = await createBill(billToCreate);
         billMap[bill.id] = newId;
-      }));
-      updateProgress(chunk.length, 'Importing bills...');
-      await yieldToEventLoop();
-    }
+      },
+      (count) => {
+        updateProgress(count, 'Importing bills...');
+      }
+    );
 
     // 4. Loans
-    const loanMap = {};
-    for (let i = 0; i < loans.length; i += BATCH_SIZE) {
-      const chunk = loans.slice(i, i + BATCH_SIZE);
-      await Promise.all(chunk.map(async (ln) => {
+    const sortedLoans = [...loans].sort(
+      (a, b) =>
+        new Date(a.loan_start_date) -
+        new Date(b.loan_start_date)
+    );
+    await processBatch(
+      sortedLoans,
+      async (loan) => {
         if (mode === 'merge') {
-          const existing = await executeSql(`SELECT id FROM loans WHERE loan_name = ? AND lender = ? AND principal_amount = ?`, [ln.loan_name, ln.lender, ln.principal_amount]);
+          const existing = await executeSql(
+            `SELECT id
+              FROM loans
+              WHERE loan_name = ?
+                AND lender = ?
+                AND principal_amount = ?
+                AND loan_start_date = ?
+                AND IFNULL(loan_direction, 'BORROWED') = ?
+              LIMIT 1`,
+            [
+              loan.loan_name,
+              loan.lender,
+              loan.principal_amount,
+              loan.loan_start_date,
+              loan.loan_direction || 'BORROWED'
+            ]
+          );
+
           if (existing.rows.length > 0) {
-            loanMap[ln.id] = existing.rows.item(0).id;
+            loanMap[loan.id] = existing.rows.item(0).id;
             return;
           }
         }
-        const newId = await createLoan(ln);
-        loanMap[ln.id] = newId;
-      }));
-      updateProgress(chunk.length, 'Importing loans...');
-      await yieldToEventLoop();
-    }
+
+        const newLoanId = await createLoan(loan);
+
+        // Map old backup loan id -> restored loan id
+        loanMap[loan.id] = newLoanId;
+      },
+      (count) => {
+        updateProgress(count, 'Importing loans...');
+      }
+    );
 
     // 5. Transactions
-    for (let i = 0; i < transactions.length; i += BATCH_SIZE) {
-      const chunk = transactions.slice(i, i + BATCH_SIZE);
-      await Promise.all(chunk.map(async (tx) => {
+    const sortedTransactions = [...transactions].sort(
+      (a, b) => new Date(a.date) - new Date(b.date)
+    );
+    await processBatch(
+      sortedTransactions,
+      async (tx) => {
+        // Merge mode duplicate detection
         if (mode === 'merge') {
           const existing = await executeSql(
-            `SELECT id FROM transactions WHERE type = ? AND amount = ? AND date = ? AND notes = ?`,
-            [tx.type, tx.amount, tx.date, tx.notes]
+            `SELECT id
+              FROM transactions
+              WHERE type = ?
+              AND amount = ?
+              AND date = ?
+              AND IFNULL(notes,'') = IFNULL(?, '')
+              AND IFNULL(loan_id,0) = IFNULL(?,0)
+              LIMIT 1`,
+            [
+              tx.type,
+              tx.amount,
+              tx.date,
+              tx.notes,
+              tx.loan_id ? (loanMap[tx.loan_id] || null) : null
+            ]
           );
+
           if (existing.rows.length > 0) {
             transactionMap[tx.id] = existing.rows.item(0).id;
             return;
           }
         }
+
         const txToCreate = {
           ...tx,
+
+          // Remap foreign keys
           category_id: categoryMap[tx.category_id] || null,
           source_id: sourceMap[tx.source_id] || null,
-          bill_id: billMap[tx.bill_id] || null,
-          loan_id: tx.loan_id
-            ? (loanMap[tx.loan_id] || null)
-            : null
+          bill_id: tx.bill_id ? (billMap[tx.bill_id] || null) : null,
+          loan_id: tx.loan_id ? (loanMap[tx.loan_id] || null) : null,
+
+          // Preserve loan metadata
+          loan_payment_type: tx.loan_payment_type || null,
+          principal_component: tx.principal_component || null,
+          interest_component: tx.interest_component || null,
+          outstanding_after_payment: tx.outstanding_after_payment || null,
+          linked_date: tx.linked_date || null,
+
+          // Preserve transfer metadata
+          transfer_group_id: tx.transfer_group_id || null,
+          direction: tx.direction || null
         };
-        const newId = await createTransaction(txToCreate);
-        transactionMap[tx.id] = newId;
-      }));
-      updateProgress(chunk.length, 'Importing transactions...');
-      await yieldToEventLoop();
-    }
+
+        const newTransactionId = await createTransaction(txToCreate);
+
+        // Backup transaction id -> restored transaction id
+        transactionMap[tx.id] = newTransactionId;
+      },
+      (count) => {
+        updateProgress(count, 'Importing transactions...');
+      }
+    );
 
     // 6. Update Bills with linked transactions
-    if (billsWithLinkedTx.length > 0) {
-      for (let i = 0; i < billsWithLinkedTx.length; i += BATCH_SIZE) {
-        const chunk = billsWithLinkedTx.slice(i, i + BATCH_SIZE);
-        await Promise.all(chunk.map(async (bill) => {
-          const newTxId = transactionMap[bill.linked_transaction_id];
-          const newBillId = billMap[bill.id];
-          if (newTxId && newBillId) {
-            await updateBill(newBillId, { linked_transaction_id: newTxId });
-          }
-        }));
-        updateProgress(chunk.length, 'Linking transactions to bills...');
-        await yieldToEventLoop();
+    await processBatch(
+      billsWithLinkedTx,
+      async (bill) => {
+        const newBillId = billMap[bill.id];
+        const newTransactionId = transactionMap[bill.linked_transaction_id];
+
+        if (!newBillId || !newTransactionId) {
+          return;
+        }
+
+        await updateBill(newBillId, {
+          linked_transaction_id: newTransactionId
+        });
+      },
+      (count) => {
+        updateProgress(count, 'Linking transactions to bills...');
       }
-    }
+    );
 
     // 7. Loan payments
-    const loanPaymentsArr = loan_payments || [];
-    for (let i = 0; i < loanPaymentsArr.length; i += BATCH_SIZE) {
-      const chunk = loanPaymentsArr.slice(i, i + BATCH_SIZE);
-      await Promise.all(chunk.map(async (p) => {
-        const newLoanId = loanMap[p.loan_id];
-        if (!newLoanId) return;
+    await processBatch(
+      loan_payments || [],
+      async (payment) => {
+        const newLoanId = loanMap[payment.loan_id];
 
-        if (mode === 'merge') {
-          const exists = await executeSql(`SELECT id FROM loan_payments WHERE loan_id = ? AND payment_date = ? AND payment_amount = ? AND payment_type = ? LIMIT 1`, [newLoanId, p.payment_date, p.payment_amount, p.payment_type]);
-          if (exists.rows.length > 0) return;
+        if (!newLoanId) {
+          console.warn(
+            `Skipping loan payment ${payment.id}. Loan ${payment.loan_id} was not restored.`
+          );
+          return;
         }
 
-        const newTxId = p.transaction_id ? transactionMap[p.transaction_id] : null;
+        if (mode === 'merge') {
+          try {
+            const existing = await executeSql(
+              `SELECT id
+         FROM loan_payments
+         WHERE loan_id = ?
+           AND payment_date = ?
+           AND payment_amount = ?
+           AND payment_type = ?
+         LIMIT 1`,
+              [
+                newLoanId,
+                payment.payment_date,
+                payment.payment_amount,
+                payment.payment_type
+              ]
+            );
+
+            if (existing.rows.length > 0) {
+              return;
+            }
+          } catch (e) {
+            console.error(
+              'Loan payment insert failed',
+              {
+                paymentId: payment.id,
+                backupLoanId: payment.loan_id,
+                mappedLoanId: newLoanId,
+                backupTransactionId: payment.transaction_id,
+                mappedTransactionId: newTransactionId
+              },
+              e
+            );
+            throw e;
+          }
+        }
+
+        const newTransactionId = payment.transaction_id
+          ? (transactionMap[payment.transaction_id] || null)
+          : null;
+
+        if (payment.transaction_id && !transactionMap[payment.transaction_id]) {
+          console.warn(
+            `Loan payment ${payment.id}: transaction ${payment.transaction_id} was not restored.`
+          );
+        }
+
         await executeSql(
-          `INSERT INTO loan_payments (loan_id, payment_date, payment_amount, principal_component, interest_component, remaining_balance, payment_type, payment_source_id, payment_category_id, transaction_id, remarks, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [newLoanId, p.payment_date, p.payment_amount, p.principal_component, p.interest_component, p.remaining_balance, p.payment_type, p.payment_source_id, p.payment_category_id || null, newTxId || null, p.remarks, p.created_at]
+          `INSERT INTO loan_payments
+      (
+        loan_id,
+        payment_date,
+        payment_amount,
+        principal_component,
+        interest_component,
+        remaining_balance,
+        payment_type,
+        payment_source_id,
+        payment_category_id,
+        transaction_id,
+        remarks,
+        created_at
+      )
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [
+            newLoanId,
+            payment.payment_date,
+            payment.payment_amount,
+            payment.principal_component,
+            payment.interest_component,
+            payment.remaining_balance,
+            payment.payment_type,
+            payment.payment_source_id
+              ? (sourceMap[payment.payment_source_id] || null)
+              : null,
+
+            payment.payment_category_id
+              ? (categoryMap[payment.payment_category_id] || null)
+              : null,
+            payment.transaction_id
+              ? (transactionMap[payment.transaction_id] || null)
+              : null,
+            payment.remarks,
+            payment.created_at
+          ]
         );
-      }));
-      updateProgress(chunk.length, 'Importing loan payments...');
-      await yieldToEventLoop();
-    }
+      },
+      (count) => {
+        updateProgress(count, 'Importing loan payments...');
+      }
+    );
 
     // 8. Budgets
-    for (let i = 0; i < budgets.length; i += BATCH_SIZE) {
-      const chunk = budgets.slice(i, i + BATCH_SIZE);
-      await Promise.all(chunk.map(async (budget) => {
+    await processBatch(
+      budgets,
+      async (budget) => {
+        const mappedCategoryId = categoryMap[budget.category_id] || null;
+
         if (mode === 'merge') {
           const existing = await executeSql(
-            `SELECT id FROM budgets WHERE category_id = ? AND month = ?`,
-            [categoryMap[budget.category_id] || null, budget.month]
+            `SELECT id
+         FROM budgets
+         WHERE category_id = ?
+           AND month = ?`,
+            [
+              mappedCategoryId,
+              budget.month
+            ]
           );
-          if (existing.rows.length > 0) return;
+
+          if (existing.rows.length > 0) {
+            return;
+          }
         }
+
         await createBudget({
           ...budget,
-          category_id: categoryMap[budget.category_id] || null
+          category_id: mappedCategoryId
         });
-      }));
-      updateProgress(chunk.length, 'Importing budgets...');
-      await yieldToEventLoop();
-    }
+      },
+      (count) => {
+        updateProgress(count, 'Importing budgets...');
+      }
+    );
+
+
 
     safeOnProgress(100, 'Restore completed successfully!');
-    await yieldToEventLoop();
+    await yieldToUI();
     return { success: true };
   } catch (error) {
     console.error('Restore failed:', error);

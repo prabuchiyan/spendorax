@@ -125,7 +125,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
     async function loadLinkedTransactions() {
         if (!id) return setLinkedTxs([]);
-        const txs = await getTransactions(1000, 'Yes');
+        const txs = await getTransactions(1000000, 'Yes');
         const linked = txs.filter(t => Number(t.loan_id) === Number(id));
         // sort desc by date
         linked.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -407,7 +407,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
                         marginTop: 8,
                     }}
                 >
-                    { (loan.loan_direction || 'BORROWED') === 'LENT' ? (
+                    {(loan.loan_direction || 'BORROWED') === 'LENT' ? (
                         <>
                             <ActionButton
                                 color="#16A34A"
@@ -509,7 +509,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
                                 }
                             />
                         </>
-                    ) }
+                    )}
 
                 </View>
 

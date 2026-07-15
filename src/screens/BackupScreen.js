@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, Alert } from 'react-native';
-import { 
-  Text, 
-  Button, 
-  Card, 
-  Title, 
-  Paragraph, 
-  Divider, 
-  Portal, 
-  Dialog, 
+import {
+  Text,
+  Button,
+  Card,
+  Title,
+  Paragraph,
+  Divider,
+  Portal,
+  Dialog,
   ActivityIndicator,
   List,
   Surface,
@@ -39,7 +39,7 @@ export default function BackupScreen() {
     try {
       const time = await AsyncStorage.getItem(LAST_BACKUP_KEY);
       if (time) setLastBackupTime(time);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   async function handleExport() {
@@ -75,22 +75,55 @@ export default function BackupScreen() {
   async function handleRestore() {
     setShowConfirmRestore(false);
     setShowPreview(false);
+
+    // Show loader first
     setLoading(true);
     setProgressPercentage(0);
     setProgressMessage('Initializing restore...');
+
+    // Force React to render the loading dialog BEFORE starting restore
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    await new Promise(resolve => setTimeout(resolve, 50));
+
     try {
-      await restoreBackup(backupData, restoreMode, (percentage, message) => {
-        setProgressPercentage(percentage);
-        setProgressMessage(message);
+      await restoreBackup(
+        backupData,
+        restoreMode,
+        (percentage, message) => {
+          // Schedule UI update on next frame
+          requestAnimationFrame(() => {
+            setProgressPercentage(percentage);
+            setProgressMessage(message);
+          });
+        }
+      );
+
+      requestAnimationFrame(() => {
+        setProgressPercentage(100);
+        setProgressMessage('Restore completed successfully!');
       });
-      // Wait 100ms for React to render the 100% progress state before the blocking alert appears
-      await new Promise(resolve => setTimeout(resolve, 100));
-      Alert.alert('Success', `Data ${restoreMode === 'replace' ? 'replaced' : 'merged'} successfully`);
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      setLoading(false);
+
+      Alert.alert(
+        'Success',
+        `Data ${restoreMode === 'replace'
+          ? 'replaced'
+          : 'merged'
+        } successfully`
+      );
+
       setBackupData(null);
     } catch (error) {
-      Alert.alert('Error', 'Restore failed: ' + error.message);
-    } finally {
       setLoading(false);
+
+      Alert.alert(
+        'Error',
+        'Restore failed: ' + error.message
+      );
+    } finally {
       setProgressPercentage(-1);
       setProgressMessage('');
     }
@@ -129,8 +162,8 @@ export default function BackupScreen() {
             <Paragraph style={styles.description}>
               Create a backup of all your transactions, categories, sources, budgets, bills, loans, and loan payments.
             </Paragraph>
-            <Button 
-              mode="contained" 
+            <Button
+              mode="contained"
               onPress={handleExport}
               style={styles.button}
               icon="share-variant"
@@ -153,8 +186,8 @@ export default function BackupScreen() {
             <Paragraph style={styles.description}>
               Restore your data from a previously saved backup file.
             </Paragraph>
-            <Button 
-              mode="outlined" 
+            <Button
+              mode="outlined"
               onPress={handlePickFile}
               style={styles.button}
               textColor={Colors.accent}
@@ -178,13 +211,13 @@ export default function BackupScreen() {
             <Text style={styles.warning}>Choose restore mode:</Text>
           </Dialog.Content>
           <Dialog.Actions style={styles.dialogActions}>
-            <Button 
+            <Button
               onPress={() => { setRestoreMode('merge'); setShowConfirmRestore(true); }}
               textColor={Colors.primary}
             >
               Merge (Append)
             </Button>
-            <Button 
+            <Button
               onPress={() => { setRestoreMode('replace'); setShowConfirmRestore(true); }}
               textColor="#E46A6A"
             >
@@ -198,8 +231,8 @@ export default function BackupScreen() {
           <Dialog.Title>Confirm Restore</Dialog.Title>
           <Dialog.Content>
             <Paragraph>
-              {restoreMode === 'replace' 
-                ? 'WARNING: This will CLEAR ALL your current data and replace it with the backup content. This action CANNOT be undone.' 
+              {restoreMode === 'replace'
+                ? 'WARNING: This will CLEAR ALL your current data and replace it with the backup content. This action CANNOT be undone.'
                 : 'This will add all records from the backup to your current data. Duplicates will be skipped.'}
             </Paragraph>
           </Dialog.Content>
@@ -220,10 +253,10 @@ export default function BackupScreen() {
           </Text>
           {progressPercentage >= 0 && (
             <View style={{ width: '80%', alignItems: 'center' }}>
-              <ProgressBar 
-                progress={progressPercentage / 100} 
-                color={Colors.primary} 
-                style={{ height: 8, borderRadius: 4, width: '100%' }} 
+              <ProgressBar
+                progress={progressPercentage / 100}
+                color={Colors.primary}
+                style={{ height: 8, borderRadius: 4, width: '100%' }}
               />
               <Text style={{ marginTop: 5, fontSize: 12, color: Colors.muted }}>
                 {progressPercentage}%
