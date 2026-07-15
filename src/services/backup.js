@@ -123,6 +123,7 @@ export async function pickBackupFile() {
     throw error;
   }
 }
+
 export async function restoreBackup(backupData, mode = 'replace', onProgress = null) {
   const yieldToEventLoop = () => new Promise(resolve => setTimeout(resolve, 0));
   const BATCH_SIZE = 20;
@@ -151,7 +152,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
   try {
     const cats = await executeSql('SELECT * FROM categories');
     for (let i = 0; i < cats.rows.length; i++) originalData.categories.push(cats.rows.item(i));
-    
+
     const srcs = await executeSql('SELECT * FROM sources');
     for (let i = 0; i < srcs.rows.length; i++) originalData.sources.push(srcs.rows.item(i));
 
@@ -163,7 +164,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
 
     const txs = await executeSql('SELECT * FROM transactions');
     for (let i = 0; i < txs.rows.length; i++) originalData.transactions.push(txs.rows.item(i));
-  
+
     // Snapshot loans (if table exists)
     try {
       const lns = await executeSql('SELECT * FROM loans');
@@ -359,7 +360,26 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       await yieldToEventLoop();
     }
 
-    // 4. Transactions
+    // 4. Loans
+    const loanMap = {};
+    for (let i = 0; i < loans.length; i += BATCH_SIZE) {
+      const chunk = loans.slice(i, i + BATCH_SIZE);
+      await Promise.all(chunk.map(async (ln) => {
+        if (mode === 'merge') {
+          const existing = await executeSql(`SELECT id FROM loans WHERE loan_name = ? AND lender = ? AND principal_amount = ?`, [ln.loan_name, ln.lender, ln.principal_amount]);
+          if (existing.rows.length > 0) {
+            loanMap[ln.id] = existing.rows.item(0).id;
+            return;
+          }
+        }
+        const newId = await createLoan(ln);
+        loanMap[ln.id] = newId;
+      }));
+      updateProgress(chunk.length, 'Importing loans...');
+      await yieldToEventLoop();
+    }
+
+    // 5. Transactions
     for (let i = 0; i < transactions.length; i += BATCH_SIZE) {
       const chunk = transactions.slice(i, i + BATCH_SIZE);
       await Promise.all(chunk.map(async (tx) => {
@@ -377,7 +397,10 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           ...tx,
           category_id: categoryMap[tx.category_id] || null,
           source_id: sourceMap[tx.source_id] || null,
-          bill_id: billMap[tx.bill_id] || null
+          bill_id: billMap[tx.bill_id] || null,
+          loan_id: tx.loan_id
+            ? (loanMap[tx.loan_id] || null)
+            : null
         };
         const newId = await createTransaction(txToCreate);
         transactionMap[tx.id] = newId;
@@ -386,7 +409,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       await yieldToEventLoop();
     }
 
-    // 5. Update Bills with linked transactions
+    // 6. Update Bills with linked transactions
     if (billsWithLinkedTx.length > 0) {
       for (let i = 0; i < billsWithLinkedTx.length; i += BATCH_SIZE) {
         const chunk = billsWithLinkedTx.slice(i, i + BATCH_SIZE);
@@ -400,25 +423,6 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         updateProgress(chunk.length, 'Linking transactions to bills...');
         await yieldToEventLoop();
       }
-    }
-
-    // 6. Loans
-    const loanMap = {};
-    for (let i = 0; i < loans.length; i += BATCH_SIZE) {
-      const chunk = loans.slice(i, i + BATCH_SIZE);
-      await Promise.all(chunk.map(async (ln) => {
-        if (mode === 'merge') {
-          const existing = await executeSql(`SELECT id FROM loans WHERE loan_name = ? AND lender = ? AND principal_amount = ?`, [ln.loan_name, ln.lender, ln.principal_amount]);
-          if (existing.rows.length > 0) {
-            loanMap[ln.id] = existing.rows.item(0).id;
-            return;
-          }
-        }
-        const newId = await createLoan(ln);
-        loanMap[ln.id] = newId;
-      }));
-      updateProgress(chunk.length, 'Importing loans...');
-      await yieldToEventLoop();
     }
 
     // 7. Loan payments
@@ -444,7 +448,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       await yieldToEventLoop();
     }
 
-    // 6. Budgets
+    // 8. Budgets
     for (let i = 0; i < budgets.length; i += BATCH_SIZE) {
       const chunk = budgets.slice(i, i + BATCH_SIZE);
       await Promise.all(chunk.map(async (budget) => {

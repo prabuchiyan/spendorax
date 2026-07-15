@@ -37,24 +37,34 @@ export default function LoanListScreen({ navigation }) {
   }, [loans]);
 
   const filtered = useMemo(() => {
-    return loans.filter(l => {
-      const matchesSearch =
-        (l.loan_name || '')
-          .toLowerCase()
-          .includes(search.toLowerCase());
+    return [...loans]
+      .filter(l => {
+        const matchesSearch =
+          (l.loan_name || '')
+            .toLowerCase()
+            .includes(search.toLowerCase());
 
-      const matchesFilter =
-        filter === 'ALL'
-          ? true
-          : (l.status || 'Active') === filter;
+        const matchesFilter =
+          filter === 'ALL'
+            ? true
+            : (l.status || 'Active') === filter;
 
-      const matchesDirection =
-        directionFilter === 'ALL'
-          ? true
-          : (l.loan_direction || 'BORROWED') === directionFilter;
+        const matchesDirection =
+          directionFilter === 'ALL'
+            ? true
+            : (l.loan_direction || 'BORROWED') === directionFilter;
 
-      return matchesSearch && matchesFilter && matchesDirection;
-    });
+        return matchesSearch && matchesFilter && matchesDirection;
+      })
+      .sort((a, b) => {
+        // Active first
+        if ((a.status || 'Active') !== (b.status || 'Active')) {
+          return (a.status || 'Active') === 'Active' ? -1 : 1;
+        }
+
+        // Oldest loan first
+        return new Date(a.loan_start_date || 0) - new Date(b.loan_start_date || 0);
+      });
   }, [loans, search, filter, directionFilter]);
 
   const Chip = ({ title, value }) => (
