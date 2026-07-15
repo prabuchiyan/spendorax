@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import Card from './Card';
 import { Button } from 'react-native-paper';
+import PickerModal from './PickerModal';
 import { recordPrepayment } from '../services/loans';
 import { getSources } from '../services/sources';
 import { getCategories } from '../services/categories';
@@ -88,37 +89,21 @@ export default function LoanPrepaymentModal({ visible, onClose, loanId, onSaved 
             </View>
           </Card>
 
-          <Modal visible={showSourcePicker} transparent animationType="slide">
-            <View style={styles.backdrop}>
-              <View style={styles.modalContainer}>
-                <Text style={{ fontWeight: '700', marginBottom: 12 }}>Select Source</Text>
-                <ScrollView>
-                  {sources.map((source) => (
-                    <TouchableOpacity key={source.id} onPress={() => { setSourceId(source.id); setShowSourcePicker(false); }} style={styles.optionItem}>
-                      <Text>{source.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-                <Button onPress={() => setShowSourcePicker(false)}>Close</Button>
-              </View>
-            </View>
-          </Modal>
+          <PickerModal
+            visible={showSourcePicker}
+            onClose={() => setShowSourcePicker(false)}
+            title="Select Source"
+            items={sources}
+            onSelect={(source) => setSourceId(source.id)}
+          />
 
-          <Modal visible={showCategoryPicker} transparent animationType="slide">
-            <View style={styles.backdrop}>
-              <View style={styles.modalContainer}>
-                <Text style={{ fontWeight: '700', marginBottom: 12 }}>Select Category</Text>
-                <ScrollView>
-                  {categories.map((category) => (
-                    <TouchableOpacity key={category.id} onPress={() => { setCategoryId(category.id); setShowCategoryPicker(false); }} style={styles.optionItem}>
-                      <Text>{category.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-                <Button onPress={() => setShowCategoryPicker(false)}>Close</Button>
-              </View>
-            </View>
-          </Modal>
+          <PickerModal
+            visible={showCategoryPicker}
+            onClose={() => setShowCategoryPicker(false)}
+            title="Select Category"
+            items={categories}
+            onSelect={(category) => setCategoryId(category.id)}
+          />
         </View>
       </View>
     </Modal>
@@ -128,9 +113,7 @@ export default function LoanPrepaymentModal({ visible, onClose, loanId, onSaved 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   container: { padding: 12 },
-  modalContainer: { backgroundColor: '#fff', padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '70%' },
   input: { borderBottomWidth: 1, borderColor: '#eee', padding: 8, marginTop: 8 },
   checkbox: { width: 20, height: 20, borderRadius: 4, borderWidth: 1, borderColor: '#ccc' },
   selector: { borderBottomWidth: 1, borderColor: '#eee', paddingVertical: 12, marginTop: 12 },
-  optionItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#eee' }
 });

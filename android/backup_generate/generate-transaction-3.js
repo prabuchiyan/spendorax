@@ -1,249 +1,246 @@
 const fs = require("fs");
 
 const raw = `
-01/05/19 : Gave it to Abi : $200
+01/06/19 : Room Rent : $9450
 
-01/05/19 : Room Rent & Water Bill : $9850
+01/06/19 : Chicken : $100
 
-01/05/19 : Agalya Birthday Saree : $875
+01/06/19 : Chilli : $10
 
-02/05/19 : Bus : Bangalore to Pudukkottai : $1470
+01/06/19 : Mint & Coriander : $10
 
-02/05/19 : Milk : $18
+01/06/19 : Eggs : $50
 
-02/05/19 : Eggs : $50
+02/06/19 : Milk : $20
 
-02/05/19 : Idly Rice & Noodles Masala : $84
+02/06/19 : Biscuits : $10
 
-03/05/19 : Curd : $10
+02/06/19 : Tomatoes : $25
 
-03/05/19 : Milk : $23
+02/06/19 : Vegetables : $180
 
-03/05/19 : Biriyani : $202
+02/06/19 : Plums : $50
 
-04/05/19 : RD : $2500
+02/06/19 : Ice Cream : $40
 
-04/05/19 : Vaccination Parking : $10
+02/06/19 : Son Car Ride : $40
 
-04/05/19 : Tomatoes : $20
+02/06/19 : Corn Phel : $45
 
-04/05/19 : Ice Cream : $40
+02/06/19 : Chocolate : $110
 
-04/05/19 : Kadalamittai : $110
+03/06/19 : Recharge For Me : $380
 
-05/05/19 : Milk : $10
+03/06/19 : Bananas : $30
 
-05/05/19 : Biscuits : $10
+03/06/19 : Vadai & Samosa : $40
 
-05/05/19 : Vegetables : $260
+03/06/19 : Milk : $20
 
-05/05/19 : Mangoes : $100
+03/06/19 : DTH Recharge For Pdkt : $50
 
-05/05/19 : Pomegranate : $110
+04/06/19 : Recurring Deposit : $2500
 
-05/05/19 : Milk : $22
+04/06/19 : Lunch : $30
 
-06/05/19 : Milk : $21
+04/06/19 : Bus : Bangalore to Pudukkottai : $501
 
-07/05/19 : Give it Back to Abi : $200
+04/06/19 : Bus : Pudukkottai to Bangalore : $605
 
-08/05/19 : Gave it to Abi : $200
+04/06/19 : Bus : Pudukkottai to Bangalore : $605
 
-08/05/19 : Milk : $22
+04/06/19 : Milk : $21
 
-08/05/19 : Tomatoes : $20
+04/06/19 : Gilabi : $30
 
-08/05/19 : Bike Air : $5
+05/06/19 : Gave it to Abi : $200
 
-08/05/19 : Bike Petrol : $250
+05/06/19 : Sugar : $20
 
-08/05/19 : Milk : $25
+06/06/19 : Annual Charges For Vijaya Card  : $177
 
-08/05/19 : Black Grams : $90
+06/06/19 : Milk : $20
 
-09/05/19 : Groceries - Grofers : $719
+06/06/19 : Fever Medicine : $60
 
-09/05/19 : Groceries - Flipkart : $1229
+06/06/19 : Biscuits & Snacks : $25
 
-09/05/19 : ML Vacation : Bus : Thanjavur to Bangalore : $904
+07/06/19 : Logesh Son Birthday Gift : $100
 
-09/05/19 : Gobi Manchurian : $40
+07/06/19 : Milk : $21
 
-09/05/19 : Milk : $21
+07/06/19 : Wall Clock Battery : $10
 
-09/05/19 : Pampers : $50
+08/06/19 : Donated : $5
 
-10/05/19 : Give it Back to Abi : $20
+08/06/19 : Coffee : $50
 
-10/05/19 : Lunch : $30
+08/06/19 : Groundnuts Candy : $30
 
-10/05/19 : Butter Milk : $15
+08/06/19 : Murukku : $35
 
-10/05/19 : Milk : $21
+08/06/19 : Cake : $30
 
-12/05/19 : Water Tank : $100
+09/06/19 : Auto : Bus Stand to Pdkt Home : $70
 
-12/05/19 : Milk : $22
+09/06/19 : Gave it to Abi : $300
 
-12/05/19 : Pepsi : $40
+09/06/19 : Bus : Pudukkottai to Trichy : $50
 
-12/05/19 : Kulfi : $5
+09/06/19 : Bus : Trichy to Salem : $125
 
-12/05/19 : Eggs : $54
+10/06/19 : Bus : Salem to Bangalore : $225
 
-12/05/19 : Cigarettes & Candy : $17
+10/06/19 : Recharge For Abi : $324
 
-13/05/19 : Bananas : $40
+10/06/19 : Lunch : $50
 
-13/05/19 : Sappotta : $30
+10/06/19 : Dinner : $30
 
-13/05/19 : Milk : $22
+11/06/19 : Lunch : $30
 
-14/05/19 : Lunch : $30
+11/06/19 : Fruit Bowl : $20
 
-14/05/19 : Snacks : $20
+11/06/19 : Dinner : $35
 
-14/05/19 : Milk : $21
+12/06/19 : Gave it to Abi : $200
 
-14/05/19 : Egg Buffs : $30
+12/06/19 : Lunch : $60
 
-15/05/19 : Gave it to Abi : $200
+12/06/19 : Dinner : $30
 
-15/05/19 : Bike Petrol : $250
+13/06/19 : Electricity Bill : $457
 
-16/05/19 : Vegetables : $110
+13/06/19 : Lunch : $30
 
-16/05/19 : Milk : $22
+13/06/19 : Dinner : $30
 
-16/05/19 : Fruit Bowl : $20
+14/06/19 : Lunch : $30
 
-16/05/19 : ML Vacation : Grilled Chicken & Shawarma Roll : $420
+14/06/19 : Fruit Bowl : $20
 
-16/05/19 : Fan Connected : $150
+15/06/19 :  Mahesh Ooru Thiruvizha : Bike Petrol : $200
 
-16/05/19 : Milk : $22
+15/06/19 :  Mahesh Ooru Thiruvizha : Cool Drinks : $45
 
-16/05/19 : Idly Rice : $70
+15/06/19 :  Mahesh Ooru Thiruvizha : Spend For Drinks : $140
 
-16/05/19 : Vegetables & Groceries : $83
+15/06/19 : Mahesh Ooru Thiruvizha : Bike Petrol : $100
 
-17/05/19 : Milk : $22
+15/06/19 : Mahesh Ooru Thiruvizha : Dinner : $178
 
-17/05/19 : Sprite Cool Drinks : $40
+16/06/19 : Gift For Shivani & Shresha : $135
 
-18/05/19 : ML Vacation : Movie : $695
+16/06/19 : Snacks For Shivani & Shresha :$10
 
-18/05/19 : Mutton : $300
+16/06/19 : Tablet For Akka : $20
 
-18/05/19 : ML Vacation : Ice Cream : $140
+17/06/19 : DTH Recharge to Pdkt : $139
 
-18/05/19 : Curd : $23
+17/06/19 : Pdkt Shop Electricity : $1161
 
-18/05/19 : Gee : $67
+17/06/19 : Pdkt Home Electricity : $470
 
-18/05/19 : Maida : $9
+17/06/19 : Gave it to Akka : $1000
 
-18/05/19 : ML Vacation : Movie - Auto : $50
+17/06/19 : Thanjavur Trip : Bus Fare : $180
 
-18/05/19 : ML Vacation : Bike Parking : $20
+17/06/19 : Thanjavur Trip : Cab Fare : $189
 
-18/05/19 : Milk : $22
+17/06/19 : Thanjavur Trip : Dinner : $263
 
-19/05/19 : ML Vacation : Cab : $330
+18/06/19 : Bus : Thanjavur to Bangalore : $465.25
 
-19/05/19 : ML Vacation : Pani Poori : $80
+18/06/19 : Thanjavur Trip : Cool Drinks : $100
 
-19/05/19 : Milk : $22
+18/06/19 : Birthday Cloths For Eniyan : $2230
 
-20/05/19 : Biriyani & Tandoori : $508
+18/06/19 : Thanjavur Trip : Cool Drinks : $40
 
-20/05/19 : Clothes, Clips & Travel : $1800
+18/06/19 : Purchased Pillows : $220
 
-21/05/19 : Water Tank : $200
+18/06/19 : Thanjavur Trip : Bike Petrol  : $100
 
-22/05/19 : ML : Lunch : Barbeque Nation : $3070
+19/06/19 : Gave it to Abi : $200
 
-23/05/19 : Vegetables : $90
+19/06/19 : Lunch : $40
 
-23/05/19 : Milk : $10
+19/06/19 : Groundnuts : $10
 
-23/05/19 : Gas : $750
+19/06/19 : Dinner : $70
 
-23/05/19 : Gurka : $5
+20/06/19 : Money Added to Paytm : $200
 
-23/05/19 : Tea Powder : $58
+20/06/19 : Lunch : $40
 
-23/05/19 : Gave it to Abi : $200
+20/06/19 : Bike Petrol : $300
 
-23/05/19 : Recharge For Mom : $928
+20/06/19 : Bike Air : $3
 
-23/05/19 : Milk : $22
+20/06/19 : Dinner : $115
 
-23/05/19 : Idly Rice : $70
+20/06/19 : Milk : $22
 
-23/05/19 : Pattani & Sugar : $56
+21/06/19 : Debited From SBI : $12
 
-23/05/19 : Vegetables : $500
+21/06/19 : Lunch : $30
 
-24/05/19 : Milk : $10
+21/06/19 : Groundnuts : $10
 
-24/05/19 : Biscuits : $36
+21/06/19 : Shawarma Roll : $90
 
-24/05/19 : Milk : $22
+21/06/19 : Tomatoes : $10
 
-25/05/19 : Samosa & Vadai : $40
+21/06/19 : Eggs : $57
 
-25/05/19 : Milk : $21
+21/06/19 : Rice : $40
 
-26/05/19 : Milk : $22
+22/06/19 : Chicken Biriyani : $353
 
-26/05/19 : Clothes : $200
+22/06/19 : Drinks : $656
 
-26/05/19 : Snacks : $200
+24/06/19 : Lunch : $30
 
-27/05/19 : Vegetables : $50
+24/06/19 : Shorts : $400
 
-27/05/19 : Milk : $21
+24/06/19 : Shampoo & Sigaikkai : $10
 
-28/05/19 : Milk : $21
+25/06/19 : Lunch : $30
 
-29/05/19 : Gave it to Abi : $200
+25/06/19 : Snacks : $25
 
-29/05/19 : Vegetables : $25
+29/06/19 : Bus : Bangalore to Pudukkottai : $683
 
-29/05/19 : Bus : Bangalore to Pudukkottai : $456
+29/06/19 : Gave it to Abi : $200
 
-29/05/19 : Bike Air : $3
+29/06/19 : Groceries From Grofers : $1378
 
-29/05/19 : Bike Petrol : $300
+30/06/19 : Bracelet Gift For Son : $16000
 
-29/05/19 : Milk : $21
+30/06/19 : Bike Petrol : $100
 
-29/05/19 : Curd : $9
+30/06/19 : Birthday Function Food : $10000
 
-29/05/19 : Snacks : $40
+30/06/19 : Birthday Cake : $1100
 
-30/05/19 : Abi Phone Cover : $424
+30/06/19 : Drinks Party for Son : $640
 
-30/05/19 : Bananas : $30
+30/06/19 : Egg Mushrooms : $60
 
-30/05/19 : Milk : $22
+30/06/19 : Birthday Decorations : $640
 
-30/05/19 : Shawarma : $110
+30/06/19 : Drinks Party for Son : $1265
 
-31/05/19 : Onions : $30
+30/06/19 : Party Cigarettes : $87
 
-31/05/19 : Milk : $22
+30/06/19 : Party Food : $146
 
-31/05/19 : Idly Rice : $76
-
-31/05/19 : Sunflower Oil : $92
+30/06/19 : Ice Cream : $170
 `;
 
 const categoryMap = {
   // Bank Charges
   "Consolidate Charges": 3,
-
 
   // Vehicle
   "Petrol": 5,
@@ -270,12 +267,22 @@ const categoryMap = {
   "Jacket & Inner For Abi": 8,
   "Purchase Pant": 8,
   "Purchase Shirt": 8,
+  "Clothes": 8,
+
+  // Eniyan
+  "Pampers": 15,
+
+  // DTH
+  "DTH Recharge": 33,
+  "Dth Recharge": 33,
 
   // Donations
   "Donated": 11,
 
   // Drinks
   "Sarakku": 12,
+  "Cigarettes & Candy": 12,
+  "Cigarettes": 12,
 
   // Utilities
   "Electricity Bill": 13,
@@ -297,7 +304,7 @@ const categoryMap = {
   "Exhibition": 16,
   "Bike Parking in Theatre": 16,
 
-  // Food
+  // Food & Dining
   "Breakfast": 18,
   "Lunch": 18,
   "Lunch : Briyani": 18,
@@ -308,7 +315,8 @@ const categoryMap = {
   "Burger & Nuggets": 18,
   "Noodles": 18,
   "Biriyani": 18,
-  "Biriyani": 18,
+  "Biriyani & Tandoori": 18,
+  "Tandoori": 18,
 
   // Fruits
   "Fruits": 19,
@@ -320,6 +328,10 @@ const categoryMap = {
   "Pineapple": 19,
   "Sappotta": 19,
   "Watermelon": 19,
+  "Mangoes": 19,
+
+  // Gas
+  "Gas": 20,
 
   // Gift
   "Gift": 22,
@@ -379,6 +391,8 @@ const categoryMap = {
   "Capsicum": 24,
   "Maida": 24,
   "Gee & Raisin": 24,
+  "Gee": 24,
+  "Raisin": 24,
   "Mutton": 24,
   "Groceries - Grofers": 24,
   "Groceries - Flipkart": 24,
@@ -386,6 +400,16 @@ const categoryMap = {
   "Turmeric Powder": 24,
   "Refined Oil": 24,
   "Maida & Keshari Powder": 24,
+  "Sunflower Oil": 24,
+  "Onions": 24,
+  "Pattani & Sugar": 24,
+  "Pattani": 24,
+  "Tea Powder": 24,
+  "Vegetables & Groceries": 24,
+  "Groceries": 24,
+  "Tomatoes": 24,
+  "Idly Rice & Noodles Masala": 24,
+  "Noodles Masala": 24,
 
   // Medical
   "Cold Medicine": 27,
@@ -423,12 +447,11 @@ const categoryMap = {
   "Recharge For Abi": 33,
   "Recharge For Mom": 33,
   "Recharge to Airtel": 33,
-  "DTH Recharge": 33,
   "Mi Mobile Service Tax": 33,
   "Screen Card": 33,
   "Sim Card": 33,
   "Sim Card & Link Adhaar": 33,
-  "Dth Recharge": 33,
+  "Abi Phone Cover": 33,
 
   // Money Given
   "Give it Back": 34,
@@ -506,6 +529,7 @@ const categoryMap = {
   "House Warming": 39,
   "Give Back to Dinesh & Room Rent": 39,
   "Water Bill": 39,
+  "Room Rent & Water Bill": 39,
 
   // Salary
   "March Month 2017": 40,
@@ -576,6 +600,11 @@ const categoryMap = {
   "Masala Groundnuts": 44,
   "Vadai & Egg Bonda": 44,
   "Egg Bonda": 44,
+  "Shawarma": 44,
+  "Sprite Cook Drinks": 44,
+  "Kulfi": 44,
+  "Butter Milk": 44,
+  "Ice Cream": 44,
 
   // Travel
   "Trip Amount": 48,
@@ -587,6 +616,8 @@ const categoryMap = {
   "Bus : Room to Lalbagh": 48,
   "Shiradi: Expenses": 48,
   "Shiradi: Bus Booking & Others": 48,
+  "Bus : Bangalore to Pudukkottai": 48,
+  "Bus: Bangalore to Pudukkottai": 48,
 
   // Wallet Transfer
   "Uber Wallets": 49,
@@ -1404,9 +1435,9 @@ const backup = {
 };
 
 fs.writeFileSync(
-  "2019_05.json",
+  "2019_06.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2019_05.json created successfully.");
+console.log("2019_06.json created successfully.");
