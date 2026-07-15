@@ -113,7 +113,10 @@ export default function LoanDetailsScreen({ route, navigation }) {
     useEffect(() => {
         loadLinkedTransactions();
         const offTx = events.on('transactionsChanged', () => loadLinkedTransactions());
-        const offLoans = events.on('loansChanged', () => loadLinkedTransactions());
+        const offLoans = events.on('loansChanged', () => {
+            refresh();
+            loadLinkedTransactions();
+        });
         return () => {
             offTx && offTx();
             offLoans && offLoans();
