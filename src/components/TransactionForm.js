@@ -151,6 +151,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
     }
 
     setSubmitting(true);
+    // Give React Native one frame to render the loading spinner
+    await new Promise(resolve => requestAnimationFrame(resolve));
 
     let id;
     try {
@@ -192,7 +194,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           notes
         };
         try {
-          if (isEdit && transaction && transaction.id) {
+          if (isEdit && transaction?.id) {
             id = await updateTransaction(transaction.id, transactionData);
           } else {
             id = await createTransaction(transactionData);
@@ -210,7 +212,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         setAmount('');
         setNotes('');
         setDate(new Date().toISOString());
-        setTransferGroupId('')
+        setTransferGroupId('');
       }
       setAmountError(false);
       setNotesError(false);

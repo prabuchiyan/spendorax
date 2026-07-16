@@ -71,6 +71,7 @@ const categoryMap = {
 
   // Eniyan
   "Pampers": 15,
+  "Pamper": 15,
 
   // Electronics
   "Watch Pin": 14,
@@ -205,6 +206,7 @@ const categoryMap = {
   "Coriander": 24,
   "Chilli": 24,
   "Chicken": 24,
+  "Vegetables Form Market": 24,
 
   // Medical
   "Cold Medicine": 28,
@@ -216,6 +218,8 @@ const categoryMap = {
   "Fever Medicine": 28,
   "Doctor Fees": 28,
   "Tonics": 28,
+  "Tablets for Cold": 28,
+  "Tablets For Cold": 28,
 
   // Households
   "House Holds": 29,
@@ -249,6 +253,7 @@ const categoryMap = {
   "Sim Card & Link Adhaar": 34,
   "Abi Phone Cover": 34,
   "Recharge For Me": 34,
+  "Recharge For BSNL": 34,
 
   // Money Given
   "Give it Back": 35,
@@ -281,6 +286,9 @@ const categoryMap = {
   "Give it Back to Abi": 35,
   "Give Back to Abi": 35,
   "Give it to Abi": 35,
+  "Give It Back to Srikanth": 35,
+  "Give it Back to Srikanth": 35,
+  "Gave it to Suresh": 35,
 
   // Money Received
   "Get it From Abi": 35,
@@ -414,6 +422,9 @@ const categoryMap = {
   "Biscuits & Snacks": 46,
   "Gilabi": 46,
   "Corn Phel": 46,
+  "Murukku & Chips": 46,
+  "Snacks Extra": 46,
+  "Coke": 46,
 
   // Transport
   "Trip Amount": 48,
