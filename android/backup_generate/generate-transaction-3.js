@@ -18,9 +18,13 @@ const raw = `
 
 const categoryMap = {
   // Bank Charges
+  "Consolidate Charge": 3,
   "Consolidate Charges": 3,
   "Debited From SBI": 3,
   "Annual Charges For Vijaya Card": 3,
+
+  // Beauty Care
+  "Ear Rings For Abi": 4,
 
   // Bike / Vehicle
   "Petrol": 5,
@@ -55,6 +59,14 @@ const categoryMap = {
   "Dth Recharge": 9,
   "DTH Recharge to Pdkt": 9,
   "DTH Recharge For Pdkt": 9,
+  "DTH Recharge from Home": 9,
+  "DTH Recharge From Home": 9,
+  "DTH Recharge For Home": 9,
+  "DTH Recharge for Home": 9,
+  "Pdkt DTH Recharge": 9,
+  "Pdkt DTH Home Recharge": 9,
+  "Bang DTH Recharge": 9,
+  "Bang DTH Home Recharge": 9,
 
   // Donations
   "Donated": 11,
@@ -81,6 +93,7 @@ const categoryMap = {
   "Bang Sony TV 32 Inch: Proof Approval": 14,
   "Bang Sony TV 32 Inch: Stabilizer": 14,
   "Wall Clock Battery": 14,
+  "Batteries": 14,
 
   // Entertainment
   "Movie": 16,
@@ -104,6 +117,7 @@ const categoryMap = {
   "Dinner Purchase": 18,
   "Burger & Nuggets": 18,
   "Noodles": 18,
+  "Egg Parotta": 18,
 
   // Fruits
   "Fruits": 19,
@@ -117,6 +131,8 @@ const categoryMap = {
   "Watermelon": 19,
   "Mangoes": 19,
   "Plums": 19,
+  "Pomegranate & Apple": 19,
+  "Navapalam": 19,
 
   // Gas
   "Gas": 20,
@@ -200,6 +216,8 @@ const categoryMap = {
   "Rice": 24,
   "Idly Rice": 24,
   "Idly Rice & Noodles Masala": 24,
+  "Rice & Idly Rice": 24,
+  "Idly Rice & Rice": 24,
   "Noodles Masala": 24,
   "Mint & Coriander": 24,
   "Mint": 24,
@@ -207,6 +225,10 @@ const categoryMap = {
   "Chilli": 24,
   "Chicken": 24,
   "Vegetables Form Market": 24,
+  "Coriander & Mint": 24,
+  "Coffee Powder": 24,
+  "Fish": 24,
+  "Fish": 24,
 
   // Medical
   "Cold Medicine": 28,
@@ -217,9 +239,12 @@ const categoryMap = {
   "Fever Medicine": 28,
   "Fever Medicine": 28,
   "Doctor Fees": 28,
+  "Doctor Consultant Fees": 28,
   "Tonics": 28,
   "Tablets for Cold": 28,
   "Tablets For Cold": 28,
+  "Tablets For Abi": 28,
+  "Cough Syrup": 28,
 
   // Households
   "House Holds": 29,
@@ -254,6 +279,8 @@ const categoryMap = {
   "Abi Phone Cover": 34,
   "Recharge For Me": 34,
   "Recharge For BSNL": 34,
+  "Mobile Recharge For BSNL": 34,
+  "Mobile Recharge for BSNL": 34,
 
   // Money Given
   "Give it Back": 35,
@@ -408,6 +435,7 @@ const categoryMap = {
   "Chips": 46,
   "Masala Groundnuts": 46,
   "Vadai & Egg Bonda": 46,
+  "Egg Bonda & Vadai": 46,
   "Egg Bonda": 46,
   "Shawarma": 46,
   "Shawarma Roll": 46,
@@ -418,6 +446,7 @@ const categoryMap = {
   "Egg Mushrooms": 46,
   "Groundnuts": 46,
   "Cake": 46,
+  "Cake & Egg Buffs": 46,
   "Groundnuts Candy": 46,
   "Biscuits & Snacks": 46,
   "Gilabi": 46,
@@ -425,8 +454,15 @@ const categoryMap = {
   "Murukku & Chips": 46,
   "Snacks Extra": 46,
   "Coke": 46,
+  "Rasagulla": 46,
+  "Biscuits & Chips": 46,
+  "Pori & Kara Biscuits": 46,
+  "Masal Poori": 46,
+  "Sweets & Murukku": 46,
 
   // Transport
+  "Bus": 48,
+  "Auto": 48,
   "Trip Amount": 48,
   "Thirupathi Trip": 48,
   "Bennargetta Zoo Spend": 48,
@@ -452,6 +488,8 @@ const categoryMap = {
   // Wallet Transfer
   "Uber Wallets": 51,
   "Money Added to Paytm": 51,
+  "Money Added to Paytm Wallet": 51,
+  "Added Money to Wallet": 51,
 
   // Water
   "Water Cane": 52,
