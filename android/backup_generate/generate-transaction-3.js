@@ -19,6 +19,8 @@ const raw = `
 const categoryMap = {
   // Bank Charges
   "Consolidate Charges": 3,
+  "Debited From SBI": 3,
+  "Annual Charges For Vijaya Card": 3,
 
   // Bike / Vehicle
   "Petrol": 5,
@@ -46,15 +48,19 @@ const categoryMap = {
   "Purchase Pant": 8,
   "Purchase Shirt": 8,
   "Clothes": 8,
+  "Shorts": 8,
 
   // DTH
   "DTH Recharge": 9,
   "Dth Recharge": 9,
+  "DTH Recharge to Pdkt": 9,
+  "DTH Recharge For Pdkt": 9,
 
   // Donations
   "Donated": 11,
 
   // Drinks
+  "Drinks": 12,
   "Sarakku": 12,
   "Cigarettes & Candy": 12,
   "Cigarettes": 12,
@@ -73,6 +79,7 @@ const categoryMap = {
   "Bang Sony TV 32 Inch: Initial Amount": 14,
   "Bang Sony TV 32 Inch: Proof Approval": 14,
   "Bang Sony TV 32 Inch: Stabilizer": 14,
+  "Wall Clock Battery": 14,
 
   // Entertainment
   "Movie": 16,
@@ -85,16 +92,17 @@ const categoryMap = {
   // Food & Dining
   "Breakfast": 18,
   "Lunch": 18,
+  "Tandoori": 18,
+  "Biriyani & Tandoori": 18,
+  "Biriyani": 18,
   "Lunch : Briyani": 18,
+  "Chicken Biriyani": 18,
+  "Chicken": 18,
   "Dinner": 18,
   "Dinner ": 18,
-  "Dinner​": 18,
   "Dinner Purchase": 18,
   "Burger & Nuggets": 18,
   "Noodles": 18,
-  "Biriyani": 18,
-  "Biriyani & Tandoori": 18,
-  "Tandoori": 18,
 
   // Fruits
   "Fruits": 19,
@@ -107,6 +115,7 @@ const categoryMap = {
   "Sappotta": 19,
   "Watermelon": 19,
   "Mangoes": 19,
+  "Plums": 19,
 
   // Gas
   "Gas": 20,
@@ -151,10 +160,11 @@ const categoryMap = {
   "Flour Mix": 24,
   "Flour, Oil & Soaps": 24,
   "Ice Cream & Washing Powder": 24,
-  "Idly Rice": 24,
   "Plastic Bag": 24,
   "Salt & Coffee Powder": 24,
   "Shampoo": 24,
+  "Shampoo & Sigaikkai": 24,
+  "Sigaikkai": 24,
   "Spinach, Coconut & Tomatoes": 24,
   "Tender Coconut": 24,
   "Eggs": 24,
@@ -163,7 +173,6 @@ const categoryMap = {
   "Pottukadalai": 24,
   "Black Grams": 24,
   "Curd": 24,
-  "Sigaikkai": 24,
   "Corn flour": 24,
   "Corn Flour": 24,
   "Capsicum": 24,
@@ -173,6 +182,7 @@ const categoryMap = {
   "Raisin": 24,
   "Mutton": 24,
   "Groceries - Grofers": 24,
+  "Groceries From Grofers": 24,
   "Groceries - Flipkart": 24,
   "Sugar": 24,
   "Turmeric Powder": 24,
@@ -186,8 +196,15 @@ const categoryMap = {
   "Vegetables & Groceries": 24,
   "Groceries": 24,
   "Tomatoes": 24,
+  "Rice": 24,
+  "Idly Rice": 24,
   "Idly Rice & Noodles Masala": 24,
   "Noodles Masala": 24,
+  "Mint & Coriander": 24,
+  "Mint": 24,
+  "Coriander": 24,
+  "Chilli": 24,
+  "Chicken": 24,
 
   // Medical
   "Cold Medicine": 28,
@@ -206,6 +223,7 @@ const categoryMap = {
   "Households": 29,
   "Knife & Washing Brush": 29,
   "Tiffan Box": 29,
+  "Purchased Pillows": 29,
 
   //Interest
   "Interest": 30,
@@ -230,6 +248,7 @@ const categoryMap = {
   "Sim Card": 34,
   "Sim Card & Link Adhaar": 34,
   "Abi Phone Cover": 34,
+  "Recharge For Me": 34,
 
   // Money Given
   "Give it Back": 35,
@@ -246,6 +265,7 @@ const categoryMap = {
   "Give back to Naveen": 35,
   "Gave it Back": 35,
   "Gave it to Ravi": 35,
+  "Gave it to Akka": 35,
   "Gave to Ravi": 35,
   "Gave to Naveen": 35,
   "Gave to Mom": 35,
@@ -308,6 +328,8 @@ const categoryMap = {
   "Give Back to Dinesh & Room Rent": 41,
   "Water Bill": 41,
   "Room Rent & Water Bill": 41,
+  "Pdkt Home Electricity": 41,
+  "Pdkt Shop Electricity": 41,
 
   // Salary
   "March Month 2017": 42,
@@ -369,6 +391,7 @@ const categoryMap = {
   "Egg Buffs": 46,
   "Samosa &Vadai": 46,
   "Samosa & Vadai": 46,
+  "Vadai & Samosa": 46,
   "Samosa": 46,
   "Samosas": 46,
   "Chips & Murukku": 46,
@@ -379,12 +402,20 @@ const categoryMap = {
   "Vadai & Egg Bonda": 46,
   "Egg Bonda": 46,
   "Shawarma": 46,
+  "Shawarma Roll": 46,
   "Sprite Cook Drinks": 46,
   "Kulfi": 46,
   "Butter Milk": 46,
   "Ice Cream": 46,
+  "Egg Mushrooms": 46,
+  "Groundnuts": 46,
+  "Cake": 46,
+  "Groundnuts Candy": 46,
+  "Biscuits & Snacks": 46,
+  "Gilabi": 46,
+  "Corn Phel": 46,
 
-  // Travel
+  // Transport
   "Trip Amount": 48,
   "Thirupathi Trip": 48,
   "Bennargetta Zoo Spend": 48,
@@ -396,9 +427,20 @@ const categoryMap = {
   "Shiradi: Bus Booking & Others": 48,
   "Bus : Bangalore to Pudukkottai": 48,
   "Bus: Bangalore to Pudukkottai": 48,
+  "Bus: Salem to Bangalore": 48,
+  "Bus : Salem to Bangalore": 48,
+  "Bus : Trichy to Salem": 48,
+  "Bus: Trichy to Salem": 48,
+  "Bus: Pudukkottai to Trichy": 48,
+  "Bus : Pudukkottai to Trichy": 48,
+  "Bus : Pudukkottai to Bangalore": 48,
+  "Bus: Pudukkottai to Bangalore": 48,
+  "Auto : Bus Stand to Pdkt Home": 48,
+  "Auto: Bus Stand to Pdkt Home": 48,
 
   // Wallet Transfer
   "Uber Wallets": 51,
+  "Money Added to Paytm": 51,
 
   // Water
   "Water Cane": 52,

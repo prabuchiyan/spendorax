@@ -61,6 +61,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [linking, setLinking] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
 
   useEffect(() => {
@@ -126,6 +127,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   }, [isEdit, transaction]);
 
   async function submit() {
+    if (submitting) return; // guard against double taps while a save is in flight
+
     const val = parseFloat(amount);
     if (!amount || isNaN(val) || val === 0) {
       setAmountError(true);
@@ -147,58 +150,76 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       return;
     }
 
+    setSubmitting(true);
+
     let id;
-    if (type === 'transfer') {
-      if (!sourceId || !toAccount) {
-        setSnackbarMsg('Select both accounts');
-        setSnackbarVisible(true);
-        return;
-      }
+    try {
+      if (type === 'transfer') {
+        if (!sourceId || !toAccount) {
+          setSnackbarMsg('Select both accounts');
+          setSnackbarVisible(true);
+          return;
+        }
 
-      if (sourceId === toAccount) {
-        setSnackbarMsg('Cannot transfer to same account');
-        setSnackbarVisible(true);
-        return;
-      }
+        if (sourceId === toAccount) {
+          setSnackbarMsg('Cannot transfer to same account');
+          setSnackbarVisible(true);
+          return;
+        }
 
-      try {
-        await createTransfer({
-          fromAccount: sourceId,
-          toAccount,
-          amount: val,
-          note: notes,
-          date,
-        });
-      } catch (e) {
-        console.log(e);
-        setSnackbarMsg(e?.message || 'Operation failed');
-        setSnackbarVisible(true);
-      }
-      id = 'transfer';
-    } else {
-      const transactionData = {
-        type,
-        amount: val,
-        category_id: categoryId || null,
-        source_id: sourceId,
-        date,
-        notes
-      };
-      if (isEdit && transaction && transaction.id) {
-        id = await updateTransaction(transaction.id, transactionData);
+        try {
+          await createTransfer({
+            fromAccount: sourceId,
+            toAccount,
+            amount: val,
+            note: notes,
+            date,
+          });
+        } catch (e) {
+          console.log(e);
+          setSnackbarMsg(e?.message || 'Operation failed');
+          setSnackbarVisible(true);
+          return;
+        }
+        id = 'transfer';
       } else {
-        id = await createTransaction(transactionData);
+        const transactionData = {
+          type,
+          amount: val,
+          category_id: categoryId || null,
+          source_id: sourceId,
+          date,
+          notes
+        };
+        try {
+          if (isEdit && transaction && transaction.id) {
+            id = await updateTransaction(transaction.id, transactionData);
+          } else {
+            id = await createTransaction(transactionData);
+          }
+        } catch (e) {
+          console.log(e);
+          setSnackbarMsg(e?.message || 'Operation failed');
+          setSnackbarVisible(true);
+          return;
+        }
       }
+
+      if (onCreated) onCreated(id);
+      if (!isEdit) { // Only reset form if it was a new transaction
+        setAmount('');
+        setNotes('');
+        setDate(new Date().toISOString());
+        setTransferGroupId('')
+      }
+      setAmountError(false);
+      setNotesError(false);
+
+      // Close the form now that the save has completed successfully.
+      if (onCancel) onCancel();
+    } finally {
+      setSubmitting(false);
     }
-    if (onCreated) onCreated(id);
-    if (!isEdit) { // Only reset form if it was a new transaction
-      setAmount('');
-      setNotes('');
-      setDate(new Date().toISOString());
-      setTransferGroupId('')
-    }
-    setAmountError(false);
-    setNotesError(false);
   }
 
   const handleDelete = async () => {
@@ -320,6 +341,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             selected={type === 'expense'}
             showSelectedCheck={false}
             onPress={() => setType('expense')}
+            disabled={submitting}
             style={{
               marginRight: 8,
               borderColor: type === 'expense' ? accent : undefined,
@@ -333,6 +355,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             selected={type === 'income'}
             showSelectedCheck={false}
             onPress={() => setType('income')}
+            disabled={submitting}
             style={{
               marginRight: 8,
               borderColor: type === 'income' ? accent : undefined,
@@ -347,6 +370,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               selected={type === 'transfer'}
               showSelectedCheck={false}
               onPress={() => setType('transfer')}
+              disabled={submitting}
               style={{
                 borderColor: type === 'transfer' ? '#000' : undefined,
               }}
@@ -363,6 +387,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         {isEdit && (
           <TouchableOpacity
             onPress={() => setConfirmVisible(true)}
+            disabled={submitting}
             style={{
               width: 40,
               height: 40,
@@ -371,6 +396,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               borderColor: '#E46A6A',
               justifyContent: 'center',
               alignItems: 'center',
+              opacity: submitting ? 0.5 : 1,
             }}
           >
             <Feather
@@ -382,6 +408,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         )}
         {isEdit && (
           <TouchableOpacity
+            disabled={submitting}
             onPress={async () => {
               if (linkedLoanId) {
                 // confirm via Alert, then unlink
@@ -409,7 +436,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               borderColor: '#4B7CF3',
               justifyContent: 'center',
               alignItems: 'center',
-              marginLeft: 8
+              marginLeft: 8,
+              opacity: submitting ? 0.5 : 1,
             }}
           >
             <MaterialCommunityIcons
@@ -421,7 +449,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         )}
       </View>
 
-      <PaperTextInput label="Amount" value={amount} onChangeText={(t) => { setAmount(t); if (amountError) setAmountError(false); }} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} error={amountError} contentStyle={{ fontSize: 24 }} />
+      <PaperTextInput label="Amount" value={amount} onChangeText={(t) => { setAmount(t); if (amountError) setAmountError(false); }} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} error={amountError} contentStyle={{ fontSize: 24 }} editable={!submitting} />
       {amountError ? <Text style={{ color: '#E46A6A', marginBottom: 8 }}>Enter an amount greater than 0</Text> : null}
 
       <View
@@ -445,6 +473,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           error={notesError}
           autoCorrect={false}
           autoCapitalize="sentences"
+          editable={!submitting}
           right={
             notes.length > 0 ? (
               <PaperTextInput.Icon
@@ -534,6 +563,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       <View style={{ marginBottom: 12 }}>
         <TouchableOpacity
           activeOpacity={0.8}
+          disabled={submitting}
           onPress={() => {
             setPickerMode('date');
             setShowDateTimePicker(true);
@@ -579,6 +609,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                     {visibleCategories.map(c => (
                       <TouchableOpacity
                         key={c.id}
+                        disabled={submitting}
                         onPress={() => {
                           setCategoryId(c.id);
                           setShowCategoryModal(false);
@@ -646,6 +677,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                 <TouchableOpacity
                   onPress={() => setShowCategoryModal(true)}
                   activeOpacity={0.85}
+                  disabled={submitting}
                   style={{
                     backgroundColor: '#fff',
                     borderRadius: 14,
@@ -718,6 +750,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
               {showCategoryGrid && filteredCategories.length > 12 && (
                 <TouchableOpacity
+                  disabled={submitting}
                   onPress={() => {
                     setCategorySearch('');
                     setShowCategoryModal(true);
@@ -765,6 +798,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               {visibleSources.map((s, index) => (
                 <TouchableOpacity
                   key={s.id}
+                  disabled={submitting}
                   onPress={() => {
                     setSourceId(s.id);
                     setShowSourceGrid(false);
@@ -836,6 +870,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
             {searchedSources.length > 4 && (
               <TouchableOpacity
+                disabled={submitting}
                 onPress={() => {
                   setSourceSearch('');
                   setShowSourceModal(true);
@@ -859,6 +894,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         ) : (
 
           <TouchableOpacity
+            disabled={submitting}
             onPress={() => {
               setSourceSearch('');
               setShowSourceModal(true);
@@ -1395,6 +1431,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   .map((s, index) => (
                     <TouchableOpacity
                       key={s.id}
+                      disabled={submitting}
                       onPress={() => {
                         setToAccount(s.id);
                         setShowToAccountGrid(false);
@@ -1465,6 +1502,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
               {searchedSources.filter(s => s.id !== sourceId).length > 4 && (
                 <TouchableOpacity
+                  disabled={submitting}
                   onPress={() => {
                     setSelectingFor('to');
                     setSourceSearch('');
@@ -1488,6 +1526,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             </>
           ) : (
             <TouchableOpacity
+              disabled={submitting}
               onPress={() => {
                 setSelectingFor('to');
                 setSourceSearch('');
@@ -1567,11 +1606,24 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       )}
 
       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
-        <PaperButton mode="contained" onPress={submit} style={{ backgroundColor: accent }} labelStyle={{ color: '#fff' }}>
-          {isEdit ? 'Update' : 'Save'}
+        <PaperButton
+          mode="contained"
+          onPress={submit}
+          loading={submitting}
+          disabled={submitting}
+          style={{ backgroundColor: accent }}
+          labelStyle={{ color: '#fff' }}
+        >
+          {submitting ? (isEdit ? 'Updating...' : 'Saving...') : (isEdit ? 'Update' : 'Save')}
         </PaperButton>
         <View style={{ width: 12 }} />
-        <PaperButton mode="outlined" onPress={() => { if (onCancel) onCancel(); else { setAmount(''); setNotes(''); } }}>Cancel</PaperButton>
+        <PaperButton
+          mode="outlined"
+          disabled={submitting}
+          onPress={() => { if (onCancel) onCancel(); else { setAmount(''); setNotes(''); } }}
+        >
+          Cancel
+        </PaperButton>
         <View style={{ width: 12 }} />
       </View>
 
@@ -1783,4 +1835,3 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
     </ScrollView>
   );
 }
-

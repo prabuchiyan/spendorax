@@ -53,11 +53,38 @@ export default function LoanDashboardScreen({ navigation }) {
     }, [navigation, load]);
 
     const summary = useMemo(() => {
-        const totalOutstanding = loans.reduce((s, l) => s + Number(l.outstanding_amount || 0), 0);
-        const totalEMI = loans.reduce((s, l) => s + Number(l.emi_amount || 0), 0);
-        const principalPaid = loans.reduce((s, l) => s + Number(l.principal_paid || 0), 0);
-        const interestPaid = loans.reduce((s, l) => s + Number(l.interest_paid || 0), 0);
-        return { totalOutstanding, totalEMI, principalPaid, interestPaid };
+        const activeBorrowedLoans = loans.filter(
+            l =>
+                (l.status || 'Active') === 'Active' &&
+                (l.loan_direction || 'BORROWED') === 'BORROWED'
+        );
+
+        const totalOutstanding = loans.reduce(
+            (s, l) => s + Number(l.outstanding_amount || 0),
+            0
+        );
+
+        const totalEMI = activeBorrowedLoans.reduce(
+            (s, l) => s + Number(l.emi_amount || 0),
+            0
+        );
+
+        const principalPaid = loans.reduce(
+            (s, l) => s + Number(l.principal_paid || 0),
+            0
+        );
+
+        const interestPaid = loans.reduce(
+            (s, l) => s + Number(l.interest_paid || 0),
+            0
+        );
+
+        return {
+            totalOutstanding,
+            totalEMI,
+            principalPaid,
+            interestPaid,
+        };
     }, [loans]);
 
     // portfolio aggregates
