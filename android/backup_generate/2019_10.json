@@ -1,729 +1,1114 @@
-const fs = require("fs");
-
-const raw = `
-01/10/19 : Breakfast : $35
-
-01/10/19 : Groceries : $560
-
-01/10/19 : Lunch : $30
-
-01/10/19 : Snacks : $30
-
-01/10/19 : Room Rent : $9450
-
-02/10/19 : Gave it to Abi : $250
-
-02/10/19 : Snacks : $5
-
-03/10/19 : Lunch : $30
-
-03/10/19 : Dinner : $40
-
-04/10/19 : RD : $2500
-
-04/10/19 : Lunch : $40
-
-04/10/19 : Ice Cream : $10
-
-04/10/19 : Bus : Bangalore to Salem : $225
-
-04/10/19 : Snacks : $25
-
-05/10/19 : Bus : Salem to Pudukkottai : $164
-
-05/10/19 : 3rd Gold Loan Closed : $50067
-
-05/10/19 : Bed Cover &  Inners : $1147
-
-05/10/19 : Sweets : $160
-
-05/10/19 : Odomas : $15
-
-05/10/19 : Soap : $41
-
-05/10/19 : Condoms : $29
-
-06/10/19 : Gave it to Boopathi : $2000
-
-06/10/19 : Sweets : $80
-
-06/10/19 : Aayutha Poojai Decorations : $60
-
-06/10/19 : Chocolate & Chips : $50
-
-07/10/19 : Donated : $2
-
-07/10/19 : Movie Snacks : $80
-
-07/10/19 : Movie Tickets : $600
-
-07/10/19 : Movie Parking : $20
-
-07/10/19 : Aayutha Poojai Flowers : $50
-
-07/10/19 : Movie Petrol : $100
-
-08/10/19 : Fever Tonic : $40
-
-08/10/19 : Pathu Powder : $2
-
-08/10/19 : Pal Bun : $20
-
-08/10/19 : Bus : Pudukkottai to Bangalore : $200
-
-09/10/19 : Breakfast : $50
-
-09/10/19 : Bus : Pudukkottai to Bangalore : $158
-
-09/10/19 : Lunch : $30
-
-09/10/19 : Ice Cream : $10
-
-09/10/19 : Bike Air : $5
-
-09/10/19 : Bike Petrol : $221
-
-10/10/19 : Breakfast : $30
-
-10/10/19 : Lunch : $30
-
-10/10/19 : Dinner : $35
-
-11/10/19 : Breakfast : $20
-
-11/10/19 : Donated : $30
-
-11/10/19 : Lunch : $30
-
-11/10/19 : Dinner : $40
-
-12/10/19 : Added to Paytm Wallet : $200
-
-12/10/19 : Bangalore Electricity Bill : $145
-
-14/10/19 : Breakfast : $20
-
-16/10/19 : Breakfast : $30
-
-16/10/19 : Added to Paytm Wallet : $200
-
-17/10/19 : Bike Air : $5
-
-17/10/19 : Bike Petrol : $304
-
-19/10/19 : Breakfast : $35
-
-18/10/19 : Pdkt Home Electricity Bill : $440
-
-19/10/19 : Plain Dosa : $30
-
-19/10/19 : Drinks : $524
-
-19/10/19 : Added to Paytm Wallet : $200
-
-21/10/19 : Breakfast : $20
-
-21/10/19 : Groceries From Grofers : $481
-
-21/10/19 : Adde to Paytm Wallet : $119
-
-21/10/19 : Clothes For Bike Parking : $10
-
-21/10/19 : Clothes For Diwali : $662
-
-22/10/19 : Breakfast : $35
-
-23/10/19 : Breakfast : $30
-
-23/10/19 : Gave it to Abi : $250
-
-24/10/19 : Shawarma & Veg Buff : $90
-
-25/10/19 : Gave it to Abi : $250
-
-25/10/19 : Diwali Festival : Crackers : $2738
-
-26/10/19 : Samosa : $20
-
-26/10/19 : Kolusu : $3630
-
-27/10/19 : Donated : $5
-
-27/10/19 : Electric Bill For Akka : $1541
-
-28/10/19 : Gave it to Abi : $250
-
-29/10/19 : Footwear Repair : $50
-
-29/10/19 : 2nd Gold Loan Paid : $36000
-
-29/10/19 : Footwear Repair : $100
-
-29/10/19 : Face Cream & Odomas : $272
-
-29/10/19 : Movie : Bigil : $240
-
-29/10/19 : Sweets : $105
-
-31/10/19 : 2nd Gold Loan Closed : $50966.32
-
-31/10/19 : Egg Buff & Sweets : $122
-
-31/10/19 : Gave it to Abi : $250
-`;
-
-const categoryMap = {
-  // Bank Charges
-  "Consolidate Charge": 3,
-  "Consolidate Charges": 3,
-  "Debited From SBI": 3,
-  "Annual Charges For Vijaya Card": 3,
-  "Vijaya Bank SMS Charge": 3,
-
-  // Beauty Care
-  "Ear Rings For Abi": 4,
-
-  // Bike / Vehicle
-  "Petrol": 5,
-  "Bike Petrol": 5,
-  "Petrol & Air": 5,
-  "Bike Air": 5,
-  "Bike Parking": 5,
-  "Helmet": 5,
-  "Pulsar: Bike Repair": 5,
-  "Royal Enfield: Service": 5,
-  "Royal Enfield: Service & Insurance": 5,
-  "Water Wash": 5,
-  "Petrol Air": 5,
-  "Bike Service": 5,
-
-  // Cashback
-  "Get it From Tez": 6,
-  "Petrol Surcharge": 6,
-
-  // Child Birth
-  "Pregnancy Test": 7,
-
-  // Clothes
-  "Dress": 8,
-  "Jacket & Inner For Abi": 8,
-  "Purchase Pant": 8,
-  "Purchase Shirt": 8,
-  "Clothes": 8,
-  "Shorts": 8,
-
-  // DTH
-  "DTH Recharge": 9,
-  "Dth Recharge": 9,
-  "DTH Recharge to Pdkt": 9,
-  "DTH Recharge For Pdkt": 9,
-  "DTH Recharge from Home": 9,
-  "DTH Recharge From Home": 9,
-  "DTH Recharge For Home": 9,
-  "DTH Recharge for Home": 9,
-  "Pdkt DTH Recharge": 9,
-  "Pdkt DTH Home Recharge": 9,
-  "Bang DTH Recharge": 9,
-  "Bang DTH Home Recharge": 9,
-  "Pdkt DTH Add on Channels": 9,
-
-  // Donations
-  "Donated": 11,
-
-  // Drinks
-  "Drinks": 12,
-  "Sarakku": 12,
-  "Cigarettes & Candy": 12,
-  "Cigarettes": 12,
-
-  // Utilities
-  "Electricity Bill": 13,
-  "Pdkt Home Electricity Bill": 13,
-
-  // Eniyan
-  "Pampers": 15,
-  "Pamper": 15,
-  "Toy for Son": 15,
-
-  // Electronics
-  "Watch Pin": 14,
-  "Purchased UPS": 14,
-  "Bang Sony TV 32 Inch: Bajaj Card": 14,
-  "Bang Sony TV 32 Inch: Initial Amount": 14,
-  "Bang Sony TV 32 Inch: Proof Approval": 14,
-  "Bang Sony TV 32 Inch: Stabilizer": 14,
-  "Wall Clock Battery": 14,
-  "Batteries": 14,
-
-  // Entertainment
-  "Movie": 16,
-  "Party": 16,
-  "Park": 16,
-  "Park & Parking": 16,
-  "Exhibition": 16,
-  "Bike Parking in Theatre": 16,
-
-  // Food & Dining
-  "Breakfast": 18,
-  "Lunch": 18,
-  "Tandoori": 18,
-  "Biriyani & Tandoori": 18,
-  "Biriyani": 18,
-  "Lunch : Briyani": 18,
-  "Chicken Biriyani": 18,
-  "Chicken": 18,
-  "Dinner": 18,
-  "Dinner ": 18,
-  "Dinner Purchase": 18,
-  "Burger & Nuggets": 18,
-  "Noodles": 18,
-  "Egg Parotta": 18,
-
-  // Fruits
-  "Fruits": 19,
-  "Apple & Orange": 19,
-  "Grapes": 19,
-  "Papaya": 19,
-  "Pomegranate": 19,
-  "Bananas": 19,
-  "Pineapple": 19,
-  "Sappotta": 19,
-  "Watermelon": 19,
-  "Mangoes": 19,
-  "Plums": 19,
-  "Pomegranate & Apple": 19,
-  "Navapalam": 19,
-  "Apple & Pomegranate": 19,
-  "Apple": 19,
-  "Apples": 19,
-
-  // Gas
-  "Gas": 20,
-  "Gas Delivery Charge": 20,
-
-  // Gift
-  "Gift": 22,
-  "Birthday Gift": 22,
-  "Birthday Cake": 22,
-  "Birthday Presents": 22,
-  "Henry Marriage Gift": 22,
-  "Priya Adhiyamaan Marriage Gift": 22,
-  "Send Off": 22,
-
-  // Groceries
-  "Grocery": 24,
-  "Vegetables": 24,
-  "Vegetables & Fruits": 24,
-  "Vegetables & Chicken": 24,
-  "Mutton & Vegetables": 24,
-  "Milk": 24,
-  "Milk & Dry chilli": 24,
-  "Milk & Currie Leaves": 24,
-  "10Eggs": 24,
-  "Egg and washing soap": 24,
-  "Carrot": 24,
-  "Carrots": 24,
-  "Carrots ": 24,
-  "Carrots, Eggs & Banana": 24,
-  "Cashew and Dry Grapes": 24,
-  "Chicken, Masala & Coriander": 24,
-  "Beans, Rice, Pickle & Biscuits": 24,
-  "Black Gram": 24,
-  "Black Gram 1/4kg": 24,
-  "Bread, Jam, Water cane": 24,
-  "Cinthol Soaps": 24,
-  "Coconut": 24,
-  "Cooking Oil": 24,
-  "Dandruff Shampoo": 24,
-  "Dates & Ice Cream": 24,
-  "Dhall & Chilli": 24,
-  "Dustbin Cover": 24,
-  "Flour Mix": 24,
-  "Flour, Oil & Soaps": 24,
-  "Ice Cream & Washing Powder": 24,
-  "Plastic Bag": 24,
-  "Salt & Coffee Powder": 24,
-  "Shampoo": 24,
-  "Shampoo & Sigaikkai": 24,
-  "Sigaikkai": 24,
-  "Spinach, Coconut & Tomatoes": 24,
-  "Tender Coconut": 24,
-  "Eggs": 24,
-  "Egg": 24,
-  "Napkins": 24,
-  "Pottukadalai": 24,
-  "Black Grams": 24,
-  "Curd": 24,
-  "Corn flour": 24,
-  "Corn Flour": 24,
-  "Capsicum": 24,
-  "Maida": 24,
-  "Gee & Raisin": 24,
-  "Gee": 24,
-  "Raisin": 24,
-  "Mutton": 24,
-  "Groceries - Grofers": 24,
-  "Groceries From Grofers": 24,
-  "Groceries - Flipkart": 24,
-  "Sugar": 24,
-  "Turmeric Powder": 24,
-  "Refined Oil": 24,
-  "Maida & Keshari Powder": 24,
-  "Sunflower Oil": 24,
-  "Onions": 24,
-  "Pattani & Sugar": 24,
-  "Pattani": 24,
-  "Tea Powder": 24,
-  "Vegetables & Groceries": 24,
-  "Groceries": 24,
-  "Tomatoes": 24,
-  "Rice": 24,
-  "Idly Rice": 24,
-  "Idly Rice & Noodles Masala": 24,
-  "Rice & Idly Rice": 24,
-  "Idly Rice & Rice": 24,
-  "Noodles Masala": 24,
-  "Mint & Coriander": 24,
-  "Mint": 24,
-  "Coriander": 24,
-  "Chilli": 24,
-  "Chicken": 24,
-  "Vegetables Form Market": 24,
-  "Coriander & Mint": 24,
-  "Coffee Powder": 24,
-  "Fish": 24,
-  "Odomas": 24,
-  "Andurundai": 24,
-  "Prawns & Cleaning": 24,
-  "Maggie": 24,
-  "Garlic": 24,
-
-  // Medical
-  "Cold Medicine": 28,
-  "Eye Ointment": 28,
-  "Hospital Bill": 28,
-  "Medical Bill": 28,
-  "Medicare Shampoo": 28,
-  "Fever Medicine": 28,
-  "Fever Medicine": 28,
-  "Doctor Fees": 28,
-  "Doctor Consultant Fees": 28,
-  "Tonics": 28,
-  "Tablets for Cold": 28,
-  "Tablets For Cold": 28,
-  "Tablets For Abi": 28,
-  "Tablets for Abi": 28,
-  "Cough Syrup": 28,
-  "Doctor Fees for Abi": 28,
-  "Doctor Fees For Abi": 28,
-  "Tablets": 28,
-  "Tablet & Vicks": 28,
-
-  // Households
-  "House Holds": 29,
-  "Household Things": 29,
-  "Households": 29,
-  "Knife & Washing Brush": 29,
-  "Tiffan Box": 29,
-  "Purchased Pillows": 29,
-
-  //Interest
-  "Interest": 30,
-
-  // Loan
-  "Bike EMI": 32,
-  "Personal Loan EMI": 32,
-  "Capital First Loan Paid": 32,
-  "Spend for Loan": 32,
-  "Bang Sony TV 32 Inch: Auto Debit": 32,
-
-  // Mobile
-  "Mobile Back Cover": 34,
-  "Back Cover": 34,
-  "Recharge": 34,
-  "Recharge Airtel": 34,
-  "Recharge For Abi": 34,
-  "Recharge For Mom": 34,
-  "Recharge to Airtel": 34,
-  "Mi Mobile Service Tax": 34,
-  "Screen Card": 34,
-  "Sim Card": 34,
-  "Sim Card & Link Adhaar": 34,
-  "Abi Phone Cover": 34,
-  "Recharge For Me": 34,
-  "Recharge For BSNL": 34,
-  "Mobile Recharge For BSNL": 34,
-  "Mobile Recharge for BSNL": 34,
-  "Recharge Myself": 34,
-
-  // Money Given
-  "Give it Back": 35,
-  "Give it back": 35,
-  "Give it back Sasi": 35,
-  "Give it Back Vivek": 35,
-  "Give it Back Vetrivel": 35,
-  "Give back": 35,
-  "Give back ": 35,
-  "Give back to Deepak": 35,
-  "Give back to Dinesh": 35,
-  "Give back to KD": 35,
-  "Give back to Madhu": 35,
-  "Give back to Naveen": 35,
-  "Gave it Back": 35,
-  "Gave it to Ravi": 35,
-  "Gave it to Akka": 35,
-  "Gave to Ravi": 35,
-  "Gave to Naveen": 35,
-  "Gave to Mom": 35,
-  "Gave to Ram": 35,
-  "Gave to Sasi": 35,
-  "Gave to Dinesh": 35,
-  "Gave to Akka": 35,
-  "Gave to Madhu": 35,
-  "Gave to Aboo": 35,
-  "Gave to": 35,
-  "Gave it to Abi": 35,
-  "Geve it to Abi": 35,
-  "Gave it to Boopathi": 35,
-  "Give it Back to Abi": 35,
-  "Give Back to Abi": 35,
-  "Give it to Abi": 35,
-  "Give It Back to Srikanth": 35,
-  "Give it Back to Srikanth": 35,
-  "Gave it to Suresh": 35,
-  "Gave it to Vivek": 35,
-  "Give it back to Abi": 35,
-
-  // Money Received
-  "Get it From Abi": 35,
-  "Get it From Dad": 35,
-  "Get it From Mom": 35,
-  "Get it From Naveen": 35,
-  "Get it From Ramya": 35,
-  "Get it From Ravi": 35,
-  "Get it From Vetrivel": 35,
-  "Get it From Vivek": 35,
-  "Get it From Dinesh": 35,
-  "Get it From Mams": 35,
-  "Get it From Bag": 35,
-  "Get it From Thali Pirichu Potta Function": 35,
-  "Get From Deepak": 35,
-  "Get From Dinesh": 35,
-  "Get From Sasi": 35,
-  "Get From Shufil": 35,
-  "Lunch Amount": 35,
-  "Room Advance Returned ": 35,
-  "Available Amount ": 35,
-  "Found it From Home": 35,
-  "Get it From Eniyan": 35,
-  "Get it From Sister": 35,
-  "Get it From Akka": 35,
-  "Get it From Son": 35,
-  "Get it From Wife": 35,
-
-  // Rent
-  "Room Rent": 41,
-  "Room: Rent": 41,
-  "Room Advance": 41,
-  "Room Advance Returned": 41,
-  "Room Rental Agreement": 41,
-  "Room Shifting": 41,
-  "Room: EB Deposit": 41,
-  "Room: Electricity Bill": 41,
-  "Room: Internet Bill": 41,
-  "Room: Water": 41,
-  "Room: Water Bill": 41,
-  "Room: Water Cane": 41,
-  "Room: Hit Purchase": 41,
-  "Room: Spend": 41,
-  "House Warming": 41,
-  "Give Back to Dinesh & Room Rent": 41,
-  "Water Bill": 41,
-  "Room Rent & Water Bill": 41,
-  "Pdkt Home Electricity": 41,
-  "Pdkt Shop Electricity": 41,
-  "Pdkt Shop Electricity Bill": 41,
-  "Electricity Bill Paid": 41,
-
-  // Salary
-  "March Month 2017": 42,
-  "April Month 2017": 42,
-  "May Month 2017": 42,
-  "June Month 2017": 42,
-  "July Month 2017": 42,
-  "August Month 2017": 42,
-  "September Month 2017": 42,
-  "October Month 2017": 42,
-  "Salary": 42,
-
-  // Saloon
-  "Haircut": 43,
-  "Hair Cut": 43,
-  "Hair Cut For Abi": 43,
-  "Hair Cut For Myself ": 43,
-  "Hair Cut For Myself  ": 43,
-
-  // Sandals / Shoes
-  "Sandals": 44,
-
-  // Savings
-  "RD": 45,
-  "Rd": 45,
-  "FD": 45,
-  "Recurring Deposit": 45,
-  "Recurring Deposit ": 45,
-  "Recurrent Deposit": 45,
-  "Savings": 45,
-
-  // Snacks
-  "Snack": 46,
-  "Snacks": 46,
-  "Evening Snacks": 46,
-  "Dinner Snacks": 46,
-  "Dinner Snacks & Parking": 46,
-  "Bakery Snacks": 46,
-  "Chocolate": 46,
-  "Cool Drinks": 46,
-  "Juice": 46,
-  "Lattu & Food": 46,
-  "Rusk": 46,
-  "Snacks For Abi": 46,
-  "Snacks Spend": 46,
-  "Sweets": 46,
-  "Water Bottles": 46,
-  "Biscuits": 46,
-  "Fruit Bowl": 46,
-  "Sprite": 46,
-  "Uppattu": 46,
-  "Lattu": 46,
-  "Nenthra Chips": 46,
-  "Pepsi": 46,
-  "Gobi Manchurian": 46,
-  "Kadalamittai": 46,
-  "Vadai": 46,
-  "Coffee": 46,
-  "Egg Buffs & Kulfi": 46,
-  "Egg Buffs": 46,
-  "Samosa &Vadai": 46,
-  "Samosa & Vadai": 46,
-  "Vadai & Samosa": 46,
-  "Samosa": 46,
-  "Samosas": 46,
-  "Chips & Murukku": 46,
-  "Chips & Mutukku": 46,
-  "Murukku": 46,
-  "Chips": 46,
-  "Masala Groundnuts": 46,
-  "Vadai & Egg Bonda": 46,
-  "Egg Bonda & Vadai": 46,
-  "Egg Bonda": 46,
-  "Shawarma": 46,
-  "Shawarma Roll": 46,
-  "Sprite Cook Drinks": 46,
-  "Kulfi": 46,
-  "Butter Milk": 46,
-  "Ice Cream": 46,
-  "Egg Mushrooms": 46,
-  "Groundnuts": 46,
-  "Cake": 46,
-  "Cake & Egg Buffs": 46,
-  "Groundnuts Candy": 46,
-  "Biscuits & Snacks": 46,
-  "Gilabi": 46,
-  "Corn Phel": 46,
-  "Murukku & Chips": 46,
-  "Snacks Extra": 46,
-  "Coke": 46,
-  "Rasagulla": 46,
-  "Biscuits & Chips": 46,
-  "Pori & Kara Biscuits": 46,
-  "Masal Poori": 46,
-  "Sweets & Murukku": 46,
-  "Pomegranate Juice": 46,
-  "Rusk & Sprite": 46,
-
-  // Transport
-  "Bus": 48,
-  "Auto": 48,
-  "Trip Amount": 48,
-  "Thirupathi Trip": 48,
-  "Bennargetta Zoo Spend": 48,
-  "Lalbagh": 48,
-  "Lalbagh Tickets": 48,
-  "Bus : Lalbagh to Room": 48,
-  "Bus : Room to Lalbagh": 48,
-  "Shiradi: Expenses": 48,
-  "Shiradi: Bus Booking & Others": 48,
-  "Bus : Bangalore to Pudukkottai": 48,
-  "Bus: Bangalore to Pudukkottai": 48,
-  "Bus: Salem to Bangalore": 48,
-  "Bus : Salem to Bangalore": 48,
-  "Bus : Trichy to Salem": 48,
-  "Bus: Trichy to Salem": 48,
-  "Bus: Pudukkottai to Trichy": 48,
-  "Bus : Pudukkottai to Trichy": 48,
-  "Bus : Pudukkottai to Bangalore": 48,
-  "Bus: Pudukkottai to Bangalore": 48,
-  "Auto : Bus Stand to Pdkt Home": 48,
-  "Auto: Bus Stand to Pdkt Home": 48,
-  "Auto : Pudukkottai Bus Stand to Home": 48,
-
-  // Wallet Transfer
-  "Uber Wallets": 51,
-  "Money Added to Paytm": 51,
-  "Money Added to Paytm Wallet": 51,
-  "Added Money to Wallet": 51,
-
-  // Water
-  "Water Cane": 52,
-
-  // Dental
-  "Dental Deep Cleaning": 53,
-
-  // Default
-  "Default_expense": 33,
-  "Default_income": 36
-};
-
-let id = 101;
-
-const transactions = raw
-  .trim()
-  .split("\n")
-  .filter(line => line.trim() && !line.trim().startsWith("//"))
-  .map(line => {
-    const match = line.match(/^(\d{2}\/\d{2}\/\d{2})\s*:\s*(.*?)\s*:\s*\$(.+)$/);
-    if (!match) {
-      console.log("Invalid line:", line);
-      return null;
-    }
-    const type = "expense"; // expense OR income
-    const [, date, notes, amountStr] = match;
-    const [dd, mm, yy] = date.split("/");
-    const formattedDate = `20${yy}-${mm}-${dd}`;
-    return {
-      id: id++,
-      type,
-      amount: Number(amountStr.trim()),
-      category_id: categoryMap[notes] ?? (type === "income"
-        ? categoryMap.Default_income
-        : categoryMap.Default_expense),
-      source_id: type === 'income' ? 1 : 3,
-      date: formattedDate,
-      notes,
-      bill_id: null,
-      created_at: `${formattedDate} 00:00:00`,
-      transfer_group_id: null,
-      direction: null
-    };
-  })
-  .filter(Boolean);
-
-const backup = {
-  version: 1,
-  timestamp: new Date().toISOString(),
-  data: {
-    transactions,
+{
+  "version": 1,
+  "timestamp": "2026-07-17T10:23:16.175Z",
+  "data": {
+    "transactions": [
+      {
+        "id": 101,
+        "type": "expense",
+        "amount": 35,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-01",
+        "notes": "Breakfast",
+        "bill_id": null,
+        "created_at": "2019-10-01 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 102,
+        "type": "expense",
+        "amount": 560,
+        "category_id": 24,
+        "source_id": 3,
+        "date": "2019-10-01",
+        "notes": "Groceries",
+        "bill_id": null,
+        "created_at": "2019-10-01 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 103,
+        "type": "expense",
+        "amount": 30,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-01",
+        "notes": "Lunch",
+        "bill_id": null,
+        "created_at": "2019-10-01 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 104,
+        "type": "expense",
+        "amount": 30,
+        "category_id": 46,
+        "source_id": 3,
+        "date": "2019-10-01",
+        "notes": "Snacks",
+        "bill_id": null,
+        "created_at": "2019-10-01 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 105,
+        "type": "expense",
+        "amount": 9450,
+        "category_id": 41,
+        "source_id": 3,
+        "date": "2019-10-01",
+        "notes": "Room Rent",
+        "bill_id": null,
+        "created_at": "2019-10-01 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 106,
+        "type": "expense",
+        "amount": 250,
+        "category_id": 35,
+        "source_id": 3,
+        "date": "2019-10-02",
+        "notes": "Gave it to Abi",
+        "bill_id": null,
+        "created_at": "2019-10-02 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 107,
+        "type": "expense",
+        "amount": 5,
+        "category_id": 46,
+        "source_id": 3,
+        "date": "2019-10-02",
+        "notes": "Snacks",
+        "bill_id": null,
+        "created_at": "2019-10-02 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 108,
+        "type": "expense",
+        "amount": 30,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-03",
+        "notes": "Lunch",
+        "bill_id": null,
+        "created_at": "2019-10-03 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 109,
+        "type": "expense",
+        "amount": 40,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-03",
+        "notes": "Dinner",
+        "bill_id": null,
+        "created_at": "2019-10-03 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 110,
+        "type": "expense",
+        "amount": 2500,
+        "category_id": 45,
+        "source_id": 3,
+        "date": "2019-10-04",
+        "notes": "RD",
+        "bill_id": null,
+        "created_at": "2019-10-04 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 111,
+        "type": "expense",
+        "amount": 40,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-04",
+        "notes": "Lunch",
+        "bill_id": null,
+        "created_at": "2019-10-04 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 112,
+        "type": "expense",
+        "amount": 10,
+        "category_id": 46,
+        "source_id": 3,
+        "date": "2019-10-04",
+        "notes": "Ice Cream",
+        "bill_id": null,
+        "created_at": "2019-10-04 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 113,
+        "type": "expense",
+        "amount": 225,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-04",
+        "notes": "Bus : Bangalore to Salem",
+        "bill_id": null,
+        "created_at": "2019-10-04 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 114,
+        "type": "expense",
+        "amount": 25,
+        "category_id": 46,
+        "source_id": 3,
+        "date": "2019-10-04",
+        "notes": "Snacks",
+        "bill_id": null,
+        "created_at": "2019-10-04 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 115,
+        "type": "expense",
+        "amount": 164,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-05",
+        "notes": "Bus : Salem to Pudukkottai",
+        "bill_id": null,
+        "created_at": "2019-10-05 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 116,
+        "type": "expense",
+        "amount": 50067,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-05",
+        "notes": "3rd Gold Loan Closed",
+        "bill_id": null,
+        "created_at": "2019-10-05 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 117,
+        "type": "expense",
+        "amount": 1147,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-05",
+        "notes": "Bed Cover &  Inners",
+        "bill_id": null,
+        "created_at": "2019-10-05 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 118,
+        "type": "expense",
+        "amount": 160,
+        "category_id": 46,
+        "source_id": 3,
+        "date": "2019-10-05",
+        "notes": "Sweets",
+        "bill_id": null,
+        "created_at": "2019-10-05 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 119,
+        "type": "expense",
+        "amount": 15,
+        "category_id": 24,
+        "source_id": 3,
+        "date": "2019-10-05",
+        "notes": "Odomas",
+        "bill_id": null,
+        "created_at": "2019-10-05 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 120,
+        "type": "expense",
+        "amount": 41,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-05",
+        "notes": "Soap",
+        "bill_id": null,
+        "created_at": "2019-10-05 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 121,
+        "type": "expense",
+        "amount": 29,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-05",
+        "notes": "Condoms",
+        "bill_id": null,
+        "created_at": "2019-10-05 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 122,
+        "type": "expense",
+        "amount": 2000,
+        "category_id": 35,
+        "source_id": 3,
+        "date": "2019-10-06",
+        "notes": "Gave it to Boopathi",
+        "bill_id": null,
+        "created_at": "2019-10-06 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 123,
+        "type": "expense",
+        "amount": 80,
+        "category_id": 46,
+        "source_id": 3,
+        "date": "2019-10-06",
+        "notes": "Sweets",
+        "bill_id": null,
+        "created_at": "2019-10-06 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 124,
+        "type": "expense",
+        "amount": 60,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-06",
+        "notes": "Aayutha Poojai Decorations",
+        "bill_id": null,
+        "created_at": "2019-10-06 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 125,
+        "type": "expense",
+        "amount": 50,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-06",
+        "notes": "Chocolate & Chips",
+        "bill_id": null,
+        "created_at": "2019-10-06 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 126,
+        "type": "expense",
+        "amount": 2,
+        "category_id": 11,
+        "source_id": 3,
+        "date": "2019-10-07",
+        "notes": "Donated",
+        "bill_id": null,
+        "created_at": "2019-10-07 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 127,
+        "type": "expense",
+        "amount": 80,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-07",
+        "notes": "Movie Snacks",
+        "bill_id": null,
+        "created_at": "2019-10-07 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 128,
+        "type": "expense",
+        "amount": 600,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-07",
+        "notes": "Movie Tickets",
+        "bill_id": null,
+        "created_at": "2019-10-07 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 129,
+        "type": "expense",
+        "amount": 20,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-07",
+        "notes": "Movie Parking",
+        "bill_id": null,
+        "created_at": "2019-10-07 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 130,
+        "type": "expense",
+        "amount": 50,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-07",
+        "notes": "Aayutha Poojai Flowers",
+        "bill_id": null,
+        "created_at": "2019-10-07 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 131,
+        "type": "expense",
+        "amount": 100,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-07",
+        "notes": "Movie Petrol",
+        "bill_id": null,
+        "created_at": "2019-10-07 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 132,
+        "type": "expense",
+        "amount": 40,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-08",
+        "notes": "Fever Tonic",
+        "bill_id": null,
+        "created_at": "2019-10-08 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 133,
+        "type": "expense",
+        "amount": 2,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-08",
+        "notes": "Pathu Powder",
+        "bill_id": null,
+        "created_at": "2019-10-08 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 134,
+        "type": "expense",
+        "amount": 20,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-08",
+        "notes": "Pal Bun",
+        "bill_id": null,
+        "created_at": "2019-10-08 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 135,
+        "type": "expense",
+        "amount": 200,
+        "category_id": 48,
+        "source_id": 3,
+        "date": "2019-10-08",
+        "notes": "Bus : Pudukkottai to Bangalore",
+        "bill_id": null,
+        "created_at": "2019-10-08 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 136,
+        "type": "expense",
+        "amount": 50,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-09",
+        "notes": "Breakfast",
+        "bill_id": null,
+        "created_at": "2019-10-09 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 137,
+        "type": "expense",
+        "amount": 158,
+        "category_id": 48,
+        "source_id": 3,
+        "date": "2019-10-09",
+        "notes": "Bus : Pudukkottai to Bangalore",
+        "bill_id": null,
+        "created_at": "2019-10-09 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 138,
+        "type": "expense",
+        "amount": 30,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-09",
+        "notes": "Lunch",
+        "bill_id": null,
+        "created_at": "2019-10-09 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 139,
+        "type": "expense",
+        "amount": 10,
+        "category_id": 46,
+        "source_id": 3,
+        "date": "2019-10-09",
+        "notes": "Ice Cream",
+        "bill_id": null,
+        "created_at": "2019-10-09 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 140,
+        "type": "expense",
+        "amount": 5,
+        "category_id": 5,
+        "source_id": 3,
+        "date": "2019-10-09",
+        "notes": "Bike Air",
+        "bill_id": null,
+        "created_at": "2019-10-09 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 141,
+        "type": "expense",
+        "amount": 221,
+        "category_id": 5,
+        "source_id": 3,
+        "date": "2019-10-09",
+        "notes": "Bike Petrol",
+        "bill_id": null,
+        "created_at": "2019-10-09 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 142,
+        "type": "expense",
+        "amount": 30,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-10",
+        "notes": "Breakfast",
+        "bill_id": null,
+        "created_at": "2019-10-10 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 143,
+        "type": "expense",
+        "amount": 30,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-10",
+        "notes": "Lunch",
+        "bill_id": null,
+        "created_at": "2019-10-10 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 144,
+        "type": "expense",
+        "amount": 35,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-10",
+        "notes": "Dinner",
+        "bill_id": null,
+        "created_at": "2019-10-10 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 145,
+        "type": "expense",
+        "amount": 20,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-11",
+        "notes": "Breakfast",
+        "bill_id": null,
+        "created_at": "2019-10-11 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 146,
+        "type": "expense",
+        "amount": 30,
+        "category_id": 11,
+        "source_id": 3,
+        "date": "2019-10-11",
+        "notes": "Donated",
+        "bill_id": null,
+        "created_at": "2019-10-11 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 147,
+        "type": "expense",
+        "amount": 30,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-11",
+        "notes": "Lunch",
+        "bill_id": null,
+        "created_at": "2019-10-11 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 148,
+        "type": "expense",
+        "amount": 40,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-11",
+        "notes": "Dinner",
+        "bill_id": null,
+        "created_at": "2019-10-11 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 149,
+        "type": "expense",
+        "amount": 200,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-12",
+        "notes": "Added to Paytm Wallet",
+        "bill_id": null,
+        "created_at": "2019-10-12 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 150,
+        "type": "expense",
+        "amount": 145,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-12",
+        "notes": "Bangalore Electricity Bill",
+        "bill_id": null,
+        "created_at": "2019-10-12 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 151,
+        "type": "expense",
+        "amount": 20,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-14",
+        "notes": "Breakfast",
+        "bill_id": null,
+        "created_at": "2019-10-14 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 152,
+        "type": "expense",
+        "amount": 30,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-16",
+        "notes": "Breakfast",
+        "bill_id": null,
+        "created_at": "2019-10-16 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 153,
+        "type": "expense",
+        "amount": 200,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-16",
+        "notes": "Added to Paytm Wallet",
+        "bill_id": null,
+        "created_at": "2019-10-16 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 154,
+        "type": "expense",
+        "amount": 5,
+        "category_id": 5,
+        "source_id": 3,
+        "date": "2019-10-17",
+        "notes": "Bike Air",
+        "bill_id": null,
+        "created_at": "2019-10-17 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 155,
+        "type": "expense",
+        "amount": 304,
+        "category_id": 5,
+        "source_id": 3,
+        "date": "2019-10-17",
+        "notes": "Bike Petrol",
+        "bill_id": null,
+        "created_at": "2019-10-17 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 156,
+        "type": "expense",
+        "amount": 35,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-19",
+        "notes": "Breakfast",
+        "bill_id": null,
+        "created_at": "2019-10-19 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 157,
+        "type": "expense",
+        "amount": 440,
+        "category_id": 13,
+        "source_id": 3,
+        "date": "2019-10-18",
+        "notes": "Pdkt Home Electricity Bill",
+        "bill_id": null,
+        "created_at": "2019-10-18 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 158,
+        "type": "expense",
+        "amount": 30,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-19",
+        "notes": "Plain Dosa",
+        "bill_id": null,
+        "created_at": "2019-10-19 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 159,
+        "type": "expense",
+        "amount": 524,
+        "category_id": 12,
+        "source_id": 3,
+        "date": "2019-10-19",
+        "notes": "Drinks",
+        "bill_id": null,
+        "created_at": "2019-10-19 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 160,
+        "type": "expense",
+        "amount": 200,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-19",
+        "notes": "Added to Paytm Wallet",
+        "bill_id": null,
+        "created_at": "2019-10-19 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 161,
+        "type": "expense",
+        "amount": 20,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-21",
+        "notes": "Breakfast",
+        "bill_id": null,
+        "created_at": "2019-10-21 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 162,
+        "type": "expense",
+        "amount": 481,
+        "category_id": 24,
+        "source_id": 3,
+        "date": "2019-10-21",
+        "notes": "Groceries From Grofers",
+        "bill_id": null,
+        "created_at": "2019-10-21 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 163,
+        "type": "expense",
+        "amount": 119,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-21",
+        "notes": "Adde to Paytm Wallet",
+        "bill_id": null,
+        "created_at": "2019-10-21 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 164,
+        "type": "expense",
+        "amount": 10,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-21",
+        "notes": "Clothes For Bike Parking",
+        "bill_id": null,
+        "created_at": "2019-10-21 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 165,
+        "type": "expense",
+        "amount": 662,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-21",
+        "notes": "Clothes For Diwali",
+        "bill_id": null,
+        "created_at": "2019-10-21 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 166,
+        "type": "expense",
+        "amount": 35,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-22",
+        "notes": "Breakfast",
+        "bill_id": null,
+        "created_at": "2019-10-22 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 167,
+        "type": "expense",
+        "amount": 30,
+        "category_id": 18,
+        "source_id": 3,
+        "date": "2019-10-23",
+        "notes": "Breakfast",
+        "bill_id": null,
+        "created_at": "2019-10-23 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 168,
+        "type": "expense",
+        "amount": 250,
+        "category_id": 35,
+        "source_id": 3,
+        "date": "2019-10-23",
+        "notes": "Gave it to Abi",
+        "bill_id": null,
+        "created_at": "2019-10-23 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 169,
+        "type": "expense",
+        "amount": 90,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-24",
+        "notes": "Shawarma & Veg Buff",
+        "bill_id": null,
+        "created_at": "2019-10-24 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 170,
+        "type": "expense",
+        "amount": 250,
+        "category_id": 35,
+        "source_id": 3,
+        "date": "2019-10-25",
+        "notes": "Gave it to Abi",
+        "bill_id": null,
+        "created_at": "2019-10-25 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 171,
+        "type": "expense",
+        "amount": 2738,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-25",
+        "notes": "Diwali Festival : Crackers",
+        "bill_id": null,
+        "created_at": "2019-10-25 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 172,
+        "type": "expense",
+        "amount": 20,
+        "category_id": 46,
+        "source_id": 3,
+        "date": "2019-10-26",
+        "notes": "Samosa",
+        "bill_id": null,
+        "created_at": "2019-10-26 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 173,
+        "type": "expense",
+        "amount": 3630,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-26",
+        "notes": "Kolusu",
+        "bill_id": null,
+        "created_at": "2019-10-26 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 174,
+        "type": "expense",
+        "amount": 5,
+        "category_id": 11,
+        "source_id": 3,
+        "date": "2019-10-27",
+        "notes": "Donated",
+        "bill_id": null,
+        "created_at": "2019-10-27 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 175,
+        "type": "expense",
+        "amount": 1541,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-27",
+        "notes": "Electric Bill For Akka",
+        "bill_id": null,
+        "created_at": "2019-10-27 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 176,
+        "type": "expense",
+        "amount": 250,
+        "category_id": 35,
+        "source_id": 3,
+        "date": "2019-10-28",
+        "notes": "Gave it to Abi",
+        "bill_id": null,
+        "created_at": "2019-10-28 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 177,
+        "type": "expense",
+        "amount": 50,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-29",
+        "notes": "Footwear Repair",
+        "bill_id": null,
+        "created_at": "2019-10-29 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 178,
+        "type": "expense",
+        "amount": 36000,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-29",
+        "notes": "2nd Gold Loan Paid",
+        "bill_id": null,
+        "created_at": "2019-10-29 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 179,
+        "type": "expense",
+        "amount": 100,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-29",
+        "notes": "Footwear Repair",
+        "bill_id": null,
+        "created_at": "2019-10-29 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 180,
+        "type": "expense",
+        "amount": 272,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-29",
+        "notes": "Face Cream & Odomas",
+        "bill_id": null,
+        "created_at": "2019-10-29 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 181,
+        "type": "expense",
+        "amount": 240,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-29",
+        "notes": "Movie : Bigil",
+        "bill_id": null,
+        "created_at": "2019-10-29 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 182,
+        "type": "expense",
+        "amount": 105,
+        "category_id": 46,
+        "source_id": 3,
+        "date": "2019-10-29",
+        "notes": "Sweets",
+        "bill_id": null,
+        "created_at": "2019-10-29 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 183,
+        "type": "expense",
+        "amount": 50966.32,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-31",
+        "notes": "2nd Gold Loan Closed",
+        "bill_id": null,
+        "created_at": "2019-10-31 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 184,
+        "type": "expense",
+        "amount": 122,
+        "category_id": 33,
+        "source_id": 3,
+        "date": "2019-10-31",
+        "notes": "Egg Buff & Sweets",
+        "bill_id": null,
+        "created_at": "2019-10-31 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      },
+      {
+        "id": 185,
+        "type": "expense",
+        "amount": 250,
+        "category_id": 35,
+        "source_id": 3,
+        "date": "2019-10-31",
+        "notes": "Gave it to Abi",
+        "bill_id": null,
+        "created_at": "2019-10-31 00:00:00",
+        "transfer_group_id": null,
+        "direction": null
+      }
+    ],
     "categories": [
       {
         "id": 1,
@@ -1809,12 +2194,4 @@ const backup = {
       }
     ]
   }
-};
-
-fs.writeFileSync(
-  "2019_10.json",
-  JSON.stringify(backup, null, 2),
-  "utf8"
-);
-
-console.log("2019_10.json created successfully.");
+}
