@@ -151,8 +151,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
     }
 
     setSubmitting(true);
-    // Give React Native one frame to render the loading spinner
-    await new Promise(resolve => requestAnimationFrame(resolve));
 
     let id;
     try {
@@ -194,7 +192,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           notes
         };
         try {
-          if (isEdit && transaction?.id) {
+          if (isEdit && transaction && transaction.id) {
             id = await updateTransaction(transaction.id, transactionData);
           } else {
             id = await createTransaction(transactionData);
@@ -519,8 +517,16 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               renderItem={({ item }) => (
                 <TouchableOpacity
                   onPress={() => {
+                    const suggestedCategoryId =
+                      item.category_id ?? item.categoryId ?? item.category?.id ?? null;
+
                     setNotes(item.notes);
-                    setCategoryId(item.category_id);
+                    setCategoryId(suggestedCategoryId);
+                    // Mirror edit mode: once a category is assigned, collapse
+                    // the grid and show the "Selected Category" card instead.
+                    if (suggestedCategoryId) {
+                      setShowCategoryGrid(false);
+                    }
                     setShowSuggestions(false);
                   }}
                   style={{
