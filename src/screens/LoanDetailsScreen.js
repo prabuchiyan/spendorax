@@ -480,7 +480,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
                                 bg="#FED7AA"
                                 icon="trending-up"
                                 title="Prepay"
-                                nPress={() =>
+                                onPress={() =>
                                     navigation.navigate('LoanPayment', {
                                         id: loan.id,
                                         mode: 'prepayment',
