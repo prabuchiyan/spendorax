@@ -1,25 +1,43 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Platform, StyleSheet, Modal } from 'react-native';
 import { TextInput as PaperTextInput, Button as PaperButton, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import ManualDateTimePicker from '../components/ManualDateTimePicker';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Card from '../components/Card';
-import { Colors } from '../components/Theme';
 import { createLoan, getLoanById, updateLoan } from '../services/loans';
 
 const LOAN_TYPES = [
-    { key: 'Home', label: 'Home', icon: 'home-outline' },
-    { key: 'Vehicle', label: 'Vehicle', icon: 'car' },
-    { key: 'Personal', label: 'Personal', icon: 'account-outline' },
-    { key: 'Education', label: 'Education', icon: 'school' },
-    { key: 'Business', label: 'Business', icon: 'briefcase-outline' },
+    { key: 'Home', label: 'Home Loan', icon: 'home-outline' },
+    { key: 'Vehicle', label: 'Vehicle Loan', icon: 'car-outline' },
+    { key: 'Two Wheeler', label: 'Two Wheeler', icon: 'motorbike' },
+    { key: 'Personal', label: 'Personal Loan', icon: 'account-outline' },
+    { key: 'Education', label: 'Education Loan', icon: 'school-outline' },
+    { key: 'Business', label: 'Business Loan', icon: 'briefcase-outline' },
+    { key: 'Gold', label: 'Gold Loan', icon: 'gold' },
+    { key: 'Property', label: 'Loan Against Property', icon: 'office-building-outline' },
+    { key: 'Mortgage', label: 'Mortgage', icon: 'home-lock' },
     { key: 'Credit Card', label: 'Credit Card', icon: 'credit-card-outline' },
-    { key: 'Friend', label: 'Friend', icon: 'handshake' },
-    { key: 'Family', label: 'Family', icon: 'account-multiple' },
-    { key: 'Employee', label: 'Employee', icon: 'account-tie' },
-    { key: 'Customer', label: 'Customer', icon: 'account-circle' },
+    { key: 'Overdraft', label: 'Overdraft', icon: 'bank-transfer' },
+    { key: 'Line of Credit', label: 'Line of Credit', icon: 'credit-card-plus-outline' },
+    { key: 'Consumer', label: 'Consumer Durable', icon: 'television' },
+    { key: 'Medical', label: 'Medical Loan', icon: 'hospital-box-outline' },
+    { key: 'Agriculture', label: 'Agriculture Loan', icon: 'sprout' },
+
+    // Personal lending
+    { key: 'Friend', label: 'Friend', icon: 'handshake-outline' },
+    { key: 'Family', label: 'Family', icon: 'account-multiple-outline' },
+    { key: 'Employee', label: 'Employee', icon: 'account-tie-outline' },
+    { key: 'Employer', label: 'Employer', icon: 'office-building-outline' },
+    { key: 'Customer', label: 'Customer', icon: 'account-circle-outline' },
+    { key: 'Vendor', label: 'Vendor', icon: 'truck-delivery-outline' },
+    { key: 'Supplier', label: 'Supplier', icon: 'package-variant-closed' },
+    { key: 'Partner', label: 'Business Partner', icon: 'account-group-outline' },
+
+    // Misc
+    { key: 'Bank', label: 'Bank Loan', icon: 'bank-outline' },
+    { key: 'Finance', label: 'Finance Company', icon: 'cash-multiple' },
+    { key: 'NBFC', label: 'NBFC', icon: 'domain' },
     { key: 'Other', label: 'Other', icon: 'shape-outline' }
 ];
 
@@ -27,7 +45,7 @@ export default function LoanFormScreen({ navigation, route }) {
     const rawId = route?.params?.id ?? route?.params?.loanId;
     const editId = rawId != null && rawId !== '' ? Number(rawId) : null;
     const [loanData, setLoanData] = useState({
-        loan_name: '', loan_type: 'Other', lender: '', loan_direction: 'BORROWED', principal_amount: '', interest_rate: '', loan_start_date: '', tenure_months: '', emi_amount: '', emi_day: '', outstanding_amount: '', notes: ''
+        loan_name: '', loan_type: 'Other', lender: '', loan_direction: 'BORROWED', principal_amount: '', interest_rate: '0', loan_start_date: '', tenure_months: '', emi_amount: '', emi_day: '', outstanding_amount: '', notes: ''
     });
 
     const [errors, setErrors] = useState({});
@@ -35,6 +53,7 @@ export default function LoanFormScreen({ navigation, route }) {
     const [showStartPicker, setShowStartPicker] = useState(false);
     const [showDueDayPicker, setShowDueDayPicker] = useState(false);
     const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+    const [loanTypeSearch, setLoanTypeSearch] = useState('');
 
     useEffect(() => {
         if (editId) {
@@ -43,7 +62,7 @@ export default function LoanFormScreen({ navigation, route }) {
                 if (d) {
                     setLoanData({
                         loan_name: d.loan_name || '', loan_type: d.loan_type || 'Other', lender: d.lender || '', loan_direction: d.loan_direction || 'BORROWED', principal_amount: d.principal_amount != null ? String(d.principal_amount) : '',
-                        interest_rate: d.interest_rate != null ? String(d.interest_rate) : '', loan_start_date: d.loan_start_date ? d.loan_start_date.slice(0, 10) : '', tenure_months: d.tenure_months != null ? String(d.tenure_months) : '',
+                        interest_rate: d.interest_rate != null ? String(d.interest_rate) : '0', loan_start_date: d.loan_start_date ? d.loan_start_date.slice(0, 10) : '', tenure_months: d.tenure_months != null ? String(d.tenure_months) : '',
                         emi_amount: d.emi_amount != null ? String(d.emi_amount) : '', emi_day: d.emi_day != null ? String(d.emi_day) : '', outstanding_amount: d.outstanding_amount != null ? String(d.outstanding_amount) : '', notes: d.notes || '', created_at: d.created_at, updated_at: d.updated_at, status: d.status
                     });
                 }
@@ -120,6 +139,10 @@ export default function LoanFormScreen({ navigation, route }) {
         emi: loanData.emi_amount || '-',
         tenure: loanData.tenure_months || '-'
     }), [loanData]);
+
+    const filteredLoanTypes = LOAN_TYPES.filter(item =>
+        item.label.toLowerCase().includes(loanTypeSearch.toLowerCase())
+    );
 
     return (
         <ScrollView
@@ -347,37 +370,217 @@ export default function LoanFormScreen({ navigation, route }) {
 
             {/* Type picker modal (simple inline) */}
             {showTypePicker ? (
-                <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, top: 0, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
-                    <View style={{ backgroundColor: '#fff', padding: 16, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
-                        <Text style={{ fontWeight: '700', marginBottom: 8 }}>Loan Type</Text>
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                            {LOAN_TYPES.map(t => (
-                                <Chip key={t.key} selected={loanData.loan_type === t.key} onPress={() => { setField('loan_type', t.key); setShowTypePicker(false); }} style={{ marginRight: 8, marginBottom: 8 }}>
-                                    <MaterialCommunityIcons name={t.icon} size={18} style={{ marginRight: 6 }} />{t.label}
-                                </Chip>
-                            ))}
+                <Modal
+                    visible={showTypePicker}
+                    transparent
+                    animationType="slide"
+                    onRequestClose={() => {
+                        setLoanTypeSearch('');
+                        setShowTypePicker(false);
+                    }}
+                >
+                    <View style={styles.sheetOverlay}>
+                        <View style={styles.sheet}>
+
+                            <View
+                                style={{
+                                    alignItems: 'center',
+                                    marginBottom: 14,
+                                }}
+                            >
+                                <View
+                                    style={{
+                                        width: 42,
+                                        height: 5,
+                                        borderRadius: 3,
+                                        backgroundColor: '#D6D6D6',
+                                    }}
+                                />
+                            </View>
+
+                            <Text style={styles.sheetTitle}>
+                                Select Loan Type
+                            </Text>
+
+                            <PaperTextInput
+                                mode="outlined"
+                                value={loanTypeSearch}
+                                onChangeText={setLoanTypeSearch}
+                                placeholder="Search loan type..."
+                                left={<PaperTextInput.Icon icon="magnify" />}
+                                style={{
+                                    marginBottom: 18,
+                                    backgroundColor: '#FFF',
+                                }}
+                            />
+
+                            <ScrollView
+                                showsVerticalScrollIndicator={false}
+                                contentContainerStyle={styles.chipContainer}
+                            >
+                                {filteredLoanTypes.length === 0 ? (
+                                    <Text
+                                        style={{
+                                            width: '100%',
+                                            textAlign: 'center',
+                                            color: '#94A3B8',
+                                            marginTop: 30,
+                                        }}
+                                    >
+                                        No loan type found
+                                    </Text>
+                                ) : (
+                                    filteredLoanTypes.map(t => {
+                                        const selected = loanData.loan_type === t.key;
+
+                                        return (
+                                            <Chip
+                                                key={t.key}
+                                                showSelectedCheck={false}
+                                                icon={t.icon}
+                                                onPress={() => {
+                                                    setField('loan_type', t.key);
+                                                    setLoanTypeSearch('');
+                                                    setShowTypePicker(false);
+                                                }}
+                                                style={{
+                                                    marginRight: 10,
+                                                    marginBottom: 10,
+                                                    borderRadius: 24,
+                                                    backgroundColor: selected
+                                                        ? '#EEF2FF'
+                                                        : '#F8FAFC',
+                                                    borderWidth: 1,
+                                                    borderColor: selected
+                                                        ? '#4F46E5'
+                                                        : '#E2E8F0',
+                                                }}
+                                                textStyle={{
+                                                    color: selected
+                                                        ? '#4F46E5'
+                                                        : '#475569',
+                                                    fontWeight: selected
+                                                        ? '700'
+                                                        : '600',
+                                                }}
+                                            >
+                                                {t.label}
+                                            </Chip>
+                                        );
+                                    })
+                                )}
+                            </ScrollView>
+
+                            <PaperButton
+                                mode="contained"
+                                style={{ marginTop: 16 }}
+                                onPress={() => {
+                                    setLoanTypeSearch('');
+                                    setShowTypePicker(false);
+                                }}
+                            >
+                                Close
+                            </PaperButton>
+
                         </View>
-                        <PaperButton onPress={() => setShowTypePicker(false)}>Close</PaperButton>
                     </View>
-                </View>
+                </Modal>
             ) : null}
 
             {/* Due day picker */}
             {showDueDayPicker ? (
-                <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, top: 0, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
-                    <View style={{ backgroundColor: '#fff', padding: 16, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
-                        <Text style={{ fontWeight: '700', marginBottom: 8 }}>Select EMI due day</Text>
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                            {Array.from({ length: 31 }).map((_, i) => {
-                                const d = i + 1;
-                                return (
-                                    <Chip key={d} selected={String(loanData.emi_day) === String(d)} onPress={() => { setField('emi_day', String(d)); setShowDueDayPicker(false); }} style={{ marginRight: 6, marginBottom: 6 }}>{String(d)}</Chip>
-                                );
-                            })}
+                <Modal
+                    visible={showDueDayPicker}
+                    transparent
+                    animationType="slide"
+                    onRequestClose={() => setShowDueDayPicker(false)}
+                >
+                    <View style={styles.sheetOverlay}>
+                        <View style={styles.sheet}>
+
+                            <View
+                                style={{
+                                    alignItems: 'center',
+                                    marginBottom: 18,
+                                }}
+                            >
+                                <View
+                                    style={{
+                                        width: 42,
+                                        height: 5,
+                                        borderRadius: 3,
+                                        backgroundColor: '#D8D8D8',
+                                    }}
+                                />
+                            </View>
+
+                            <Text style={styles.sheetTitle}>
+                                Select EMI Due Day
+                            </Text>
+
+                            <ScrollView
+                                showsVerticalScrollIndicator={false}
+                                contentContainerStyle={{
+                                    flexDirection: 'row',
+                                    flexWrap: 'wrap',
+                                }}
+                            >
+                                {Array.from({ length: 31 }).map((_, i) => {
+                                    const day = String(i + 1);
+                                    const selected = String(loanData.emi_day) === day;
+
+                                    return (
+                                        <TouchableOpacity
+                                            key={day}
+                                            activeOpacity={0.85}
+                                            onPress={() => {
+                                                setField('emi_day', day);
+                                                setShowDueDayPicker(false);
+                                            }}
+                                            style={{
+                                                width: '16.2%',
+                                                aspectRatio: 1,
+                                                margin: '0.2%',
+                                                marginBottom: 10,
+                                                borderRadius: 16,
+                                                justifyContent: 'center',
+                                                alignItems: 'center',
+                                                backgroundColor: selected
+                                                    ? '#EEF2FF'
+                                                    : '#F8FAFC',
+                                                borderWidth: 1,
+                                                borderColor: selected
+                                                    ? '#4F46E5'
+                                                    : '#E2E8F0',
+                                            }}
+                                        >
+                                            <Text
+                                                style={{
+                                                    fontSize: 16,
+                                                    fontWeight: '700',
+                                                    color: selected
+                                                        ? '#4F46E5'
+                                                        : '#475569',
+                                                }}
+                                            >
+                                                {day}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </ScrollView>
+
+                            <PaperButton
+                                mode="contained"
+                                onPress={() => setShowDueDayPicker(false)}
+                                style={{ marginTop: 12 }}
+                            >
+                                Close
+                            </PaperButton>
+
                         </View>
-                        <PaperButton onPress={() => setShowDueDayPicker(false)}>Close</PaperButton>
                     </View>
-                </View>
+                </Modal>
             ) : null}
 
             {/* Start date picker (platform) */}
