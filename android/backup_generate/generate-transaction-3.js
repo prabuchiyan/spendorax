@@ -1,175 +1,23 @@
 const fs = require("fs");
 
 const raw = `
-01/10/19 : Breakfast : $35
+25/10/19 : Salary : $63806
 
-01/10/19 : Groceries : $560
+31/10/19 : Get it From Dad : $1000
 
-01/10/19 : Lunch : $30
+02/11/19 : Get Back From Boopathi : $2000
 
-01/10/19 : Snacks : $30
+03/11/19 : Get it From Tez : $10
 
-01/10/19 : Room Rent : $9450
+06/11/19 : Get it From Tez : $17
 
-02/10/19 : Gave it to Abi : $250
+10/11/19 : Get it Back From Abi Parents : $3500
 
-02/10/19 : Snacks : $5
+11/11/19 : Get it From Mom : $50
 
-03/10/19 : Lunch : $30
+15/11/19 : Petrol Surcharge : $2.84
 
-03/10/19 : Dinner : $40
-
-04/10/19 : RD : $2500
-
-04/10/19 : Lunch : $40
-
-04/10/19 : Ice Cream : $10
-
-04/10/19 : Bus : Bangalore to Salem : $225
-
-04/10/19 : Snacks : $25
-
-05/10/19 : Bus : Salem to Pudukkottai : $164
-
-05/10/19 : 3rd Gold Loan Closed : $50067
-
-05/10/19 : Bed Cover &  Inners : $1147
-
-05/10/19 : Sweets : $160
-
-05/10/19 : Odomas : $15
-
-05/10/19 : Soap : $41
-
-05/10/19 : Condoms : $29
-
-06/10/19 : Gave it to Boopathi : $2000
-
-06/10/19 : Sweets : $80
-
-06/10/19 : Aayutha Poojai Decorations : $60
-
-06/10/19 : Chocolate & Chips : $50
-
-07/10/19 : Donated : $2
-
-07/10/19 : Movie Snacks : $80
-
-07/10/19 : Movie Tickets : $600
-
-07/10/19 : Movie Parking : $20
-
-07/10/19 : Aayutha Poojai Flowers : $50
-
-07/10/19 : Movie Petrol : $100
-
-08/10/19 : Fever Tonic : $40
-
-08/10/19 : Pathu Powder : $2
-
-08/10/19 : Pal Bun : $20
-
-08/10/19 : Bus : Pudukkottai to Bangalore : $200
-
-09/10/19 : Breakfast : $50
-
-09/10/19 : Bus : Pudukkottai to Bangalore : $158
-
-09/10/19 : Lunch : $30
-
-09/10/19 : Ice Cream : $10
-
-09/10/19 : Bike Air : $5
-
-09/10/19 : Bike Petrol : $221
-
-10/10/19 : Breakfast : $30
-
-10/10/19 : Lunch : $30
-
-10/10/19 : Dinner : $35
-
-11/10/19 : Breakfast : $20
-
-11/10/19 : Donated : $30
-
-11/10/19 : Lunch : $30
-
-11/10/19 : Dinner : $40
-
-12/10/19 : Added to Paytm Wallet : $200
-
-12/10/19 : Bangalore Electricity Bill : $145
-
-14/10/19 : Breakfast : $20
-
-16/10/19 : Breakfast : $30
-
-16/10/19 : Added to Paytm Wallet : $200
-
-17/10/19 : Bike Air : $5
-
-17/10/19 : Bike Petrol : $304
-
-19/10/19 : Breakfast : $35
-
-18/10/19 : Pdkt Home Electricity Bill : $440
-
-19/10/19 : Plain Dosa : $30
-
-19/10/19 : Drinks : $524
-
-19/10/19 : Added to Paytm Wallet : $200
-
-21/10/19 : Breakfast : $20
-
-21/10/19 : Groceries From Grofers : $481
-
-21/10/19 : Adde to Paytm Wallet : $119
-
-21/10/19 : Clothes For Bike Parking : $10
-
-21/10/19 : Clothes For Diwali : $662
-
-22/10/19 : Breakfast : $35
-
-23/10/19 : Breakfast : $30
-
-23/10/19 : Gave it to Abi : $250
-
-24/10/19 : Shawarma & Veg Buff : $90
-
-25/10/19 : Gave it to Abi : $250
-
-25/10/19 : Diwali Festival : Crackers : $2738
-
-26/10/19 : Samosa : $20
-
-26/10/19 : Kolusu : $3630
-
-27/10/19 : Donated : $5
-
-27/10/19 : Electric Bill For Akka : $1541
-
-28/10/19 : Gave it to Abi : $250
-
-29/10/19 : Footwear Repair : $50
-
-29/10/19 : 2nd Gold Loan Paid : $36000
-
-29/10/19 : Footwear Repair : $100
-
-29/10/19 : Face Cream & Odomas : $272
-
-29/10/19 : Movie : Bigil : $240
-
-29/10/19 : Sweets : $105
-
-31/10/19 : 2nd Gold Loan Closed : $50966.32
-
-31/10/19 : Egg Buff & Sweets : $122
-
-31/10/19 : Gave it to Abi : $250
+24/11/19 : Get it From Abi : $1000
 `;
 
 const categoryMap = {
@@ -227,6 +75,11 @@ const categoryMap = {
   "Bang DTH Home Recharge": 9,
   "Pdkt DTH Add on Channels": 9,
 
+  // Diwali
+  "Diwali Festival : Crackers": 10,
+  "Clothes For Diwali": 10,
+  "Clothes For Bike Parking": 10,
+
   // Donations
   "Donated": 11,
 
@@ -236,9 +89,13 @@ const categoryMap = {
   "Cigarettes & Candy": 12,
   "Cigarettes": 12,
 
-  // Utilities
+  // Electricity
   "Electricity Bill": 13,
   "Pdkt Home Electricity Bill": 13,
+  "Bangalore Electricity Bill": 13,
+  "Bang Electricity Bill": 13,
+  "Pudukkottai Electricity Bill": 13,
+  "Pdkt Electricity Bill": 13,
 
   // Eniyan
   "Pampers": 15,
@@ -262,6 +119,9 @@ const categoryMap = {
   "Park & Parking": 16,
   "Exhibition": 16,
   "Bike Parking in Theatre": 16,
+  "Movie Petrol": 16,
+  "Movie Parking": 16,
+  "Movie Tickets": 16,
 
   // Food & Dining
   "Breakfast": 18,
@@ -278,6 +138,7 @@ const categoryMap = {
   "Burger & Nuggets": 18,
   "Noodles": 18,
   "Egg Parotta": 18,
+  "Plain Dosa": 18,
 
   // Fruits
   "Fruits": 19,
@@ -397,6 +258,8 @@ const categoryMap = {
   "Prawns & Cleaning": 24,
   "Maggie": 24,
   "Garlic": 24,
+  "Soap": 24,
+  "Soaps": 24,
 
   // Medical
   "Cold Medicine": 28,
@@ -418,6 +281,8 @@ const categoryMap = {
   "Doctor Fees For Abi": 28,
   "Tablets": 28,
   "Tablet & Vicks": 28,
+  "Pathu Powder": 28,
+  "Fever Tonic": 28,
 
   // Households
   "House Holds": 29,
@@ -565,6 +430,7 @@ const categoryMap = {
 
   // Sandals / Shoes
   "Sandals": 44,
+  "Footwear Repair": 44,
 
   // Savings
   "RD": 45,
@@ -641,6 +507,12 @@ const categoryMap = {
   "Sweets & Murukku": 46,
   "Pomegranate Juice": 46,
   "Rusk & Sprite": 46,
+  "Egg Buff & Sweets": 46,
+  "Shawarma & Veg Buff": 46,
+  "Pal Bun": 46,
+  "Paal Bun": 46,
+  "Chocolate & Chips": 46,
+  "Chocolates": 46,
 
   // Transport
   "Bus": 48,
@@ -667,12 +539,18 @@ const categoryMap = {
   "Auto : Bus Stand to Pdkt Home": 48,
   "Auto: Bus Stand to Pdkt Home": 48,
   "Auto : Pudukkottai Bus Stand to Home": 48,
+  "Bus : Salem to Pudukkottai": 48,
+  "Bus: Salem to Pudukkottai": 48,
+  "Bus: Bangalore to Salem": 48,
+  "Bus : Bangalore to Salem": 48,
 
   // Wallet Transfer
   "Uber Wallets": 51,
   "Money Added to Paytm": 51,
   "Money Added to Paytm Wallet": 51,
   "Added Money to Wallet": 51,
+  "Adde to Paytm Wallet": 51,
+  "Added to Paytm Wallet": 51,
 
   // Water
   "Water Cane": 52,
@@ -697,7 +575,7 @@ const transactions = raw
       console.log("Invalid line:", line);
       return null;
     }
-    const type = "expense"; // expense OR income
+    const type = "income"; // expense OR income
     const [, date, notes, amountStr] = match;
     const [dd, mm, yy] = date.split("/");
     const formattedDate = `20${yy}-${mm}-${dd}`;
@@ -1281,16 +1159,16 @@ const backup = {
         "tenure_months": 12,
         "emi_amount": 0,
         "emi_day": null,
-        "outstanding_amount": 47000,
-        "principal_paid": 0,
-        "interest_paid": 0,
-        "total_paid": 0,
+        "outstanding_amount": 0,
+        "principal_paid": 50037.62,
+        "interest_paid": 29.38,
+        "total_paid": 50067,
         "total_prepayment": 0,
-        "remaining_months": 12,
-        "status": "Active",
+        "remaining_months": null,
+        "status": "Closed",
         "notes": "3rd Gold Loan",
         "created_at": "2026-07-15 15:30:55",
-        "updated_at": "2026-07-15 15:30:55"
+        "updated_at": "2026-07-17 11:22:14"
       },
       {
         "id": 2,
@@ -1305,16 +1183,16 @@ const backup = {
         "tenure_months": 12,
         "emi_amount": 0,
         "emi_day": null,
-        "outstanding_amount": 79485.97,
-        "principal_paid": 20514.03,
-        "interest_paid": 311.11,
-        "total_paid": 20775,
+        "outstanding_amount": 0,
+        "principal_paid": 107403.46,
+        "interest_paid": 388,
+        "total_paid": 107741.32,
         "total_prepayment": 0,
         "remaining_months": null,
-        "status": "Active",
+        "status": "Closed",
         "notes": "2nd Gold Loan ",
         "created_at": "2026-07-15 15:30:55",
-        "updated_at": "2026-07-17 07:13:14"
+        "updated_at": "2026-07-17 11:30:17"
       },
       {
         "id": 1,
@@ -1804,17 +1682,62 @@ const backup = {
         "payment_source_id": 1,
         "payment_category_id": 23,
         "transaction_id": 3243,
-        "remarks": "2nd Gold Loan Paid",
+        "remarks": "2nd Loan: 1st Payment",
         "created_at": "2026-07-17 07:13:14"
+      },
+      {
+        "id": 32,
+        "loan_id": 3,
+        "payment_date": "2019-10-05",
+        "payment_amount": 50067,
+        "principal_component": 50037.62,
+        "interest_component": 29.38,
+        "remaining_balance": 0,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 23,
+        "transaction_id": 3364,
+        "remarks": "3rd Loan: Closed",
+        "created_at": "2026-07-17 11:22:07"
+      },
+      {
+        "id": 33,
+        "loan_id": 2,
+        "payment_date": "2019-10-29",
+        "payment_amount": 36000,
+        "principal_component": 35950.32,
+        "interest_component": 49.68,
+        "remaining_balance": 43535.65,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 23,
+        "transaction_id": 3426,
+        "remarks": "2nd Gold Loan Paid",
+        "created_at": "2026-07-17 11:25:19"
+      },
+      {
+        "id": 34,
+        "loan_id": 2,
+        "payment_date": "2019-10-31",
+        "payment_amount": 50966.32,
+        "principal_component": 50939.11,
+        "interest_component": 27.21,
+        "remaining_balance": 0,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 23,
+        "transaction_id": 3431,
+        "remarks": "2nd Gold Loan Closed",
+        "created_at": "2026-07-17 11:30:12"
       }
     ]
   }
 };
 
 fs.writeFileSync(
-  "2019_10.json",
+  "2019_11_income.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2019_10.json created successfully.");
+console.log("2019_11_income.json created successfully.");
