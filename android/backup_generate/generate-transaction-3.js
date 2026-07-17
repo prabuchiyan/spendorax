@@ -38,6 +38,7 @@ const categoryMap = {
   "Royal Enfield: Service & Insurance": 5,
   "Water Wash": 5,
   "Petrol Air": 5,
+  "Bike Service": 5,
 
   // Cashback
   "Get it From Tez": 6,
@@ -67,6 +68,7 @@ const categoryMap = {
   "Pdkt DTH Home Recharge": 9,
   "Bang DTH Recharge": 9,
   "Bang DTH Home Recharge": 9,
+  "Pdkt DTH Add on Channels": 9,
 
   // Donations
   "Donated": 11,
@@ -84,6 +86,7 @@ const categoryMap = {
   // Eniyan
   "Pampers": 15,
   "Pamper": 15,
+  "Toy for Son": 15,
 
   // Electronics
   "Watch Pin": 14,
@@ -133,9 +136,13 @@ const categoryMap = {
   "Plums": 19,
   "Pomegranate & Apple": 19,
   "Navapalam": 19,
+  "Apple & Pomegranate": 19,
+  "Apple": 19,
+  "Apples": 19,
 
   // Gas
   "Gas": 20,
+  "Gas Delivery Charge": 20,
 
   // Gift
   "Gift": 22,
@@ -228,7 +235,11 @@ const categoryMap = {
   "Coriander & Mint": 24,
   "Coffee Powder": 24,
   "Fish": 24,
-  "Fish": 24,
+  "Odomas": 24,
+  "Andurundai": 24,
+  "Prawns & Cleaning": 24,
+  "Maggie": 24,
+  "Garlic": 24,
 
   // Medical
   "Cold Medicine": 28,
@@ -244,7 +255,11 @@ const categoryMap = {
   "Tablets for Cold": 28,
   "Tablets For Cold": 28,
   "Tablets For Abi": 28,
+  "Tablets for Abi": 28,
   "Cough Syrup": 28,
+  "Doctor Fees for Abi": 28,
+  "Doctor Fees For Abi": 28,
+  "Tablets": 28,
 
   // Households
   "House Holds": 29,
@@ -281,6 +296,7 @@ const categoryMap = {
   "Recharge For BSNL": 34,
   "Mobile Recharge For BSNL": 34,
   "Mobile Recharge for BSNL": 34,
+  "Recharge Myself": 34,
 
   // Money Given
   "Give it Back": 35,
@@ -316,6 +332,8 @@ const categoryMap = {
   "Give It Back to Srikanth": 35,
   "Give it Back to Srikanth": 35,
   "Gave it to Suresh": 35,
+  "Gave it to Vivek": 35,
+  "Give it back to Abi": 35,
 
   // Money Received
   "Get it From Abi": 35,
@@ -365,6 +383,8 @@ const categoryMap = {
   "Room Rent & Water Bill": 41,
   "Pdkt Home Electricity": 41,
   "Pdkt Shop Electricity": 41,
+  "Pdkt Shop Electricity Bill": 41,
+  "Electricity Bill Paid": 41,
 
   // Salary
   "March Month 2017": 42,
@@ -394,6 +414,7 @@ const categoryMap = {
   "Recurring Deposit": 45,
   "Recurring Deposit ": 45,
   "Recurrent Deposit": 45,
+  "Savings": 45,
 
   // Snacks
   "Snack": 46,
@@ -459,6 +480,8 @@ const categoryMap = {
   "Pori & Kara Biscuits": 46,
   "Masal Poori": 46,
   "Sweets & Murukku": 46,
+  "Pomegranate Juice": 46,
+  "Rusk & Sprite": 46,
 
   // Transport
   "Bus": 48,
@@ -484,6 +507,7 @@ const categoryMap = {
   "Bus: Pudukkottai to Bangalore": 48,
   "Auto : Bus Stand to Pdkt Home": 48,
   "Auto: Bus Stand to Pdkt Home": 48,
+  "Auto : Pudukkottai Bus Stand to Home": 48,
 
   // Wallet Transfer
   "Uber Wallets": 51,

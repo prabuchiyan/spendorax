@@ -1,10 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, StyleSheet } from 'react-native';
+import {
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    Modal,
+    ScrollView,
+    StyleSheet,
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button as PaperButton } from 'react-native-paper';
-import { recordPayment, recordPrepayment, getLoans } from '../services/loans';
+import {
+    forecloseLoan,
+    getLoans,
+} from '../services/loans';
+
 import { getSources } from '../services/sources';
 import { getCategories } from '../services/categories';
+
 import Card from '../components/Card';
 
 function FieldCard({
@@ -36,7 +49,6 @@ function FieldCard({
             </View>
 
             <View style={{ flex: 1 }}>
-
                 <Text style={styles.fieldTitle}>
                     {title}
                 </Text>
@@ -47,7 +59,6 @@ function FieldCard({
                 >
                     {value}
                 </Text>
-
             </View>
 
             <MaterialCommunityIcons
@@ -55,7 +66,6 @@ function FieldCard({
                 size={22}
                 color="#94A3B8"
             />
-
         </TouchableOpacity>
     );
 }
@@ -142,7 +152,7 @@ function PickerItem({
                     <MaterialCommunityIcons
                         name="check"
                         size={18}
-                        color="#FFFFFF"
+                        color="#FFF"
                     />
                 </View>
             ) : (
@@ -156,35 +166,51 @@ function PickerItem({
     );
 }
 
-export default function LoanPaymentScreen({ route, navigation }) {
-    const routeLoanId = route?.params?.id ?? route?.params?.loanId;
-    const loanIdParam = routeLoanId != null ? Number(routeLoanId) : null;
-    const mode = route?.params?.mode || 'payment';
+export default function LoanForeclosureScreen({
+    route,
+    navigation,
+}) {
+    const routeLoanId =
+        route?.params?.id ??
+        route?.params?.loanId;
+
+    const loanIdParam =
+        routeLoanId != null
+            ? Number(routeLoanId)
+            : null;
 
     const [loanId, setLoanId] = useState(loanIdParam);
+
     const [amount, setAmount] = useState('');
+    const [charges, setCharges] = useState('');
     const [notes, setNotes] = useState('');
-    const [reduceEMI, setReduceEMI] = useState(false);
+
     const [loans, setLoans] = useState([]);
     const [sources, setSources] = useState([]);
     const [categories, setCategories] = useState([]);
+
     const [sourceId, setSourceId] = useState(null);
     const [categoryId, setCategoryId] = useState(null);
+
     const [showLoanPicker, setShowLoanPicker] = useState(false);
     const [showSourcePicker, setShowSourcePicker] = useState(false);
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+
     const [amountFocused, setAmountFocused] = useState(false);
+    const [chargesFocused, setChargesFocused] = useState(false);
 
     useEffect(() => {
         (async () => {
             try {
-                const loanRows = await getLoans();
-                setLoans(loanRows);
-                if (!loanIdParam && loanRows.length > 0) {
-                    setLoanId(loanRows[0].id);
+                const rows = await getLoans();
+
+                setLoans(rows);
+
+                if (!loanIdParam && rows.length > 0) {
+                    setLoanId(rows[0].id);
                 }
             } catch (e) {
-                console.warn('Failed to load loans', e);
+                console.warn(e);
             }
         })();
     }, [loanIdParam]);
@@ -193,25 +219,35 @@ export default function LoanPaymentScreen({ route, navigation }) {
         (async () => {
             try {
                 const src = await getSources();
+
                 setSources(src);
-                if (src.length > 0 && sourceId == null) setSourceId(src[0].id);
+
+                if (
+                    src.length > 0 &&
+                    sourceId == null
+                ) {
+                    setSourceId(src[0].id);
+                }
             } catch (e) {
-                console.warn('Failed to load sources', e);
+                console.warn(e);
             }
         })();
+
         (async () => {
             try {
-                const cats = await getCategories();
+                const cats =
+                    await getCategories();
+
                 setCategories(cats);
             } catch (e) {
-                console.warn('Failed to load categories', e);
+                console.warn(e);
             }
         })();
     }, [sourceId]);
 
     function validate() {
         if (!loanId) {
-            alert('Select a loan first');
+            alert('Select a loan');
             return false;
         }
 
@@ -225,33 +261,57 @@ export default function LoanPaymentScreen({ route, navigation }) {
             return false;
         }
 
-        if (!amount || Number(amount) <= 0) {
-            alert('Enter a valid amount');
+        if (
+            !amount ||
+            Number(amount) <= 0
+        ) {
+            alert('Enter final payment amount');
             return false;
         }
+
         return true;
     }
 
     async function save() {
         if (!validate()) return;
-        const value = Number(amount);
+
         try {
-            if (mode === 'prepayment') {
-                await recordPrepayment({ loanId, date: new Date().toISOString(), amount: value, reduceEMI, sourceId, categoryId, notes });
-            } else {
-                await recordPayment({ loanId, date: new Date().toISOString(), amount: value, paymentType: 'EMI', sourceId, categoryId, notes });
-            }
+            await forecloseLoan({
+                loanId,
+                date: new Date().toISOString(),
+                finalPaymentAmount: Number(amount),
+                foreclosureCharges: Number(
+                    charges || 0
+                ),
+                sourceId,
+                categoryId,
+                notes,
+            });
+
             navigation.goBack();
         } catch (e) {
-            console.error('Payment failed', e);
-            alert(e?.message || 'Failed to record payment');
+            console.error(e);
+            alert(
+                e?.message ||
+                'Failed to foreclose loan'
+            );
         }
     }
 
-    const selectedLoan = loans.find((l) => l.id === loanId);
-    const selectedSource = sources.find((s) => s.id === sourceId);
-    const selectedCategory = categories.find((c) => c.id === categoryId);
-    const title = mode === 'prepayment' ? 'Record Prepayment' : 'Record EMI Payment';
+    const selectedLoan =
+        loans.find(
+            (l) => l.id === loanId
+        );
+
+    const selectedSource =
+        sources.find(
+            (s) => s.id === sourceId
+        );
+
+    const selectedCategory =
+        categories.find(
+            (c) => c.id === categoryId
+        );
 
     return (
         <View
@@ -267,36 +327,30 @@ export default function LoanPaymentScreen({ route, navigation }) {
                     paddingBottom: 40,
                 }}
             >
-
                 <Card
                     style={{
                         borderRadius: 24,
                         overflow: 'hidden',
                     }}
-                ><View
-                    style={{
-                        backgroundColor:
-                            mode === 'prepayment'
-                                ? '#EA580C'
-                                : '#2563EB',
-
-                        margin: -16,
-                        marginBottom: 18,
-
-                        padding: 20,
-
-                        borderBottomLeftRadius: 24,
-                        borderBottomRightRadius: 24,
-                    }}
                 >
+                    {/* Header */}
 
+                    <View
+                        style={{
+                            backgroundColor: '#DC2626',
+                            margin: -16,
+                            marginBottom: 18,
+                            padding: 20,
+                            borderBottomLeftRadius: 24,
+                            borderBottomRightRadius: 24,
+                        }}
+                    >
                         <View
                             style={{
                                 flexDirection: 'row',
                                 alignItems: 'center',
                             }}
                         >
-
                             <View
                                 style={{
                                     width: 56,
@@ -308,21 +362,14 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                     marginRight: 16,
                                 }}
                             >
-
                                 <MaterialCommunityIcons
-                                    name={
-                                        mode === 'prepayment'
-                                            ? 'cash-plus'
-                                            : 'cash-fast'
-                                    }
+                                    name="bank-remove"
                                     size={28}
                                     color="#FFF"
                                 />
-
                             </View>
 
                             <View style={{ flex: 1 }}>
-
                                 <Text
                                     style={{
                                         color: '#FFF',
@@ -330,24 +377,21 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                         fontWeight: '900',
                                     }}
                                 >
-                                    {title}
+                                    Foreclose Loan
                                 </Text>
 
                                 <Text
                                     style={{
-                                        color: '#DCE8FF',
+                                        color: '#FEE2E2',
                                         marginTop: 4,
                                     }}
                                 >
-                                    Record and track your loan payment
+                                    Close this loan permanently with one final payment.
                                 </Text>
-
                             </View>
-
                         </View>
 
                         {selectedLoan && (
-
                             <View
                                 style={{
                                     marginTop: 22,
@@ -356,10 +400,9 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                     padding: 16,
                                 }}
                             >
-
                                 <Text
                                     style={{
-                                        color: '#DCE8FF',
+                                        color: '#FEE2E2',
                                         fontSize: 12,
                                     }}
                                 >
@@ -379,7 +422,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
 
                                 <Text
                                     style={{
-                                        color: '#DCE8FF',
+                                        color: '#FEE2E2',
                                         marginTop: 6,
                                     }}
                                 >
@@ -388,11 +431,8 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                         selectedLoan.outstanding_amount || 0
                                     ).toLocaleString('en-IN')}
                                 </Text>
-
                             </View>
-
                         )}
-
                     </View>
 
                     <FieldCard
@@ -422,7 +462,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
                     <FieldCard
                         icon="shape-outline"
                         color="#EA580C"
-                        title="Category"
+                        title="Category *"
                         value={
                             selectedCategory
                                 ? selectedCategory.name
@@ -431,10 +471,11 @@ export default function LoanPaymentScreen({ route, navigation }) {
                         onPress={() => setShowCategoryPicker(true)}
                     />
 
-                    <View style={styles.amountCard}>
+                    {/* Final Payment */}
 
+                    <View style={styles.amountCard}>
                         <Text style={styles.amountLabel}>
-                            Payment Amount
+                            Final Payment Amount
                         </Text>
 
                         <View style={styles.amountRow}>
@@ -442,7 +483,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                 style={[
                                     styles.amountInputContainer,
                                     amountFocused && {
-                                        borderColor: '#2563EB',
+                                        borderColor: '#DC2626',
                                         borderWidth: 2,
                                     },
                                 ]}
@@ -450,107 +491,124 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                 <Text style={styles.currency}>
                                     ₹
                                 </Text>
+
                                 <TextInput
-                                    onFocus={() => setAmountFocused(true)}
-                                    onBlur={() => setAmountFocused(false)}
-                                    placeholder="Enter Amount"
-                                    value={String(amount)}
+                                    value={amount}
                                     keyboardType="decimal-pad"
-                                    selectionColor="#2563EB"
-                                    cursorColor="#2563EB"
-                                    underlineColorAndroid="transparent"
+                                    placeholder="Enter Amount"
                                     placeholderTextColor="#94A3B8"
-                                    maxLength={12}
-                                    importantForAutofill="no"
-                                    autoCorrect={false}
-                                    style={[
-                                        styles.amountInput,
-                                        {
-                                            outlineStyle: 'none',
-                                        },
-                                    ]}
-                                    disableFullscreenUI={true}
+                                    selectionColor="#DC2626"
+                                    cursorColor="#DC2626"
+                                    underlineColorAndroid="transparent"
+                                    onFocus={() =>
+                                        setAmountFocused(true)
+                                    }
+                                    onBlur={() =>
+                                        setAmountFocused(false)
+                                    }
+                                    style={styles.amountInput}
                                     onChangeText={(text) => {
-                                        let value = text.replace(/[^0-9.]/g, '')
-                                        const firstDot = value.indexOf('.');
+                                        let value = text.replace(
+                                            /[^0-9.]/g,
+                                            ''
+                                        );
+
+                                        const firstDot =
+                                            value.indexOf('.');
+
                                         if (firstDot !== -1) {
                                             value =
-                                                value.substring(0, firstDot + 1) +
-                                                value.substring(firstDot + 1).replace(/\./g, '');
+                                                value.substring(
+                                                    0,
+                                                    firstDot + 1
+                                                ) +
+                                                value
+                                                    .substring(
+                                                        firstDot + 1
+                                                    )
+                                                    .replace(
+                                                        /\./g,
+                                                        ''
+                                                    );
                                         }
+
                                         setAmount(value);
                                     }}
                                 />
                             </View>
                         </View>
-
                     </View>
-                    {mode === 'prepayment' && (
 
-                        <View
-                            style={styles.preferenceCard}
-                        >
+                    {/* Charges */}
 
+                    <View style={styles.amountCard}>
+                        <Text style={styles.amountLabel}>
+                            Foreclosure Charges (Optional)
+                        </Text>
+
+                        <View style={styles.amountRow}>
                             <View
-                                style={{
-                                    flexDirection: 'row',
-                                    alignItems: 'center'
-                                }}
+                                style={[
+                                    styles.amountInputContainer,
+                                    chargesFocused && {
+                                        borderColor: '#DC2626',
+                                        borderWidth: 2,
+                                    },
+                                ]}
                             >
+                                <Text style={styles.currency}>
+                                    ₹
+                                </Text>
 
-                                <View
-                                    style={styles.preferenceIcon}
-                                >
-
-                                    <MaterialCommunityIcons
-                                        name="chart-line"
-                                        size={22}
-                                        color="#EA580C"
-                                    />
-
-                                </View>
-
-                                <View style={{ flex: 1 }}>
-
-                                    <Text
-                                        style={styles.preferenceTitle}
-                                    >
-                                        Reduce Monthly EMI
-                                    </Text>
-
-                                    <Text
-                                        style={styles.preferenceSubtitle}
-                                    >
-                                        Keep the same loan tenure and reduce your EMI after this prepayment.
-                                    </Text>
-
-                                </View>
-
-                                <TouchableOpacity
-                                    activeOpacity={0.85}
-                                    onPress={() =>
-                                        setReduceEMI(!reduceEMI)
+                                <TextInput
+                                    value={charges}
+                                    keyboardType="decimal-pad"
+                                    placeholder="0"
+                                    placeholderTextColor="#94A3B8"
+                                    selectionColor="#DC2626"
+                                    cursorColor="#DC2626"
+                                    underlineColorAndroid="transparent"
+                                    onFocus={() =>
+                                        setChargesFocused(true)
                                     }
-                                    style={[
-                                        styles.toggle,
-                                        reduceEMI && styles.toggleOn,
-                                    ]}
-                                >
+                                    onBlur={() =>
+                                        setChargesFocused(false)
+                                    }
+                                    style={styles.amountInput}
+                                    onChangeText={(text) => {
+                                        let value = text.replace(
+                                            /[^0-9.]/g,
+                                            ''
+                                        );
 
-                                    <View
-                                        style={[
-                                            styles.toggleThumb,
-                                            reduceEMI && styles.toggleThumbOn,
-                                        ]}
-                                    />
+                                        const firstDot =
+                                            value.indexOf('.');
 
-                                </TouchableOpacity>
+                                        if (firstDot !== -1) {
+                                            value =
+                                                value.substring(
+                                                    0,
+                                                    firstDot + 1
+                                                ) +
+                                                value
+                                                    .substring(
+                                                        firstDot + 1
+                                                    )
+                                                    .replace(
+                                                        /\./g,
+                                                        ''
+                                                    );
+                                        }
 
+                                        setCharges(value);
+                                    }}
+                                />
                             </View>
-
                         </View>
+                    </View>
 
-                    )}
+                    {/* Notes */}
+
                     <View style={styles.notesCard}>
                         <Text style={styles.notesLabel}>
                             Notes (Optional)
@@ -559,29 +617,22 @@ export default function LoanPaymentScreen({ route, navigation }) {
                         <TextInput
                             value={notes}
                             onChangeText={setNotes}
-                            placeholder="Add remarks (optional)"
+                            placeholder="Add remarks"
                             placeholderTextColor="#94A3B8"
                             multiline
                             numberOfLines={4}
                             textAlignVertical="top"
-                            selectionColor="#2563EB"
-                            cursorColor="#2563EB"
+                            selectionColor="#DC2626"
+                            cursorColor="#DC2626"
                             underlineColorAndroid="transparent"
-                            maxLength={250}
-                            style={[
-                                styles.notesInput,
-                                {
-                                    outlineStyle: 'none',
-                                },
-                            ]}
+                            style={styles.notesInput}
                         />
                     </View>
-                    <View
-                        style={styles.saveContainer}
-                    >
 
+                    <View style={styles.saveContainer}>
                         <PaperButton
                             mode="contained"
+                            buttonColor="#DC2626"
                             onPress={save}
                             style={styles.saveButton}
                             contentStyle={{
@@ -592,10 +643,12 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                 fontWeight: '800',
                             }}
                         >
-                            {mode === 'prepayment' ? 'Save Prepayment' : 'Save Payment'}
+                            Confirm Foreclosure
                         </PaperButton>
                     </View>
                 </Card>
+
+                {/* ---------------- Loan Picker ---------------- */}
 
                 <Modal
                     visible={showLoanPicker}
@@ -618,8 +671,6 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                 maxHeight: '75%',
                             }}
                         >
-                            {/* Handle */}
-
                             <View
                                 style={{
                                     width: 52,
@@ -631,8 +682,6 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                 }}
                             />
 
-                            {/* Header */}
-
                             <View
                                 style={{
                                     flexDirection: 'row',
@@ -642,7 +691,6 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                 }}
                             >
                                 <View>
-
                                     <Text
                                         style={{
                                             fontSize: 21,
@@ -659,9 +707,8 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                             color: '#64748B',
                                         }}
                                     >
-                                        Choose the loan for this payment
+                                        Choose the loan to foreclose
                                     </Text>
-
                                 </View>
 
                                 <TouchableOpacity
@@ -675,54 +722,29 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                 </TouchableOpacity>
                             </View>
 
-                            {/* List */}
-
                             <ScrollView
                                 showsVerticalScrollIndicator={false}
                             >
-                                {loans.map((loan) => {
-
-                                    const outstanding =
-                                        Number(
+                                {loans.map((loan) => (
+                                    <PickerItem
+                                        key={loan.id}
+                                        icon="bank-outline"
+                                        iconColor="#DC2626"
+                                        iconBg="#FEE2E2"
+                                        selected={loan.id === loanId}
+                                        title={loan.loan_name}
+                                        subtitle={`Outstanding ₹${Number(
                                             loan.outstanding_amount || 0
-                                        ).toLocaleString('en-IN');
-
-                                    const emi =
-                                        Number(
-                                            loan.emi_amount || 0
-                                        ).toLocaleString('en-IN');
-
-                                    const selected =
-                                        loan.id === loanId;
-
-                                    return (
-
-                                        <PickerItem
-                                            key={loan.id}
-                                            icon="bank-outline"
-                                            iconColor="#2563EB"
-                                            iconBg="#DBEAFE"
-                                            selected={selected}
-                                            title={loan.loan_name}
-                                            subtitle={`Outstanding ₹${outstanding}   •   EMI ₹${emi}`}
-                                            onPress={() => {
-
-                                                setLoanId(loan.id);
-
-                                                setShowLoanPicker(false);
-
-                                            }}
-                                        />
-
-                                    );
-
-                                })}
+                                        ).toLocaleString('en-IN')}`}
+                                        onPress={() => {
+                                            setLoanId(loan.id);
+                                            setShowLoanPicker(false);
+                                        }}
+                                    />
+                                ))}
 
                                 <View style={{ height: 10 }} />
-
                             </ScrollView>
-
-                            {/* Footer */}
 
                             <PaperButton
                                 mode="outlined"
@@ -734,10 +756,11 @@ export default function LoanPaymentScreen({ route, navigation }) {
                             >
                                 Close
                             </PaperButton>
-
                         </View>
                     </View>
                 </Modal>
+
+                {/* ---------------- Source Picker ---------------- */}
 
                 <Modal
                     visible={showSourcePicker}
@@ -760,8 +783,6 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                 maxHeight: '75%',
                             }}
                         >
-                            {/* Handle */}
-
                             <View
                                 style={{
                                     width: 52,
@@ -773,8 +794,6 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                 }}
                             />
 
-                            {/* Header */}
-
                             <View
                                 style={{
                                     flexDirection: 'row',
@@ -784,12 +803,10 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                 }}
                             >
                                 <View>
-
                                     <Text
                                         style={{
                                             fontSize: 21,
                                             fontWeight: '900',
-                                            color: '#111827',
                                         }}
                                     >
                                         Select Payment Source
@@ -801,9 +818,8 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                             color: '#64748B',
                                         }}
                                     >
-                                        Choose where the payment is made from
+                                        Choose payment account
                                     </Text>
-
                                 </View>
 
                                 <TouchableOpacity
@@ -821,7 +837,6 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                 showsVerticalScrollIndicator={false}
                             >
                                 {sources.map((source) => (
-
                                     <PickerItem
                                         key={source.id}
                                         icon="wallet-outline"
@@ -831,18 +846,13 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                         title={source.name}
                                         subtitle="Payment Account"
                                         onPress={() => {
-
                                             setSourceId(source.id);
-
                                             setShowSourcePicker(false);
-
                                         }}
                                     />
-
                                 ))}
 
                                 <View style={{ height: 10 }} />
-
                             </ScrollView>
 
                             <PaperButton
@@ -855,10 +865,11 @@ export default function LoanPaymentScreen({ route, navigation }) {
                             >
                                 Close
                             </PaperButton>
-
                         </View>
                     </View>
                 </Modal>
+
+                {/* ---------------- Category Picker ---------------- */}
 
                 <Modal
                     visible={showCategoryPicker}
@@ -881,8 +892,6 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                 maxHeight: '75%',
                             }}
                         >
-                            {/* Handle */}
-
                             <View
                                 style={{
                                     width: 52,
@@ -894,8 +903,6 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                 }}
                             />
 
-                            {/* Header */}
-
                             <View
                                 style={{
                                     flexDirection: 'row',
@@ -905,12 +912,10 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                 }}
                             >
                                 <View>
-
                                     <Text
                                         style={{
                                             fontSize: 21,
                                             fontWeight: '900',
-                                            color: '#111827',
                                         }}
                                     >
                                         Select Category
@@ -922,9 +927,8 @@ export default function LoanPaymentScreen({ route, navigation }) {
                                             color: '#64748B',
                                         }}
                                     >
-                                        Choose the expense category
+                                        Choose expense category
                                     </Text>
-
                                 </View>
 
                                 <TouchableOpacity
@@ -941,47 +945,34 @@ export default function LoanPaymentScreen({ route, navigation }) {
                             <ScrollView
                                 showsVerticalScrollIndicator={false}
                             >
-                                {categories.map((category) => {
-
-                                    const icon =
-                                        category.icon ||
-                                        'shape-outline';
-
-                                    const color =
-                                        category.color ||
-                                        '#EA580C';
-
-                                    return (
-
-                                        <PickerItem
-                                            key={category.id}
-                                            icon={icon}
-                                            iconColor={color}
-                                            iconBg={color + '20'}
-                                            selected={
-                                                category.id === categoryId
-                                            }
-                                            title={category.name}
-                                            subtitle={
-                                                category.type
-                                                    ? `${category.type} Category`
-                                                    : 'Loan Category'
-                                            }
-                                            onPress={() => {
-
-                                                setCategoryId(category.id);
-
-                                                setShowCategoryPicker(false);
-
-                                            }}
-                                        />
-
-                                    );
-
-                                })}
+                                {categories.map((category) => (
+                                    <PickerItem
+                                        key={category.id}
+                                        icon={category.icon || 'shape-outline'}
+                                        iconColor={
+                                            category.color || '#EA580C'
+                                        }
+                                        iconBg={
+                                            (category.color || '#EA580C') +
+                                            '20'
+                                        }
+                                        selected={
+                                            category.id === categoryId
+                                        }
+                                        title={category.name}
+                                        subtitle={
+                                            category.type
+                                                ? `${category.type} Category`
+                                                : 'Loan Category'
+                                        }
+                                        onPress={() => {
+                                            setCategoryId(category.id);
+                                            setShowCategoryPicker(false);
+                                        }}
+                                    />
+                                ))}
 
                                 <View style={{ height: 10 }} />
-
                             </ScrollView>
 
                             <PaperButton
@@ -994,14 +985,12 @@ export default function LoanPaymentScreen({ route, navigation }) {
                             >
                                 Close
                             </PaperButton>
-
                         </View>
                     </View>
                 </Modal>
 
             </ScrollView>
-
-        </View >
+        </View>
     );
 }
 

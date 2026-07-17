@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Text,
   TextInput,
+  Platform
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getLoans } from '../services/loans';
@@ -125,33 +126,76 @@ export default function LoanListScreen({ navigation }) {
             </View>
 
             {/* Search */}
-
             <View
               style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: '#fff',
-                borderRadius: 16,
-                paddingHorizontal: 14,
-                marginBottom: 16,
+                marginBottom: 18,
               }}
             >
-              <MaterialCommunityIcons
-                name="magnify"
-                size={20}
-                color={Colors.muted}
-              />
-
-              <TextInput
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Search loans..."
+              <View
                 style={{
-                  flex: 1,
-                  height: 46,
-                  marginLeft: 10,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 18,
+                  height: 56,
+                  paddingHorizontal: 16,
+                  borderWidth: 1,
+                  borderColor: '#E2E8F0',
+                  elevation: 2,
+                  shadowColor: '#000',
+                  shadowOpacity: 0.05,
+                  shadowRadius: 8,
+                  shadowOffset: {
+                    width: 0,
+                    height: 3,
+                  },
                 }}
-              />
+              >
+                <MaterialCommunityIcons
+                  name="magnify"
+                  size={22}
+                  color="#64748B"
+                />
+
+                <TextInput
+                  value={search}
+                  onChangeText={setSearch}
+                  placeholder="Search loans..."
+                  placeholderTextColor="#94A3B8"
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  underlineColorAndroid="transparent"
+                  selectionColor={Colors.primary}
+                  cursorColor={Colors.primary}
+                  focusable={false}
+                  style={[
+                    {
+                      flex: 1,
+                      marginLeft: 12,
+                      fontSize: 15,
+                      color: '#111827',
+                      paddingVertical: 0,
+                      borderWidth: 0,
+                    },
+                    Platform.OS === 'web' && {
+                      outlineStyle: 'none',
+                    },
+                  ]}
+                />
+
+                {search.length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => setSearch('')}
+                    hitSlop={10}
+                  >
+                    <MaterialCommunityIcons
+                      name="close-circle"
+                      size={20}
+                      color="#94A3B8"
+                    />
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
 
             {/* Filter */}

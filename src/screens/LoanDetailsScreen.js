@@ -8,13 +8,12 @@ import events from '../services/events';
 import Card from '../components/Card';
 import calc from '../services/loanCalculations';
 import { Colors } from '../components/Theme';
-import LoanPrepaymentModal from '../components/LoanPrepaymentModal';
-import LoanForeclosureModal from '../components/LoanForeclosureModal';
 
 function ActionButton({
     icon,
     title,
     color,
+    bg,
     onPress,
 }) {
     return (
@@ -23,19 +22,27 @@ function ActionButton({
             activeOpacity={0.85}
             style={{
                 width: '31%',
-                backgroundColor: '#F8FAFC',
+                backgroundColor: '#FFFFFF',
                 borderRadius: 18,
-                paddingVertical: 14,
+                paddingVertical: 12,
                 marginBottom: 12,
                 alignItems: 'center',
+                elevation: 3,
+                shadowColor: '#000',
+                shadowOpacity: 0.05,
+                shadowRadius: 8,
+                shadowOffset: {
+                    width: 0,
+                    height: 2,
+                },
             }}
         >
             <View
                 style={{
-                    width: 44,
-                    height: 44,
+                    width: 42,
+                    height: 42,
                     borderRadius: 14,
-                    backgroundColor: color + '20',
+                    backgroundColor: bg || (color + '20'),
                     justifyContent: 'center',
                     alignItems: 'center',
                 }}
@@ -49,10 +56,11 @@ function ActionButton({
 
             <Text
                 style={{
-                    marginTop: 8,
-                    fontSize: 12,
+                    marginTop: 10,
+                    fontSize: 11,
                     fontWeight: '700',
                     color: '#374151',
+                    textAlign: 'center',
                 }}
             >
                 {title}
@@ -96,8 +104,6 @@ function Metric({
 export default function LoanDetailsScreen({ route, navigation }) {
     const id = route?.params?.id;
     const [loan, setLoan] = useState(null);
-    const [showPrepayment, setShowPrepayment] = useState(false);
-    const [showForeclosure, setShowForeclosure] = useState(false);
     const [linkedTxs, setLinkedTxs] = useState([]);
     const [snackbarVisible, setSnackbarVisible] = useState(false);
     const [snackbarMsg, setSnackbarMsg] = useState('');
@@ -411,6 +417,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
                         <>
                             <ActionButton
                                 color="#16A34A"
+                                bg="#DCFCE7"
                                 icon="cash-plus"
                                 title="Receive Payment"
                                 onPress={() =>
@@ -422,6 +429,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
                             <ActionButton
                                 color="#7C3AED"
+                                bg="#EDE9FE"
                                 icon="history"
                                 title="History"
                                 onPress={() =>
@@ -433,6 +441,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
                             <ActionButton
                                 color="#64748B"
+                                bg="#E2E8F0"
                                 icon="file-chart"
                                 title="Reports"
                                 onPress={() =>
@@ -442,6 +451,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
                             <ActionButton
                                 color="#0F766E"
+                                bg="#CCFBF1"
                                 icon="pencil"
                                 title="Edit"
                                 onPress={() =>
@@ -455,6 +465,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
                         <>
                             <ActionButton
                                 color="#2563EB"
+                                bg="#DBEAFE"
                                 icon="cash-fast"
                                 title="Pay EMI"
                                 onPress={() =>
@@ -465,21 +476,33 @@ export default function LoanDetailsScreen({ route, navigation }) {
                             />
 
                             <ActionButton
-                                color="#16A34A"
-                                icon="cash-plus"
+                                color="#EA580C"
+                                bg="#FED7AA"
+                                icon="trending-up"
                                 title="Prepay"
-                                onPress={() => setShowPrepayment(true)}
+                                nPress={() =>
+                                    navigation.navigate('LoanPayment', {
+                                        id: loan.id,
+                                        mode: 'prepayment',
+                                    })
+                                }
                             />
 
                             <ActionButton
-                                color="#EA580C"
+                                color="#DC2626"
+                                bg="#FEE2E2"
                                 icon="bank-remove"
                                 title="Close"
-                                onPress={() => setShowForeclosure(true)}
+                                onPress={() =>
+                                    navigation.navigate('LoanForeclose', {
+                                        id: loan.id
+                                    })
+                                }
                             />
 
                             <ActionButton
                                 color="#7C3AED"
+                                bg="#EDE9FE"
                                 icon="history"
                                 title="History"
                                 onPress={() =>
@@ -491,6 +514,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
                             <ActionButton
                                 color="#64748B"
+                                bg="#E2E8F0"
                                 icon="file-chart"
                                 title="Reports"
                                 onPress={() =>
@@ -500,6 +524,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
                             <ActionButton
                                 color="#0F766E"
+                                bg="#CCFBF1"
                                 icon="pencil"
                                 title="Edit"
                                 onPress={() =>
@@ -515,8 +540,6 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
             </Card>
 
-            <LoanPrepaymentModal visible={showPrepayment} onClose={() => setShowPrepayment(false)} loanId={loan.id} onSaved={refresh} />
-            <LoanForeclosureModal visible={showForeclosure} onClose={() => setShowForeclosure(false)} loanId={loan.id} onSaved={refresh} />
             <View style={{ height: 12 }} />
             <Card style={{ borderRadius: 22 }}>
 
