@@ -27,6 +27,7 @@ const categoryMap = {
   "Debited From SBI": 3,
   "Annual Charges For Vijaya Card": 3,
   "Vijaya Bank SMS Charge": 3,
+  "SBI Charge": 3,
 
   // Beauty Care
   "Ear Rings For Abi": 4,
@@ -44,6 +45,7 @@ const categoryMap = {
   "Water Wash": 5,
   "Petrol Air": 5,
   "Bike Service": 5,
+  "Bike Repair": 5,
 
   // Cashback
   "Get it From Tez": 6,
@@ -111,6 +113,7 @@ const categoryMap = {
   "Bang Sony TV 32 Inch: Stabilizer": 14,
   "Wall Clock Battery": 14,
   "Batteries": 14,
+  "Watch Straps & Batteries": 14,
 
   // Entertainment
   "Movie": 16,
@@ -139,6 +142,7 @@ const categoryMap = {
   "Noodles": 18,
   "Egg Parotta": 18,
   "Plain Dosa": 18,
+  "Pizza": 18,
 
   // Fruits
   "Fruits": 19,
@@ -161,6 +165,7 @@ const categoryMap = {
   // Gas
   "Gas": 20,
   "Gas Delivery Charge": 20,
+  "Gas Refill": 20,
 
   // Gift
   "Gift": 22,
@@ -260,6 +265,7 @@ const categoryMap = {
   "Garlic": 24,
   "Soap": 24,
   "Soaps": 24,
+  "Whishper": 24,
 
   // Medical
   "Cold Medicine": 28,
@@ -320,6 +326,7 @@ const categoryMap = {
   "Mobile Recharge For BSNL": 34,
   "Mobile Recharge for BSNL": 34,
   "Recharge Myself": 34,
+  "Abi Mobile Recharge": 34,
 
   // Money Given
   "Give it Back": 35,
@@ -513,6 +520,10 @@ const categoryMap = {
   "Paal Bun": 46,
   "Chocolate & Chips": 46,
   "Chocolates": 46,
+  "Cream Bun": 46,
+  "Pori & Biscuits": 46,
+  "Pori": 46,
+  "Mushroom Fry": 46,
 
   // Transport
   "Bus": 48,
@@ -543,6 +554,15 @@ const categoryMap = {
   "Bus: Salem to Pudukkottai": 48,
   "Bus: Bangalore to Salem": 48,
   "Bus : Bangalore to Salem": 48,
+  "Bus : Thanjavur to Bangalore": 48,
+  "Bus: Thanjavur to Bangalore": 48,
+  "Auto : Madiwala to Home": 48,
+  "Auto: Madiwala to Home": 48,
+  "Bus : Trichy to Pudukkottai": 48,
+  "Bus: Trichy to Pudukkottai": 48,
+  "Bus : Salem to Trichy": 48,
+  "Bus: Salem to Trichy": 48,
+  "Pudukkottai to Bangalore": 48,
 
   // Wallet Transfer
   "Uber Wallets": 51,
@@ -551,6 +571,7 @@ const categoryMap = {
   "Added Money to Wallet": 51,
   "Adde to Paytm Wallet": 51,
   "Added to Paytm Wallet": 51,
+  "Added Paytm Wallet": 51,
 
   // Water
   "Water Cane": 52,
