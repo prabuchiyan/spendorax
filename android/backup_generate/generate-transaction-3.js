@@ -1,23 +1,17 @@
 const fs = require("fs");
 
 const raw = `
-25/10/19 : Salary : $63806
+29/11/19 : Salary : $61000
 
-31/10/19 : Get it From Dad : $1000
+01/12/19 : Get it From Vivek : $50
 
-02/11/19 : Get Back From Boopathi : $2000
+02/12/19 : Get it From Mom : $200
 
-03/11/19 : Get it From Tez : $10
+02/12/19 : Get it Back From Father-in-law : $15000
 
-06/11/19 : Get it From Tez : $17
+02/12/19 : Get it Back From Mother-in-law : $1000
 
-10/11/19 : Get it Back From Abi Parents : $3500
-
-11/11/19 : Get it From Mom : $50
-
-15/11/19 : Petrol Surcharge : $2.84
-
-24/11/19 : Get it From Abi : $1000
+14/12/19 : Birthday Gift From Office : $2000
 `;
 
 const categoryMap = {
@@ -841,6 +835,15 @@ const backup = {
         "created_at": "2026-07-15 15:30:54"
       },
       {
+        "id": 54,
+        "name": "Gold Chit",
+        "type": "expense",
+        "icon": "podium-gold",
+        "color": "#FBBF24",
+        "is_active": 1,
+        "created_at": "2026-07-17 15:46:37"
+      },
+      {
         "id": 23,
         "name": "Gold Loan",
         "type": "expense",
@@ -1066,6 +1069,15 @@ const backup = {
         "created_at": "2026-07-15 15:30:54"
       },
       {
+        "id": 51,
+        "name": "Transfer",
+        "type": "expense",
+        "icon": "swap-horizontal",
+        "color": "#6366F1",
+        "is_active": 1,
+        "created_at": "2026-07-15 15:30:54"
+      },
+      {
         "id": 48,
         "name": "Transport",
         "type": "expense",
@@ -1080,15 +1092,6 @@ const backup = {
         "type": "expense",
         "icon": "earth",
         "color": "#A3E635",
-        "is_active": 1,
-        "created_at": "2026-07-15 15:30:54"
-      },
-      {
-        "id": 51,
-        "name": "Wallet Transfer",
-        "type": "expense",
-        "icon": "swap-horizontal",
-        "color": "#6366F1",
         "is_active": 1,
         "created_at": "2026-07-15 15:30:54"
       },
@@ -1229,15 +1232,15 @@ const backup = {
         "emi_amount": 0,
         "emi_day": 6,
         "outstanding_amount": 0,
-        "principal_paid": 104157.62,
-        "interest_paid": 426.41,
-        "total_paid": 104572,
+        "principal_paid": 104201.39,
+        "interest_paid": 389.65,
+        "total_paid": 104585,
         "total_prepayment": 0,
-        "remaining_months": 12,
+        "remaining_months": null,
         "status": "Closed",
         "notes": "1st Gold Loan ",
         "created_at": "2026-07-15 15:30:55",
-        "updated_at": "2026-07-15 15:30:55"
+        "updated_at": "2026-07-17 18:18:29"
       }
     ],
     "loan_payments": [
@@ -1277,8 +1280,8 @@ const backup = {
         "payment_date": "2018-05-21T05:30:00.000Z",
         "payment_amount": 50,
         "principal_component": 0,
-        "interest_component": 62.03,
-        "remaining_balance": 99252.86,
+        "interest_component": 56.04,
+        "remaining_balance": 89664.89,
         "payment_type": "LINKED",
         "payment_source_id": 2,
         "payment_category_id": 23,
@@ -1321,9 +1324,9 @@ const backup = {
         "loan_id": 1,
         "payment_date": "2018-09-03T05:30:00.000Z",
         "payment_amount": 5000,
-        "principal_component": 4947.05,
-        "interest_component": 52.95,
-        "remaining_balance": 79773.88,
+        "principal_component": 4978.27,
+        "interest_component": 21.73,
+        "remaining_balance": 29795.61,
         "payment_type": "LINKED",
         "payment_source_id": 2,
         "payment_category_id": 23,
@@ -1336,9 +1339,9 @@ const backup = {
         "loan_id": 1,
         "payment_date": "2018-09-03T05:30:00.000Z",
         "payment_amount": 50000,
-        "principal_component": 49950.14,
-        "interest_component": 49.86,
-        "remaining_balance": 29823.74,
+        "principal_component": 49947.05,
+        "interest_component": 52.95,
+        "remaining_balance": 34773.88,
         "payment_type": "LINKED",
         "payment_source_id": 2,
         "payment_category_id": 23,
@@ -1351,8 +1354,8 @@ const backup = {
         "loan_id": 1,
         "payment_date": "2018-11-03",
         "payment_amount": 34000,
-        "principal_component": 33981.36,
-        "interest_component": 18.64,
+        "principal_component": 33981.38,
+        "interest_component": 18.62,
         "remaining_balance": 0,
         "payment_type": "LINKED",
         "payment_source_id": 2,
@@ -1750,15 +1753,30 @@ const backup = {
         "transaction_id": 3431,
         "remarks": "2nd Gold Loan Closed",
         "created_at": "2026-07-17 11:30:12"
+      },
+      {
+        "id": 35,
+        "loan_id": 1,
+        "payment_date": "2018-11-03",
+        "payment_amount": 13,
+        "principal_component": 15.62,
+        "interest_component": -2.62,
+        "remaining_balance": 0,
+        "payment_type": "LINKED",
+        "payment_source_id": 3,
+        "payment_category_id": 23,
+        "transaction_id": 2172,
+        "remarks": "1st Loan: Slip Printout",
+        "created_at": "2026-07-17 18:18:24"
       }
     ]
   }
 };
 
 fs.writeFileSync(
-  "2019_11_income.json",
+  "2019_12_income.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2019_11_income.json created successfully.");
+console.log("2019_12_income.json created successfully.");
