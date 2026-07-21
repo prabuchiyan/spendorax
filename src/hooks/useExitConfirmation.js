@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BackHandler, Platform } from 'react-native';
+import { BackHandler, Platform, AppState } from 'react-native';
 
 const getActiveRouteName = (state) => {
   if (!state) return null;
@@ -15,6 +15,16 @@ export default function useExitConfirmation({ navigationRef, rootRouteNames = ['
 
   const showDialog = () => setVisible(true);
   const hideDialog = () => setVisible(false);
+
+  // ── Reset dialog when app comes back to foreground ──
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        hideDialog();
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     if (!enabled || !navigationRef) return undefined;
