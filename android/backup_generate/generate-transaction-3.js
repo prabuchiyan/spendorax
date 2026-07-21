@@ -1,15 +1,226 @@
 const fs = require("fs");
 
 const raw = `
-31/12/19 : December Salary : $63806
+01/02/2020 : Room Rent : $9450
 
-31/12/19 : Interest Credited : $78
+01/02/2020 : Bike Petrol For Akka : $100
 
-06/01/2020 : Get it From Paytm : $15
+01/02/2020 : Vivek Marriage Moi : $1001
 
-13/01/2020 : Get it From Abi Parents : $1000
+01/02/2020 : Fruits For Sarakku : $240
 
-15/01/2020 : Get it From Parents : $200
+01/02/2020 : Cigarette & Chocolates : $60
+
+02/02/2020 : Slippers : $250
+
+02/02/2020 : Bus : Pudukkottai to Thanjavur : $90
+
+02/02/2020 : Snacks : $20
+
+02/02/2020 : Cab : Thanjavur New Bus Stand to Home : $155
+
+02/02/2020 : Dinner : $340
+
+03/02/2020 : Auto : Thanjavur Home to New Bus Stand : $200
+
+03/02/2020 : Coffee : $20
+
+04/02/2020 : Auto : Madiwala to Home : $70
+
+04/02/2020 : Recurring Deposit : $2500
+
+04/02/2020 : Milk : $20
+
+04/02/2020 : Kerala Trip : $1272
+
+04/02/2020 : Milk : $22
+
+04/02/2020 : Snacks : $20
+
+05/02/2020 : Recurring Deposit : $25000
+
+05/02/2020 : Curd : $12
+
+05/02/2020 : Bananas : $40
+
+05/02/2020 : Milk : $22
+
+05/02/2020 : Idly Rice & Sugar : $73
+
+06/02/2020 : Gave it to Abi : $300
+
+06/02/2020 : Give it Back to Abi : $800
+
+06/02/2020 : Vegetables : $80
+
+06/02/2020 : Gold Loan 4 : $10000
+
+06/02/2020 : Milk : $22
+
+06/02/2020 : Chips : $150
+
+07/02/2020 : Recharge For Airtel : $558
+
+07/02/2020 : Kerala Trip : $730
+
+07/02/2020 : Milk : $22
+
+08/02/2020 : Crab : $270
+
+08/02/2020 : Oil & Fevi-quick : $112
+
+08/02/2020 : Coconut : $20
+
+08/02/2020 : Peeda : $30
+
+09/02/2020 : Water Cane : $10
+
+09/02/2020 : Milk : $24
+
+09/02/2020 : Chocolate : $1
+
+09/02/2020 : Vegetables : $300
+
+09/02/2020 : Sappotta : $40
+
+10/02/2020 : Pdkt DTH Recharge : $554
+
+10/02/2020 : Bike Air : $5
+
+10/02/2020 : Bike Petrol : $350
+
+10/02/2020 : Bananas : $60
+
+10/02/2020 : Milk : $22
+
+11/02/2020 : Milk : $23
+
+11/02/2020 : Snacks : $100
+
+12/02/2020 : Vegetables : $20
+
+12/02/2020 : Milk : $24
+
+12/02/2020 : Groceries : $195
+
+13/02/2020 : Lunch : $45
+
+13/02/2020 : Milk : $23
+
+13/02/2020 : Recharge For Akka : $274
+
+14/02/2020 : Gave it to Abi : $300
+
+14/02/2020 : Electricity Bill Bangalore : $184
+
+14/02/2020 : Mobile Balance For Mother-in-law : $1999
+
+14/02/2020 : Mobile Case For Mother-in-law : $67
+
+14/02/2020 : Mobile Balance For Abi Grandmother : $49
+
+14/02/2020 : Milk : $23
+
+14/02/2020 : Gobi Manchurian : $40
+
+15/02/2020 : Milk : $25
+
+16/02/2020 : Lunch : $847
+
+16/02/2020 : Lunch Tips : $20
+
+16/02/2020 : Pheeda : $50
+
+16/02/2020 : Gold Chit : $1000
+
+16/02/2020 : Milk : $23
+
+16/02/2020 : Water Cane : $10
+
+17/02/2020 : Vegetables : $70
+
+17/02/2020 : Pdkt Electricity Bill : $852
+
+17/02/2020 : Milk : $23
+
+18/02/2020 : Pdkt Home Electricity : $125
+
+18/02/2020 : Gave it to Abi : $300
+
+19/02/2020 : Milk : $23
+
+19/02/2020 : Bananas : $50
+
+19/02/2020 : Coconut : $20
+
+19/02/2020 : Milk : $22
+
+20/02/2020 : Vegetables : $46
+
+20/02/2020 : Milk : $21
+
+20/02/2020 : Oil : $100
+
+20/02/2020 : Dinner : $82
+
+21/02/2020 : Water Bill : $400
+
+21/02/2020 : Milk : $23
+
+21/02/2020 : Biscuits : $10
+
+21/02/2020 : Sugar : $11
+
+21/02/2020 : Kerala Trip: Sarakku & Shawarma: $205
+
+22/02/2020 : Milk : $23
+
+22/02/2020 : Biscuits & Snacks : $16
+
+22/02/2020 : Kerala Trip : Toilet : $2
+
+23/02/2020 : Milk : $23
+
+23/02/2020 : Biscuits & Snacks : $16
+
+24/02/2020 : Curd : $12
+
+24/02/2020 : Gave it to Abi : $300
+
+24/02/2020 : Milk : $24
+
+24/02/2020 : Vegetables : $80
+
+24/02/2020 : Idly Rice : $70
+25/02/2020 : Coconut : $20
+
+25/02/2020 : Milk : $22
+
+26/02/2020 : Vegetables : $100
+
+26/02/2020 : Water Cane : $40
+
+27/02/2020 : Milk : $23
+
+27/02/2020 : Vegetables : $70
+
+27/02/2020 : Groceries : 2630
+
+27/02/2020 : Money Added to Wallet : $891
+
+27/02/2020 : Milk : $23
+
+28/02/2020 : Sugar : $20
+
+28/02/2020 : Bike Air : $5
+
+28/02/2020 : Bike Petrol : $249
+
+28/02/2020 : Milk : $45
+
+29/02/2020 : Lunch Parcel : $2
+
+29/02/2020 : Milk : $22
 `;
 
 const categoryMap = {
@@ -87,6 +298,8 @@ const categoryMap = {
   "Cigarettes & Candy": 12,
   "Cigarettes": 12,
   "Cigarettes & Chocolate": 12,
+  "Coke & Cigarette": 12,
+  "Coke & Cigarettes": 12,
 
   // Electricity
   "Electricity Bill": 13,
@@ -106,6 +319,7 @@ const categoryMap = {
   "Pampers": 15,
   "Pamper": 15,
   "Toy for Son": 15,
+  "Junior Horlicks": 15,
 
   // Electronics
   "Watch Pin": 14,
@@ -146,6 +360,7 @@ const categoryMap = {
   "Egg Parotta": 18,
   "Plain Dosa": 18,
   "Pizza": 18,
+  "Dinner & Cook Drinks": 18,
 
   // Fruits
   "Fruits": 19,
@@ -168,7 +383,9 @@ const categoryMap = {
   // Gas
   "Gas": 20,
   "Gas Delivery Charge": 20,
+  "Gas Delivery": 20,
   "Gas Refill": 20,
+  "Gas Tube": 20,
 
   // Gift
   "Gift": 22,
@@ -180,6 +397,7 @@ const categoryMap = {
   "Send Off": 22,
 
   // Groceries
+  "Prawns": 24,
   "Grocery": 24,
   "Vegetables": 24,
   "Vegetables & Fruits": 24,
@@ -281,6 +499,7 @@ const categoryMap = {
   "Spinach": 24,
   "Urad Dal": 24,
   "Ragi": 24,
+  "Oil": 24,
 
   // Medical
   "Cold Medicine": 28,
@@ -409,7 +628,13 @@ const categoryMap = {
   "Get it From Wife": 35,
 
   // Printing & Stationery
+  "Fruits For Mom": 37,
+
+  // Printing & Stationery
   "Note": 39,
+
+  // Relatives
+  "Gave it to Rajendiran Uncle": 40,
 
   // Rent
   "Room Rent": 41,
@@ -544,6 +769,7 @@ const categoryMap = {
   "Christmas Cake": 46,
   "Beeda & Tea": 46,
   "Fried Gram": 46,
+  "Pholi & Palkova": 46,
 
   // Transport
   "Bus": 48,
@@ -591,6 +817,10 @@ const categoryMap = {
   "Bus: Thanjavur Old Bus Stand to New Bus Stand": 48,
   "Bus : Pudukkottai to Thanjavur": 48,
   "Bus: Pudukkottai to Thanjavur": 48,
+  "Bus: Trichy to Bangalore": 48,
+  "Bus: Trichy to Bangalore": 48,
+  "Auto: Home to Bus Stand": 48,
+  "Auto : Home to Bus Stand": 48,
 
   // Wallet Transfer
   "Uber Wallets": 51,
@@ -622,18 +852,18 @@ const transactions = raw
   .split("\n")
   .filter(line => line.trim() && !line.trim().startsWith("//"))
   .map(line => {
-    const parts = line.split(" : ");
-    if (parts.length < 3) {
+    const match = line.match(
+      /^(\d{2}\/\d{2}\/\d{2,4})\s*:\s*(.*?)\s*:\s*\$?([\d.]+)\s*$/
+    );
+    if (!match) {
       console.log("Invalid line:", line);
       return null;
     }
-    const date = parts[0].trim();
-    const amountStr = parts.pop().replace("$", "").trim();
-    const notes = parts.slice(1).join(" : ").trim();
+    const [, date, notes, amountStr] = match;
     let [dd, mm, yyyy] = date.split("/");
     if (yyyy.length === 2) yyyy = `20${yyyy}`;
     const formattedDate = `${yyyy}-${mm}-${dd}`;
-    const type = "income"; // expense OR income
+    const type = "expense"; // expense OR income
     return {
       id: id++,
       type,
@@ -1017,6 +1247,15 @@ const backup = {
         "color": "#FB923C",
         "is_active": 1,
         "created_at": "2026-07-15 15:30:54"
+      },
+      {
+        "id": 55,
+        "name": "Pongal Festival",
+        "type": "expense",
+        "icon": "white-balance-sunny",
+        "color": "#FBBF24",
+        "is_active": 1,
+        "created_at": "2026-07-21 05:17:53"
       },
       {
         "id": 38,
@@ -1814,9 +2053,9 @@ const backup = {
 };
 
 fs.writeFileSync(
-  "2020_01_income.json",
+  "2020_02.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2020_01_income.json created successfully.");
+console.log("2020_02.json created successfully.");
