@@ -1,12 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View,
-  TouchableOpacity,
-  ScrollView,
-  FlatList,
-  Modal,
-  Text,
-  Platform
+  View, TouchableOpacity, ScrollView,
+  FlatList, Modal, Text,
+  Platform, BackHandler
 } from 'react-native';
 import { createTransaction, createTransfer, getTransactionNoteSuggestions, updateTransaction, deleteTransaction } from '../services/transactions';
 import { getLoans, linkTransactionToLoan, unlinkTransactionFromLoan } from '../services/loans';
@@ -65,6 +61,12 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [snackbarMsg, setSnackbarMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loanSearch, setLoanSearch] = useState('');
+  const [isDirty, setIsDirty] = useState(false);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+
+  function markDirty() {
+    setIsDirty(true);
+  }
 
   useEffect(() => {
     (async () => {
@@ -127,6 +129,18 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       setShowSourceGrid(false);
     }
   }, [isEdit, transaction]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (isDirty) {
+        setShowUnsavedDialog(true);
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [isDirty]);
 
   async function submit() {
     if (submitting) return; // guard against double taps while a save is in flight
@@ -246,7 +260,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           return;
         }
       }
-
+      setIsDirty(false);
       if (onCreated) onCreated(id);
       if (!isEdit) { // Only reset form if it was a new transaction
         setAmount('');
@@ -291,6 +305,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const handleNotesChange = (text) => {
     setNotes(text);
     setNotesError(false);
+    markDirty();
 
     if (!text.trim()) {
       setFilteredSuggestions([]);
@@ -394,7 +409,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             mode="outlined"
             selected={type === 'expense'}
             showSelectedCheck={false}
-            onPress={() => setType('expense')}
+            onPress={() => { setType('expense'); markDirty(); }}
             disabled={submitting}
             style={{
               marginRight: 8,
@@ -408,7 +423,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             mode="outlined"
             selected={type === 'income'}
             showSelectedCheck={false}
-            onPress={() => setType('income')}
+            onPress={() => { setType('income'); markDirty(); }}
             disabled={submitting}
             style={{
               marginRight: 8,
@@ -423,7 +438,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               mode="outlined"
               selected={type === 'transfer'}
               showSelectedCheck={false}
-              onPress={() => setType('transfer')}
+              onPress={() => { setType('transfer'); markDirty(); }}
               disabled={submitting}
               style={{
                 borderColor: type === 'transfer' ? '#000' : undefined,
@@ -462,7 +477,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         )}
       </View>
 
-      <PaperTextInput label="Amount" value={amount} onChangeText={(t) => { setAmount(t); if (amountError) setAmountError(false); }} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} error={amountError} contentStyle={{ fontSize: 24 }} editable={!submitting} />
+      <PaperTextInput label="Amount" value={amount} onChangeText={(t) => { setAmount(t); if (amountError) setAmountError(false); markDirty(); }} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} error={amountError} contentStyle={{ fontSize: 24 }} editable={!submitting} />
       {amountError ? <Text style={{ color: '#E46A6A', marginBottom: 8 }}>Enter an amount greater than 0</Text> : null}
 
       <View
@@ -656,6 +671,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                           setShowCategoryModal(false);
                           setShowCategoryGrid(false);
                           setCategorySearch('');
+                          markDirty();
                         }}
                         style={{
                           width: '23%',
@@ -844,6 +860,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                     setSourceId(s.id);
                     setShowSourceGrid(false);
                     setSourceSearch('');
+                    markDirty();
                   }}
                   style={{
                     width: '23%',
@@ -1332,6 +1349,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                         setCategorySearch('');
                         setShowCategoryModal(false);
                         setShowCategoryGrid(false);
+                        markDirty();
                       }}
                       activeOpacity={0.8}
                       style={{
@@ -1545,6 +1563,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                         }
                         setSourceSearch('');
                         setShowSourceModal(false);
+                        markDirty();
                       }}
                       activeOpacity={0.8}
                       style={{
@@ -1688,6 +1707,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                         setToAccount(s.id);
                         setShowToAccountGrid(false);
                         setSourceSearch('');
+                        markDirty();
                       }}
                       style={{
                         width: '23%',
@@ -1872,7 +1892,14 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         <PaperButton
           mode="outlined"
           disabled={submitting}
-          onPress={() => { if (onCancel) onCancel(); else { setAmount(''); setNotes(''); } }}
+          onPress={() => {
+            if (isDirty) {
+              setShowUnsavedDialog(true);
+            } else {
+              if (onCancel) onCancel();
+              else { setAmount(''); setNotes(''); }
+            }
+          }}
         >
           Cancel
         </PaperButton>
@@ -2004,6 +2031,25 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         onConfirm={handleDelete}
       />
 
+      <ConfirmDialog
+        visible={showUnsavedDialog}
+        title="Discard changes?"
+        message={
+          isEdit
+            ? "You've made changes that haven't been saved yet. If you go back now, your edits will be lost."
+            : "You've started adding a transaction. If you go back now, your progress will be lost."
+        }
+        confirmLabel="Discard"
+        cancelLabel="Keep Editing"
+        onCancel={() => setShowUnsavedDialog(false)}
+        onConfirm={() => {
+          setShowUnsavedDialog(false);
+          setIsDirty(false);
+          if (onCancel) onCancel();
+          else { setAmount(''); setNotes(''); }
+        }}
+      />
+
       <Modal
         visible={showLoanModal}
         transparent
@@ -2115,6 +2161,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                       setSelectedLoanId(item.id);
                       setLoanSearch('');
                       setShowLoanModal(false);
+                      markDirty();
                     }}
                     style={{
                       backgroundColor: active ? '#fff' : '#F7F7F7',
