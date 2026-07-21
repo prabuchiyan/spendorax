@@ -6,6 +6,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Card from '../components/Card';
 import { createLoan, getLoanById, updateLoan } from '../services/loans';
+import { getSources } from '../services/sources';
+import { getCategories } from '../services/categories';
 
 const LOAN_TYPES = [
     { key: 'Home', label: 'Home Loan', icon: 'home-outline' },
@@ -54,6 +56,12 @@ export default function LoanFormScreen({ navigation, route }) {
     const [showDueDayPicker, setShowDueDayPicker] = useState(false);
     const [showConfirmDelete, setShowConfirmDelete] = useState(false);
     const [loanTypeSearch, setLoanTypeSearch] = useState('');
+    const [sources, setSources] = useState([]);
+    const [sourceId, setSourceId] = useState(null);
+    const [showSourcePicker, setShowSourcePicker] = useState(false);
+    const [categoryId, setCategoryId] = useState(null);
+    const [categories, setCategories] = useState([]);
+    const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
     useEffect(() => {
         if (editId) {
@@ -70,6 +78,22 @@ export default function LoanFormScreen({ navigation, route }) {
         }
     }, [editId]);
 
+    useEffect(() => {
+        (async () => {
+            try {
+                const src = await getSources();
+                setSources(src || []);
+                if (src?.length > 0) setSourceId(src[0].id);
+            } catch (e) { console.warn('Failed to load sources', e); }
+        })();
+        (async () => {
+            try {
+                const cats = await getCategories();
+                setCategories(cats || []);
+            } catch (e) { console.warn('Failed to load categories', e); }
+        })();
+    }, []);
+
     function setField(key, value) {
         setLoanData(prev => ({ ...prev, [key]: value }));
     }
@@ -82,6 +106,8 @@ export default function LoanFormScreen({ navigation, route }) {
         const ir = parseFloat(loanData.interest_rate);
         if (loanData.interest_rate === '' || isNaN(ir) || ir < 0) next.interest_rate = 'Enter a valid interest rate';
         if (loanData.emi_amount && isNaN(parseFloat(loanData.emi_amount))) next.emi_amount = 'Invalid EMI amount';
+        if (!editId && !sourceId) next.sourceId = 'Select a payment source';
+        if (!editId && !categoryId) next.categoryId = 'Select a category';
         setErrors(next);
         return Object.keys(next).length === 0;
     }
@@ -100,6 +126,8 @@ export default function LoanFormScreen({ navigation, route }) {
         if (payload.interest_rate !== undefined) payload.interest_rate = Number(payload.interest_rate || 0);
         if (payload.tenure_months !== undefined) payload.tenure_months = Number(payload.tenure_months || 0);
         if (payload.emi_amount !== undefined) payload.emi_amount = Number(payload.emi_amount || 0);
+        if (!editId && sourceId) payload.source_id = sourceId;
+        if (!editId && categoryId) payload.category_id = categoryId;
 
         // keep outstanding consistent for new loans or when principal edited with no principal paid yet
         if (editId) {
@@ -144,6 +172,12 @@ export default function LoanFormScreen({ navigation, route }) {
         item.label.toLowerCase().includes(loanTypeSearch.toLowerCase())
     );
 
+    const filteredCategories = categories.filter(c =>
+        loanData.loan_direction === 'LENT'
+            ? c.type === 'expense'
+            : c.type === 'income'
+    );
+
     return (
         <ScrollView
             style={styles.screen}
@@ -153,8 +187,19 @@ export default function LoanFormScreen({ navigation, route }) {
             <Card style={styles.card}>
                 <Text style={styles.sectionTitle}>Money Direction</Text>
                 <View style={{ flexDirection: 'row', marginTop: 8 }}>
-                    <Chip selected={loanData.loan_direction === 'BORROWED'} onPress={() => setField('loan_direction', 'BORROWED')} style={{ marginRight: 8 }}>I Borrowed</Chip>
-                    <Chip selected={loanData.loan_direction === 'LENT'} onPress={() => setField('loan_direction', 'LENT')}>I Lent</Chip>
+                    <Chip selected={loanData.loan_direction === 'BORROWED'}
+                        onPress={() => {
+                            setField('loan_direction', 'BORROWED');
+                            setCategoryId(null);
+                        }}
+                        style={{ marginRight: 8 }}
+                    >I Borrowed</Chip>
+                    <Chip selected={loanData.loan_direction === 'LENT'}
+                        onPress={() => {
+                            setField('loan_direction', 'LENT');
+                            setCategoryId(null);
+                        }}
+                    >I Lent</Chip>
                 </View>
             </Card>
             {/* Loan Information */}
@@ -189,6 +234,50 @@ export default function LoanFormScreen({ navigation, route }) {
                     mode="outlined"
                     left={<PaperTextInput.Icon icon={loanData.loan_direction === 'LENT' ? 'account-outline' : 'bank-outline'} />}
                 />
+                {/* Payment Source — only on new loan creation */}
+                {!editId && (
+                    <>
+                        <TouchableOpacity
+                            onPress={() => setShowSourcePicker(true)}
+                            style={{ marginBottom: 8, marginTop: 8 }}
+                        >
+                            <PaperTextInput
+                                label="Payment Source"
+                                value={sources.find(s => s.id === sourceId)?.name || ''}
+                                editable={false}
+                                mode="outlined"
+                                left={<PaperTextInput.Icon icon="wallet-outline" />}
+                                right={<PaperTextInput.Icon icon="chevron-down" onPress={() => setShowSourcePicker(true)} />}
+                                error={!!errors.sourceId}
+                            />
+                        </TouchableOpacity>
+                        {errors.sourceId
+                            ? <Text style={{ color: '#E46A6A', marginBottom: 8 }}>{errors.sourceId}</Text>
+                            : null}
+                    </>
+                )}
+
+                {!editId && (
+                    <>
+                        <TouchableOpacity
+                            onPress={() => setShowCategoryPicker(true)}
+                            style={{ marginBottom: 8, marginTop: 8 }}
+                        >
+                            <PaperTextInput
+                                label="Category"
+                                value={categories.find(c => c.id === categoryId)?.name || ''}
+                                editable={false}
+                                mode="outlined"
+                                left={<PaperTextInput.Icon icon="shape-outline" />}
+                                right={<PaperTextInput.Icon icon="chevron-down" onPress={() => setShowCategoryPicker(true)} />}
+                                error={!!errors.categoryId}
+                            />
+                        </TouchableOpacity>
+                        {errors.categoryId
+                            ? <Text style={{ color: '#E46A6A', marginBottom: 8 }}>{errors.categoryId}</Text>
+                            : null}
+                    </>
+                )}
             </Card>
 
             {/* Financial Details */}
@@ -582,6 +671,164 @@ export default function LoanFormScreen({ navigation, route }) {
                     </View>
                 </Modal>
             ) : null}
+
+            {showSourcePicker && (
+                <Modal
+                    visible={showSourcePicker}
+                    transparent
+                    animationType="slide"
+                    onRequestClose={() => setShowSourcePicker(false)}
+                >
+                    <View style={styles.sheetOverlay}>
+                        <View style={styles.sheet}>
+
+                            <View style={{ alignItems: 'center', marginBottom: 14 }}>
+                                <View style={{ width: 42, height: 5, borderRadius: 3, backgroundColor: '#D6D6D6' }} />
+                            </View>
+
+                            <Text style={styles.sheetTitle}>Select Payment Source</Text>
+                            <Text style={{ color: '#64748B', marginBottom: 18 }}>
+                                {loanData.loan_direction === 'LENT'
+                                    ? 'Money will be debited from this source'
+                                    : 'Money will be credited to this source'}
+                            </Text>
+
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                {sources.map(source => {
+                                    const selected = source.id === sourceId;
+                                    return (
+                                        <TouchableOpacity
+                                            key={source.id}
+                                            activeOpacity={0.85}
+                                            onPress={() => { setSourceId(source.id); setShowSourcePicker(false); }}
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                backgroundColor: selected ? '#EEF2FF' : '#F8FAFC',
+                                                borderRadius: 18,
+                                                padding: 14,
+                                                marginBottom: 10,
+                                                borderWidth: selected ? 1.5 : 1,
+                                                borderColor: selected ? '#4F46E5' : '#E2E8F0',
+                                            }}
+                                        >
+                                            <View style={{
+                                                width: 44, height: 44, borderRadius: 13,
+                                                backgroundColor: selected ? '#EEF2FF' : '#F1F5F9',
+                                                justifyContent: 'center', alignItems: 'center', marginRight: 14,
+                                            }}>
+                                                <MaterialCommunityIcons
+                                                    name="wallet-outline"
+                                                    size={22}
+                                                    color={selected ? '#4F46E5' : '#64748B'}
+                                                />
+                                            </View>
+                                            <Text style={{
+                                                flex: 1, fontSize: 15, fontWeight: '700',
+                                                color: selected ? '#4F46E5' : '#111827',
+                                            }}>
+                                                {source.name}
+                                            </Text>
+                                            {selected && (
+                                                <MaterialCommunityIcons name="check-circle" size={22} color="#4F46E5" />
+                                            )}
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                                <View style={{ height: 10 }} />
+                            </ScrollView>
+
+                            <PaperButton
+                                mode="contained"
+                                style={{ marginTop: 16 }}
+                                onPress={() => setShowSourcePicker(false)}
+                            >
+                                Close
+                            </PaperButton>
+
+                        </View>
+                    </View>
+                </Modal>
+            )}
+
+            {showCategoryPicker && (
+                <Modal
+                    visible={showCategoryPicker}
+                    transparent
+                    animationType="slide"
+                    onRequestClose={() => setShowCategoryPicker(false)}
+                >
+                    <View style={styles.sheetOverlay}>
+                        <View style={styles.sheet}>
+
+                            <View style={{ alignItems: 'center', marginBottom: 14 }}>
+                                <View style={{ width: 42, height: 5, borderRadius: 3, backgroundColor: '#D6D6D6' }} />
+                            </View>
+
+                            <Text style={styles.sheetTitle}>Select Category</Text>
+                            <Text style={{ color: '#64748B', marginBottom: 18 }}>
+                                {loanData.loan_direction === 'LENT'
+                                    ? 'Expense category for money given'
+                                    : 'Income category for money received'}
+                            </Text>
+
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                {filteredCategories.map(cat => {
+                                    const selected = cat.id === categoryId;
+                                    return (
+                                        <TouchableOpacity
+                                            key={cat.id}
+                                            activeOpacity={0.85}
+                                            onPress={() => { setCategoryId(cat.id); setShowCategoryPicker(false); }}
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                backgroundColor: selected ? '#EEF2FF' : '#F8FAFC',
+                                                borderRadius: 18,
+                                                padding: 14,
+                                                marginBottom: 10,
+                                                borderWidth: selected ? 1.5 : 1,
+                                                borderColor: selected ? '#4F46E5' : '#E2E8F0',
+                                            }}
+                                        >
+                                            <View style={{
+                                                width: 44, height: 44, borderRadius: 13,
+                                                backgroundColor: (cat.color || '#4F46E5') + '20',
+                                                justifyContent: 'center', alignItems: 'center', marginRight: 14,
+                                            }}>
+                                                <MaterialCommunityIcons
+                                                    name={cat.icon || 'shape-outline'}
+                                                    size={22}
+                                                    color={cat.color || '#4F46E5'}
+                                                />
+                                            </View>
+                                            <Text style={{
+                                                flex: 1, fontSize: 15, fontWeight: '700',
+                                                color: selected ? '#4F46E5' : '#111827',
+                                            }}>
+                                                {cat.name}
+                                            </Text>
+                                            {selected && (
+                                                <MaterialCommunityIcons name="check-circle" size={22} color="#4F46E5" />
+                                            )}
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                                <View style={{ height: 10 }} />
+                            </ScrollView>
+
+                            <PaperButton
+                                mode="contained"
+                                style={{ marginTop: 16 }}
+                                onPress={() => setShowCategoryPicker(false)}
+                            >
+                                Close
+                            </PaperButton>
+
+                        </View>
+                    </View>
+                </Modal>
+            )}
 
             {/* Start date picker (platform) */}
             {showStartPicker && Platform.OS !== 'web' ? (

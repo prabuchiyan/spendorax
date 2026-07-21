@@ -128,14 +128,14 @@ export async function initDB() {
       // Column already exists or DB platform does not support ALTER TABLE
     }
     // Ensure loans table has loan_direction column for older DBs
-    try { await executeSql("ALTER TABLE loans ADD COLUMN loan_direction TEXT DEFAULT 'BORROWED'"); } catch (e) {}
-    // Ensure transactions table has loan linking columns for older DBs
     try { await executeSql('ALTER TABLE transactions ADD COLUMN loan_id INTEGER'); } catch (e) {}
     try { await executeSql('ALTER TABLE transactions ADD COLUMN loan_payment_type TEXT'); } catch (e) {}
     try { await executeSql('ALTER TABLE transactions ADD COLUMN principal_component REAL'); } catch (e) {}
     try { await executeSql('ALTER TABLE transactions ADD COLUMN interest_component REAL'); } catch (e) {}
     try { await executeSql('ALTER TABLE transactions ADD COLUMN outstanding_after_payment REAL'); } catch (e) {}
     try { await executeSql('ALTER TABLE transactions ADD COLUMN linked_date TEXT'); } catch (e) {}
+    try { await executeSql("ALTER TABLE loans ADD COLUMN loan_direction TEXT DEFAULT 'BORROWED'"); } catch (e) {}
+    try { await executeSql(`ALTER TABLE loans ADD COLUMN transaction_id INTEGER NULL`); } catch (e) {}
     // Seed defaults if empty (helpful for web/local dev)
     try {
       const cats = await executeSql('SELECT * FROM categories', []);

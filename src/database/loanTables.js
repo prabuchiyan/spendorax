@@ -44,6 +44,11 @@ export async function createLoanTables() {
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY(loan_id) REFERENCES loans(id)
   );`);
+
+  // ── Migration: add transaction_id if upgrading from older schema ──
+  await executeSql(`
+    ALTER TABLE loans ADD COLUMN transaction_id INTEGER NULL
+  `).catch(() => { });
 }
 
 export default createLoanTables;

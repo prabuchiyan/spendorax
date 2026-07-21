@@ -48,8 +48,49 @@ export async function createLoan(loan) {
         ]
     );
 
-    try { events.emit('loansChanged', { action: 'create', id: res.insertId }); } catch (e) { }
-    return res.insertId;
+    const loanId = res.insertId;
+
+    // ── Auto-create linked transaction if source AND category provided ──
+    if (loan.source_id && loan.category_id) {
+        try {
+            const isLent = (loan.loan_direction ?? 'BORROWED') === 'LENT';
+            const txType = isLent ? 'expense' : 'income';
+            const direction = isLent ? 'debit' : 'credit';
+            const txNotes = isLent
+                ? `Loan given: ${loan.loan_name}`
+                : `Loan received: ${loan.loan_name}`;
+
+            const txId = await createTransaction({
+                type: txType,
+                amount: loan.principal_amount ?? 0,
+                category_id: loan.category_id,
+                source_id: loan.source_id,
+                date: loan.loan_start_date
+                    ? loan.loan_start_date + 'T' + new Date().toTimeString().slice(0, 8)
+                    : new Date().toISOString(),
+                notes: txNotes,
+                bill_id: null,
+                transfer_group_id: null,
+                direction,
+                loan_id: loanId,
+                loan_payment_type: 'PRINCIPAL',
+                principal_component: loan.principal_amount ?? 0,
+                interest_component: 0,
+                outstanding_after_payment: loan.outstanding_amount ?? loan.principal_amount ?? 0,
+                linked_date: loan.loan_start_date ?? new Date().toISOString(),
+            });
+
+            await executeSql(
+                `UPDATE loans SET transaction_id = ? WHERE id = ?`,
+                [txId, loanId]
+            );
+        } catch (e) {
+            console.warn('Failed to create loan creation transaction', e);
+        }
+    }
+
+    try { events.emit('loansChanged', { action: 'create', id: loanId }); } catch (e) { }
+    return loanId;
 }
 
 export async function updateLoan(id, fields) {
@@ -312,7 +353,7 @@ export async function recordAdvance({ loanId, date, amount, sourceId = null, cat
     const newPrincipal = +(Number(loan.principal_amount || 0) + advanceAmount).toFixed(2);
 
     await executeSql(
-        `UPDATE loans SET outstanding_amount = ?, principal_amount = ?, updated_at = datetime('now') WHERE id = ?`,
+        `UPDATE loans SET outstanding_amount = ?, principal_amount = ?, status = 'Active', updated_at = datetime('now') WHERE id = ?`,
         [newOutstanding, newPrincipal, loanId]
     );
 

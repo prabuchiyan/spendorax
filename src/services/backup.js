@@ -321,13 +321,14 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       for (const loan of originalData.loans) {
         try {
           await executeSql(
-            `INSERT INTO loans (id, loan_name, loan_type, lender, principal_amount, interest_rate, loan_start_date, loan_end_date, tenure_months, emi_amount, emi_day, outstanding_amount, principal_paid, interest_paid, total_paid, total_prepayment, remaining_months, status, notes, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            `INSERT INTO loans (id, loan_name, loan_type, lender, principal_amount, interest_rate, loan_start_date, loan_end_date, tenure_months, emi_amount, emi_day, outstanding_amount, principal_paid, interest_paid, total_paid, total_prepayment, remaining_months, status, notes, transaction_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
             [
-              loan.id, loan.loan_name, loan.loan_type, loan.lender, loan.principal_amount,
-              loan.interest_rate, loan.loan_start_date, loan.loan_end_date, loan.tenure_months,
-              loan.emi_amount, loan.emi_day, loan.outstanding_amount, loan.principal_paid,
-              loan.interest_paid, loan.total_paid, loan.total_prepayment, loan.remaining_months,
-              loan.status, loan.notes, loan.created_at, loan.updated_at
+            loan.id, loan.loan_name, loan.loan_type, loan.lender, loan.principal_amount,
+            loan.interest_rate, loan.loan_start_date, loan.loan_end_date, loan.tenure_months,
+            loan.emi_amount, loan.emi_day, loan.outstanding_amount, loan.principal_paid,
+            loan.interest_paid, loan.total_paid, loan.total_prepayment, loan.remaining_months,
+            loan.status, loan.notes, loan.transaction_id || null,
+            loan.created_at, loan.updated_at
             ]
           );
         } catch (e) {
@@ -495,10 +496,32 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           }
         }
 
-        const newLoanId = await createLoan(loan);
+        // Direct INSERT instead of createLoan() to avoid auto-creating
+        // a duplicate transaction (transactions are restored separately)
+        const res = await executeSql(
+          `INSERT INTO loans (
+                loan_name, loan_type, lender, loan_direction,
+                principal_amount, interest_rate, loan_start_date, loan_end_date,
+                tenure_months, emi_amount, emi_day, outstanding_amount,
+                principal_paid, interest_paid, total_paid, total_prepayment,
+                remaining_months, status, notes, created_at, updated_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [
+            loan.loan_name, loan.loan_type, loan.lender,
+            loan.loan_direction || 'BORROWED',
+            loan.principal_amount, loan.interest_rate,
+            loan.loan_start_date, loan.loan_end_date,
+            loan.tenure_months, loan.emi_amount, loan.emi_day,
+            loan.outstanding_amount, loan.principal_paid,
+            loan.interest_paid, loan.total_paid,
+            loan.total_prepayment || 0, loan.remaining_months,
+            loan.status || 'Active', loan.notes,
+            loan.created_at || new Date().toISOString(),
+            loan.updated_at || new Date().toISOString()
+          ]
+        );
 
-        // Map old backup loan id -> restored loan id
-        loanMap[loan.id] = newLoanId;
+        loanMap[loan.id] = res.insertId;
       },
       (count) => {
         updateProgress(count, 'Importing loans...');
@@ -568,6 +591,22 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         updateProgress(count, 'Importing transactions...');
       }
     );
+
+    // 5b. Link restored transaction_id back to loans
+    for (const loan of loans) {
+      if (!loan.transaction_id) continue;
+      const newLoanId = loanMap[loan.id];
+      const newTxId = transactionMap[loan.transaction_id];
+      if (!newLoanId || !newTxId) continue;
+      try {
+        await executeSql(
+          `UPDATE loans SET transaction_id = ? WHERE id = ?`,
+          [newTxId, newLoanId]
+        );
+      } catch (e) {
+        console.warn(`Failed to link transaction_id for loan ${loan.id}`, e);
+      }
+    }
 
     // 6. Update Bills with linked transactions
     await processBatch(
