@@ -19,6 +19,7 @@ import LoanFormScreen from './src/screens/LoanFormScreen';
 import LoanDetailsScreen from './src/screens/LoanDetailsScreen';
 import LoanPaymentScreen from './src/screens/LoanPaymentScreen';
 import LoanForeclosureScreen from './src/screens/LoanForeclosureScreen';
+import LendMoreScreen from './src/screens/LendMoreScreen';
 import LoanListScreen from './src/screens/LoanListScreen';
 import { initDB } from './src/database/init';
 import ExitConfirmationModal from './src/components/ExitConfirmationModal';
@@ -111,6 +112,7 @@ export default function App() {
             <Stack.Screen name="LoanDetails" component={LoanDetailsScreen} options={{ title: 'Loan Details' }} />
             <Stack.Screen name="LoanPayment" component={LoanPaymentScreen} options={{ title: 'Record Payment' }} />
             <Stack.Screen name="LoanForeclose" component={LoanForeclosureScreen} options={{ title: 'Loan Foreclose' }} />
+            <Stack.Screen name="LendMore" component={LendMoreScreen} options={{ title: 'Lend More' }} />
             <Stack.Screen name="LoanList" component={LoanListScreen} options={{ title: 'All Loans' }} />
             <Stack.Screen name="LoanHistory" component={require('./src/screens/LoanHistoryScreen').default} options={{ title: 'Loan History' }} />
             <Stack.Screen name="LoanReports" component={require('./src/screens/LoanReportsScreen').default} options={{ title: 'Loan Reports' }} />

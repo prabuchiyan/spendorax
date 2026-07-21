@@ -298,10 +298,14 @@ const categoryMap = {
   "Cigarettes & Candy": 12,
   "Cigarettes": 12,
   "Cigarettes & Chocolate": 12,
+  "Cigarette & Chocolate": 12,
+  "Cigarette & Chocolates": 12,
   "Coke & Cigarette": 12,
   "Coke & Cigarettes": 12,
+  "Fruits For Sarakku": 12,
 
   // Electricity
+  "Electricity Bill Bangalore": 13,
   "Electricity Bill": 13,
   "Pdkt Home Electricity Bill": 13,
   "Bangalore Electricity Bill": 13,
@@ -344,6 +348,10 @@ const categoryMap = {
   "Movie Tickets": 16,
 
   // Food & Dining
+  "Peeda": 18,
+  "Lunch Tips": 18,
+  "Pheeda": 18,
+  "Lunch Parcel": 18,
   "Breakfast": 18,
   "Lunch": 18,
   "Tandoori": 18,
@@ -397,6 +405,10 @@ const categoryMap = {
   "Send Off": 22,
 
   // Groceries
+  "Idly Rice & Sugar": 24,
+  "Sugar": 24,
+  "Crab": 24,
+  "Oil & Fevi-quick": 24,
   "Prawns": 24,
   "Grocery": 24,
   "Vegetables": 24,
@@ -543,6 +555,7 @@ const categoryMap = {
   "Bang Sony TV 32 Inch: Auto Debit": 32,
 
   // Mobile
+  "Recharge For Airtel": 34,
   "Mobile Back Cover": 34,
   "Back Cover": 34,
   "Recharge": 34,
@@ -635,6 +648,7 @@ const categoryMap = {
 
   // Relatives
   "Gave it to Rajendiran Uncle": 40,
+  "Bike Petrol For Akka": 40,
 
   // Rent
   "Room Rent": 41,
@@ -677,6 +691,9 @@ const categoryMap = {
   // Sandals / Shoes
   "Sandals": 44,
   "Footwear Repair": 44,
+  "Slippers": 44,
+  "shoes": 44,
+  "shoe": 44,
 
   // Savings
   "RD": 45,
@@ -772,6 +789,10 @@ const categoryMap = {
   "Pholi & Palkova": 46,
 
   // Transport
+  "Cab: Thanjavur New Bus Stand to Home": 48,
+  "Cab : Thanjavur New Bus Stand to Home": 48,
+  "Auto: Thanjavur Home to New Bus Stand": 48,
+  "Auto : Thanjavur Home to New Bus Stand": 48,
   "Bus": 48,
   "Auto": 48,
   "Trip Amount": 48,
@@ -822,7 +843,9 @@ const categoryMap = {
   "Auto: Home to Bus Stand": 48,
   "Auto : Home to Bus Stand": 48,
 
-  // Wallet Transfer
+  // Transfer
+  "Money Added to Wallet": 51,
+  "Money Added to Wallets": 51,
   "Uber Wallets": 51,
   "Money Added to Paytm": 51,
   "Money Added to Paytm Wallet": 51,

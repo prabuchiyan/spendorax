@@ -35,27 +35,15 @@ function formatDate(date) {
 function getPaymentStyle(type = '') {
   switch (type.toUpperCase()) {
     case 'PREPAYMENT':
-      return {
-        icon: 'cash-fast',
-        color: '#F97316',
-        bg: '#FFF7ED',
-      };
-
+      return { icon: 'cash-fast', color: '#F97316', bg: '#FFF7ED' };
     case 'FORECLOSURE':
-      return {
-        icon: 'bank-remove',
-        color: '#DC2626',
-        bg: '#FEF2F2',
-      };
-
+      return { icon: 'bank-remove', color: '#DC2626', bg: '#FEF2F2' };
+    case 'ADVANCE':
+      return { icon: 'hand-coin-outline', color: '#7C3AED', bg: '#EDE9FE' };
     case 'EMI':
     case 'PAYMENT':
     default:
-      return {
-        icon: 'cash-check',
-        color: '#16A34A',
-        bg: '#ECFDF5',
-      };
+      return { icon: 'cash-check', color: '#16A34A', bg: '#ECFDF5' };
   }
 }
 
@@ -348,12 +336,16 @@ export default function LoanHistoryScreen({ route }) {
                         flex: 1,
                       }}
                     >
-                      <Text
-                        style={
-                          styles.paymentTitle
-                        }
-                      >
-                        {item.payment_type}
+                      <Text style={styles.paymentTitle}>
+                        {item.payment_type === 'ADVANCE'
+                          ? 'Additional Lending'
+                          : item.payment_type === 'PREPAYMENT'
+                            ? 'Prepayment'
+                            : item.payment_type === 'FORECLOSURE'
+                              ? 'Loan Closed'
+                              : item.payment_type === 'EMI'
+                                ? 'EMI Payment'
+                                : item.payment_type || 'Payment'}
                       </Text>
 
                       <Text

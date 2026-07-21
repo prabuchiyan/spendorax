@@ -8,6 +8,7 @@ import events from '../services/events';
 import Card from '../components/Card';
 import calc from '../services/loanCalculations';
 import { Colors } from '../components/Theme';
+import LendMoreSheet from '../components/LendMoreSheet';
 
 function ActionButton({
     icon,
@@ -107,6 +108,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
     const [linkedTxs, setLinkedTxs] = useState([]);
     const [snackbarVisible, setSnackbarVisible] = useState(false);
     const [snackbarMsg, setSnackbarMsg] = useState('');
+    const [showLendMore, setShowLendMore] = useState(false);
 
     useEffect(() => {
         (async () => {
@@ -425,6 +427,14 @@ export default function LoanDetailsScreen({ route, navigation }) {
                                         id: loan.id,
                                     })
                                 }
+                            />
+
+                            <ActionButton
+                                color="#7C3AED"
+                                bg="#EDE9FE"
+                                icon="hand-coin-outline"
+                                title="Lend More"
+                                onPress={() => navigation.navigate('LendMore', { id: loan.id })}
                             />
 
                             <ActionButton
@@ -795,6 +805,15 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 )}
 
             </Card>
+
+            <LendMoreSheet
+                visible={showLendMore}
+                loanId={loan.id}
+                loanName={loan.loan_name}
+                onClose={() => setShowLendMore(false)}
+                onSuccess={() => refresh()}
+            />
+
             <Snackbar visible={snackbarVisible} onDismiss={() => setSnackbarVisible(false)} duration={3000} action={{ label: 'OK', onPress: () => setSnackbarVisible(false) }}>
                 {snackbarMsg}
             </Snackbar>

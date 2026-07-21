@@ -277,6 +277,74 @@ export async function forecloseLoan({ loanId, date, finalPaymentAmount, foreclos
     return pRes.insertId;
 }
 
+export async function recordAdvance({ loanId, date, amount, sourceId = null, categoryId = null, notes = '' }) {
+    const loan = await getLoanById(loanId);
+    if (!loan) throw new Error('Loan not found');
+    if (!amount || Number(amount) <= 0) throw new Error('Amount must be greater than zero');
+
+    // Always ensure a full datetime string with current time if only date is passed
+    const fullDate = date
+        ? (date.length === 10
+            ? date + 'T' + new Date().toTimeString().slice(0, 8)
+            : date)
+        : new Date().toISOString();
+
+    const advanceAmount = Number(amount);
+    const newOutstanding = +(Number(loan.outstanding_amount || 0) + advanceAmount).toFixed(2);
+
+    const pRes = await executeSql(
+        `INSERT INTO loan_payments (loan_id, payment_date, payment_amount, principal_component, interest_component, remaining_balance, payment_type, payment_source_id, payment_category_id, remarks)
+         VALUES (?,?,?,?,?,?,?,?,?,?)`,
+        [
+            loanId,
+            fullDate,
+            advanceAmount,
+            advanceAmount,
+            0,
+            newOutstanding,
+            'ADVANCE',
+            sourceId || null,
+            categoryId || null,
+            notes || null
+        ]
+    );
+
+    const newPrincipal = +(Number(loan.principal_amount || 0) + advanceAmount).toFixed(2);
+
+    await executeSql(
+        `UPDATE loans SET outstanding_amount = ?, principal_amount = ?, updated_at = datetime('now') WHERE id = ?`,
+        [newOutstanding, newPrincipal, loanId]
+    );
+
+    try {
+        const txId = await createTransaction({
+            type: 'expense',
+            amount: advanceAmount,
+            category_id: categoryId || null,
+            source_id: sourceId || null,
+            date: fullDate,
+            notes: notes || `Additional lending: ${loan.loan_name}`,
+            bill_id: null,
+            transfer_group_id: null,
+            direction: 'debit',
+            loan_id: loanId,
+            loan_payment_type: 'ADVANCE',
+            principal_component: advanceAmount,
+            interest_component: 0,
+            outstanding_after_payment: newOutstanding,
+            linked_date: fullDate
+        });
+        await executeSql('UPDATE loan_payments SET transaction_id = ? WHERE id = ?', [txId, pRes.insertId]);
+    } catch (e) {
+        console.warn('Failed to create linked advance transaction', e);
+    }
+
+    try { events.emit('loanPaymentsChanged', { action: 'advance', id: pRes.insertId, loanId }); } catch (e) { }
+    try { events.emit('loansChanged', { action: 'update', id: loanId }); } catch (e) { }
+
+    return pRes.insertId;
+}
+
 export async function getLoanPayments(loanId, limit = 1000, offset = 0) {
     // support pagination via limit & offset
     const res = await executeSql('SELECT * FROM loan_payments WHERE loan_id = ? ORDER BY payment_date DESC LIMIT ? OFFSET ?', [loanId, limit, offset]);
@@ -441,6 +509,7 @@ export default {
     recordPayment,
     recordPrepayment,
     forecloseLoan,
+    recordAdvance,
     getLoanPayments,
     hasDuplicatePayment,
     recalculateLoanFromLinkedTransactions,
