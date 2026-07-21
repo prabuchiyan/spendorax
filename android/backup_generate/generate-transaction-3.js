@@ -1,13 +1,77 @@
 const fs = require("fs");
 
 const raw = `
-29/02/2020 : Salary : $58000
+04/04/20 : Vijaya SMS Charge : $18
 
-06/03/2020 : Get it From Abi : $6000
+05/04/20 : Pampers : $140
 
-13/03/2020 : Get it From Abi : $1114
+05/04/20 : Bananas : $150
 
-14/03/2020 : Get it From Abi : $500
+05/04/20 : Hospital Visit For Mom : $380
+
+07/04/20 : Recurring Deposit : $25000
+
+07/04/20 : Tender Coconut : $150
+
+10/04/20 : Gave it to Abi : $300
+
+11/04/20 : Axis Bank SMS Charge : $18
+
+12/04/20 : Electricity Bill Bangalore : $252
+
+12/04/20 : Gave it to Abi : $300
+
+15/04/20 : Bananas : $115
+
+15/04/20 : Mango : $50
+
+15/04/20 : Pampers : $280
+
+15/04/20 : Pomegranate : $100
+
+15/04/20 : Apple : $300
+
+15/04/20 : Peara Soap : $35
+
+15/04/20 : Penuts : $60
+
+16/04/20 : Snacks : $150
+
+17/04/20 : Pdkt Shop Electricity : $1077
+
+17/04/20 : Pdkt Home Electricity : $125
+
+17/04/20 : Gave it to Abi : $300
+
+18/04/20 : Gave it Back to Abi : $100
+
+18/04/20 : Gave it to Abi : $300
+
+19/04/20 : Hospital Visit For Mom : $1350
+
+23/04/20 : Recharge For Abi : $199
+
+24/04/20 : Recharge For Amma : $1398
+
+24/04/20 : Pomegranate : $100
+
+24/04/20 : Apple : $200
+
+24/04/20 : Bananas : $125
+
+24/04/20 : Shampoo : $64
+
+24/04/20 : Chocolate : $1
+
+24/04/20 : Snacks From Bakery : $360
+
+24/04/20 : Cool Drinks : $67
+
+25/04/20 : Gave it to Dad : $1500
+
+27/04/20 : Recharge For Abi Ammachi : $49
+
+29/04/20 : Jackfruit : $120
 `;
 
 const categoryMap = {
@@ -21,6 +85,7 @@ const categoryMap = {
 
   // Beauty Care
   "Ear Rings For Abi": 4,
+  "Face Mask": 4,
 
   // Bike / Vehicle
   "Petrol": 5,
@@ -111,6 +176,7 @@ const categoryMap = {
   "Pamper": 15,
   "Toy for Son": 15,
   "Junior Horlicks": 15,
+  "Milk Powder": 15,
 
   // Electronics
   "Watch Pin": 14,
@@ -179,6 +245,7 @@ const categoryMap = {
   "Gas": 20,
   "Gas Delivery Charge": 20,
   "Gas Delivery": 20,
+  "Gas Refil": 20,
   "Gas Refill": 20,
   "Gas Tube": 20,
 
@@ -192,6 +259,10 @@ const categoryMap = {
   "Send Off": 22,
 
   // Groceries
+  "Ginger & Chilli": 24,
+  "Panneer": 24,
+  "Wheat flour": 24,
+  "Wheat Flour": 24,
   "Idly Rice & Sugar": 24,
   "Sugar": 24,
   "Crab": 24,
@@ -322,6 +393,8 @@ const categoryMap = {
   "Tablet & Vicks": 28,
   "Pathu Powder": 28,
   "Fever Tonic": 28,
+  "Doctor Fees & Medicine for Abi": 28,
+  "Doctor Fees & Medicine For Abi": 28,
 
   // Households
   "House Holds": 29,
@@ -342,6 +415,7 @@ const categoryMap = {
   "Bang Sony TV 32 Inch: Auto Debit": 32,
 
   // Mobile
+  "Recharge For Bsnl": 34,
   "Recharge For Airtel": 34,
   "Mobile Back Cover": 34,
   "Back Cover": 34,
@@ -427,8 +501,14 @@ const categoryMap = {
   "Get it From Son": 36,
   "Get it From Wife": 36,
 
-  // Printing & Stationery
+
+  "id": 37,
+  "name": "Parents",
+
+  // Parents
   "Fruits For Mom": 37,
+  "Bike Air For Dad": 37,
+  "Bike Petrol For Dad": 37,
 
   // Printing & Stationery
   "Note": 39,
@@ -492,6 +572,9 @@ const categoryMap = {
   "Savings": 45,
 
   // Snacks
+  "Jilabbi": 46,
+  "Candy": 46,
+  "Cakes & Mixture": 46,
   "Snack": 46,
   "Snacks": 46,
   "Evening Snacks": 46,
@@ -655,8 +738,7 @@ const categoryMap = {
   "Default_income": 36
 };
 
-let id = 101;
-
+let id = 1;
 const transactions = raw
   .trim()
   .split("\n")
@@ -673,7 +755,7 @@ const transactions = raw
     let [dd, mm, yyyy] = date.split("/");
     if (yyyy.length === 2) yyyy = `20${yyyy}`;
     const formattedDate = `${yyyy}-${mm}-${dd}`;
-    const type = "income"; // expense OR income
+    const type = "expense"; // expense OR income
     return {
       id: id++,
       type,
@@ -685,9 +767,15 @@ const transactions = raw
       date: formattedDate,
       notes,
       bill_id: null,
-      created_at: `${formattedDate} 00:00:00`,
       transfer_group_id: null,
-      direction: null
+      direction: null,
+      created_at: `${formattedDate} 00:00:00`,
+      loan_id: null,
+      loan_payment_type: null,
+      principal_component: null,
+      interest_component: null,
+      outstanding_after_payment: null,
+      linked_date: null
     };
   })
   .filter(Boolean);
@@ -1201,6 +1289,15 @@ const backup = {
         "color": "#64748B",
         "is_active": 1,
         "created_at": "2026-07-15 15:30:54"
+      },
+      {
+        "id": 57,
+        "name": "Weekend Getaways",
+        "type": "expense",
+        "icon": "bag-personal-outline",
+        "color": "#A3E635",
+        "is_active": 1,
+        "created_at": "2026-07-21 14:36:53"
       }
     ],
     "sources": [
@@ -1266,7 +1363,8 @@ const backup = {
         "status": "Closed",
         "notes": "Personal Loan From Capital Finance Pvt Ltd ",
         "created_at": "2026-07-15 16:17:15",
-        "updated_at": "2026-07-15 17:20:40"
+        "updated_at": "2026-07-15 17:20:40",
+        "transaction_id": null
       },
       {
         "id": 3,
@@ -1290,7 +1388,8 @@ const backup = {
         "status": "Closed",
         "notes": "3rd Gold Loan",
         "created_at": "2026-07-15 15:30:55",
-        "updated_at": "2026-07-17 11:22:14"
+        "updated_at": "2026-07-17 11:22:14",
+        "transaction_id": null
       },
       {
         "id": 2,
@@ -1314,7 +1413,8 @@ const backup = {
         "status": "Closed",
         "notes": "2nd Gold Loan ",
         "created_at": "2026-07-15 15:30:55",
-        "updated_at": "2026-07-17 11:30:17"
+        "updated_at": "2026-07-17 11:30:17",
+        "transaction_id": null
       },
       {
         "id": 1,
@@ -1338,7 +1438,8 @@ const backup = {
         "status": "Closed",
         "notes": "1st Gold Loan ",
         "created_at": "2026-07-15 15:30:55",
-        "updated_at": "2026-07-17 18:18:29"
+        "updated_at": "2026-07-17 18:18:29",
+        "transaction_id": null
       }
     ],
     "loan_payments": [
@@ -1872,9 +1973,9 @@ const backup = {
 };
 
 fs.writeFileSync(
-  "2020_03_income.json",
+  "2020_04.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2020_03_income.json created successfully.");
+console.log("2020_04.json created successfully.");
