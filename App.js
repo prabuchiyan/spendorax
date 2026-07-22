@@ -42,6 +42,8 @@ export default function App() {
   const { visible, hideDialog } = useExitConfirmation({ navigationRef, rootRouteNames: ['Dashboard'] });
 
   useEffect(() => {
+    let unsubNotification = null;
+
     (async () => {
       try {
         if (MaterialCommunityIcons?.loadFont) {
@@ -61,21 +63,25 @@ export default function App() {
 
         try {
           await requestPermission();
-          await rescheduleAll();
+          await rescheduleAll(); // already cancels all before rescheduling
         } catch (e) {
           console.warn('Notification init error', e);
         }
 
         setReady(true);
 
-        // Register notification tap listener
-        const unsubNotification = registerNotificationListener(navigationRef);
-        return () => { if (unsubNotification) unsubNotification(); };
+        // Register OUTSIDE the async IIFE return so React gets the cleanup
+        unsubNotification = registerNotificationListener(navigationRef);
 
       } catch (e) {
         console.error('App init failed:', e);
       }
     })();
+
+    // This cleanup now actually runs when component unmounts
+    return () => {
+      if (unsubNotification) unsubNotification();
+    };
   }, []);
 
   if (!ready) {

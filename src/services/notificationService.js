@@ -33,35 +33,42 @@ export async function requestPermission() {
 export async function scheduleNotification({ id, title, body, hour, minute, payload }) {
     if (Platform.OS === 'web') {
         const fakeIdentifier = `web-mock-${id}-${Date.now()}`;
-        return fakeIdentifier; // ← removed updateNotification here
+        return fakeIdentifier;
     }
 
-    // Cancel previous if exists
-    const existing = await executeSql(
-        `SELECT notification_identifier FROM notifications WHERE id = ? LIMIT 1`, [id]
-    );
-    if (existing.rows.length > 0) {
-        const identifier = existing.rows.item(0).notification_identifier;
-        if (identifier) {
-            try { await Notifications.cancelScheduledNotificationAsync(identifier); } catch (e) { }
+    // Cancel only the previous identifier for this specific notification
+    try {
+        const existing = await executeSql(
+            `SELECT notification_identifier FROM notifications WHERE id = ? LIMIT 1`, [id]
+        );
+        if (existing.rows.length > 0) {
+            const oldIdentifier = existing.rows.item(0).notification_identifier;
+            if (oldIdentifier) {
+                await Notifications.cancelScheduledNotificationAsync(oldIdentifier);
+            }
         }
-    }
+    } catch (e) { }
+
+    // Expo SDK 51 fires one minute early — compensate
+    const adjustedMinute = (minute + 1) % 60;
+    const adjustedHour = (minute + 1 >= 60) ? (hour + 1) % 24 : hour;
 
     const identifier = await Notifications.scheduleNotificationAsync({
         content: {
             title,
             body,
-            data: payload ? (typeof payload === 'string' ? JSON.parse(payload) : payload) : {},
+            data: payload
+                ? (typeof payload === 'string' ? JSON.parse(payload) : payload)
+                : {},
             sound: true,
         },
         trigger: {
-            hour,
-            minute,
+            hour: adjustedHour,
+            minute: adjustedMinute,
             repeats: true,
         },
     });
 
-    // Only save identifier, NOT hour/minute — caller owns those
     return identifier;
 }
 
@@ -73,7 +80,7 @@ export async function cancelNotification(identifier) {
     try {
         await Notifications.cancelScheduledNotificationAsync(identifier);
     } catch (e) {
-        console.warn('Cancel notification failed', e);
+        console.warn('Individual cancel failed, skipping', e);
     }
 }
 
@@ -98,22 +105,51 @@ export async function cancelByType(type) {
 // Called on app start to restore after restart
 // ─────────────────────────────────────────
 export async function rescheduleAll() {
-    if (Platform.OS === 'web') return; // no-op on web
+    if (Platform.OS === 'web') return;
+
+    // Cancel ALL first — prevents stacking duplicates on every app start
+    try {
+        await Notifications.cancelAllScheduledNotificationsAsync();
+    } catch (e) {
+        console.warn('Failed to cancel all notifications', e);
+    }
+
     const notifications = await getNotifications();
+
     for (const n of notifications) {
-        if (n.enabled) {
-            await scheduleNotification({
-                id: n.id,
-                title: n.title,
-                body: n.body,
-                hour: n.hour,
-                minute: n.minute,
-                payload: n.payload,
+        if (!n.enabled) continue;
+
+        try {
+            // Expo SDK 51 fires one minute early — compensate with +1
+            const adjustedMinute = (n.minute + 1) % 60;
+            const adjustedHour = (n.minute + 1 >= 60)
+                ? (n.hour + 1) % 24
+                : n.hour;
+
+            const identifier = await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: n.title,
+                    body: n.body,
+                    data: n.payload
+                        ? (typeof n.payload === 'string'
+                            ? JSON.parse(n.payload)
+                            : n.payload)
+                        : {},
+                    sound: true,
+                },
+                trigger: {
+                    hour: adjustedHour,
+                    minute: adjustedMinute,
+                    repeats: true,
+                },
             });
-        } else {
-            if (n.notification_identifier) {
-                await cancelNotification(n.notification_identifier);
-            }
+
+            // Save new identifier quietly
+            await updateNotification(n.id, {
+                notification_identifier: identifier,
+            });
+        } catch (e) {
+            console.warn('Failed to reschedule notification', n.type, e);
         }
     }
 }
