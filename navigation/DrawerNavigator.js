@@ -120,8 +120,18 @@ function CustomDrawerContent(props) {
         })}
       </DrawerContentScrollView>
 
-      {/* Footer / Backup Screen shortcut */}
       <View style={[styles.footerContainer, { paddingBottom: insets.bottom + 20 }]}>
+        <TouchableOpacity
+          style={styles.footerButton}
+          onPress={() => {
+            navigation.navigate('NotificationSettings');
+            navigation.closeDrawer();
+          }}
+        >
+          <MaterialCommunityIcons name="bell-outline" size={18} color="#666" style={{ marginRight: 10 }} />
+          <Text style={styles.footerText}>Notifications</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.footerButton}
           onPress={() => {

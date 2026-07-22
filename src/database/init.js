@@ -123,19 +123,26 @@ export async function initDB() {
     }
 
     try {
+      const { createNotificationsTable } = require('./notifications');
+      await createNotificationsTable();
+    } catch (e) {
+      console.warn('Notifications table creation failed', e);
+    }
+
+    try {
       await executeSql('ALTER TABLE loan_payments ADD COLUMN payment_category_id INTEGER');
     } catch (e) {
       // Column already exists or DB platform does not support ALTER TABLE
     }
     // Ensure loans table has loan_direction column for older DBs
-    try { await executeSql('ALTER TABLE transactions ADD COLUMN loan_id INTEGER'); } catch (e) {}
-    try { await executeSql('ALTER TABLE transactions ADD COLUMN loan_payment_type TEXT'); } catch (e) {}
-    try { await executeSql('ALTER TABLE transactions ADD COLUMN principal_component REAL'); } catch (e) {}
-    try { await executeSql('ALTER TABLE transactions ADD COLUMN interest_component REAL'); } catch (e) {}
-    try { await executeSql('ALTER TABLE transactions ADD COLUMN outstanding_after_payment REAL'); } catch (e) {}
-    try { await executeSql('ALTER TABLE transactions ADD COLUMN linked_date TEXT'); } catch (e) {}
-    try { await executeSql("ALTER TABLE loans ADD COLUMN loan_direction TEXT DEFAULT 'BORROWED'"); } catch (e) {}
-    try { await executeSql(`ALTER TABLE loans ADD COLUMN transaction_id INTEGER NULL`); } catch (e) {}
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN loan_id INTEGER'); } catch (e) { }
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN loan_payment_type TEXT'); } catch (e) { }
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN principal_component REAL'); } catch (e) { }
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN interest_component REAL'); } catch (e) { }
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN outstanding_after_payment REAL'); } catch (e) { }
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN linked_date TEXT'); } catch (e) { }
+    try { await executeSql("ALTER TABLE loans ADD COLUMN loan_direction TEXT DEFAULT 'BORROWED'"); } catch (e) { }
+    try { await executeSql(`ALTER TABLE loans ADD COLUMN transaction_id INTEGER NULL`); } catch (e) { }
     // Seed defaults if empty (helpful for web/local dev)
     try {
       const cats = await executeSql('SELECT * FROM categories', []);
@@ -210,7 +217,7 @@ export async function initDB() {
 }
 
 export async function clearAllTables() {
-  const tables = ['transactions', 'bills', 'budgets', 'category_budgets', 'categories', 'sources', 'loan_payments', 'loans'];
+  const tables = ['transactions', 'bills', 'budgets', 'category_budgets', 'categories', 'sources', 'loan_payments', 'loans', 'notifications'];
 
   try {
     for (const table of tables) {

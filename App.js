@@ -4,6 +4,11 @@ import { Text, View, Image, BackHandler } from 'react-native';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import ErrorBoundary from './src/screens/ErrorBoundary';
+import {
+  requestPermission,
+  rescheduleAll,
+  registerNotificationListener,
+} from './src/services/notificationService';
 import SearchScreen from './src/screens/SearchScreen';
 import TransactionAddScreen from './src/screens/TransactionAddScreen';
 import SourcesDashboard from './src/screens/SourcesDashboard';
@@ -54,7 +59,18 @@ export default function App() {
           console.warn('Bill maintenance error', e);
         }
 
+        try {
+          await requestPermission();
+          await rescheduleAll();
+        } catch (e) {
+          console.warn('Notification init error', e);
+        }
+
         setReady(true);
+
+        // Register notification tap listener
+        const unsubNotification = registerNotificationListener(navigationRef);
+        return () => { if (unsubNotification) unsubNotification(); };
 
       } catch (e) {
         console.error('App init failed:', e);
@@ -116,6 +132,7 @@ export default function App() {
             <Stack.Screen name="LoanList" component={LoanListScreen} options={{ title: 'All Loans' }} />
             <Stack.Screen name="LoanHistory" component={require('./src/screens/LoanHistoryScreen').default} options={{ title: 'Loan History' }} />
             <Stack.Screen name="LoanReports" component={require('./src/screens/LoanReportsScreen').default} options={{ title: 'Loan Reports' }} />
+            <Stack.Screen name="NotificationSettings" component={require('./src/screens/NotificationSettingsScreen').default} options={{ title: 'Notifications' }} />
           </Stack.Navigator>
         </NavigationContainer>
         <ExitConfirmationModal
