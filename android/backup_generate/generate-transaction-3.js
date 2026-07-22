@@ -76,11 +76,13 @@ const raw = `
 
 const categoryMap = {
   // Bank Charges
+  "Axis Bank SMS Charge": 3,
   "Consolidate Charge": 3,
   "Consolidate Charges": 3,
   "Debited From SBI": 3,
   "Annual Charges For Vijaya Card": 3,
   "Vijaya Bank SMS Charge": 3,
+  "Vijaya SMS Charge": 3,
   "SBI Charge": 3,
 
   // Beauty Care
@@ -155,6 +157,8 @@ const categoryMap = {
   "Coke & Cigarette": 12,
   "Coke & Cigarettes": 12,
   "Fruits For Sarakku": 12,
+  "Mango": 12,
+  "Mangoes": 12,
 
   // Electricity
   "Electricity Bill Bangalore": 13,
@@ -225,6 +229,7 @@ const categoryMap = {
 
   // Fruits
   "Fruits": 19,
+  "Jackfruit": 19,
   "Apple & Orange": 19,
   "Grapes": 19,
   "Papaya": 19,
@@ -259,6 +264,7 @@ const categoryMap = {
   "Send Off": 22,
 
   // Groceries
+  "Pears Soap": 24,
   "Ginger & Chilli": 24,
   "Panneer": 24,
   "Wheat flour": 24,
@@ -373,6 +379,7 @@ const categoryMap = {
 
   // Medical
   "Cold Medicine": 28,
+  "Cold Medicine": 28,
   "Eye Ointment": 28,
   "Hospital Bill": 28,
   "Medical Bill": 28,
@@ -394,7 +401,7 @@ const categoryMap = {
   "Pathu Powder": 28,
   "Fever Tonic": 28,
   "Doctor Fees & Medicine for Abi": 28,
-  "Doctor Fees & Medicine For Abi": 28,
+  "Hospital Visit For Mom": 28,
 
   // Households
   "House Holds": 29,
@@ -473,6 +480,7 @@ const categoryMap = {
   "Gave it to Suresh": 35,
   "Gave it to Vivek": 35,
   "Give it back to Abi": 35,
+  "Gave it Back to Abi": 35,
 
   // Money Received
   "Get it From Abi": 36,
@@ -501,14 +509,11 @@ const categoryMap = {
   "Get it From Son": 36,
   "Get it From Wife": 36,
 
-
-  "id": 37,
-  "name": "Parents",
-
   // Parents
   "Fruits For Mom": 37,
   "Bike Air For Dad": 37,
   "Bike Petrol For Dad": 37,
+  "Gave it to Dad": 37,
 
   // Printing & Stationery
   "Note": 39,
@@ -572,6 +577,8 @@ const categoryMap = {
   "Savings": 45,
 
   // Snacks
+  "Penuts": 46,
+  "Snacks From Bakery": 46,
   "Jilabbi": 46,
   "Candy": 46,
   "Cakes & Mixture": 46,
@@ -755,7 +762,7 @@ const transactions = raw
     let [dd, mm, yyyy] = date.split("/");
     if (yyyy.length === 2) yyyy = `20${yyyy}`;
     const formattedDate = `${yyyy}-${mm}-${dd}`;
-    const type = "expense"; // expense OR income
+    const type = "income"; // expense OR income
     return {
       id: id++,
       type,
@@ -1973,9 +1980,9 @@ const backup = {
 };
 
 fs.writeFileSync(
-  "2020_04.json",
+  "2020_05_12_income.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2020_04.json created successfully.");
+console.log("2020_05_12_income.json created successfully.");
