@@ -275,9 +275,15 @@ export default function NotificationSettingsScreen() {
                                 onChange={(event, selected) => {
                                     if (Platform.OS === 'android') {
                                         setShowTimePicker(false);
-                                        if (event.type === 'dismissed') return;
-                                        if (selected) setTempTime(selected);
-                                        saveTime();
+                                        if (event.type === 'dismissed') {
+                                            editingNotificationRef.current = null;
+                                            setEditingId(null);
+                                            return;
+                                        }
+                                        if (selected) {
+                                            setTempTime(selected);
+                                            saveTime(selected);
+                                        }
                                         return;
                                     }
                                     if (selected) setTempTime(selected);
