@@ -129,6 +129,15 @@ export async function initDB() {
       console.warn('Notifications table creation failed', e);
     }
 
+    // One-time migration: enable all notifications by default
+    try {
+      await executeSql(
+        `UPDATE notifications SET enabled = 1 WHERE enabled = 0`
+      );
+    } catch (e) {
+      console.warn('Notification default enable migration failed', e);
+    }
+
     try {
       await executeSql('ALTER TABLE loan_payments ADD COLUMN payment_category_id INTEGER');
     } catch (e) {

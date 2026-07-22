@@ -62,7 +62,7 @@ export async function createNotificationsTable() {
         if (existing.rows.length === 0) {
             await executeSql(
                 `INSERT INTO notifications (type, title, body, enabled, hour, minute, payload)
-                 VALUES (?, ?, ?, 0, ?, ?, ?)`,
+                VALUES (?, ?, ?, 1, ?, ?, ?)`,
                 [n.type, n.title, n.body, n.hour, n.minute, n.payload]
             );
         }
