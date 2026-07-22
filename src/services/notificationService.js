@@ -32,10 +32,8 @@ export async function requestPermission() {
 // ─────────────────────────────────────────
 export async function scheduleNotification({ id, title, body, hour, minute, payload }) {
     if (Platform.OS === 'web') {
-        // Web: just return a fake identifier so DB state stays consistent
         const fakeIdentifier = `web-mock-${id}-${Date.now()}`;
-        await updateNotification(id, { notification_identifier: fakeIdentifier });
-        return fakeIdentifier;
+        return fakeIdentifier; // ← removed updateNotification here
     }
 
     // Cancel previous if exists
@@ -63,7 +61,7 @@ export async function scheduleNotification({ id, title, body, hour, minute, payl
         },
     });
 
-    await updateNotification(id, { notification_identifier: identifier });
+    // Only save identifier, NOT hour/minute — caller owns those
     return identifier;
 }
 

@@ -93,7 +93,6 @@ export default function NotificationSettingsScreen() {
         setSaving(notification.id);
         try {
             if (newEnabled === 1) {
-                // Enable: schedule first, then save identifier + enabled together
                 const identifier = await scheduleNotification({
                     id: notification.id,
                     title: notification.title,
@@ -102,12 +101,12 @@ export default function NotificationSettingsScreen() {
                     minute: notification.minute,
                     payload: notification.payload,
                 });
+                // Save enabled + identifier, hour/minute stay unchanged
                 await updateNotification(notification.id, {
                     enabled: 1,
                     notification_identifier: identifier,
                 });
             } else {
-                // Disable: cancel first, then clear identifier + enabled together
                 if (notification.notification_identifier) {
                     await cancelNotification(notification.notification_identifier);
                 }
@@ -117,7 +116,7 @@ export default function NotificationSettingsScreen() {
                 });
             }
 
-            await load(); // reload fresh state from DB
+            await load();
         } catch (e) {
             console.warn('Toggle notification failed', e);
             Alert.alert('Error', 'Failed to update notification. Please try again.');
@@ -145,10 +144,9 @@ export default function NotificationSettingsScreen() {
 
         setSaving(notification.id);
         try {
-            await updateNotification(notification.id, { hour, minute });
-
             if (notification.enabled) {
-                await scheduleNotification({
+                // Schedule with new time, get back new identifier
+                const identifier = await scheduleNotification({
                     id: notification.id,
                     title: notification.title,
                     body: notification.body,
@@ -156,6 +154,16 @@ export default function NotificationSettingsScreen() {
                     minute,
                     payload: notification.payload,
                 });
+
+                // Save hour, minute AND new identifier together atomically
+                await updateNotification(notification.id, {
+                    hour,
+                    minute,
+                    notification_identifier: identifier,
+                });
+            } else {
+                // Not enabled — just save the time preference for when it gets enabled
+                await updateNotification(notification.id, { hour, minute });
             }
 
             setShowTimePicker(false);
