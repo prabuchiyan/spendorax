@@ -1,437 +1,768 @@
 const fs = require("fs");
 
 const raw = `
-01/10/18 : Grocery : $2212
+04/04/20 : Vijaya SMS Charge : $18
 
-01/10/18 : Room Rent : $9000
+05/04/20 : Pampers : $140
 
-01/10/18 : Lunch : $35
+05/04/20 : Bananas : $150
 
-01/10/18 : Bike Air : $3
+05/04/20 : Hospital Visit For Mom : $380
 
-01/10/18 : Petrol : $400
+07/04/20 : Recurring Deposit : $25000
 
-04/10/18 : Added to Paytm : $600
+07/04/20 : Tender Coconut : $150
 
-05/10/18 : Personal Loan : $4917
+10/04/20 : Gave it to Abi : $300
 
-05/10/18 : Lunch : $30
+11/04/20 : Axis Bank SMS Charge : $18
 
-05/10/18 : Snacks : $10
+12/04/20 : Electricity Bill Bangalore : $252
 
-05/10/18 : Lunch : $50
+12/04/20 : Gave it to Abi : $300
 
-05/10/18 : 96 Movie : $150
+15/04/20 : Bananas : $115
 
-06/10/18 : Drinks : $467
+15/04/20 : Mango : $50
 
-06/10/18 : Mutton : $200
+15/04/20 : Pampers : $280
 
-06/10/18 : Coriander & Ginger : $6
+15/04/20 : Pomegranate : $100
 
-08/10/18 : Recharge BSNL : $49
+15/04/20 : Apple : $300
 
-09/10/18 : Lunch : $30
+15/04/20 : Peara Soap : $35
 
-09/10/18 : Dinner : $30
+15/04/20 : Penuts : $60
 
-10/10/18 : Lunch : $30
+16/04/20 : Snacks : $150
 
-11/10/18 : Water Bill : $400
+17/04/20 : Pdkt Shop Electricity : $1077
 
-12/10/18 : Bus : Pudukkottai to Bangalore : $1660
+17/04/20 : Pdkt Home Electricity : $125
 
-13/10/18 : Bus : Hosur to Bangalore : $60
+17/04/20 : Gave it to Abi : $300
 
-17/10/18 : Train : Bangalore to Thanjavur : $60
+18/04/20 : Gave it Back to Abi : $100
 
-17/10/18 : Lunch : $100
+18/04/20 : Gave it to Abi : $300
 
-17/10/18 : Rasagulla & Soanpapdi : $247
+19/04/20 : Hospital Visit For Mom : $1350
 
-18/10/18 : Bus : Room to Office : $17
+23/04/20 : Recharge For Abi : $199
 
-18/10/18 : Added to Paytm : $600
+24/04/20 : Recharge For Amma : $1398
 
-18/10/18 : Snacks : $10
+24/04/20 : Pomegranate : $100
 
-18/10/18 : Bus : Bangalore to Salem : $230
+24/04/20 : Apple : $200
 
-18/10/18 : Dinner : $40
+24/04/20 : Bananas : $125
 
-18/10/18 : Bus : Salem to Trichy : $122
+24/04/20 : Shampoo : $64
 
-19/10/18 : Bus : Trichy to Thanjavur : $43
+24/04/20 : Chocolate : $1
 
-19/10/18 : Bus : Thanjavur New Bus Stand to Old Bus Stand : $10
+24/04/20 : Snacks From Bakery : $360
 
-19/10/18 : Group Photos : $200
+24/04/20 : Cool Drinks : $67
 
-19/10/18 : Petrol For Abi Dad : $100
+25/04/20 : Gave it to Dad : $1500
 
-19/10/18 : Bike Parking : $5
+27/04/20 : Recharge For Abi Ammachi : $49
 
-19/10/18 : Cheppal Token : $5
-
-19/10/18 : For God : $8
-
-19/10/18 : Normal Baby Checkup & Medicine : $350
-
-20/10/18 : Ola Wallet Money Added : $200
-
-20/10/18 : Water Pocket : $9
-
-21/10/18 : Bus : Thanjavur to Pudukkottai : $90
-
-21/10/18 : Auto : Pudukkottai Bus Stand to Home : $70
-
-21/10/18 : Snacks For Akka Family : $180
-
-21/10/18 : Gift to Prasanna Function : $100
-
-21/10/18 : Petrol For Akka : $50
-
-22/10/18 : Lunch : $30
-
-24/10/18 : Lunch : $30
-
-24/10/18 : Bike Petrol : $400
-
-25/10/18 : Lunch : $30
-
-25/10/18 : Chips : $60
-
-26/10/18 : Lunch : $40
-
-26/10/18 : Eggs : $30
-
-27/10/18 : Dinner : $76.92
-
-28/10/18 : Drinks : $899
-
-28/10/18 : Again Drinks : $10
-
-28/10/18 : Cigarettes : $45
-
-29/10/18 : Breakfast : $20
-
-29/10/18 : Lunch : $10
-
-29/10/18 : Lassie : $30
-
-29/10/18 : Idly : $30
-
-30/10/18 : Breakfast : $30
-
-30/10/18 : Lunch : $30
-
-30/10/18 : Photos & Video Coverage : $15000
-
-31/10/18 : Breakfast : $25
-
-31/10/18 : Lunch : $40
+29/04/20 : Jackfruit : $120
 `;
 
 const categoryMap = {
-  // Food
-  "Breakfast": 17,
-  "Lunch": 17,
-  "Lunch : Briyani": 17,
-  "Dinner": 17,
-  "Dinner ": 17,
-  "Dinner​": 17,
-  "Dinner Purchase": 17,
-  "Burger & Nuggets": 17,
-  "Noodles": 17,
+  // Bank Charges
+  "Axis Bank SMS Charge": 3,
+  "Consolidate Charge": 3,
+  "Consolidate Charges": 3,
+  "Debited From SBI": 3,
+  "Annual Charges For Vijaya Card": 3,
+  "Vijaya Bank SMS Charge": 3,
+  "Vijaya SMS Charge": 3,
+  "SBI Charge": 3,
 
-  // Fruits
-  "Fruits": 18,
-  "Apple & Orange": 18,
-  "Grapes": 18,
-  "Papaya": 18,
-  "Pomegranate": 18,
+  // Beauty Care
+  "Ear Rings For Abi": 4,
+  "Face Mask": 4,
 
-  // Groceries
-  "Grocery": 23,
-  "Vegetables": 23,
-  "Vegetables & Fruits": 23,
-  "Vegetables & Chicken": 23,
-  "Mutton & Vegetables": 23,
-  "Milk": 23,
-  "Milk & Dry chilli": 23,
-  "Milk & Currie Leaves": 23,
-  "10Eggs": 23,
-  "Egg and washing soap": 23,
-  "Carrot": 23,
-  "Carrots": 23,
-  "Carrots ": 23,
-  "Carrots, Eggs & Banana": 23,
-  "Cashew and Dry Grapes": 23,
-  "Chicken, Masala & Coriander": 23,
-  "Beans, Rice, Pickle & Biscuits": 23,
-  "Black Gram": 23,
-  "Black Gram 1/4kg": 23,
-  "Bread, Jam, Water cane": 23,
-  "Cinthol Soaps": 23,
-  "Coconut": 23,
-  "Cooking Oil": 23,
-  "Dandruff Shampoo": 23,
-  "Dates & Ice Cream": 23,
-  "Dhall & Chilli": 23,
-  "Dustbin Cover": 23,
-  "Flour Mix": 23,
-  "Flour, Oil & Soaps": 23,
-  "Ice Cream & Washing Powder": 23,
-  "Idly Rice": 23,
-  "Plastic Bag": 23,
-  "Salt & Coffee Powder": 23,
-  "Shampoo": 23,
-  "Spinach, Coconut & Tomatoes": 23,
-  "Tender Coconut": 23,
-
-  // Snacks
-  "Snack": 43,
-  "Snacks": 43,
-  "Evening Snacks": 43,
-  "Dinner Snacks": 43,
-  "Dinner Snacks & Parking": 43,
-  "Bakery Snacks": 43,
-  "Chocolate": 43,
-  "Cool Drinks": 43,
-  "Juice": 43,
-  "Lattu & Food": 43,
-  "Rusk": 43,
-  "Snacks For Abi": 43,
-  "Snacks Spend": 43,
-  "Sweets": 43,
-  "Water Bottles": 43,
-
-  // Vehicle
-  "Petrol": 4,
-  "Bike Petrol": 4,
-  "Petrol & Air": 4,
-  "Bike Air": 4,
-  "Bike Parking": 4,
-  "Helmet": 4,
-  "Pulsar: Bike Repair": 4,
-  "Royal Enfield: Service": 4,
-  "Royal Enfield: Service & Insurance": 4,
-  "Water Wash": 4,
-
-  // Child Birth
-  "Pregnancy Test": 6,
-
-  // Medical
-  "Cold Medicine": 26,
-  "Eye Ointment": 26,
-  "Hospital Bill": 26,
-  "Medical Bill": 26,
-  "Medicare Shampoo": 26,
-
-  // Households
-  "House Holds": 27,
-  "Household Things": 27,
-  "Households": 27,
-  "Knife & Washing Brush": 27,
-  "Tiffan Box": 27,
-
-  // Utilities
-  "Electricity Bill": 12,
-  "Pdkt Home Electricity Bill": 12,
-
-  // Electronics
-  "Watch Pin": 13,
-  "Purchased UPS": 13,
-  "Bang Sony TV 32 Inch: Bajaj Card": 13,
-  "Bang Sony TV 32 Inch: Initial Amount": 13,
-  "Bang Sony TV 32 Inch: Proof Approval": 13,
-  "Bang Sony TV 32 Inch: Stabilizer": 13,
-
-  // Clothes
-  "Dress": 7,
-  "Jacket & Inner For Abi": 7,
-  "Purchase Pant": 7,
-  "Purchase Shirt": 7,
-
-  // Sandals / Shoes
-  "Sandals": 41,
-
-  // Entertainment
-  "Movie": 15,
-  "Party": 15,
-  "Park": 15,
-  "Park & Parking": 15,
-  "Exhibition": 15,
-  "Bike Parking in Theatre": 15,
-
-  // Gift
-  "Gift": 21,
-  "Birthday Gift": 21,
-  "Birthday Cake": 21,
-  "Birthday Presents": 21,
-  "Henry Marriage Gift": 21,
-  "Priya Adhiyamaan Marriage Gift": 21,
-  "Send Off": 21,
-
-  // Mobile
-  "Mobile Back Cover": 32,
-  "Back Cover": 32,
-  "Recharge": 32,
-  "Recharge Airtel": 32,
-  "Recharge For Abi": 32,
-  "Recharge For Mom": 32,
-  "Recharge to Airtel": 32,
-  "DTH Recharge": 32,
-  "Mi Mobile Service Tax": 32,
-  "Screen Card": 32,
-  "Sim Card": 32,
-  "Sim Card & Link Adhaar": 32,
-
-  // Loan
-  "Bike EMI": 30,
-  "Personal Loan EMI": 30,
-  "Capital First Loan Paid": 30,
-  "Spend for Loan": 30,
-  "Bang Sony TV 32 Inch: Auto Debit": 30,
-
-  // Savings
-  "RD": 42,
-  "Rd": 42,
-  "Recurring Deposit": 42,
-  "Recurring Deposit ": 42,
-  "Recurrent Deposit": 42,
-
-  // Money Given
-  "Give it Back": 33,
-  "Give it back": 33,
-  "Give it back Sasi": 33,
-  "Give it Back Vivek": 33,
-  "Give it Back Vetrivel": 33,
-  "Give back": 33,
-  "Give back ": 33,
-  "Give back to Deepak": 33,
-  "Give back to Dinesh": 33,
-  "Give back to KD": 33,
-  "Give back to Madhu": 33,
-  "Give back to Naveen": 33,
-  "Gave it Back": 33,
-  "Gave it to Ravi": 33,
-  "Gave to Ravi": 33,
-  "Gave to Naveen": 33,
-  "Gave to Mom": 33,
-  "Gave to Ram": 33,
-  "Gave to Sasi": 33,
-  "Gave to Dinesh": 33,
-  "Gave to Akka": 33,
-  "Gave to Madhu": 33,
-  "Gave to Aboo": 33,
-  "Gave to": 33,
-
-  // Money Received
-  "Get it From Abi": 34,
-  "Get it From Dad": 34,
-  "Get it From Mom": 34,
-  "Get it From Naveen": 34,
-  "Get it From Ramya": 34,
-  "Get it From Ravi": 34,
-  "Get it From Vetrivel": 34,
-  "Get it From Vivek": 34,
-  "Get it From Dinesh": 34,
-  "Get it From Mams": 34,
-  "Get it From Bag": 34,
-  "Get it From Thali Pirichu Potta Function": 34,
-  "Get From Deepak": 34,
-  "Get From Dinesh": 34,
-  "Get From Sasi": 34,
-  "Get From Shufil": 34,
-  "Lunch Amount": 34,
-  "Room Advance Returned ": 34,
-  "Available Amount ": 34,
-  "Found it From Home": 34,
-  "Get it From Eniyan": 34,
-  "Get it From Sister": 34,
-  "Get it From Akka": 34,
-  "Get it From Son": 34,
-  "Get it From Wife": 34,
-
-  // Rent
-  "Room Rent": 38,
-  "Room: Rent": 38,
-  "Room Advance": 38,
-  "Room Advance Returned": 38,
-  "Room Rental Agreement": 38,
-  "Room Shifting": 38,
-  "Room: EB Deposit": 38,
-  "Room: Electricity Bill": 38,
-  "Room: Internet Bill": 38,
-  "Room: Water": 38,
-  "Room: Water Bill": 38,
-  "Room: Water Cane": 38,
-  "Room: Hit Purchase": 38,
-  "Room: Spend": 38,
-  "House Warming": 38,
-  "Give Back to Dinesh & Room Rent": 38,
-
-  // Salary
-  "March Month 2017": 39,
-  "April Month 2017": 39,
-  "May Month 2017": 39,
-  "June Month 2017": 39,
-  "July Month 2017": 39,
-  "August Month 2017": 39,
-  "September Month 2017": 39,
-  "October Month 2017": 39,
-  "Salary": 39,
+  // Bike / Vehicle
+  "Petrol": 5,
+  "Bike Petrol": 5,
+  "Petrol & Air": 5,
+  "Bike Air": 5,
+  "Bike Parking": 5,
+  "Helmet": 5,
+  "Pulsar: Bike Repair": 5,
+  "Royal Enfield: Service": 5,
+  "Royal Enfield: Service & Insurance": 5,
+  "Water Wash": 5,
+  "Petrol Air": 5,
+  "Bike Service": 5,
+  "Bike Repair": 5,
 
   // Cashback
-  "Get it From Tez": 5,
-  "Petrol Surcharge": 5,
+  "Get it From Tez": 6,
+  "Petrol Surcharge": 6,
+
+  // Child Birth
+  "Pregnancy Test": 7,
+  "Checkup for Abi": 7,
+  "Checkup For Abi": 7,
+
+  // Clothes
+  "Dress": 8,
+  "Jacket & Inner For Abi": 8,
+  "Purchase Pant": 8,
+  "Purchase Shirt": 8,
+  "Clothes": 8,
+  "Shorts": 8,
+  "Purchase Clothes for Me": 8,
+  "Purchase Clothes For Me": 8,
+
+  // DTH
+  "DTH Recharge": 9,
+  "Dth Recharge": 9,
+  "DTH Recharge to Pdkt": 9,
+  "DTH Recharge For Pdkt": 9,
+  "DTH Recharge from Home": 9,
+  "DTH Recharge From Home": 9,
+  "DTH Recharge For Home": 9,
+  "DTH Recharge for Home": 9,
+  "Pdkt DTH Recharge": 9,
+  "Pdkt DTH Home Recharge": 9,
+  "Bang DTH Recharge": 9,
+  "Bang DTH Home Recharge": 9,
+  "Pdkt DTH Add on Channels": 9,
+
+  // Diwali
+  "Diwali Festival : Crackers": 10,
+  "Clothes For Diwali": 10,
+  "Clothes For Bike Parking": 10,
+
+  // Donations
+  "Donated": 11,
+
+  // Drinks
+  "Drinks": 12,
+  "Sarakku": 12,
+  "Cigarettes & Candy": 12,
+  "Cigarettes": 12,
+  "Cigarettes & Chocolate": 12,
+  "Cigarette & Chocolate": 12,
+  "Cigarette & Chocolates": 12,
+  "Coke & Cigarette": 12,
+  "Coke & Cigarettes": 12,
+  "Fruits For Sarakku": 12,
+  "Mango": 12,
+  "Mangoes": 12,
+
+  // Electricity
+  "Electricity Bill Bangalore": 13,
+  "Electricity Bill": 13,
+  "Pdkt Home Electricity Bill": 13,
+  "Bangalore Electricity Bill": 13,
+  "Bang Electricity Bill": 13,
+  "Pudukkottai Electricity Bill": 13,
+  "Pdkt Electricity Bill": 13,
+  "Pdkt Home Electricity": 13,
+  "Pdkt Shop Electricity": 13,
+  "Pdkt Shop Electricity Bill": 13,
+  "Electricity Bill Paid": 13,
+  "Bangalore Electricity Bill": 13,
+  "Bangalore Electricity Bill Paid": 13,
+
+  // Eniyan
+  "Pampers": 15,
+  "Pamper": 15,
+  "Toy for Son": 15,
+  "Junior Horlicks": 15,
+  "Milk Powder": 15,
+
+  // Electronics
+  "Watch Pin": 14,
+  "Purchased UPS": 14,
+  "Bang Sony TV 32 Inch: Bajaj Card": 14,
+  "Bang Sony TV 32 Inch: Initial Amount": 14,
+  "Bang Sony TV 32 Inch: Proof Approval": 14,
+  "Bang Sony TV 32 Inch: Stabilizer": 14,
+  "Wall Clock Battery": 14,
+  "Batteries": 14,
+  "Watch Straps & Batteries": 14,
+
+  // Entertainment
+  "Movie": 16,
+  "Party": 16,
+  "Park": 16,
+  "Park & Parking": 16,
+  "Exhibition": 16,
+  "Bike Parking in Theatre": 16,
+  "Movie Petrol": 16,
+  "Movie Parking": 16,
+  "Movie Tickets": 16,
+
+  // Food & Dining
+  "Peeda": 18,
+  "Lunch Tips": 18,
+  "Pheeda": 18,
+  "Lunch Parcel": 18,
+  "Breakfast": 18,
+  "Lunch": 18,
+  "Tandoori": 18,
+  "Biriyani & Tandoori": 18,
+  "Biriyani": 18,
+  "Lunch : Briyani": 18,
+  "Chicken Biriyani": 18,
+  "Chicken": 18,
+  "Dinner": 18,
+  "Dinner ": 18,
+  "Dinner Purchase": 18,
+  "Burger & Nuggets": 18,
+  "Noodles": 18,
+  "Egg Parotta": 18,
+  "Plain Dosa": 18,
+  "Pizza": 18,
+  "Dinner & Cook Drinks": 18,
+
+  // Fruits
+  "Fruits": 19,
+  "Jackfruit": 19,
+  "Apple & Orange": 19,
+  "Grapes": 19,
+  "Papaya": 19,
+  "Pomegranate": 19,
+  "Bananas": 19,
+  "Pineapple": 19,
+  "Sappotta": 19,
+  "Watermelon": 19,
+  "Mangoes": 19,
+  "Plums": 19,
+  "Pomegranate & Apple": 19,
+  "Navapalam": 19,
+  "Apple & Pomegranate": 19,
+  "Apple": 19,
+  "Apples": 19,
+
+  // Gas
+  "Gas": 20,
+  "Gas Delivery Charge": 20,
+  "Gas Delivery": 20,
+  "Gas Refil": 20,
+  "Gas Refill": 20,
+  "Gas Tube": 20,
+
+  // Gift
+  "Gift": 22,
+  "Birthday Gift": 22,
+  "Birthday Cake": 22,
+  "Birthday Presents": 22,
+  "Henry Marriage Gift": 22,
+  "Priya Adhiyamaan Marriage Gift": 22,
+  "Send Off": 22,
+
+  // Groceries
+  "Pears Soap": 24,
+  "Ginger & Chilli": 24,
+  "Panneer": 24,
+  "Wheat flour": 24,
+  "Wheat Flour": 24,
+  "Idly Rice & Sugar": 24,
+  "Sugar": 24,
+  "Crab": 24,
+  "Oil & Fevi-quick": 24,
+  "Prawns": 24,
+  "Grocery": 24,
+  "Vegetables": 24,
+  "Vegetables & Fruits": 24,
+  "Vegetables & Chicken": 24,
+  "Mutton & Vegetables": 24,
+  "Milk": 24,
+  "Milk & Dry chilli": 24,
+  "Milk & Currie Leaves": 24,
+  "10Eggs": 24,
+  "Egg and washing soap": 24,
+  "Carrot": 24,
+  "Carrots": 24,
+  "Carrots ": 24,
+  "Carrots, Eggs & Banana": 24,
+  "Cashew and Dry Grapes": 24,
+  "Chicken, Masala & Coriander": 24,
+  "Beans, Rice, Pickle & Biscuits": 24,
+  "Black Gram": 24,
+  "Black Gram 1/4kg": 24,
+  "Bread, Jam, Water cane": 24,
+  "Cinthol Soaps": 24,
+  "Coconut": 24,
+  "Cooking Oil": 24,
+  "Dandruff Shampoo": 24,
+  "Dates & Ice Cream": 24,
+  "Dhall & Chilli": 24,
+  "Dustbin Cover": 24,
+  "Flour Mix": 24,
+  "Flour, Oil & Soaps": 24,
+  "Ice Cream & Washing Powder": 24,
+  "Plastic Bag": 24,
+  "Salt & Coffee Powder": 24,
+  "Shampoo": 24,
+  "Shampoo & Sigaikkai": 24,
+  "Sigaikkai": 24,
+  "Spinach, Coconut & Tomatoes": 24,
+  "Tender Coconut": 24,
+  "Eggs": 24,
+  "Egg": 24,
+  "Napkins": 24,
+  "Pottukadalai": 24,
+  "Black Grams": 24,
+  "Curd": 24,
+  "Corn flour": 24,
+  "Corn Flour": 24,
+  "Capsicum": 24,
+  "Maida": 24,
+  "Gee & Raisin": 24,
+  "Gee": 24,
+  "Raisin": 24,
+  "Mutton": 24,
+  "Groceries - Grofers": 24,
+  "Groceries From Grofers": 24,
+  "Groceries - Flipkart": 24,
+  "Sugar": 24,
+  "Turmeric Powder": 24,
+  "Refined Oil": 24,
+  "Maida & Keshari Powder": 24,
+  "Sunflower Oil": 24,
+  "Onions": 24,
+  "Pattani & Sugar": 24,
+  "Pattani": 24,
+  "Tea Powder": 24,
+  "Vegetables & Groceries": 24,
+  "Groceries": 24,
+  "Tomatoes": 24,
+  "Rice": 24,
+  "Idly Rice": 24,
+  "Idly Rice & Noodles Masala": 24,
+  "Rice & Idly Rice": 24,
+  "Idly Rice & Rice": 24,
+  "Noodles Masala": 24,
+  "Mint & Coriander": 24,
+  "Mint": 24,
+  "Coriander": 24,
+  "Chilli": 24,
+  "Chicken": 24,
+  "Vegetables Form Market": 24,
+  "Coriander & Mint": 24,
+  "Coffee Powder": 24,
+  "Fish": 24,
+  "Odomas": 24,
+  "Andurundai": 24,
+  "Prawns & Cleaning": 24,
+  "Maggie": 24,
+  "Garlic": 24,
+  "Soap": 24,
+  "Soaps": 24,
+  "Whishper": 24,
+  "Idly Rice 2Kg": 24,
+  "Onion": 24,
+  "Onions": 24,
+  "Idly Rice & Red Chilly": 24,
+  "Idly Rice & Red Chilli": 24,
+  "Red Chilli": 24,
+  "Red Chilly": 24,
+  "Beetroot": 24,
+  "Spinach & Chilli": 24,
+  "Spinach": 24,
+  "Urad Dal": 24,
+  "Ragi": 24,
+  "Oil": 24,
+
+  // Medical
+  "Cold Medicine": 28,
+  "Cold Medicine": 28,
+  "Eye Ointment": 28,
+  "Hospital Bill": 28,
+  "Medical Bill": 28,
+  "Medicare Shampoo": 28,
+  "Fever Medicine": 28,
+  "Fever Medicine": 28,
+  "Doctor Fees": 28,
+  "Doctor Consultant Fees": 28,
+  "Tonics": 28,
+  "Tablets for Cold": 28,
+  "Tablets For Cold": 28,
+  "Tablets For Abi": 28,
+  "Tablets for Abi": 28,
+  "Cough Syrup": 28,
+  "Doctor Fees for Abi": 28,
+  "Doctor Fees For Abi": 28,
+  "Tablets": 28,
+  "Tablet & Vicks": 28,
+  "Pathu Powder": 28,
+  "Fever Tonic": 28,
+  "Doctor Fees & Medicine for Abi": 28,
+  "Hospital Visit For Mom": 28,
+
+  // Households
+  "House Holds": 29,
+  "Household Things": 29,
+  "Households": 29,
+  "Knife & Washing Brush": 29,
+  "Tiffan Box": 29,
+  "Purchased Pillows": 29,
 
   //Interest
-  "Interest": 28,
+  "Interest": 30,
 
-  // Personal Care
-  "Haircut": 40,
-  "Hair Cut": 40,
-  "Hair Cut For Abi": 40,
-  "Hair Cut For Myself ": 40,
-  "Hair Cut For Myself  ": 40,
+  // Loan
+  "Bike EMI": 32,
+  "Personal Loan EMI": 32,
+  "Capital First Loan Paid": 32,
+  "Spend for Loan": 32,
+  "Bang Sony TV 32 Inch: Auto Debit": 32,
 
-  // Travel
-  "Trip Amount": 47,
-  "Thirupathi Trip": 47,
-  "Bennargetta Zoo Spend": 47,
-  "Lalbagh": 47,
-  "Lalbagh Tickets": 47,
-  "Bus : Lalbagh to Room": 47,
-  "Bus : Room to Lalbagh": 47,
-  "Shiradi: Expenses": 47,
-  "Shiradi: Bus Booking & Others": 47,
+  // Mobile
+  "Recharge For Bsnl": 34,
+  "Recharge For Airtel": 34,
+  "Mobile Back Cover": 34,
+  "Back Cover": 34,
+  "Recharge": 34,
+  "Recharge Airtel": 34,
+  "Recharge For Abi": 34,
+  "Recharge For Mom": 34,
+  "Recharge to Airtel": 34,
+  "Mi Mobile Service Tax": 34,
+  "Screen Card": 34,
+  "Sim Card": 34,
+  "Sim Card & Link Adhaar": 34,
+  "Abi Phone Cover": 34,
+  "Recharge For Me": 34,
+  "Recharge For BSNL": 34,
+  "Mobile Recharge For BSNL": 34,
+  "Mobile Recharge for BSNL": 34,
+  "Recharge Myself": 34,
+  "Abi Mobile Recharge": 34,
+
+  // Money Given
+  "Give it Back": 35,
+  "Give it back": 35,
+  "Give it back Sasi": 35,
+  "Give it Back Vivek": 35,
+  "Give it Back Vetrivel": 35,
+  "Give back": 35,
+  "Give back ": 35,
+  "Give back to Deepak": 35,
+  "Give back to Dinesh": 35,
+  "Give back to KD": 35,
+  "Give back to Madhu": 35,
+  "Give back to Naveen": 35,
+  "Gave it Back": 35,
+  "Gave it to Ravi": 35,
+  "Gave it to Akka": 35,
+  "Gave to Ravi": 35,
+  "Gave to Naveen": 35,
+  "Gave to Mom": 35,
+  "Gave to Ram": 35,
+  "Gave to Sasi": 35,
+  "Gave to Dinesh": 35,
+  "Gave to Akka": 35,
+  "Gave to Madhu": 35,
+  "Gave to Aboo": 35,
+  "Gave to": 35,
+  "Gave it to Abi": 35,
+  "Geve it to Abi": 35,
+  "Gave it to Boopathi": 35,
+  "Give it Back to Abi": 35,
+  "Give Back to Abi": 35,
+  "Give it to Abi": 35,
+  "Give It Back to Srikanth": 35,
+  "Give it Back to Srikanth": 35,
+  "Gave it to Suresh": 35,
+  "Gave it to Vivek": 35,
+  "Give it back to Abi": 35,
+  "Gave it Back to Abi": 35,
+
+  // Money Received
+  "Get it From Abi": 36,
+  "Get it From Dad": 36,
+  "Get it From Mom": 36,
+  "Get it From Naveen": 36,
+  "Get it From Ramya": 36,
+  "Get it From Ravi": 36,
+  "Get it From Vetrivel": 36,
+  "Get it From Vivek": 36,
+  "Get it From Dinesh": 36,
+  "Get it From Mams": 36,
+  "Get it From Bag": 36,
+  "Get it From Thali Pirichu Potta Function": 36,
+  "Get From Deepak": 36,
+  "Get From Dinesh": 36,
+  "Get From Sasi": 36,
+  "Get From Shufil": 36,
+  "Lunch Amount": 36,
+  "Room Advance Returned ": 36,
+  "Available Amount ": 36,
+  "Found it From Home": 36,
+  "Get it From Eniyan": 36,
+  "Get it From Sister": 36,
+  "Get it From Akka": 36,
+  "Get it From Son": 36,
+  "Get it From Wife": 36,
+
+  // Parents
+  "Fruits For Mom": 37,
+  "Bike Air For Dad": 37,
+  "Bike Petrol For Dad": 37,
+  "Gave it to Dad": 37,
+
+  // Printing & Stationery
+  "Note": 39,
+
+  // Relatives
+  "Gave it to Rajendiran Uncle": 40,
+  "Bike Petrol For Akka": 40,
+
+  // Rent
+  "Room Rent": 41,
+  "Room: Rent": 41,
+  "Room Advance": 41,
+  "Room Advance Returned": 41,
+  "Room Rental Agreement": 41,
+  "Room Shifting": 41,
+  "Room: EB Deposit": 41,
+  "Room: Electricity Bill": 41,
+  "Room: Internet Bill": 41,
+  "Room: Water": 41,
+  "Room: Water Bill": 41,
+  "Room: Water Cane": 41,
+  "Room: Hit Purchase": 41,
+  "Room: Spend": 41,
+  "House Warming": 41,
+  "Give Back to Dinesh & Room Rent": 41,
+  "Water Bill": 41,
+  "Room Rent & Water Bill": 41,
+
+  // Salary
+  "March Month 2017": 42,
+  "April Month 2017": 42,
+  "May Month 2017": 42,
+  "June Month 2017": 42,
+  "July Month 2017": 42,
+  "August Month 2017": 42,
+  "September Month 2017": 42,
+  "October Month 2017": 42,
+  "Salary": 42,
+
+  // Saloon
+  "Haircut": 43,
+  "Hair Cut": 43,
+  "Hair Cut For Abi": 43,
+  "Hair Cut For Myself ": 43,
+  "Hair Cut For Myself  ": 43,
+
+  // Sandals / Shoes
+  "Sandals": 44,
+  "Footwear Repair": 44,
+  "Slippers": 44,
+  "shoes": 44,
+  "shoe": 44,
+
+  // Savings
+  "RD": 45,
+  "Rd": 45,
+  "FD": 45,
+  "Recurring Deposit": 45,
+  "Recurring Deposit ": 45,
+  "Recurrent Deposit": 45,
+  "Savings": 45,
+
+  // Snacks
+  "Penuts": 46,
+  "Snacks From Bakery": 46,
+  "Jilabbi": 46,
+  "Candy": 46,
+  "Cakes & Mixture": 46,
+  "Snack": 46,
+  "Snacks": 46,
+  "Evening Snacks": 46,
+  "Dinner Snacks": 46,
+  "Dinner Snacks & Parking": 46,
+  "Bakery Snacks": 46,
+  "Chocolate": 46,
+  "Cool Drinks": 46,
+  "Juice": 46,
+  "Lattu & Food": 46,
+  "Rusk": 46,
+  "Snacks For Abi": 46,
+  "Snacks Spend": 46,
+  "Sweets": 46,
+  "Water Bottles": 46,
+  "Biscuits": 46,
+  "Fruit Bowl": 46,
+  "Sprite": 46,
+  "Uppattu": 46,
+  "Lattu": 46,
+  "Nenthra Chips": 46,
+  "Pepsi": 46,
+  "Gobi Manchurian": 46,
+  "Kadalamittai": 46,
+  "Vadai": 46,
+  "Coffee": 46,
+  "Egg Buffs & Kulfi": 46,
+  "Egg Buffs": 46,
+  "Samosa &Vadai": 46,
+  "Samosa & Vadai": 46,
+  "Vadai & Samosa": 46,
+  "Samosa": 46,
+  "Samosas": 46,
+  "Chips & Murukku": 46,
+  "Chips & Mutukku": 46,
+  "Murukku": 46,
+  "Chips": 46,
+  "Masala Groundnuts": 46,
+  "Vadai & Egg Bonda": 46,
+  "Egg Bonda & Vadai": 46,
+  "Egg Bonda": 46,
+  "Shawarma": 46,
+  "Shawarma Roll": 46,
+  "Sprite Cook Drinks": 46,
+  "Kulfi": 46,
+  "Butter Milk": 46,
+  "Ice Cream": 46,
+  "Egg Mushrooms": 46,
+  "Groundnuts": 46,
+  "Cake": 46,
+  "Cake & Egg Buffs": 46,
+  "Groundnuts Candy": 46,
+  "Biscuits & Snacks": 46,
+  "Gilabi": 46,
+  "Corn Phel": 46,
+  "Murukku & Chips": 46,
+  "Snacks Extra": 46,
+  "Coke": 46,
+  "Rasagulla": 46,
+  "Biscuits & Chips": 46,
+  "Pori & Kara Biscuits": 46,
+  "Masal Poori": 46,
+  "Sweets & Murukku": 46,
+  "Pomegranate Juice": 46,
+  "Rusk & Sprite": 46,
+  "Egg Buff & Sweets": 46,
+  "Shawarma & Veg Buff": 46,
+  "Pal Bun": 46,
+  "Paal Bun": 46,
+  "Chocolate & Chips": 46,
+  "Chocolates": 46,
+  "Cream Bun": 46,
+  "Pori & Biscuits": 46,
+  "Pori": 46,
+  "Mushroom Fry": 46,
+  "Chilappi": 46,
+  "Momos": 46,
+  "Chicken Momos": 46,
+  "Christmas Cake": 46,
+  "Beeda & Tea": 46,
+  "Fried Gram": 46,
+  "Pholi & Palkova": 46,
+
+  // Transport
+  "Cab: Thanjavur New Bus Stand to Home": 48,
+  "Cab : Thanjavur New Bus Stand to Home": 48,
+  "Auto: Thanjavur Home to New Bus Stand": 48,
+  "Auto : Thanjavur Home to New Bus Stand": 48,
+  "Bus": 48,
+  "Auto": 48,
+  "Trip Amount": 48,
+  "Thirupathi Trip": 48,
+  "Bennargetta Zoo Spend": 48,
+  "Lalbagh": 48,
+  "Lalbagh Tickets": 48,
+  "Bus : Lalbagh to Room": 48,
+  "Bus : Room to Lalbagh": 48,
+  "Shiradi: Expenses": 48,
+  "Shiradi: Bus Booking & Others": 48,
+  "Bus : Bangalore to Pudukkottai": 48,
+  "Bus: Bangalore to Pudukkottai": 48,
+  "Bus: Salem to Bangalore": 48,
+  "Bus : Salem to Bangalore": 48,
+  "Bus : Trichy to Salem": 48,
+  "Bus: Trichy to Salem": 48,
+  "Bus: Pudukkottai to Trichy": 48,
+  "Bus : Pudukkottai to Trichy": 48,
+  "Bus : Pudukkottai to Bangalore": 48,
+  "Bus: Pudukkottai to Bangalore": 48,
+  "Auto : Bus Stand to Pdkt Home": 48,
+  "Auto: Bus Stand to Pdkt Home": 48,
+  "Auto : Pudukkottai Bus Stand to Home": 48,
+  "Bus : Salem to Pudukkottai": 48,
+  "Bus: Salem to Pudukkottai": 48,
+  "Bus: Bangalore to Salem": 48,
+  "Bus : Bangalore to Salem": 48,
+  "Bus : Thanjavur to Bangalore": 48,
+  "Bus: Thanjavur to Bangalore": 48,
+  "Auto : Madiwala to Home": 48,
+  "Auto: Madiwala to Home": 48,
+  "Bus : Trichy to Pudukkottai": 48,
+  "Bus: Trichy to Pudukkottai": 48,
+  "Bus : Salem to Trichy": 48,
+  "Bus: Salem to Trichy": 48,
+  "Pudukkottai to Bangalore": 48,
+  "Cab : Office to Home": 48,
+  "Cab: Office to Home": 48,
+  "Cab : Thanjavur Home to New Bus Stand": 48,
+  "Cab: Thanjavur Home to New Bus Stand": 48,
+  "Bus : Thanjavur Old Bus Stand to New Bus Stand": 48,
+  "Bus: Thanjavur Old Bus Stand to New Bus Stand": 48,
+  "Bus : Pudukkottai to Thanjavur": 48,
+  "Bus: Pudukkottai to Thanjavur": 48,
+  "Bus: Trichy to Bangalore": 48,
+  "Bus: Trichy to Bangalore": 48,
+  "Auto: Home to Bus Stand": 48,
+  "Auto : Home to Bus Stand": 48,
+
+  // Transfer
+  "Money Added to Wallet": 51,
+  "Money Added to Wallets": 51,
+  "Uber Wallets": 51,
+  "Money Added to Paytm": 51,
+  "Money Added to Paytm Wallet": 51,
+  "Added Money to Wallet": 51,
+  "Adde to Paytm Wallet": 51,
+  "Added to Paytm Wallet": 51,
+  "Added Paytm Wallet": 51,
 
   // Water
-  "Water Cane": 49,
+  "Water Cane": 52,
+
+  // Dental
+  "Dental Deep Cleaning": 53,
+
+  // Gold Chit
+  "Gold Chit": 54,
 
   // Default
-  "Default_expense": 31,
-  "Default_income": 34
+  "Default_expense": 33,
+  "Default_income": 36
 };
 
-let id = 93;
-
+let id = 1;
 const transactions = raw
   .trim()
   .split("\n")
   .filter(line => line.trim() && !line.trim().startsWith("//"))
   .map(line => {
-    const match = line.match(/^(\d{2}\/\d{2}\/\d{2})\s*:\s*(.*?)\s*:\s*\$(.+)$/);
+    const match = line.match(
+      /^(\d{2}\/\d{2}\/\d{2,4})\s*:\s*(.*?)\s*:\s*\$?([\d.]+)\s*$/
+    );
     if (!match) {
       console.log("Invalid line:", line);
       return null;
     }
-    const type = "expense"; // expense OR income
     const [, date, notes, amountStr] = match;
-    const [dd, mm, yy] = date.split("/");
-    const formattedDate = `20${yy}-${mm}-${dd}`;
+    let [dd, mm, yyyy] = date.split("/");
+    if (yyyy.length === 2) yyyy = `20${yyyy}`;
+    const formattedDate = `${yyyy}-${mm}-${dd}`;
+    const type = "income"; // expense OR income
     return {
       id: id++,
       type,
@@ -443,9 +774,15 @@ const transactions = raw
       date: formattedDate,
       notes,
       bill_id: null,
-      created_at: `${formattedDate} 00:00:00`,
       transfer_group_id: null,
-      direction: null
+      direction: null,
+      created_at: `${formattedDate} 00:00:00`,
+      loan_id: null,
+      loan_payment_type: null,
+      principal_component: null,
+      interest_component: null,
+      outstanding_after_payment: null,
+      linked_date: null
     };
   })
   .filter(Boolean);
@@ -463,196 +800,223 @@ const backup = {
         "icon": "cake",
         "color": "#A78BFA",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 50,
+        "id": 2,
         "name": "Anniversary",
         "type": "expense",
         "icon": "ring",
         "color": "#E91E63",
         "is_active": 1,
-        "created_at": "2026-07-09 10:52:07"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 2,
+        "id": 3,
         "name": "Bank Charges",
         "type": "expense",
         "icon": "bank",
         "color": "#374151",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 3,
+        "id": 4,
         "name": "Beauty Care",
         "type": "expense",
         "icon": "cards-heart-outline",
         "color": "#DB2777",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 4,
+        "id": 5,
         "name": "Bike / Vehicle",
         "type": "expense",
         "icon": "motorbike",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 5,
+        "id": 6,
         "name": "Cashback",
         "type": "income",
         "icon": "cash-plus",
         "color": "#A3E635",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 6,
+        "id": 7,
         "name": "Child Birth",
         "type": "expense",
         "icon": "baby-carriage",
         "color": "#22C55E",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 7,
+        "id": 8,
         "name": "Clothes",
         "type": "expense",
         "icon": "tshirt-v",
         "color": "#FB923C",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 8,
+        "id": 9,
         "name": "DTH",
         "type": "expense",
         "icon": "television-play",
         "color": "#8B5CF6",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 9,
+        "id": 53,
+        "name": "Dental",
+        "type": "expense",
+        "icon": "tooth",
+        "color": "#64748B",
+        "is_active": 1,
+        "created_at": "2026-07-16 17:38:44"
+      },
+      {
+        "id": 10,
         "name": "Diwali",
         "type": "expense",
         "icon": "firework",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 10,
+        "id": 11,
         "name": "Donations",
         "type": "expense",
         "icon": "hand-heart",
         "color": "#22C55E",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 11,
+        "id": 12,
         "name": "Drinks",
         "type": "expense",
         "icon": "liquor",
         "color": "#EF4444",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 12,
+        "id": 13,
         "name": "Electricity",
         "type": "expense",
         "icon": "power-plug",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 13,
+        "id": 14,
         "name": "Electronics",
         "type": "expense",
         "icon": "devices",
         "color": "#A78BFA",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 14,
+        "id": 15,
         "name": "Eniyan",
         "type": "expense",
         "icon": "human-female-dance",
         "color": "#FBBF24",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 15,
+        "id": 16,
         "name": "Entertainment",
         "type": "expense",
         "icon": "movie-open",
         "color": "#7C3AED",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 16,
+        "id": 17,
         "name": "Family",
         "type": "expense",
         "icon": "account-group",
         "color": "#F43F5E",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 17,
+        "id": 18,
         "name": "Food & Dining",
         "type": "expense",
         "icon": "silverware-fork-knife",
         "color": "#F59E0B",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 18,
+        "id": 19,
         "name": "Fruits",
         "type": "expense",
         "icon": "fruit-watermelon",
         "color": "#84CC16",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 19,
+        "id": 49,
+        "name": "Funeral & Memorial",
+        "type": "expense",
+        "icon": "deathly-hallows",
+        "color": "#DC2626",
+        "is_active": 1,
+        "created_at": "2026-07-15 15:30:54"
+      },
+      {
+        "id": 20,
         "name": "Gas",
         "type": "expense",
         "icon": "gas-cylinder",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 20,
+        "id": 21,
         "name": "Gave it to Abi",
         "type": "expense",
         "icon": "bank-transfer-out",
         "color": "#DC2626",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 21,
+        "id": 22,
         "name": "Gifts",
         "type": "expense",
         "icon": "gift",
         "color": "#EC4899",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
+      },
+      {
+        "id": 54,
+        "name": "Gold Chit",
+        "type": "expense",
+        "icon": "podium-gold",
+        "color": "#FBBF24",
+        "is_active": 1,
+        "created_at": "2026-07-17 15:46:37"
       },
       {
         "id": 23,
@@ -661,295 +1025,964 @@ const backup = {
         "icon": "necklace",
         "color": "#FBBF24",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 23,
+        "id": 24,
         "name": "Groceries",
         "type": "expense",
         "icon": "cart",
         "color": "#F97316",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 24,
+        "id": 25,
         "name": "Guest Visit to Bangalore",
         "type": "expense",
         "icon": "account-group-outline",
         "color": "#6366F1",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 25,
+        "id": 26,
+        "name": "Hair Maintenance",
+        "type": "expense",
+        "icon": "face-man-shimmer",
+        "color": "#334155",
+        "is_active": 1,
+        "created_at": "2026-07-15 15:30:54"
+      },
+      {
+        "id": 27,
         "name": "Home Improvement",
         "type": "expense",
         "icon": "hammer-wrench",
         "color": "#A16207",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 26,
+        "id": 28,
         "name": "Hospital / Medicine",
         "type": "expense",
         "icon": "hospital-box-outline",
         "color": "#EF4444",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 27,
+        "id": 29,
         "name": "Households",
         "type": "expense",
         "icon": "bus-stop-covered",
         "color": "#14B8A6",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 28,
+        "id": 30,
         "name": "Interest",
         "type": "income",
         "icon": "percent",
         "color": "#22C55E",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 29,
+        "id": 31,
         "name": "Jewellery",
         "type": "expense",
         "icon": "gold",
         "color": "#FBBF24",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 30,
+        "id": 32,
         "name": "Loan / EMI",
         "type": "expense",
         "icon": "bank-transfer",
         "color": "#B91C1C",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 31,
+        "id": 33,
         "name": "Misc",
         "type": "expense",
         "icon": "dots-horizontal",
         "color": "#9CA3AF",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 32,
+        "id": 34,
         "name": "Mobile",
         "type": "expense",
         "icon": "cellphone",
         "color": "#0EA5E9",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 33,
+        "id": 35,
         "name": "Money Given",
         "type": "expense",
         "icon": "arrow-up-bold-circle",
         "color": "#EF4444",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 34,
+        "id": 36,
         "name": "Money Received",
         "type": "income",
         "icon": "arrow-down-bold-circle",
         "color": "#10B981",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 35,
+        "id": 37,
         "name": "Parents",
         "type": "expense",
         "icon": "account-group",
         "color": "#FB923C",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 36,
+        "id": 55,
+        "name": "Pongal Festival",
+        "type": "expense",
+        "icon": "white-balance-sunny",
+        "color": "#FBBF24",
+        "is_active": 1,
+        "created_at": "2026-07-21 05:17:53"
+      },
+      {
+        "id": 38,
+        "name": "Prabu Birthday",
+        "type": "expense",
+        "icon": "cake-layered",
+        "color": "#3B82F6",
+        "is_active": 1,
+        "created_at": "2026-07-15 15:30:54"
+      },
+      {
+        "id": 39,
         "name": "Printing & Stationery",
         "type": "expense",
         "icon": "printer",
         "color": "#6B7280",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 37,
+        "id": 40,
         "name": "Relatives",
         "type": "expense",
         "icon": "account-group",
         "color": "#F97316",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 38,
+        "id": 41,
         "name": "Rent",
         "type": "expense",
         "icon": "home-account",
         "color": "#3B82F6",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 39,
+        "id": 42,
         "name": "Salary",
         "type": "income",
         "icon": "cash-multiple",
         "color": "#16A34A",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 40,
+        "id": 43,
         "name": "Salon",
         "type": "expense",
         "icon": "content-cut",
         "color": "#334155",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 41,
+        "id": 44,
         "name": "Sandals / Shoes",
         "type": "expense",
         "icon": "shoe-sneaker",
         "color": "#DB2777",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 42,
+        "id": 45,
         "name": "Savings",
         "type": "expense",
         "icon": "piggy-bank",
         "color": "#059669",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 43,
+        "id": 46,
         "name": "Snacks",
         "type": "expense",
         "icon": "food-variant",
         "color": "#FBBF24",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 44,
+        "id": 47,
         "name": "Special Occasions",
         "type": "expense",
         "icon": "party-popper",
         "color": "#06B6D4",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 45,
+        "id": 51,
+        "name": "Transfer",
+        "type": "expense",
+        "icon": "swap-horizontal",
+        "color": "#6366F1",
+        "is_active": 1,
+        "created_at": "2026-07-15 15:30:54"
+      },
+      {
+        "id": 48,
         "name": "Transport",
         "type": "expense",
         "icon": "bus",
         "color": "#14B8A6",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 46,
-        "name": "Utilities",
+        "id": 56,
+        "name": "Treditional Contributions",
         "type": "expense",
-        "icon": "lightning-bolt",
-        "color": "#64748B",
+        "icon": "heart",
+        "color": "#EF4444",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-21 06:11:42"
       },
       {
-        "id": 47,
+        "id": 50,
         "name": "Vacation",
         "type": "expense",
         "icon": "earth",
         "color": "#A3E635",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
       },
       {
-        "id": 48,
-        "name": "Wallet Transfer",
-        "type": "expense",
-        "icon": "swap-horizontal",
-        "color": "#6366F1",
-        "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
-      },
-      {
-        "id": 49,
+        "id": 52,
         "name": "Water / Purifier",
         "type": "expense",
         "icon": "cup-water",
         "color": "#64748B",
         "is_active": 1,
-        "created_at": "2026-07-09 08:19:40"
+        "created_at": "2026-07-15 15:30:54"
+      },
+      {
+        "id": 57,
+        "name": "Weekend Getaways",
+        "type": "expense",
+        "icon": "bag-personal-outline",
+        "color": "#A3E635",
+        "is_active": 1,
+        "created_at": "2026-07-21 14:36:53"
       }
     ],
     "sources": [
       {
+        "id": 1,
         "name": "Axis Bank",
         "type": null,
         "initial_balance": 0,
+        "is_active": 1,
         "icon": "bank",
-        "color": "#DC2626",
-        "id": 1
+        "color": "#DC2626"
       },
       {
+        "id": 2,
         "name": "Bank of Baroda",
         "type": null,
         "initial_balance": 0,
+        "is_active": 1,
         "icon": "bank",
-        "color": "#FB923C",
-        "id": 2
+        "color": "#FB923C"
       },
       {
+        "id": 3,
         "name": "Cash",
         "type": null,
         "initial_balance": 0,
+        "is_active": 1,
         "icon": "cash",
-        "color": "#A3E635",
-        "id": 3
+        "color": "#A3E635"
       },
       {
+        "id": 4,
         "name": "State Bank of India",
         "type": null,
         "initial_balance": 0,
+        "is_active": 1,
         "icon": "bank",
-        "color": "#6366F1",
-        "id": 4
+        "color": "#6366F1"
       }
     ],
-    budgets: [],
-    bills: []
+    "budgets": [],
+    "bills": [],
+    "loans": [
+      {
+        "id": 4,
+        "loan_name": "Personal Loan ",
+        "loan_type": "Personal",
+        "lender": "Capital Finance Pvt Ltd",
+        "loan_direction": "BORROWED",
+        "principal_amount": 200000,
+        "interest_rate": 13,
+        "loan_start_date": "2017-06-22",
+        "loan_end_date": null,
+        "tenure_months": 60,
+        "emi_amount": 4917,
+        "emi_day": 5,
+        "outstanding_amount": 0,
+        "principal_paid": 226728.76,
+        "interest_paid": 33366.24,
+        "total_paid": 260095,
+        "total_prepayment": 0,
+        "remaining_months": 0,
+        "status": "Closed",
+        "notes": "Personal Loan From Capital Finance Pvt Ltd ",
+        "created_at": "2026-07-15 16:17:15",
+        "updated_at": "2026-07-15 17:20:40",
+        "transaction_id": null
+      },
+      {
+        "id": 3,
+        "loan_name": "Gold Loan 3",
+        "loan_type": "Other",
+        "lender": "Pandiyan Bank",
+        "loan_direction": "BORROWED",
+        "principal_amount": 47000,
+        "interest_rate": 0.75,
+        "loan_start_date": "2018-11-11",
+        "loan_end_date": null,
+        "tenure_months": 12,
+        "emi_amount": 0,
+        "emi_day": null,
+        "outstanding_amount": 0,
+        "principal_paid": 50037.62,
+        "interest_paid": 29.38,
+        "total_paid": 50067,
+        "total_prepayment": 0,
+        "remaining_months": null,
+        "status": "Closed",
+        "notes": "3rd Gold Loan",
+        "created_at": "2026-07-15 15:30:55",
+        "updated_at": "2026-07-17 11:22:14",
+        "transaction_id": null
+      },
+      {
+        "id": 2,
+        "loan_name": "Gold Loan 2",
+        "loan_type": "Other",
+        "lender": "Bank of Baroda",
+        "loan_direction": "BORROWED",
+        "principal_amount": 100000,
+        "interest_rate": 0.75,
+        "loan_start_date": "2018-11-07",
+        "loan_end_date": null,
+        "tenure_months": 12,
+        "emi_amount": 0,
+        "emi_day": null,
+        "outstanding_amount": 0,
+        "principal_paid": 107403.46,
+        "interest_paid": 388,
+        "total_paid": 107741.32,
+        "total_prepayment": 0,
+        "remaining_months": null,
+        "status": "Closed",
+        "notes": "2nd Gold Loan ",
+        "created_at": "2026-07-15 15:30:55",
+        "updated_at": "2026-07-17 11:30:17",
+        "transaction_id": null
+      },
+      {
+        "id": 1,
+        "loan_name": "Gold Loan 1",
+        "loan_type": "Other",
+        "lender": "Bank of Baroda",
+        "loan_direction": "BORROWED",
+        "principal_amount": 100000,
+        "interest_rate": 0.75,
+        "loan_start_date": "2018-01-22",
+        "loan_end_date": null,
+        "tenure_months": 12,
+        "emi_amount": 0,
+        "emi_day": 6,
+        "outstanding_amount": 0,
+        "principal_paid": 104201.39,
+        "interest_paid": 389.65,
+        "total_paid": 104585,
+        "total_prepayment": 0,
+        "remaining_months": null,
+        "status": "Closed",
+        "notes": "1st Gold Loan ",
+        "created_at": "2026-07-15 15:30:55",
+        "updated_at": "2026-07-17 18:18:29",
+        "transaction_id": null
+      }
+    ],
+    "loan_payments": [
+      {
+        "id": 1,
+        "loan_id": 1,
+        "payment_date": "2018-01-22T05:30:00.000Z",
+        "payment_amount": 282,
+        "principal_component": 219.5,
+        "interest_component": 62.5,
+        "remaining_balance": 99780.5,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 1363,
+        "remarks": "1st Loan: Processing Fee",
+        "created_at": "2026-07-13 16:09:22"
+      },
+      {
+        "id": 2,
+        "loan_id": 1,
+        "payment_date": "2018-01-23T04:30:00.000Z",
+        "payment_amount": 590,
+        "principal_component": 527.64,
+        "interest_component": 62.36,
+        "remaining_balance": 99252.86,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 1368,
+        "remarks": "1st Loan: Processing Fee",
+        "created_at": "2026-07-13 16:10:10"
+      },
+      {
+        "id": 3,
+        "loan_id": 1,
+        "payment_date": "2018-05-21T05:30:00.000Z",
+        "payment_amount": 50,
+        "principal_component": 0,
+        "interest_component": 56.04,
+        "remaining_balance": 89664.89,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 1724,
+        "remarks": "1st Loan: 1st Payment",
+        "created_at": "2026-07-13 16:10:43"
+      },
+      {
+        "id": 4,
+        "loan_id": 1,
+        "payment_date": "2018-05-21T05:30:00.000Z",
+        "payment_amount": 9650,
+        "principal_component": 9587.97,
+        "interest_component": 62.03,
+        "remaining_balance": 89664.89,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 1723,
+        "remarks": "1st Loan: 1st Payment",
+        "created_at": "2026-07-13 16:12:31"
+      },
+      {
+        "id": 5,
+        "loan_id": 1,
+        "payment_date": "2018-06-01T05:00:00.000Z",
+        "payment_amount": 5000,
+        "principal_component": 4943.96,
+        "interest_component": 56.04,
+        "remaining_balance": 84720.93,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 1761,
+        "remarks": "1st Loan: 2nd Payment",
+        "created_at": "2026-07-13 16:13:39"
+      },
+      {
+        "id": 6,
+        "loan_id": 1,
+        "payment_date": "2018-09-03T05:30:00.000Z",
+        "payment_amount": 5000,
+        "principal_component": 4978.27,
+        "interest_component": 21.73,
+        "remaining_balance": 29795.61,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 2029,
+        "remarks": "1st Loan: 3rd Payment",
+        "created_at": "2026-07-13 16:13:57"
+      },
+      {
+        "id": 7,
+        "loan_id": 1,
+        "payment_date": "2018-09-03T05:30:00.000Z",
+        "payment_amount": 50000,
+        "principal_component": 49947.05,
+        "interest_component": 52.95,
+        "remaining_balance": 34773.88,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 2028,
+        "remarks": "1st Loan: 4th Payment",
+        "created_at": "2026-07-13 16:14:09"
+      },
+      {
+        "id": 8,
+        "loan_id": 1,
+        "payment_date": "2018-11-03",
+        "payment_amount": 34000,
+        "principal_component": 33981.38,
+        "interest_component": 18.62,
+        "remaining_balance": 0,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 2171,
+        "remarks": "1st Loan: 5th Payment Closing",
+        "created_at": "2026-07-13 16:14:19"
+      },
+      {
+        "id": 9,
+        "loan_id": 2,
+        "payment_date": "2018-11-07",
+        "payment_amount": 12,
+        "principal_component": 0,
+        "interest_component": 62.14,
+        "remaining_balance": 99423.83,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 2193,
+        "remarks": "2nd Loan: Join Account Opening Xerox",
+        "created_at": "2026-07-14 08:19:57"
+      },
+      {
+        "id": 10,
+        "loan_id": 2,
+        "payment_date": "2018-11-07",
+        "payment_amount": 100,
+        "principal_component": 37.84,
+        "interest_component": 62.16,
+        "remaining_balance": 99423.83,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 2191,
+        "remarks": "2nd Loan: Join Account Opening Charge",
+        "created_at": "2026-07-14 08:21:15"
+      },
+      {
+        "id": 11,
+        "loan_id": 2,
+        "payment_date": "2018-11-07",
+        "payment_amount": 67,
+        "principal_component": 4.83,
+        "interest_component": 62.17,
+        "remaining_balance": 99461.67,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 2190,
+        "remarks": "2nd Loan: Join Account Opening Charge",
+        "created_at": "2026-07-14 08:21:31"
+      },
+      {
+        "id": 12,
+        "loan_id": 2,
+        "payment_date": "2018-11-07",
+        "payment_amount": 596,
+        "principal_component": 533.5,
+        "interest_component": 62.5,
+        "remaining_balance": 99466.5,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 23,
+        "transaction_id": 2186,
+        "remarks": "2nd Loan: Processing Fee",
+        "created_at": "2026-07-14 08:21:45"
+      },
+      {
+        "id": 13,
+        "loan_id": 4,
+        "payment_date": "2017-08-01T04:30:00.000Z",
+        "payment_amount": 4917,
+        "principal_component": 2823.28,
+        "interest_component": 2093.72,
+        "remaining_balance": 190443.39,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 32,
+        "transaction_id": 630,
+        "remarks": "Personal Loan: 1st EMI",
+        "created_at": "2026-07-15 16:18:20"
+      },
+      {
+        "id": 14,
+        "loan_id": 4,
+        "payment_date": "2017-09-04T04:30:00.000Z",
+        "payment_amount": 4917,
+        "principal_component": 2853.86,
+        "interest_component": 2063.14,
+        "remaining_balance": 187589.53,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 32,
+        "transaction_id": 762,
+        "remarks": "Personal Loan: 2nd EMI",
+        "created_at": "2026-07-15 16:19:14"
+      },
+      {
+        "id": 15,
+        "loan_id": 4,
+        "payment_date": "2017-10-05",
+        "payment_amount": 4917,
+        "principal_component": 2884.78,
+        "interest_component": 2032.22,
+        "remaining_balance": 184704.75,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 32,
+        "transaction_id": 902,
+        "remarks": "Personal Loan: 3rd EMI",
+        "created_at": "2026-07-15 16:19:57"
+      },
+      {
+        "id": 16,
+        "loan_id": 4,
+        "payment_date": "2017-11-06",
+        "payment_amount": 4917,
+        "principal_component": 2916.03,
+        "interest_component": 2000.97,
+        "remaining_balance": 181788.72,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 32,
+        "transaction_id": 1035,
+        "remarks": "Personal Loan: 4th EMI",
+        "created_at": "2026-07-15 16:20:09"
+      },
+      {
+        "id": 17,
+        "loan_id": 4,
+        "payment_date": "2017-12-05",
+        "payment_amount": 4917,
+        "principal_component": 2947.62,
+        "interest_component": 1969.38,
+        "remaining_balance": 178841.1,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 32,
+        "transaction_id": 1160,
+        "remarks": "Personal Loan: 5th EMI",
+        "created_at": "2026-07-15 16:20:21"
+      },
+      {
+        "id": 18,
+        "loan_id": 4,
+        "payment_date": "2018-01-05",
+        "payment_amount": 4917,
+        "principal_component": 2979.55,
+        "interest_component": 1937.45,
+        "remaining_balance": 175861.55,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 32,
+        "transaction_id": 1292,
+        "remarks": "Personal Loan: 6th EMI",
+        "created_at": "2026-07-15 16:23:24"
+      },
+      {
+        "id": 19,
+        "loan_id": 4,
+        "payment_date": "2018-02-05",
+        "payment_amount": 4917,
+        "principal_component": 3011.83,
+        "interest_component": 1905.17,
+        "remaining_balance": 172849.72,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 32,
+        "transaction_id": 1410,
+        "remarks": "Personal Loan: 7th EMI",
+        "created_at": "2026-07-15 16:23:48"
+      },
+      {
+        "id": 20,
+        "loan_id": 4,
+        "payment_date": "2018-03-05",
+        "payment_amount": 4917,
+        "principal_component": 3044.46,
+        "interest_component": 1872.54,
+        "remaining_balance": 169805.26,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 32,
+        "transaction_id": 1503,
+        "remarks": "Personal Loan: 8th EMI",
+        "created_at": "2026-07-15 16:24:02"
+      },
+      {
+        "id": 21,
+        "loan_id": 4,
+        "payment_date": "2018-04-05",
+        "payment_amount": 4917,
+        "principal_component": 3077.44,
+        "interest_component": 1839.56,
+        "remaining_balance": 166727.82,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 32,
+        "transaction_id": 1601,
+        "remarks": "Personal Loan: 9th EMI",
+        "created_at": "2026-07-15 16:24:13"
+      },
+      {
+        "id": 22,
+        "loan_id": 4,
+        "payment_date": "2018-05-05",
+        "payment_amount": 4917,
+        "principal_component": 3110.78,
+        "interest_component": 1806.22,
+        "remaining_balance": 163617.04,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 32,
+        "transaction_id": 1672,
+        "remarks": "Personal Loan: 10th EMI",
+        "created_at": "2026-07-15 16:24:28"
+      },
+      {
+        "id": 23,
+        "loan_id": 4,
+        "payment_date": "2018-06-05",
+        "payment_amount": 4917,
+        "principal_component": 3144.48,
+        "interest_component": 1772.52,
+        "remaining_balance": 160472.56,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 32,
+        "transaction_id": 1771,
+        "remarks": "Personal Loan: 11th EMI",
+        "created_at": "2026-07-15 16:25:46"
+      },
+      {
+        "id": 24,
+        "loan_id": 4,
+        "payment_date": "2018-07-05",
+        "payment_amount": 4917,
+        "principal_component": 3178.55,
+        "interest_component": 1738.45,
+        "remaining_balance": 157294.01,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 32,
+        "transaction_id": 1870,
+        "remarks": "Personal Loan: 12th EMI",
+        "created_at": "2026-07-15 16:25:56"
+      },
+      {
+        "id": 25,
+        "loan_id": 4,
+        "payment_date": "2018-08-06",
+        "payment_amount": 4917,
+        "principal_component": 3212.98,
+        "interest_component": 1704.02,
+        "remaining_balance": 154081.03,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 32,
+        "transaction_id": 1942,
+        "remarks": "Personal Loan: 13th EMI",
+        "created_at": "2026-07-15 16:26:09"
+      },
+      {
+        "id": 26,
+        "loan_id": 4,
+        "payment_date": "2018-09-05",
+        "payment_amount": 4917,
+        "principal_component": 3247.79,
+        "interest_component": 1669.21,
+        "remaining_balance": 150833.24,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 32,
+        "transaction_id": 2036,
+        "remarks": "Personal Loan: 14th EMI",
+        "created_at": "2026-07-15 16:26:18"
+      },
+      {
+        "id": 27,
+        "loan_id": 4,
+        "payment_date": "2018-10-05",
+        "payment_amount": 4917,
+        "principal_component": 3282.97,
+        "interest_component": 1634.03,
+        "remaining_balance": 147550.27,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 32,
+        "transaction_id": 2096,
+        "remarks": "Personal Loan: 15th EMI",
+        "created_at": "2026-07-15 16:26:26"
+      },
+      {
+        "id": 28,
+        "loan_id": 4,
+        "payment_date": "2018-11-05",
+        "payment_amount": 4917,
+        "principal_component": 3318.54,
+        "interest_component": 1598.46,
+        "remaining_balance": 144231.73,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 32,
+        "transaction_id": 2181,
+        "remarks": "Personal Loan: 16th EMI",
+        "created_at": "2026-07-15 16:26:34"
+      },
+      {
+        "id": 29,
+        "loan_id": 4,
+        "payment_date": "2018-11-17",
+        "payment_amount": 172523,
+        "principal_component": 170960.49,
+        "interest_component": 1562.51,
+        "remaining_balance": 0,
+        "payment_type": "LINKED",
+        "payment_source_id": 2,
+        "payment_category_id": 32,
+        "transaction_id": 2245,
+        "remarks": "Personal Loan: Foreclose",
+        "created_at": "2026-07-15 16:30:55"
+      },
+      {
+        "id": 30,
+        "loan_id": 4,
+        "payment_date": "2017-06-22T12:00:00.000Z",
+        "payment_amount": 8900,
+        "principal_component": 6733.33,
+        "interest_component": 2166.67,
+        "remaining_balance": 193266.67,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 32,
+        "transaction_id": 2893,
+        "remarks": "Personal Loan: Processing Fee",
+        "created_at": "2026-07-15 17:20:40"
+      },
+      {
+        "id": 31,
+        "loan_id": 2,
+        "payment_date": "2019-08-30",
+        "payment_amount": 20000,
+        "principal_component": 19937.86,
+        "interest_component": 62.14,
+        "remaining_balance": 79485.97,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 23,
+        "transaction_id": 3243,
+        "remarks": "2nd Loan: 1st Payment",
+        "created_at": "2026-07-17 07:13:14"
+      },
+      {
+        "id": 32,
+        "loan_id": 3,
+        "payment_date": "2019-10-05",
+        "payment_amount": 50067,
+        "principal_component": 50037.62,
+        "interest_component": 29.38,
+        "remaining_balance": 0,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 23,
+        "transaction_id": 3364,
+        "remarks": "3rd Loan: Closed",
+        "created_at": "2026-07-17 11:22:07"
+      },
+      {
+        "id": 33,
+        "loan_id": 2,
+        "payment_date": "2019-10-29",
+        "payment_amount": 36000,
+        "principal_component": 35950.32,
+        "interest_component": 49.68,
+        "remaining_balance": 43535.65,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 23,
+        "transaction_id": 3426,
+        "remarks": "2nd Gold Loan Paid",
+        "created_at": "2026-07-17 11:25:19"
+      },
+      {
+        "id": 34,
+        "loan_id": 2,
+        "payment_date": "2019-10-31",
+        "payment_amount": 50966.32,
+        "principal_component": 50939.11,
+        "interest_component": 27.21,
+        "remaining_balance": 0,
+        "payment_type": "LINKED",
+        "payment_source_id": 1,
+        "payment_category_id": 23,
+        "transaction_id": 3431,
+        "remarks": "2nd Gold Loan Closed",
+        "created_at": "2026-07-17 11:30:12"
+      },
+      {
+        "id": 35,
+        "loan_id": 1,
+        "payment_date": "2018-11-03",
+        "payment_amount": 13,
+        "principal_component": 15.62,
+        "interest_component": -2.62,
+        "remaining_balance": 0,
+        "payment_type": "LINKED",
+        "payment_source_id": 3,
+        "payment_category_id": 23,
+        "transaction_id": 2172,
+        "remarks": "1st Loan: Slip Printout",
+        "created_at": "2026-07-17 18:18:24"
+      }
+    ]
   }
 };
 
 fs.writeFileSync(
-  "2018_10.json",
+  "2020_05_12_income.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2018_10.json created successfully.");
+console.log("2020_05_12_income.json created successfully.");

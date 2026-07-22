@@ -57,7 +57,7 @@ export default function SourcesDashboard({ navigation }) {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <ScrollView contentContainerStyle={styles.container}>
-        
+
         {/* Total Balance */}
         <View style={styles.heroSection}>
           <Text style={styles.heroLabel}>Net Worth</Text>
@@ -77,7 +77,7 @@ export default function SourcesDashboard({ navigation }) {
           {sources.length ? sources.map(item => (
             <TouchableOpacity
               key={item.id}
-              activeOpacity={0.7}
+              activeOpacity={1}
               onPress={() => navigation.navigate('SourcesDetails', {
                 sourceId: item.id,
                 sourceName: item.name
@@ -85,12 +85,12 @@ export default function SourcesDashboard({ navigation }) {
             >
               <Card style={styles.sourceCard}>
                 <View style={styles.sourceContent}>
-                  
+
                   <View style={[styles.iconWrapper, { backgroundColor: (item.color || Colors.primary) + '15' }]}>
-                    <MaterialCommunityIcons 
-                      name={item.icon || 'bank'} 
-                      size={24} 
-                      color={item.color || Colors.primary} 
+                    <MaterialCommunityIcons
+                      name={item.icon || 'bank'}
+                      size={24}
+                      color={item.color || Colors.primary}
                     />
                   </View>
 

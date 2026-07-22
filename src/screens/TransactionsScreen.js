@@ -91,6 +91,7 @@ export default function TransactionsScreen({ navigation }) {
         }
         renderItem={({ item }) => (
           <TouchableOpacity
+            activeOpacity={1}
             onPress={() => handleEdit(item)}
           >
             <Card style={{ marginBottom: Spacing.s }}>
@@ -102,7 +103,7 @@ export default function TransactionsScreen({ navigation }) {
                     return (
                       <Avatar.Icon
                         size={40}
-                        icon={cat?.icon || 'currency-usd'}
+                        icon={cat?.icon || 'currency-inr'}
                         style={{ backgroundColor: (cat?.color || '#eee') + '15', marginRight: 12 }}
                         color={cat?.color || '#999'}
                       />

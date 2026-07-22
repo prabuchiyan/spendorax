@@ -1,4 +1,5 @@
 import { executeSql } from './db';
+import { createLoanTables } from './loanTables';
 import { Platform } from 'react-native';
 
 export async function initDB() {
@@ -25,7 +26,7 @@ export async function initDB() {
       color TEXT
     );`);
 
-    // Transactions
+    // Transactions (include loan-linking columns)
     await executeSql(`CREATE TABLE IF NOT EXISTS transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       type TEXT NOT NULL,
@@ -37,6 +38,13 @@ export async function initDB() {
       bill_id INTEGER,
       transfer_group_id TEXT,
       direction TEXT,
+      -- loan linking fields
+      loan_id INTEGER,
+      loan_payment_type TEXT,
+      principal_component REAL,
+      interest_component REAL,
+      outstanding_after_payment REAL,
+      linked_date TEXT,
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY(category_id) REFERENCES categories(id),
       FOREIGN KEY(source_id) REFERENCES sources(id)
@@ -108,6 +116,26 @@ export async function initDB() {
     }
 
     console.log('Database initialized');
+    try {
+      await createLoanTables();
+    } catch (e) {
+      console.warn('Loan tables creation failed', e);
+    }
+
+    try {
+      await executeSql('ALTER TABLE loan_payments ADD COLUMN payment_category_id INTEGER');
+    } catch (e) {
+      // Column already exists or DB platform does not support ALTER TABLE
+    }
+    // Ensure loans table has loan_direction column for older DBs
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN loan_id INTEGER'); } catch (e) {}
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN loan_payment_type TEXT'); } catch (e) {}
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN principal_component REAL'); } catch (e) {}
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN interest_component REAL'); } catch (e) {}
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN outstanding_after_payment REAL'); } catch (e) {}
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN linked_date TEXT'); } catch (e) {}
+    try { await executeSql("ALTER TABLE loans ADD COLUMN loan_direction TEXT DEFAULT 'BORROWED'"); } catch (e) {}
+    try { await executeSql(`ALTER TABLE loans ADD COLUMN transaction_id INTEGER NULL`); } catch (e) {}
     // Seed defaults if empty (helpful for web/local dev)
     try {
       const cats = await executeSql('SELECT * FROM categories', []);
@@ -182,7 +210,7 @@ export async function initDB() {
 }
 
 export async function clearAllTables() {
-  const tables = ['transactions', 'bills', 'budgets', 'category_budgets', 'categories', 'sources'];
+  const tables = ['transactions', 'bills', 'budgets', 'category_budgets', 'categories', 'sources', 'loan_payments', 'loans'];
 
   try {
     for (const table of tables) {

@@ -137,64 +137,91 @@ function createWebExecuteSql() {
       return { rows: makeRows(rows) };
     }
 
-    // UPDATE table SET col = ?,... WHERE id = ?
+    // UPDATE table SET col = ?, ... WHERE id = ?
     if (l.startsWith('update')) {
-      const normalized = sql.replace(/\s+/g, ' ').trim();
-      let m = s.match(/update\s+([a-zA-Z0-9_]+)\s+set\s+(.+)\s+where\s+(.+)/i);
-      if (normalized.toUpperCase().startsWith("UPDATE BILLS SET")) {
-        m = normalized.match(/update\s+([a-zA-Z0-9_]+)\s+set\s+(.+?)\s+where\s+(.+)/i);
-      }
-      if (!m) throw new Error('Unsupported UPDATE SQL: ' + normalized);
+      const normalized = s.replace(/\s+/g, ' ').trim();
+
+      const m = normalized.match(
+        /^update\s+([a-zA-Z0-9_]+)\s+set\s+([\s\S]+?)\s+where\s+([\s\S]+)$/i
+      );
+
+      if (!m) { throw new Error('Unsupported UPDATE SQL: ' + normalized); }
       const table = m[1];
       const setClause = m[2];
       const where = m[3];
       const rows = readTable(table);
-      const assignments = setClause.split(',').map(p => p.trim());
-      // assume params are in order
+      // Split only on commas that are NOT inside parentheses
+      const assignments = setClause.match(/(?:[^,(]|\([^)]*\))+/g).map(x => x.trim());
+
       let pIndex = 0;
       const updates = {};
-      for (const a of assignments) {
-        const col = a.split('=')[0].trim();
-        updates[col] = params[pIndex++];
+      for (const assignment of assignments) {
+        const parts = assignment.split('=');
+        const col = parts[0].trim();
+        const valueExpr = parts.slice(1).join('=').trim().toLowerCase();
+        if (valueExpr === '?') {
+          updates[col] = params[pIndex++];
+        } else if (valueExpr === 'null') {
+          updates[col] = null;
+        } else if (valueExpr === 'true') {
+          updates[col] = true;
+        } else if (valueExpr === 'false') {
+          updates[col] = false;
+        } else if (valueExpr.startsWith('datetime(')) {
+          updates[col] = new Date().toISOString();
+        } else if (!isNaN(Number(valueExpr))) {
+          updates[col] = Number(valueExpr);
+        } else {
+          updates[col] = valueExpr.replace(/^['"]|['"]$/g, '');
+        }
       }
       // support where id = ?
       const whereMatch = where.match(/id\s*=\s*\?/i);
-      if (whereMatch) {
-        const id = params[pIndex++];
-        let changed = 0;
-        for (let r of rows) {
-          if (String(r.id) === String(id)) {
-            Object.assign(r, updates);
-            changed++;
-          }
+      if (!whereMatch) {
+        throw new Error('Unsupported UPDATE WHERE: ' + where);
+      }
+      const id = params[pIndex];
+      let changed = 0;
+      for (const row of rows) {
+        if (String(row.id) === String(id)) {
+          Object.assign(row, updates);
+          changed++;
         }
-        writeTable(table, rows);
-        return { rowsAffected: changed, rows: makeRows([]) };
       }
       writeTable(table, rows);
-      return { rows: makeRows([]) };
+      return {
+        rowsAffected: changed,
+        rows: makeRows([]),
+      };
     }
 
-    // DELETE FROM table WHERE id = ?
+    // DELETE FROM table WHERE column = ?
     if (l.startsWith('delete')) {
       const m = s.match(/delete from\s+([a-zA-Z0-9_]+)(\s+where\s+(.+))?/i);
       if (!m) throw new Error('Unsupported DELETE SQL: ' + sql);
 
       const table = m[1];
-      const where = m[3]; // optional
+      const where = m[3];
       let rows = readTable(table);
 
-      // ✅ Case 1: DELETE FROM table (clear all)
+      // DELETE FROM table
       if (!where) {
         writeTable(table, []);
-        return { rowsAffected: rows.length, rows: makeRows([]) };
+        return {
+          rowsAffected: rows.length,
+          rows: makeRows([])
+        };
       }
 
-      // ✅ Case 2: DELETE WHERE id = ?
-      const idMatch = where.match(/id\s*=\s*\?/i);
-      if (idMatch) {
-        const id = params[0];
-        const filtered = rows.filter(r => String(r.id) !== String(id));
+      // DELETE WHERE <column> = ?
+      const whereMatch = where.match(/([a-zA-Z0-9_]+)\s*=\s*\?/i);
+      if (whereMatch) {
+        const column = whereMatch[1];
+        const value = params[0];
+
+        const filtered = rows.filter(
+          r => String(r[column]) !== String(value)
+        );
         writeTable(table, filtered);
         return {
           rowsAffected: rows.length - filtered.length,
@@ -202,9 +229,7 @@ function createWebExecuteSql() {
         };
       }
 
-      // fallback
-      writeTable(table, rows);
-      return { rows: makeRows([]) };
+      throw new Error('Unsupported DELETE WHERE: ' + where);
     }
 
     // fallback: no-op

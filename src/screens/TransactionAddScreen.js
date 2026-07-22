@@ -20,7 +20,6 @@ export default function TransactionAddScreen({ navigation, route }) {
     >
       <Card style={{ margin: 0 }}>
         <TransactionForm
-          onCreated={() => navigation.goBack()}
           onCancel={() => navigation.goBack()}
           {...route.params}
         />

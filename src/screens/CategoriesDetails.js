@@ -362,6 +362,7 @@ export default function CategoriesDetails({ route, navigation }) {
 
     return (
       <TouchableOpacity
+        activeOpacity={1}
         onPress={() => navigation.navigate('TransactionAdd', { isEdit: true, transaction: item })}
       >
         <Card style={styles.txCard}>

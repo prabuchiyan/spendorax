@@ -10,6 +10,7 @@ import TransactionsScreen from '../src/screens/TransactionsScreen';
 import BudgetsScreen from '../src/screens/BudgetsScreen';
 import CategoriesScreen from '../src/screens/CategoriesScreen';
 import SourcesScreen from '../src/screens/SourcesScreen';
+import LoanDashboardScreen from '../src/screens/LoanDashboardScreen';
 
 import { Colors } from '../src/components/Theme';
 
@@ -57,6 +58,12 @@ function CustomDrawerContent(props) {
       icon: 'format-list-bulleted',
       activeIcon: 'format-list-bulleted',
     },
+    {
+      name: 'Loans',
+      label: 'Loans',
+      icon: 'bank-outline',
+      activeIcon: 'bank',
+    },
   ];
 
   return (
@@ -71,7 +78,7 @@ function CustomDrawerContent(props) {
         </View>
         <View style={styles.headerTextContainer}>
           <Text style={styles.appName}>SpendoraX</Text>
-          <Text style={styles.appVersion}>v2.3.2</Text>
+          <Text style={styles.appVersion}>v3.6.1</Text>
         </View>
       </View>
 
@@ -182,6 +189,7 @@ export default function DrawerNavigator() {
         })}
       />
       <Drawer.Screen name="Transactions" component={TransactionsScreen} />
+      <Drawer.Screen name="Loans" component={LoanDashboardScreen} />
       <Drawer.Screen name="Budgets" component={BudgetsScreen} />
       <Drawer.Screen name="Categories" component={CategoriesScreen} />
       <Drawer.Screen name="Sources" component={SourcesScreen} />
