@@ -6,6 +6,7 @@ const raw = `
 
 const categoryMap = {
   // Bank Charges
+  "Vijaya Debit Card Annual Fees": 3,
   "Axis Bank SMS Charge": 3,
   "Consolidate Charge": 3,
   "Consolidate Charges": 3,
@@ -18,6 +19,7 @@ const categoryMap = {
   // Beauty Care
   "Ear Rings For Abi": 4,
   "Face Mask": 4,
+  "Hair Clips For Abi": 4,
 
   // Bike / Vehicle
   "Petrol": 5,
@@ -52,8 +54,11 @@ const categoryMap = {
   "Shorts": 8,
   "Purchase Clothes for Me": 8,
   "Purchase Clothes For Me": 8,
+  "Clothes For abi": 8,
+  "Clothes for abi": 8,
 
   // DTH
+  "DTH Recharge Pudukkottai": 9,
   "Pdkt Home DTH Recharge": 9,
   "DTH Recharge": 9,
   "Dth Recharge": 9,
@@ -78,6 +83,7 @@ const categoryMap = {
   "Donated": 11,
 
   // Drinks
+  "Drinks & Snacks": 12,
   "Cigarettes & Snacks": 12,
   "Drinks": 12,
   "Sarakku": 12,
@@ -115,6 +121,7 @@ const categoryMap = {
   "Junior Horlicks": 15,
   "Milk Powder": 15,
   "Baby Soap": 15,
+  "Nipple": 15,
 
   // Electronics
   "Watch Pin": 14,
@@ -200,6 +207,11 @@ const categoryMap = {
   "Gave it to Neighbour": 22,
 
   // Groceries
+  "Cinthol Soap": 24,
+  "Boost": 24,
+  "Head & Shoulder Shampoo": 24,
+  "Pantene Shampoo": 24,
+  "Honey": 24,
   "Paste": 24,
   "Vico Powder": 24,
   "Soap & Shampoo": 24,
@@ -318,6 +330,7 @@ const categoryMap = {
   "Oil": 24,
 
   // Medical
+  "Hand Sanitizer": 28,
   "Hospital Visit For Eniyan": 28,
   "Cold Medicine": 28,
   "Eye Ointment": 28,
@@ -385,6 +398,7 @@ const categoryMap = {
   "Abi Mobile Recharge": 34,
 
   // Money Given
+  "Give it Back to Akka": 35,
   "Give it Back": 35,
   "Give it back": 35,
   "Give it back Sasi": 35,
@@ -462,8 +476,16 @@ const categoryMap = {
 
   // Relatives
   "Gave it to Rajendiran Uncle": 40,
+  "Gave it to Rajendran Uncle": 40,
   "Bike Petrol For Akka": 40,
   "Recharge For Abi Mom": 40,
+  "Cake for Radha": 40,
+  "Gave it to Grandma": 40,
+  "Gave it to Nachi Son": 40,
+  "Gave it to Shanthi Son": 40,
+  "Recharge For Akka": 40,
+  "Gave it to Grand Mother": 40,
+  "Gave it to Grandmother": 40,
 
   // Rent
   "Room Rent": 41,
@@ -509,6 +531,7 @@ const categoryMap = {
   "Slippers": 44,
   "shoes": 44,
   "shoe": 44,
+  "Sandals For Abi": 44,
 
   // Savings
   "RD": 45,
@@ -520,6 +543,9 @@ const categoryMap = {
   "Savings": 45,
 
   // Snacks
+  "Badam Milk": 46,
+  "cakes": 46,
+  "Cakes": 46,
   "Penuts": 46,
   "Snacks From Bakery": 46,
   "Jilabbi": 46,
