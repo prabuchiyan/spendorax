@@ -1,77 +1,79 @@
 const fs = require("fs");
 
 const raw = `
-04/04/20 : Vijaya SMS Charge : $18
+01/05/20 : Cucumber : $20
 
-05/04/20 : Pampers : $140
+01/05/20 : Snacks From Bakery : $470
 
-05/04/20 : Bananas : $150
+01/05/20 : Paste : $175
 
-05/04/20 : Hospital Visit For Mom : $380
+01/05/20 : Pampers : $56
 
-07/04/20 : Recurring Deposit : $25000
+01/05/20 : Vico Powder : $53
 
-07/04/20 : Tender Coconut : $150
+01/05/20 : Sunflower Oil : $210
 
-10/04/20 : Gave it to Abi : $300
+01/05/20 : Pears Soap : $34
 
-11/04/20 : Axis Bank SMS Charge : $18
+01/05/20 : Bananas : $95
 
-12/04/20 : Electricity Bill Bangalore : $252
+01/05/20 : Gave it to Dad : $3000
 
-12/04/20 : Gave it to Abi : $300
+03/05/20 : Gave it to Neighbour : $200
 
-15/04/20 : Bananas : $115
+03/05/20 : Added to Amazon Pay : $1000
 
-15/04/20 : Mango : $50
+03/05/20 : Recharge For Myself Airtel : $598
 
-15/04/20 : Pampers : $280
+03/05/20 : Milk : $10
 
-15/04/20 : Pomegranate : $100
+09/05/20 : Soap & Shampoo : $197
 
-15/04/20 : Apple : $300
+09/05/20 : Groceries Pudukkottai : $922
 
-15/04/20 : Peara Soap : $35
+09/05/20 : Baby Soap : $48
 
-15/04/20 : Penuts : $60
+09/05/20 : Gave it to  Dad : $2000
 
-16/04/20 : Snacks : $150
+10/05/20 : Pdkt Home DTH Recharge : $200
 
-17/04/20 : Pdkt Shop Electricity : $1077
+14/05/20 : Face Mask : $32
 
-17/04/20 : Pdkt Home Electricity : $125
+14/05/20 : Hospital Visit For Eniyan : $400
 
-17/04/20 : Gave it to Abi : $300
+14/05/20 : Fruits : $180
 
-18/04/20 : Gave it Back to Abi : $100
+15/05/20 : Cool Drinks : $67
 
-18/04/20 : Gave it to Abi : $300
+17/05/20 : Cigarettes & Snacks : $30
 
-19/04/20 : Hospital Visit For Mom : $1350
+20/05/20 : Recharge For Abi Mom : $219
 
-23/04/20 : Recharge For Abi : $199
+20/05/20 : Pampers : $800
 
-24/04/20 : Recharge For Amma : $1398
+20/05/20 : Snacks : $40
 
-24/04/20 : Pomegranate : $100
+21/05/20 : Recharge For Abi : $219
 
-24/04/20 : Apple : $200
+21/05/20 : Pampers : $56
 
-24/04/20 : Bananas : $125
+21/05/20 : Napkins : $40
 
-24/04/20 : Shampoo : $64
+21/05/20 : Milk : $4
 
-24/04/20 : Chocolate : $1
+22/05/20 : Cigarettes & Snacks : $49
 
-24/04/20 : Snacks From Bakery : $360
+24/05/20 : Groceries Pudukkottai : $2465
 
-24/04/20 : Cool Drinks : $67
+24/05/20 : Gave it to Dad : $1500
 
-25/04/20 : Gave it to Dad : $1500
+25/05/20 : Room Rent : $6000
 
-27/04/20 : Recharge For Abi Ammachi : $49
+27/05/20 : Chicken & Mutton Biriyani : $1000
 
-29/04/20 : Jackfruit : $120
+28/05/20 : Milk : $10
+
+31/05/20 : Chicken Biriyani : $500
 `;
 
 const categoryMap = {
@@ -762,7 +764,7 @@ const transactions = raw
     let [dd, mm, yyyy] = date.split("/");
     if (yyyy.length === 2) yyyy = `20${yyyy}`;
     const formattedDate = `${yyyy}-${mm}-${dd}`;
-    const type = "income"; // expense OR income
+    const type = "expense"; // expense OR income
     return {
       id: id++,
       type,
@@ -1980,9 +1982,9 @@ const backup = {
 };
 
 fs.writeFileSync(
-  "2020_05_12_income.json",
+  "2020_05.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2020_05_12_income.json created successfully.");
+console.log("2020_05.json created successfully.");
