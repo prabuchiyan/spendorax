@@ -18,6 +18,7 @@ const raw = `
 
 const categoryMap = {
   // Bank Charges
+  "Debit Card Annual Charge": 3,
   "Vijaya Debit Card Annual Fees": 3,
   "Axis Bank SMS Charge": 3,
   "Consolidate Charge": 3,
@@ -30,9 +31,14 @@ const categoryMap = {
   "Axis SMS Charge": 3,
 
   // Beauty Care
+  "Sun Cream For Abi": 4,
   "Ear Rings For Abi": 4,
   "Face Mask": 4,
   "Hair Clips For Abi": 4,
+  "Head Bands": 4,
+  "Face Wash": 4,
+  "Nail Remover": 4,
+  "Nail Polish": 4,
 
   // Bike / Vehicle
   "Petrol": 5,
@@ -71,6 +77,7 @@ const categoryMap = {
   "Clothes for abi": 8,
 
   // DTH
+  "DTH Recharge For Pdkt Home": 9,
   "DTH Pdkt Recharge": 9,
   "DTH Recharge Pudukkottai": 9,
   "Pdkt Home DTH Recharge": 9,
@@ -133,6 +140,7 @@ const categoryMap = {
   "Bangalore Electricity Bill Paid": 13,
 
   // Eniyan
+  "Pedia Sure 400g": 15,
   "Pampers": 15,
   "Pamper": 15,
   "Toy for Son": 15,
@@ -166,6 +174,8 @@ const categoryMap = {
   "Movie Tickets": 16,
 
   // Food & Dining
+  "Dinner From Fast Food": 18,
+  "Dinner From Pudukkottai": 18,
   "Chicken & Mutton Biriyani": 18,
   "Peeda": 18,
   "Lunch Tips": 18,
@@ -225,8 +235,15 @@ const categoryMap = {
   "Priya Adhiyamaan Marriage Gift": 22,
   "Send Off": 22,
   "Gave it to Neighbour": 22,
+  "Gave it to Neighbor": 22,
 
   // Groceries
+  "Dates": 24,
+  "Vellam": 24,
+  "Shampoo & Tablet": 24,
+  "Cashew": 24,
+  "Brush": 24,
+  "Soap & Brush": 24,
   "Crabs": 24,
   "Crabs & Prawns": 24,
   "Crab & Prawns": 24,
@@ -353,6 +370,8 @@ const categoryMap = {
   "Oil": 24,
 
   // Medical
+  "Doctor Consulting Fee": 28,
+  "Tablet For Myself": 28,
   "Hand Sanitizer": 28,
   "Hospital Visit For Eniyan": 28,
   "Cold Medicine": 28,
@@ -570,6 +589,8 @@ const categoryMap = {
   "Savings": 45,
 
   // Snacks
+  "Egg Mushroom": 46,
+  "Chocolate For Son": 46,
   "Badam Milk": 46,
   "cakes": 46,
   "Cakes": 46,
@@ -717,6 +738,7 @@ const categoryMap = {
   "Auto : Home to Bus Stand": 48,
 
   // Transfer
+  "Money Added to Amazon Wallet": 51,
   "Added to Amazon Pay": 51,
   "Money Added to Wallet": 51,
   "Money Added to Wallets": 51,
