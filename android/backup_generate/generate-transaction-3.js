@@ -19,6 +19,7 @@ const categoryMap = {
   "Vijaya SMS Charge": 3,
   "SBI Charge": 3,
   "Axis SMS Charge": 3,
+  "Axis SMS Charges": 3,
 
   // Beauty Care
   "Sun Cream For Abi": 4,
@@ -65,6 +66,9 @@ const categoryMap = {
   "Purchase Clothes For Me": 8,
   "Clothes For abi": 8,
   "Clothes for abi": 8,
+  "Saree for abi": 8,
+  "Saree For abi": 8,
+  "Purchased Clothes": 8,
 
   // DTH
   "First Floor DTH Recharge": 9,
@@ -100,9 +104,12 @@ const categoryMap = {
   "Drinks & Snacks": 12,
   "Cigarettes & Snacks": 12,
   "Drinks": 12,
+  "Drinks Food": 12,
   "Sarakku": 12,
   "Cigarettes & Candy": 12,
   "Cigarettes": 12,
+  "Drinks & Chocolate": 12,
+  "Drinks & Chocolates": 12,
   "Cigarettes & Chocolate": 12,
   "Cigarette & Chocolate": 12,
   "Cigarette & Chocolates": 12,
@@ -143,6 +150,8 @@ const categoryMap = {
   "Nipple": 15,
   "Pedia Sure": 15,
   "Pediasure": 15,
+  "Clothes For Eniyan": 15,
+  "Hair Cut For Eniyan": 15,
 
   // Electronics
   "Watch Pin": 14,
@@ -167,6 +176,7 @@ const categoryMap = {
   "Movie Tickets": 16,
 
   // Food & Dining
+  "Shawarma & BBQ Chicken For Dinner": 18,
   "Dinner Shawarma & BBQ Chicken": 18,
   "Dinner From Fast Food": 18,
   "Dinner From Pudukkottai": 18,
@@ -232,6 +242,7 @@ const categoryMap = {
   "Gave it to Neighbor": 22,
 
   // Groceries
+  "Fried Rice Mix": 24,
   "Paste & Soap": 24,
   "Dates": 24,
   "Vellam": 24,
@@ -437,6 +448,7 @@ const categoryMap = {
   "Abi Mobile Recharge": 34,
 
   // Money Given
+  "Gave it to Friend": 35,
   "Give it back to Vivek": 35,
   "Give it Back to Akka": 35,
   "Give it Back": 35,
@@ -528,6 +540,8 @@ const categoryMap = {
   "Gave it to Grandmother": 40,
   "Snacks For Akka": 40,
   "Snacks For Akka Family": 40,
+  "Chocolates For Akka Family": 40,
+  "Cakes For Akka Family": 40,
 
   // Rent
   "Room Rent": 41,
@@ -576,6 +590,7 @@ const categoryMap = {
   "Sandals For Abi": 44,
 
   // Savings
+  "Shivani RD": 45,
   "RD": 45,
   "Rd": 45,
   "FD": 45,
@@ -746,12 +761,24 @@ const categoryMap = {
   "Adde to Paytm Wallet": 51,
   "Added to Paytm Wallet": 51,
   "Added Paytm Wallet": 51,
+  "Added to Amazon": 51,
 
   // Water
   "Water Cane": 52,
 
   // Dental
   "Dental Deep Cleaning": 53,
+  "Teeth Medicine": 53,
+  "Teeth Cleaning": 53,
+  "Mouthwash": 53,
+  "Dental : Doctor Fees": 53,
+  "Dental: Doctor Fees": 53,
+  "Dental : Tablets": 53,
+  "Dental: Tablets": 53,
+  "Dental: Teeth Cleaning": 53,
+  "Dental : Teeth Cleaning": 53,
+  "Dental: Teeth Cleaning Advance": 53,
+  "Dental : Teeth Cleaning Advance": 53,
 
   // Gold Chit
   "Gold Chit": 54,
