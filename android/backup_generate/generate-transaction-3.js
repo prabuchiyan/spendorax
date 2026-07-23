@@ -1,103 +1,9 @@
 const fs = require("fs");
 
 const raw = `
-01/09/2020 : Pampers & Shampoo : $254
+30/09/2020 : Axis Interest : $82
 
-02/09/2020 : Gave it to Akka : $7000
-
-02/09/2020 : Gave it to Dad : $3000
-
-04/09/2020 : Anniversary Lunch : $670
-
-05/09/2020 : Cool Drinks For Abi : $35
-
-05/09/2020 : Drinks : $366
-
-05/09/2020 : Temper Glass For My Mobile : $700
-
-06/09/2020 : Jacket For Abi : $660
-
-07/09/2020 : First Floor DTH Recharge : $199
-
-11/09/2020 : Gave it to Dad : $5000
-
-12/09/2020 : Thanjavur Visit : Bike Petrol : $200
-
-12/09/2020 : Thanjavur Visit : Bike Air : $3
-
-12/09/2020 : Thanjavur Visit : Sweets : $175
-
-12/09/2020 : Thanjavur Visit : Shawarma : $180
-
-12/09/2020 : Thanjavur Visit : Barbecue Chicken : $420
-
-13/09/2020 : Thanjavur Visit : Cable : $30
-
-14/09/2020 : Thanjavur Visit : Medicine : $21
-
-14/09/2020 : Bike 1st Service : $314
-
-16/09/2020 : Gold Chit : $1000
-
-16/09/2020 :  Thanjavur Visit : Bike Petrol : $150
-
-16/09/2020 : Bike Subsidy Application Submit : $100
-
-16/09/2020 : Thanjavur Visit : Birthday Clothes For Abi Friend : $200
-
-17/09/2020 : Toys For Son : $117
-
-18/09/2020 :  Thanjavur Visit : Somewhere Spend : $10
-
-20/09/2020 : Thanjavur Visit : Bike Petrol : $250
-
-20/09/2020 : Thanjavur Visit : Bike Air : $3
-
-20/09/2020 : Dinner Shawarma & BBQ Chicken : $260
-
-20/09/2020 : Snacks For Akka Family : $60
-
-24/09/2020 : Sweets For Rama Chandran : $210
-
-24/09/2020 : Halwa For Abi : $80
-
-24/09/2020 : Chocolate For Son : $5
-
-24/09/2020 : Snacks For Akka Family : $20
-
-25/09/2020 : Pedia Sure : $518
-
-25/09/2020 : Nipple : $35
-
-25/09/2020 : Paste & Soap : $313
-
-25/09/2020 : Flowers : $20
-
-25/09/2020 : Chocolate For Son : $20
-
-26/09/2020 : Shanthi Home Visit : Petrol : $130
-
-26/09/2020 : Shanthi Home Visit : Drinks : $1856
-
-27/09/2020 : Shanthi Home Visit : Petrol : $130
-
-27/09/2020 : Shanthi Home Visit : Tender Coconut : $130
-
-27/09/2020 : Temple Donate : $50
-
-27/09/2020 : Shanthi Home Visit : Bike Petrol : $170
-
-27/09/2020 : Shanthi Home Visit : Snacks & Drinks : $113
-
-28/09/2020 : Shanthi Home Visit : Geve it to Shanthi Children : $400
-
-28/09/2020 : Abi Ammachi Home Visit : Breakfast : $134
-
-28/09/2020 : Abi Ammachi Home Visit : Gave it to Abi Ammachi : $300
-
-30/09/2020 : Ointment For Foot Fungus : $25
-
-30/09/2020 : Bike Petrol : $140
+30/09/2020 : Salary : $66763
 `;
 
 const categoryMap = {
@@ -161,6 +67,7 @@ const categoryMap = {
   "Clothes for abi": 8,
 
   // DTH
+  "First Floor DTH Recharge": 9,
   "DTH Recharge For Pdkt Home": 9,
   "DTH Pdkt Recharge": 9,
   "DTH Recharge Pudukkottai": 9,
@@ -224,10 +131,12 @@ const categoryMap = {
   "Bangalore Electricity Bill Paid": 13,
 
   // Eniyan
+  "Pampers & Shampoo": 15,
   "Pedia Sure 400g": 15,
   "Pampers": 15,
   "Pamper": 15,
   "Toy for Son": 15,
+  "Toys for Son": 15,
   "Junior Horlicks": 15,
   "Milk Powder": 15,
   "Baby Soap": 15,
@@ -258,6 +167,7 @@ const categoryMap = {
   "Movie Tickets": 16,
 
   // Food & Dining
+  "Dinner Shawarma & BBQ Chicken": 18,
   "Dinner From Fast Food": 18,
   "Dinner From Pudukkottai": 18,
   "Chicken & Mutton Biriyani": 18,
@@ -322,6 +232,7 @@ const categoryMap = {
   "Gave it to Neighbor": 22,
 
   // Groceries
+  "Paste & Soap": 24,
   "Dates": 24,
   "Vellam": 24,
   "Shampoo & Tablet": 24,
@@ -616,6 +527,7 @@ const categoryMap = {
   "Gave it to Grand Mother": 40,
   "Gave it to Grandmother": 40,
   "Snacks For Akka": 40,
+  "Snacks For Akka Family": 40,
 
   // Rent
   "Room Rent": 41,
@@ -673,6 +585,7 @@ const categoryMap = {
   "Savings": 45,
 
   // Snacks
+  "Cool Drinks For Abi": 46,
   "Egg Mushroom": 46,
   "Chocolate For Son": 46,
   "Badam Milk": 46,
@@ -865,7 +778,7 @@ const transactions = raw
     let [dd, mm, yyyy] = date.split("/");
     if (yyyy.length === 2) yyyy = `20${yyyy}`;
     const formattedDate = `${yyyy}-${mm}-${dd}`;
-    const type = "expense"; // expense OR income
+    const type = "income"; // expense OR income
     return {
       id: id++,
       type,
@@ -2119,9 +2032,9 @@ const backup = {
 };
 
 fs.writeFileSync(
-  "2020_09.json",
+  "2020_10_income.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2020_09.json created successfully.");
+console.log("2020_10_income.json created successfully.");
