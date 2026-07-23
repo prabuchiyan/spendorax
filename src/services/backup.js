@@ -9,7 +9,9 @@ import { getSources, createSource } from './sources';
 import { getTransactions, createTransaction } from './transactions';
 import { getBudgets, createBudget } from './budgets';
 import { getBills, createBill, updateBill } from './bills';
-import { getLoans, createLoan } from './loans';
+import { getLoans } from './loans';
+import { getNotifications, updateNotification, getNotificationByType } from '../database/notifications';
+import { rescheduleAll } from './notificationService';
 
 const BACKUP_VERSION = 1;
 
@@ -29,6 +31,14 @@ export async function exportBackup() {
     } catch (e) {
       loanPayments = [];
     }
+    // Fetch notification settings
+    let notificationSettings = [];
+    try {
+      const ns = await getNotifications();
+      notificationSettings = ns;
+    } catch (e) {
+      notificationSettings = [];
+    }
 
     const backupData = {
       version: BACKUP_VERSION,
@@ -40,7 +50,8 @@ export async function exportBackup() {
         budgets,
         bills,
         loans,
-        loan_payments: loanPayments
+        loan_payments: loanPayments,
+        notification_settings: notificationSettings
       },
     };
 
@@ -348,6 +359,17 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         }
       }
 
+      // Restore notification settings on rollback
+      // Only restore preferences, then reschedule
+      try {
+        const { rescheduleAll: reSchedule } = require('./notificationService');
+        // Notifications table is not cleared by clearAllTables
+        // so we don't need to re-insert, just reschedule
+        await reSchedule();
+      } catch (e) {
+        console.warn('Failed to reschedule notifications during rollback', e);
+      }
+
       console.log('Database rollback completed.');
       safeOnProgress(lastPercentage, 'Rollback completed.');
     } catch (rollbackErr) {
@@ -365,7 +387,16 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       await yieldToUI();
     }
 
-    const { categories = [], sources = [], budgets = [], bills = [], transactions = [], loans = [], loan_payments = [] } = backupData.data || {};
+    const {
+      categories = [],
+      sources = [],
+      budgets = [],
+      bills = [],
+      transactions = [],
+      loans = [],
+      loan_payments = [],
+      notification_settings = [],
+    } = backupData.data || {};
     const billsWithLinkedTx = bills.filter(b => b.linked_transaction_id);
     const totalItems = categories.length + sources.length + bills.length + transactions.length + budgets.length + billsWithLinkedTx.length + loans.length + loan_payments.length;
     let processedItems = 0;
@@ -766,7 +797,36 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       }
     );
 
+    // 9. Restore notification settings
+    // Only restore user preferences (enabled, hour, minute)
+    // Never restore notification_identifier — it's device-specific
+    if (notification_settings.length > 0) {
+      for (const ns of notification_settings) {
+        try {
+          // Match by type — don't create new rows, just update existing seeded ones
+          const existing = await getNotificationByType(ns.type);
+          if (existing) {
+            await updateNotification(existing.id, {
+              enabled: ns.enabled,
+              hour: ns.hour,
+              minute: ns.minute,
+              title: ns.title,
+              body: ns.body,
+              // Never restore notification_identifier
+            });
+          }
+        } catch (e) {
+          console.warn('Failed to restore notification setting', ns.type, e);
+        }
+      }
 
+      // Reschedule all enabled notifications with restored times
+      try {
+        await rescheduleAll();
+      } catch (e) {
+        console.warn('Failed to reschedule notifications after restore', e);
+      }
+    }
 
     safeOnProgress(100, 'Restore completed successfully!');
     await yieldToUI();
