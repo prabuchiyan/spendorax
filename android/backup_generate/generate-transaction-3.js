@@ -1,81 +1,15 @@
 const fs = require("fs");
 
 const raw = `
-04/04/20 : Vijaya SMS Charge : $18
+30/09/2020 : Axis Interest : $82
 
-05/04/20 : Pampers : $140
-
-05/04/20 : Bananas : $150
-
-05/04/20 : Hospital Visit For Mom : $380
-
-07/04/20 : Recurring Deposit : $25000
-
-07/04/20 : Tender Coconut : $150
-
-10/04/20 : Gave it to Abi : $300
-
-11/04/20 : Axis Bank SMS Charge : $18
-
-12/04/20 : Electricity Bill Bangalore : $252
-
-12/04/20 : Gave it to Abi : $300
-
-15/04/20 : Bananas : $115
-
-15/04/20 : Mango : $50
-
-15/04/20 : Pampers : $280
-
-15/04/20 : Pomegranate : $100
-
-15/04/20 : Apple : $300
-
-15/04/20 : Peara Soap : $35
-
-15/04/20 : Penuts : $60
-
-16/04/20 : Snacks : $150
-
-17/04/20 : Pdkt Shop Electricity : $1077
-
-17/04/20 : Pdkt Home Electricity : $125
-
-17/04/20 : Gave it to Abi : $300
-
-18/04/20 : Gave it Back to Abi : $100
-
-18/04/20 : Gave it to Abi : $300
-
-19/04/20 : Hospital Visit For Mom : $1350
-
-23/04/20 : Recharge For Abi : $199
-
-24/04/20 : Recharge For Amma : $1398
-
-24/04/20 : Pomegranate : $100
-
-24/04/20 : Apple : $200
-
-24/04/20 : Bananas : $125
-
-24/04/20 : Shampoo : $64
-
-24/04/20 : Chocolate : $1
-
-24/04/20 : Snacks From Bakery : $360
-
-24/04/20 : Cool Drinks : $67
-
-25/04/20 : Gave it to Dad : $1500
-
-27/04/20 : Recharge For Abi Ammachi : $49
-
-29/04/20 : Jackfruit : $120
+30/09/2020 : Salary : $66763
 `;
 
 const categoryMap = {
   // Bank Charges
+  "Debit Card Annual Charge": 3,
+  "Vijaya Debit Card Annual Fees": 3,
   "Axis Bank SMS Charge": 3,
   "Consolidate Charge": 3,
   "Consolidate Charges": 3,
@@ -84,10 +18,18 @@ const categoryMap = {
   "Vijaya Bank SMS Charge": 3,
   "Vijaya SMS Charge": 3,
   "SBI Charge": 3,
+  "Axis SMS Charge": 3,
+  "Axis SMS Charges": 3,
 
   // Beauty Care
+  "Sun Cream For Abi": 4,
   "Ear Rings For Abi": 4,
   "Face Mask": 4,
+  "Hair Clips For Abi": 4,
+  "Head Bands": 4,
+  "Face Wash": 4,
+  "Nail Remover": 4,
+  "Nail Polish": 4,
 
   // Bike / Vehicle
   "Petrol": 5,
@@ -122,8 +64,18 @@ const categoryMap = {
   "Shorts": 8,
   "Purchase Clothes for Me": 8,
   "Purchase Clothes For Me": 8,
+  "Clothes For abi": 8,
+  "Clothes for abi": 8,
+  "Saree for abi": 8,
+  "Saree For abi": 8,
+  "Purchased Clothes": 8,
 
   // DTH
+  "First Floor DTH Recharge": 9,
+  "DTH Recharge For Pdkt Home": 9,
+  "DTH Pdkt Recharge": 9,
+  "DTH Recharge Pudukkottai": 9,
+  "Pdkt Home DTH Recharge": 9,
   "DTH Recharge": 9,
   "Dth Recharge": 9,
   "DTH Recharge to Pdkt": 9,
@@ -145,12 +97,19 @@ const categoryMap = {
 
   // Donations
   "Donated": 11,
+  "Donated For God": 11,
+  "Donated for God": 11,
 
   // Drinks
+  "Drinks & Snacks": 12,
+  "Cigarettes & Snacks": 12,
   "Drinks": 12,
+  "Drinks Food": 12,
   "Sarakku": 12,
   "Cigarettes & Candy": 12,
   "Cigarettes": 12,
+  "Drinks & Chocolate": 12,
+  "Drinks & Chocolates": 12,
   "Cigarettes & Chocolate": 12,
   "Cigarette & Chocolate": 12,
   "Cigarette & Chocolates": 12,
@@ -159,8 +118,11 @@ const categoryMap = {
   "Fruits For Sarakku": 12,
   "Mango": 12,
   "Mangoes": 12,
+  "Cucumber": 12,
 
   // Electricity
+  "Pdkt Home First Floor Electricity": 13,
+  "Pdkt Home First Floor Electricity Bill": 13,
   "Electricity Bill Bangalore": 13,
   "Electricity Bill": 13,
   "Pdkt Home Electricity Bill": 13,
@@ -176,11 +138,20 @@ const categoryMap = {
   "Bangalore Electricity Bill Paid": 13,
 
   // Eniyan
+  "Pampers & Shampoo": 15,
+  "Pedia Sure 400g": 15,
   "Pampers": 15,
   "Pamper": 15,
   "Toy for Son": 15,
+  "Toys for Son": 15,
   "Junior Horlicks": 15,
   "Milk Powder": 15,
+  "Baby Soap": 15,
+  "Nipple": 15,
+  "Pedia Sure": 15,
+  "Pediasure": 15,
+  "Clothes For Eniyan": 15,
+  "Hair Cut For Eniyan": 15,
 
   // Electronics
   "Watch Pin": 14,
@@ -205,6 +176,11 @@ const categoryMap = {
   "Movie Tickets": 16,
 
   // Food & Dining
+  "Shawarma & BBQ Chicken For Dinner": 18,
+  "Dinner Shawarma & BBQ Chicken": 18,
+  "Dinner From Fast Food": 18,
+  "Dinner From Pudukkottai": 18,
+  "Chicken & Mutton Biriyani": 18,
   "Peeda": 18,
   "Lunch Tips": 18,
   "Pheeda": 18,
@@ -262,8 +238,30 @@ const categoryMap = {
   "Henry Marriage Gift": 22,
   "Priya Adhiyamaan Marriage Gift": 22,
   "Send Off": 22,
+  "Gave it to Neighbour": 22,
+  "Gave it to Neighbor": 22,
 
   // Groceries
+  "Fried Rice Mix": 24,
+  "Paste & Soap": 24,
+  "Dates": 24,
+  "Vellam": 24,
+  "Shampoo & Tablet": 24,
+  "Cashew": 24,
+  "Brush": 24,
+  "Soap & Brush": 24,
+  "Crabs": 24,
+  "Crabs & Prawns": 24,
+  "Crab & Prawns": 24,
+  "Cinthol Soap": 24,
+  "Boost": 24,
+  "Head & Shoulder Shampoo": 24,
+  "Pantene Shampoo": 24,
+  "Honey": 24,
+  "Paste": 24,
+  "Vico Powder": 24,
+  "Soap & Shampoo": 24,
+  "Groceries Pudukkottai": 24,
   "Pears Soap": 24,
   "Ginger & Chilli": 24,
   "Panneer": 24,
@@ -378,7 +376,10 @@ const categoryMap = {
   "Oil": 24,
 
   // Medical
-  "Cold Medicine": 28,
+  "Doctor Consulting Fee": 28,
+  "Tablet For Myself": 28,
+  "Hand Sanitizer": 28,
+  "Hospital Visit For Eniyan": 28,
   "Cold Medicine": 28,
   "Eye Ointment": 28,
   "Hospital Bill": 28,
@@ -410,6 +411,8 @@ const categoryMap = {
   "Knife & Washing Brush": 29,
   "Tiffan Box": 29,
   "Purchased Pillows": 29,
+  "Rope & Scissor": 29,
+  "Broomstick": 29,
 
   //Interest
   "Interest": 30,
@@ -422,6 +425,7 @@ const categoryMap = {
   "Bang Sony TV 32 Inch: Auto Debit": 32,
 
   // Mobile
+  "Recharge For Myself Airtel": 34,
   "Recharge For Bsnl": 34,
   "Recharge For Airtel": 34,
   "Mobile Back Cover": 34,
@@ -444,6 +448,9 @@ const categoryMap = {
   "Abi Mobile Recharge": 34,
 
   // Money Given
+  "Gave it to Friend": 35,
+  "Give it back to Vivek": 35,
+  "Give it Back to Akka": 35,
   "Give it Back": 35,
   "Give it back": 35,
   "Give it back Sasi": 35,
@@ -514,13 +521,27 @@ const categoryMap = {
   "Bike Air For Dad": 37,
   "Bike Petrol For Dad": 37,
   "Gave it to Dad": 37,
+  "Gave it to  Dad": 37,
 
   // Printing & Stationery
   "Note": 39,
 
   // Relatives
   "Gave it to Rajendiran Uncle": 40,
+  "Gave it to Rajendran Uncle": 40,
   "Bike Petrol For Akka": 40,
+  "Recharge For Abi Mom": 40,
+  "Cake for Radha": 40,
+  "Gave it to Grandma": 40,
+  "Gave it to Nachi Son": 40,
+  "Gave it to Shanthi Son": 40,
+  "Recharge For Akka": 40,
+  "Gave it to Grand Mother": 40,
+  "Gave it to Grandmother": 40,
+  "Snacks For Akka": 40,
+  "Snacks For Akka Family": 40,
+  "Chocolates For Akka Family": 40,
+  "Cakes For Akka Family": 40,
 
   // Rent
   "Room Rent": 41,
@@ -566,8 +587,10 @@ const categoryMap = {
   "Slippers": 44,
   "shoes": 44,
   "shoe": 44,
+  "Sandals For Abi": 44,
 
   // Savings
+  "Shivani RD": 45,
   "RD": 45,
   "Rd": 45,
   "FD": 45,
@@ -577,6 +600,12 @@ const categoryMap = {
   "Savings": 45,
 
   // Snacks
+  "Cool Drinks For Abi": 46,
+  "Egg Mushroom": 46,
+  "Chocolate For Son": 46,
+  "Badam Milk": 46,
+  "cakes": 46,
+  "Cakes": 46,
   "Penuts": 46,
   "Snacks From Bakery": 46,
   "Jilabbi": 46,
@@ -721,6 +750,8 @@ const categoryMap = {
   "Auto : Home to Bus Stand": 48,
 
   // Transfer
+  "Money Added to Amazon Wallet": 51,
+  "Added to Amazon Pay": 51,
   "Money Added to Wallet": 51,
   "Money Added to Wallets": 51,
   "Uber Wallets": 51,
@@ -730,12 +761,24 @@ const categoryMap = {
   "Adde to Paytm Wallet": 51,
   "Added to Paytm Wallet": 51,
   "Added Paytm Wallet": 51,
+  "Added to Amazon": 51,
 
   // Water
   "Water Cane": 52,
 
   // Dental
   "Dental Deep Cleaning": 53,
+  "Teeth Medicine": 53,
+  "Teeth Cleaning": 53,
+  "Mouthwash": 53,
+  "Dental : Doctor Fees": 53,
+  "Dental: Doctor Fees": 53,
+  "Dental : Tablets": 53,
+  "Dental: Tablets": 53,
+  "Dental: Teeth Cleaning": 53,
+  "Dental : Teeth Cleaning": 53,
+  "Dental: Teeth Cleaning Advance": 53,
+  "Dental : Teeth Cleaning Advance": 53,
 
   // Gold Chit
   "Gold Chit": 54,
@@ -752,7 +795,7 @@ const transactions = raw
   .filter(line => line.trim() && !line.trim().startsWith("//"))
   .map(line => {
     const match = line.match(
-      /^(\d{2}\/\d{2}\/\d{2,4})\s*:\s*(.*?)\s*:\s*\$?([\d.]+)\s*$/
+      /^(\d{2}\/\d{2}\/\d{2,4})\s*:\s*(.*?)\s*:\s*[₹$]?\s*([\d.,]+)\s*$/
     );
     if (!match) {
       console.log("Invalid line:", line);
@@ -766,7 +809,7 @@ const transactions = raw
     return {
       id: id++,
       type,
-      amount: Number(amountStr.trim()),
+      amount: Number(amountStr.replace(/,/g, "").trim()),
       category_id: categoryMap[notes] ?? (type === "income"
         ? categoryMap.Default_income
         : categoryMap.Default_expense),
@@ -911,6 +954,15 @@ const backup = {
         "created_at": "2026-07-15 15:30:54"
       },
       {
+        "id": 61,
+        "name": "Electrical",
+        "type": "expense",
+        "icon": "cable-data",
+        "color": "#22C55E",
+        "is_active": 1,
+        "created_at": "2026-07-23 04:34:22"
+      },
+      {
         "id": 13,
         "name": "Electricity",
         "type": "expense",
@@ -954,6 +1006,15 @@ const backup = {
         "color": "#F43F5E",
         "is_active": 1,
         "created_at": "2026-07-15 15:30:54"
+      },
+      {
+        "id": 58,
+        "name": "Family Visit",
+        "type": "expense",
+        "icon": "transit-transfer",
+        "color": "#DB2777",
+        "is_active": 1,
+        "created_at": "2026-07-22 11:52:47"
       },
       {
         "id": 18,
@@ -1062,6 +1123,15 @@ const backup = {
         "color": "#A16207",
         "is_active": 1,
         "created_at": "2026-07-15 15:30:54"
+      },
+      {
+        "id": 59,
+        "name": "Honda Dio",
+        "type": "expense",
+        "icon": "motorbike",
+        "color": "#64748B",
+        "is_active": 1,
+        "created_at": "2026-07-22 16:25:28"
       },
       {
         "id": 28,
@@ -1185,7 +1255,7 @@ const backup = {
         "name": "Relatives",
         "type": "expense",
         "icon": "account-group",
-        "color": "#F97316",
+        "color": "#DC2626",
         "is_active": 1,
         "created_at": "2026-07-15 15:30:54"
       },
@@ -1251,6 +1321,15 @@ const backup = {
         "color": "#06B6D4",
         "is_active": 1,
         "created_at": "2026-07-15 15:30:54"
+      },
+      {
+        "id": 60,
+        "name": "Temple Visit",
+        "type": "expense",
+        "icon": "hands-pray",
+        "color": "#EF4444",
+        "is_active": 1,
+        "created_at": "2026-07-23 02:31:53"
       },
       {
         "id": 51,
@@ -1980,9 +2059,9 @@ const backup = {
 };
 
 fs.writeFileSync(
-  "2020_05_12_income.json",
+  "2020_10_income.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2020_05_12_income.json created successfully.");
+console.log("2020_10_income.json created successfully.");
