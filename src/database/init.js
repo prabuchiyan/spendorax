@@ -115,6 +115,12 @@ export async function initDB() {
       // web shim may not support complex UPDATE; handled in service layer
     }
 
+    try {
+      await executeSql(`ALTER TABLE bills ADD COLUMN parent_bill_id INTEGER NULL`);
+    } catch (e) {
+      // Column already exists on upgraded installs — safe to ignore
+    }
+
     console.log('Database initialized');
     try {
       await createLoanTables();

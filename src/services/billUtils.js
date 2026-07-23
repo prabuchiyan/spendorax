@@ -96,3 +96,52 @@ export function isSameMonth(dateStr, year, month) {
 export function monthKey(year, month) {
   return `${year}-${String(month + 1).padStart(2, '0')}`;
 }
+
+/**
+ * Given a recurring bill's original due_date, generate all expected due dates
+ * from the bill's creation up to (and including) the current month.
+ * Returns array of date strings in 'YYYY-MM-DD' format.
+ */
+export function generateOccurrenceDates(bill, upToDate = todayStr()) {
+  if (!bill.is_recurring || !bill.recurrence_type || !bill.due_date) return [];
+
+  const dates = [];
+  let cursor = bill.due_date.slice(0, 10);
+  const limit = upToDate;
+  const endDate = bill.recurrence_end_date ? bill.recurrence_end_date.slice(0, 10) : null;
+  const maxIter = 500; // safety cap
+  let iter = 0;
+
+  while (cursor <= limit && iter < maxIter) {
+    iter++;
+    if (endDate && cursor > endDate) break;
+    dates.push(cursor);
+    cursor = addRecurrence(cursor, bill.recurrence_type, bill.recurrence_interval || 1);
+    if (!cursor) break;
+  }
+
+  return dates;
+}
+
+/**
+ * From a list of occurrence dates and existing bill rows (children),
+ * return the dates that are missing (no existing row for that date).
+ */
+export function getMissingOccurrenceDates(occurrenceDates, existingChildren) {
+  const existingDates = new Set(
+    existingChildren.map((b) => b.due_date?.slice(0, 10)).filter(Boolean)
+  );
+  return occurrenceDates.filter((d) => !existingDates.has(d));
+}
+
+/**
+ * Get the occurrence date for the current month for a recurring bill.
+ * Finds the date whose month/year matches the given year+month.
+ */
+export function getCurrentMonthOccurrenceDate(bill, year, month) {
+  const dates = generateOccurrenceDates(bill);
+  return dates.find((d) => {
+    const dt = new Date(d);
+    return dt.getFullYear() === year && dt.getMonth() === month;
+  }) || null;
+}

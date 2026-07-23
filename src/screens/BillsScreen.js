@@ -12,7 +12,8 @@ import { Searchbar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import {
-  getBills,
+  getBillsForCurrentMonth, // ← replaces getBills for the main list
+  getBills,                  // kept for non-month-filtered use if needed
   getBillsSummary,
   getBillInsights,
   markBillPaid,
@@ -61,7 +62,8 @@ export default function BillsScreen({ navigation }) {
 
   async function load() {
     const [rows, sum, ins, cats] = await Promise.all([
-      getBills({
+      // Use getBillsForCurrentMonth so recurring bills always show current-month due
+      getBillsForCurrentMonth({
         status: statusFilter === 'all' ? null : statusFilter,
         category_id: categoryFilter,
         sortBy,
@@ -76,7 +78,7 @@ export default function BillsScreen({ navigation }) {
     setInsights(ins);
     setCategories(cats.filter(c => c.type === 'expense'));
     const map = {};
-    cats.forEach(c => map[c.id] = c);
+    cats.forEach(c => (map[c.id] = c));
     setCategoriesMap(map);
   }
 
@@ -101,10 +103,16 @@ export default function BillsScreen({ navigation }) {
   }, [categories, categorySearch]);
 
   function openDetail(bill) {
-    navigation.navigate('BillDetail', { billId: bill.id });
+    // Navigate with both the occurrence id AND the template id so the detail
+    // screen can show the full series list.
+    navigation.navigate('BillDetail', {
+      billId: bill._templateId || bill.id,
+      occurrenceId: bill._isRecurringSeries ? bill.id : undefined,
+    });
   }
 
   function openEdit(bill) {
+    // Always edit the template for recurring series
     setEditingBill(bill);
     setShowForm(true);
   }
@@ -132,6 +140,9 @@ export default function BillsScreen({ navigation }) {
     />
   );
 
+  const now = new Date();
+  const monthLabel = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
   const listHeader = (
     <View>
 
@@ -149,6 +160,14 @@ export default function BillsScreen({ navigation }) {
           </Text>
         </View>
       )}
+
+      {/* Current month label */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+        <MaterialCommunityIcons name="calendar-month" size={16} color={Colors.muted} />
+        <Text style={{ marginLeft: 6, color: Colors.muted, fontSize: 13, fontWeight: '600' }}>
+          Showing dues for {monthLabel}
+        </Text>
+      </View>
 
       {/* STATUS DROPDOWN */}
       <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowStatusDropdown(true)}>
@@ -263,9 +282,7 @@ export default function BillsScreen({ navigation }) {
                       setCategorySearch('');
                     }}
                   >
-                    <Text style={[styles.item, selected && styles.selected]}>
-                      {item.name}
-                    </Text>
+                    <Text style={[styles.item, selected && styles.selected]}>{item.name}</Text>
                     {selected && <MaterialCommunityIcons name="check" size={18} color={Colors.primary} />}
                   </TouchableOpacity>
                 );
@@ -312,7 +329,7 @@ const styles = {
     borderColor: '#eee',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   label: { fontSize: 11, color: Colors.muted },
   value: { fontSize: 14, fontWeight: '700', color: Colors.text },
@@ -322,5 +339,5 @@ const styles = {
   item: { padding: 12, fontSize: 14 },
   selected: { color: Colors.primary, fontWeight: '700' },
   searchInput: { borderBottomWidth: 1, borderColor: '#eee', marginBottom: 10, paddingVertical: 6 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
 };
