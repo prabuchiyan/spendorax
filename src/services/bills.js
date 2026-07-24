@@ -366,23 +366,87 @@ export async function getBillsForCurrentMonth(options = {}) {
       occurrenceRow = normalizeBill(template);
     }
 
-    // ── Case C: no row yet — check if one was intentionally deleted first ─
+    // ── Case C: create only if absolutely no occurrence exists ────────────────
     if (!occurrenceRow) {
-      const deletedRes = await executeSql(
-        `SELECT id FROM bills
-     WHERE parent_bill_id = ?
-       AND due_date LIKE ?
-       AND deleted_at IS NOT NULL
+      // Check for an existing row for the exact occurrence date
+      const existingRes = await executeSql(
+        `SELECT *
+     FROM bills
+     WHERE due_date = ?
+       AND (
+         id = ?
+         OR parent_bill_id = ?
+       )
      LIMIT 1`,
-        [template.id, `${currentMonthPrefix}%`]
+        [thisMonthDate, template.id, template.id]
       );
-      if (!deletedRes.rows.length) {
+
+      if (existingRes.rows.length) {
+        occurrenceRow = normalizeBill(existingRes.rows.item(0));
+      } else {
+        // Check if this occurrence was intentionally deleted
+        const deletedRes = await executeSql(
+          `SELECT id
+       FROM bills
+       WHERE parent_bill_id = ?
+         AND due_date = ?
+         AND deleted_at IS NOT NULL
+       LIMIT 1`,
+          [template.id, thisMonthDate]
+        );
+
+        if (!deletedRes.rows.length) {
+          const newId = await _insertBill({
+            name: template.name,
+            amount: template.amount,
+            due_date: thisMonthDate,
+            is_recurring: 0,
+            recurrence_type: null,
+            recurrence_interval: 1,
+            recurrence_end_date: null,
+            category_id: template.category_id,
+            source_id: template.source_id,
+            reminder_days_before: template.reminder_days_before,
+            auto_pay: template.auto_pay,
+            notes: template.notes,
+            attachment_url: template.attachment_url,
+            parent_bill_id: template.id,
+          });
+
+          occurrenceRow = normalizeBill(await getBillById(newId));
+        }
+      }
+    }
+
+    if (!occurrenceRow) continue;
+
+    // ── SAFETY NET: if occurrenceRow is the template but its due_date is NOT
+    //    this month, it means Case B matched incorrectly. Create a child.
+    // ── SAFETY NET ────────────────────────────────────────────────────────────
+    if (
+      occurrenceRow &&
+      occurrenceRow.id === template.id &&
+      !occurrenceRow.due_date?.startsWith(currentMonthPrefix)
+    ) {
+      // Before creating a child, verify one doesn't already exist.
+      const existing = (await fetchAllBillsRaw()).find(
+        b =>
+          Number(b.parent_bill_id) === Number(template.id) &&
+          b.due_date === thisMonthDate &&
+          !b.deleted_at
+      );
+
+      if (existing) {
+        occurrenceRow = normalizeBill(existing);
+      } else {
         const newId = await _insertBill({
           name: template.name,
           amount: template.amount,
           due_date: thisMonthDate,
           is_recurring: 0,
           recurrence_type: null,
+          recurrence_interval: 1,
+          recurrence_end_date: null,
           category_id: template.category_id,
           source_id: template.source_id,
           reminder_days_before: template.reminder_days_before,
@@ -391,36 +455,9 @@ export async function getBillsForCurrentMonth(options = {}) {
           attachment_url: template.attachment_url,
           parent_bill_id: template.id,
         });
+
         occurrenceRow = normalizeBill(await getBillById(newId));
       }
-    }
-
-    if (!occurrenceRow) continue;
-
-    // ── SAFETY NET: if occurrenceRow is the template but its due_date is NOT
-    //    this month, it means Case B matched incorrectly. Create a child.
-    if (
-      occurrenceRow &&
-      occurrenceRow.id === template.id &&
-      !occurrenceRow.due_date?.startsWith(currentMonthPrefix)
-    ) {
-      // Don't use the template as a stand-in for a different month's occurrence.
-      // Create a proper child row instead.
-      const newId = await _insertBill({
-        name: template.name,
-        amount: template.amount,
-        due_date: thisMonthDate,
-        is_recurring: 0,
-        recurrence_type: null,
-        category_id: template.category_id,
-        source_id: template.source_id,
-        reminder_days_before: template.reminder_days_before,
-        auto_pay: template.auto_pay,
-        notes: template.notes,
-        attachment_url: template.attachment_url,
-        parent_bill_id: template.id,
-      });
-      occurrenceRow = normalizeBill(await getBillById(newId));
     }
 
     if (occurrenceRow) {
