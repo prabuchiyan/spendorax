@@ -250,7 +250,12 @@ export async function getBillSeries(templateId) {
      ORDER BY due_date DESC`,
     [templateId]
   );
-  const allChildren = rowsToArray(childRes).map(normalizeBill).filter(Boolean);
+  // Fetch children without relying on SQL parser (works on Web & Mobile)
+  const allChildren = (await fetchAllBillsRaw())
+    .filter(r => Number(r.parent_bill_id) === Number(templateId))
+    .map(normalizeBill)
+    .filter(Boolean);
+
   const children = allChildren.filter(c => !c.deleted_at);
 
   // If a child row exists (even if deleted) for the exact same month as the template's due_date,
