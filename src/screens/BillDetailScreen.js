@@ -573,17 +573,23 @@ export default function BillDetailScreen({ route, navigation }) {
           width={screenWidth - 56}
           height={250}
           baseColor={category?.color || Colors.primary}
+          selectedLabel={selectedChartLabel}
           isEmpty={chartData.labels.length === 0}
           onBarPress={(data) => {
             setSelectedChartLabel(data.label);
-            // also select the latest occurrence in that month if any
+
             const matchingOcc = series.find(occ => {
               if (!occ.due_date) return false;
+
               const d = new Date(occ.due_date);
               const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
               return `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}` === data.label;
             });
-            if (matchingOcc) setSelectedOcc(matchingOcc);
+
+            if (matchingOcc) {
+              handleSelectOccurrence(matchingOcc);
+            }
           }}
         />
       </Card>
