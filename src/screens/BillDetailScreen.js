@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, FlatList,
+  View, Text, ScrollView, FlatList, StyleSheet,
   TouchableOpacity, Modal, ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -63,71 +63,210 @@ function StatusBadge({ display }) {
 // ─── linked transactions card ────────────────────────────────────────────────
 
 function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
-  if (!linkedTxs.length && !onAddMore) return null;
-
   return (
-    <Card style={{ marginTop: Spacing.s }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <Text style={{ fontWeight: '700', fontSize: 15, color: Colors.text }}>
-          Linked Transactions ({linkedTxs.length})
-        </Text>
+    <Card
+      style={{
+        borderRadius: 20,
+        overflow: 'hidden',
+      }}
+    >
+      {/* Header */}
+
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 14,
+        }}
+      >
+        <View>
+          <Text
+            style={{
+              fontSize: 17,
+              fontWeight: '800',
+              color: Colors.text,
+            }}
+          >
+            Linked Transactions
+          </Text>
+
+          <Text
+            style={{
+              fontSize: 12,
+              color: Colors.muted,
+              marginTop: 2,
+            }}
+          >
+            {linkedTxs.length} transaction{linkedTxs.length !== 1 ? 's' : ''}
+          </Text>
+        </View>
+
         {onAddMore && (
-          <TouchableOpacity onPress={onAddMore}
-            style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#EEF3FF', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 }}>
-            <MaterialCommunityIcons name="link-variant-plus" size={16} color={Colors.primary} />
-            <Text style={{ color: Colors.primary, fontWeight: '600', marginLeft: 4, fontSize: 13 }}>Link More</Text>
+          <TouchableOpacity
+            onPress={onAddMore}
+            style={{
+              backgroundColor: Colors.primary,
+              width: 42,
+              height: 42,
+              borderRadius: 21,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <MaterialCommunityIcons
+              name="plus"
+              size={24}
+              color="#fff"
+            />
           </TouchableOpacity>
         )}
       </View>
 
       {linkedTxs.length === 0 ? (
-        <Text style={{ color: Colors.muted, fontSize: 13, textAlign: 'center', paddingVertical: 8 }}>
-          No transactions linked yet
-        </Text>
+        <View
+          style={{
+            paddingVertical: 30,
+            alignItems: 'center',
+          }}
+        >
+          <View
+            style={{
+              paddingVertical: 40,
+              alignItems: "center",
+            }}
+          >
+            <MaterialCommunityIcons
+              name="link-off"
+              size={46}
+              color="#CFCFCF"
+            />
+
+            <Text
+              style={{
+                marginTop: 8,
+                fontWeight: "700",
+                color: Colors.muted,
+              }}
+            >
+              No linked transactions
+            </Text>
+
+            <Text
+              style={{
+                marginTop: 4,
+                fontSize: 12,
+                color: Colors.muted,
+                textAlign: "center",
+              }}
+            >
+              Link a payment to automatically mark this bill as paid.
+            </Text>
+          </View>
+        </View>
       ) : (
-        linkedTxs.map((tx, idx) => (
-          <View key={tx.id}>
-            {idx > 0 && <Divider style={{ marginVertical: 4 }} />}
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8 }}>
-              {/* Category icon circle */}
-              <View style={{
-                width: 40, height: 40, borderRadius: 20,
-                backgroundColor: `${tx.category_color || Colors.primary}20`,
-                alignItems: 'center', justifyContent: 'center', marginRight: 10,
-              }}>
+        linkedTxs.map((tx) => (
+          <View
+            key={tx.id}
+            style={{
+              marginBottom: 10,
+              borderRadius: 16,
+              backgroundColor: "#FAFAFA",
+              padding: 14,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+            >
+              {/* Icon */}
+
+              <View
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  backgroundColor: `${tx.category_color || Colors.primary}20`,
+                }}
+              >
                 <MaterialCommunityIcons
                   name={tx.category_icon || 'cash'}
-                  size={20} color={tx.category_color || Colors.primary}
+                  color={tx.category_color || Colors.primary}
+                  size={24}
                 />
               </View>
 
-              {/* Info */}
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontWeight: '600', color: Colors.text, fontSize: 14 }} numberOfLines={1}>
-                  {tx.notes || '(no notes)'}
+              <View
+                style={{
+                  flex: 1,
+                  marginLeft: 12,
+                }}
+              >
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    fontSize: 15,
+                    fontWeight: '700',
+                    color: Colors.text,
+                  }}
+                >
+                  {tx.notes || 'No Notes'}
                 </Text>
-                <Text style={{ color: Colors.muted, fontSize: 12, marginTop: 2 }}>
-                  {tx.date
-                    ? new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-                    : '—'}
-                  {tx.source_name ? ` · ${tx.source_name}` : ''}
-                </Text>
-                {tx.category_name ? (
-                  <Text style={{ color: Colors.muted, fontSize: 11, marginTop: 1 }}>{tx.category_name}</Text>
-                ) : null}
-              </View>
 
-              {/* Amount + unlink */}
-              <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
-                <Text style={{ fontWeight: '800', color: '#E46A6A', fontSize: 15 }}>
+                <Text
+                  style={{
+                    marginTop: 3,
+                    fontSize: 12,
+                    color: Colors.muted,
+                  }}
+                >
+                  {tx.date
+                    ? new Date(tx.date).toLocaleDateString('en-IN', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })
+                    : '—'}
+                  {tx.source_name ? ` • ${tx.source_name}` : ''}
+                </Text>
+
+                <Text
+                  style={{
+                    marginTop: 6,
+                    fontSize: 17,
+                    fontWeight: '800',
+                    color: Colors.text,
+                  }}
+                >
                   {formatCurrency(tx.amount)}
                 </Text>
-                {onUnlink && (
-                  <TouchableOpacity onPress={() => onUnlink(tx)} style={{ marginTop: 4 }}>
-                    <MaterialCommunityIcons name="link-variant-off" size={16} color={Colors.muted} />
-                  </TouchableOpacity>
-                )}
               </View>
+
+              {/* Unlink */}
+
+              {onUnlink && (
+                <TouchableOpacity
+                  onPress={() => onUnlink(tx)}
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 21,
+                    backgroundColor: "#FFECEC",
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name="link-variant-remove"
+                    size={22}
+                    color="#F44336"
+                  />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         ))
@@ -138,48 +277,174 @@ function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
 
 // ─── occurrence list ─────────────────────────────────────────────────────────
 
-function OccurrenceList({ series, selectedId, onSelect }) {
-  if (series.length <= 1) return null;
+function OccurrenceList({
+  series,
+  selectedId,
+  onSelect,
+}) {
+  if (!series.length) return null;
 
   return (
-    <Card style={{ marginTop: Spacing.s }}>
-      <Text style={{ fontWeight: '700', fontSize: 15, color: Colors.text, marginBottom: 10 }}>
-        All Occurrences ({series.length})
-      </Text>
-      {series.map((occ) => {
-        const d = getBillDisplayStatus(occ);
-        const isSelected = selectedId === occ.id;
-        return (
-          <TouchableOpacity
-            key={occ.id}
-            onPress={() => onSelect(occ)}
+    <Card
+      style={{
+        borderRadius: 20,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 15,
+        }}
+      >
+        <View>
+          <Text
             style={{
-              flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-              paddingVertical: 10, paddingHorizontal: 10, borderRadius: 10, marginBottom: 4,
-              backgroundColor: isSelected ? `${d.color}12` : 'transparent',
-              borderWidth: isSelected ? 1.5 : 1,
-              borderColor: isSelected ? d.color : '#EEF1F6',
+              fontWeight: "800",
+              fontSize: 17,
+              color: Colors.text,
             }}
           >
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: Colors.text, fontWeight: isSelected ? '700' : '500', fontSize: 14 }}>
-                {formatDueDate(occ.due_date)}
+            Timeline
+          </Text>
+
+          <Text
+            style={{
+              fontSize: 12,
+              color: Colors.muted,
+              marginTop: 2,
+            }}
+          >
+            {series.length} Bill Occurrences
+          </Text>
+        </View>
+
+        <MaterialCommunityIcons
+          name="calendar-month"
+          size={24}
+          color={Colors.primary}
+        />
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+      >
+        {series.map((occ) => {
+
+          const display = getBillDisplayStatus(occ);
+
+          const selected = occ.id === selectedId;
+
+          const d = new Date(occ.due_date);
+
+          const month =
+            d.toLocaleDateString(
+              "en-IN",
+              {
+                month: "short",
+              }
+            );
+
+          const day =
+            d.getDate();
+
+          return (
+            <TouchableOpacity
+              key={occ.id}
+              onPress={() => onSelect(occ)}
+              style={{
+                width: 90,
+                marginRight: 10,
+                borderRadius: 18,
+
+                paddingVertical: 14,
+
+                paddingHorizontal: 10,
+
+                backgroundColor: selected
+                  ? display.color
+                  : "#F6F7FB",
+
+                alignItems: "center",
+              }}
+            >
+              <Text
+                style={{
+                  color: selected
+                    ? "#fff"
+                    : Colors.muted,
+
+                  fontSize: 11,
+
+                  fontWeight: "700",
+                }}
+              >
+                {month}
               </Text>
-              {occ.linked_transaction_id ? (
-                <Text style={{ fontSize: 11, color: Colors.muted, marginTop: 2 }}>
-                  <MaterialCommunityIcons name="link-variant" size={11} color={Colors.muted} /> Tx #{occ.linked_transaction_id}
-                </Text>
-              ) : null}
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={{ fontWeight: '700', color: d.color, fontSize: 14 }}>{formatCurrency(occ.amount)}</Text>
-              <View style={{ backgroundColor: `${d.color}20`, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, marginTop: 3 }}>
-                <Text style={{ color: d.color, fontSize: 11, fontWeight: '600' }}>{d.label}</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        );
-      })}
+
+              <Text
+                style={{
+                  fontSize: 24,
+
+                  fontWeight: "900",
+
+                  color: selected
+                    ? "#fff"
+                    : Colors.text,
+                }}
+              >
+                {day}
+              </Text>
+
+              <Text
+                numberOfLines={1}
+                style={{
+                  marginTop: 6,
+
+                  fontSize: 13,
+
+                  fontWeight: "700",
+
+                  color: selected
+                    ? "#fff"
+                    : display.color,
+                }}
+              >
+                {formatCurrency(occ.amount)}
+              </Text>
+
+              <MaterialCommunityIcons
+                name={
+                  display.label === "Paid"
+                    ? "check-circle"
+
+                    : display.label === "Skipped"
+                      ? "skip-next-circle"
+
+                      : display.label === "Overdue"
+                        ? "alert-circle"
+
+                        : "clock-outline"
+                }
+
+                size={18}
+
+                color={
+                  selected
+                    ? "#fff"
+                    : display.color
+                }
+
+                style={{
+                  marginTop: 6,
+                }}
+              />
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
     </Card>
   );
 }
@@ -264,7 +529,7 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
             />
           )}
 
-          <PaperButton mode="outlined" onPress={onClose} style={{ marginTop: 12 }}>Cancel</PaperButton>
+          <PaperButton mode="outlined" onPress={onClose} style={{ marginTop: 8 }}>Cancel</PaperButton>
         </View>
       </View>
     </Modal>
@@ -368,6 +633,57 @@ function OccurrenceEditModal({ visible, occurrence, onSave, onClose }) {
   );
 }
 
+function InfoRow({
+  icon,
+  label,
+  value,
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "flex-start",
+        paddingVertical: 10,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: "#ECECEC",
+      }}
+    >
+      <MaterialCommunityIcons
+        name={icon}
+        size={20}
+        color={Colors.primary}
+      />
+
+      <View
+        style={{
+          flex: 1,
+          marginLeft: 12,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 12,
+            color: Colors.muted,
+          }}
+        >
+          {label}
+        </Text>
+
+        <Text
+          style={{
+            marginTop: 2,
+            fontWeight: "700",
+            fontSize: 14,
+            color: Colors.text,
+          }}
+        >
+          {value}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 // ─── main screen ─────────────────────────────────────────────────────────────
 
 export default function BillDetailScreen({ route, navigation }) {
@@ -386,6 +702,8 @@ export default function BillDetailScreen({ route, navigation }) {
   const [confirmAction, setConfirmAction] = useState(null);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [selectedChartLabel, setSelectedChartLabel] = useState(null);
+  const [showMoreDetails, setShowMoreDetails] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // ── load ──────────────────────────────────────────────────────────────────
   async function load() {
@@ -454,8 +772,20 @@ export default function BillDetailScreen({ route, navigation }) {
   // ── actions ───────────────────────────────────────────────────────────────
   async function handleMarkPaid() {
     if (!selectedOcc) return;
+    try {
+      setLoading(true);
+
+      await markBillPaid(selectedOcc.id, {
+        source_id: selectedOcc.source_id,
+      });
+
+      await load();
+    } finally {
+      setLoading(false);
+    }
     await markBillPaid(selectedOcc.id, { source_id: selectedOcc.source_id });
     load();
+
   }
 
   async function refreshSelectedOccurrence() {
@@ -467,13 +797,11 @@ export default function BillDetailScreen({ route, navigation }) {
 
     // Reload selected occurrence
     const occ =
-      updatedSeries.find(o => o.id === selectedOcc.id) ||
-      updatedSeries[0] ||
+      updatedSeries.find(o => Number(o.id) === Number(selectedOcc.id)) ||
       null;
 
     setSelectedOcc(occ);
 
-    // Reload linked transactions
     if (occ) {
       const txs = await getBillLinkedTransactions(occ.id);
       setLinkedTxs(txs);
@@ -484,43 +812,50 @@ export default function BillDetailScreen({ route, navigation }) {
 
   async function handleLinkTransaction(tx) {
     if (!selectedOcc) return;
-    await linkAdditionalTransaction(selectedOcc.id, tx.id);
-    setShowLinkModal(false);
-    await refreshSelectedOccurrence();
+
+    try {
+      setLoading(true);
+
+      // Link only. Never create a payment transaction.
+      await linkAdditionalTransaction(selectedOcc.id, tx.id);
+
+      setShowLinkModal(false);
+
+      await refreshSelectedOccurrence();
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleUnlinkTransaction(tx) {
     if (!selectedOcc) return;
-    await removeTransactionFromBill(selectedOcc.id, tx.id);
-    await refreshSelectedOccurrence();
-  }
 
-  async function handleSelectOccurrence(occ) {
-    setSelectedOcc(occ);
-    // Always load links for THIS occurrence only.
-    await reloadLinkedTxs(occ.id);
-    if (occ.due_date) {
-      const d = new Date(occ.due_date);
-      const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ];
-      setSelectedChartLabel(
-        `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`
-      );
+    try {
+      setLoading(true);
+
+      await removeTransactionFromBill(selectedOcc.id, tx.id);
+
+      await refreshSelectedOccurrence();
+    } finally {
+      setLoading(false);
     }
   }
 
   async function handleSelectOccurrence(occ) {
     setSelectedOcc(occ);
-    // Always load links for THIS occurrence only.
-    await reloadLinkedTxs(occ.id);
+
+    const txs = await getBillLinkedTransactions(occ.id);
+
+    setLinkedTxs(txs);
+
     if (occ.due_date) {
       const d = new Date(occ.due_date);
+
       const months = [
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
       ];
+
       setSelectedChartLabel(
         `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`
       );
@@ -529,22 +864,34 @@ export default function BillDetailScreen({ route, navigation }) {
 
   async function handleSaveOccurrence(newAmount, newDueDate) {
     if (!selectedOcc) return;
-    if (selectedOcc.id === bill.id) {
-      // It's the template acting as the first occurrence
-      await createBill({
-        ...bill,
-        amount: newAmount,
-        due_date: newDueDate,
-        is_recurring: 0,
-        recurrence_type: null,
-        parent_bill_id: bill.id,
-      });
-    } else {
-      const { updateBill } = require('../services/bills');
-      await updateBill(selectedOcc.id, { amount: newAmount, due_date: newDueDate });
+
+    try {
+      setLoading(true);
+
+      if (selectedOcc.id === bill.id) {
+        await createBill({
+          ...bill,
+          amount: newAmount,
+          due_date: newDueDate,
+          is_recurring: 0,
+          recurrence_type: null,
+          parent_bill_id: bill.id,
+        });
+      } else {
+        const { updateBill } = require('../services/bills');
+
+        await updateBill(selectedOcc.id, {
+          amount: newAmount,
+          due_date: newDueDate,
+        });
+      }
+
+      setShowEditOcc(false);
+
+      await load();
+    } finally {
+      setLoading(false);
     }
-    setShowEditOcc(false);
-    load();
   }
 
   // Chart data extraction
@@ -604,198 +951,481 @@ export default function BillDetailScreen({ route, navigation }) {
   const isCurrentMonth = currentMonthStr === activeBillMonthStr;
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: Colors.background }}
-      contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 120 }}
+
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: Colors.background,
+      }}
     >
-      {/* Monthly Chart */}
-      <Card style={{ marginBottom: Spacing.s, paddingBottom: 0 }}>
-        <Text style={{ fontWeight: '700', fontSize: 15, color: Colors.text, marginBottom: 10 }}>
-          Bill History
-        </Text>
-        <PremiumRoundedBarChart
-          labels={chartData.labels}
-          values={chartData.values}
-          width={screenWidth - 56}
-          height={250}
-          baseColor={category?.color || Colors.primary}
-          selectedLabel={selectedChartLabel}
-          isEmpty={chartData.labels.length === 0}
-          onBarPress={(data) => {
-            setSelectedChartLabel(data.label);
+      <ScrollView
+        style={{ flex: 1, backgroundColor: Colors.background }}
+        contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 120 }}
+      >
+        {/* Monthly Chart */}
+        <Card
+          style={{
+            marginBottom: 12,
+            borderRadius: 20,
+            overflow: "hidden",
+          }}
+        >
+          <Text style={{ fontWeight: '800', fontSize: 17, color: Colors.text, marginBottom: 10 }}>
+            Bill History
+          </Text>
+          <PremiumRoundedBarChart
+            labels={chartData.labels}
+            values={chartData.values}
+            width={screenWidth - 56}
+            height={250}
+            baseColor={category?.color || Colors.primary}
+            selectedLabel={selectedChartLabel}
+            isEmpty={chartData.labels.length === 0}
+            onBarPress={(data) => {
+              setSelectedChartLabel(data.label);
 
-            const matchingOcc = series.find(occ => {
-              if (!occ.due_date) return false;
+              const matchingOcc = series.find(occ => {
+                if (!occ.due_date) return false;
 
-              const d = new Date(occ.due_date);
-              const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const d = new Date(occ.due_date);
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-              return `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}` === data.label;
-            });
+                return `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}` === data.label;
+              });
 
-            if (matchingOcc) {
-              handleSelectOccurrence(matchingOcc);
+              if (matchingOcc) {
+                handleSelectOccurrence(matchingOcc);
+              }
+            }}
+          />
+        </Card>
+
+        {/* ── Hero card ── */}
+        <Card
+          style={{
+            marginBottom: 12,
+            borderRadius: 22,
+            overflow: 'hidden',
+            padding: 0,
+          }}
+        >
+          {/* Header */}
+          <View
+            style={{
+              backgroundColor: `${display.color}12`,
+              padding: 18,
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
+            <View
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: `${display.color}25`,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <MaterialCommunityIcons
+                name={category?.icon || 'receipt'}
+                size={30}
+                color={display.color}
+              />
+            </View>
+
+            <View
+              style={{
+                flex: 1,
+                marginLeft: 15,
+              }}
+            >
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontSize: 19,
+                  fontWeight: '800',
+                  color: Colors.text,
+                }}
+              >
+                {bill.name}
+              </Text>
+
+              <Text
+                style={{
+                  fontSize: 28,
+                  marginTop: 4,
+                  fontWeight: '900',
+                  color: display.color,
+                }}
+              >
+                {formatCurrency(activeBill.amount)}
+              </Text>
+
+              <View
+                style={{
+                  alignSelf: 'flex-start',
+                  marginTop: 8,
+                  backgroundColor: display.color,
+                  paddingHorizontal: 12,
+                  paddingVertical: 5,
+                  borderRadius: 20,
+                }}
+              >
+                <Text
+                  style={{
+                    color: '#fff',
+                    fontWeight: '700',
+                    fontSize: 12,
+                  }}
+                >
+                  {display.label}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Quick Info */}
+          <View
+            style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              padding: 14,
+            }}
+          >
+            <View style={styles.infoTile}>
+              <MaterialCommunityIcons
+                name="calendar"
+                color={Colors.primary}
+                size={18}
+              />
+              <Text style={styles.infoTitle}>Due</Text>
+              <Text style={styles.infoValue}>
+                {formatDueDate(activeBill.due_date)}
+              </Text>
+            </View>
+
+            <View style={styles.infoTile}>
+              <MaterialCommunityIcons
+                name={category?.icon || 'shape'}
+                color={Colors.primary}
+                size={18}
+              />
+              <Text style={styles.infoTitle}>Category</Text>
+              <Text
+                numberOfLines={1}
+                style={styles.infoValue}
+              >
+                {category?.name || '-'}
+              </Text>
+            </View>
+
+            <View style={styles.infoTile}>
+              <MaterialCommunityIcons
+                name="bank"
+                color={Colors.primary}
+                size={18}
+              />
+              <Text style={styles.infoTitle}>Source</Text>
+              <Text
+                numberOfLines={1}
+                style={styles.infoValue}
+              >
+                {source?.name || '-'}
+              </Text>
+            </View>
+
+            <View style={styles.infoTile}>
+              <MaterialCommunityIcons
+                name="repeat"
+                color={Colors.primary}
+                size={18}
+              />
+              <Text style={styles.infoTitle}>Repeat</Text>
+              <Text
+                numberOfLines={1}
+                style={styles.infoValue}
+              >
+                {bill.is_recurring
+                  ? `${bill.recurrence_interval || 1} ${bill.recurrence_type}`
+                  : 'No'}
+              </Text>
+            </View>
+          </View>
+        </Card>
+
+        {/* ISSUE 4: Linked transactions card */}
+        <LinkedTransactionsCard
+          linkedTxs={linkedTxs}
+          onAddMore={() => setShowLinkModal(true)}
+          onUnlink={handleUnlinkTransaction}
+        />
+
+        {/* Occurrence list (ISSUE 1 detail view) */}
+        <OccurrenceList
+          series={filteredSeries}
+          selectedId={selectedOcc?.id}
+          onSelect={handleSelectOccurrence}
+        />
+
+        {/* ── Confirm dialog ── */}
+        <ConfirmDialog
+          visible={confirmVisible}
+          title={confirmAction === 'delete_occ' ? 'Delete Bill' : 'Skip Bill'}
+          message={
+            confirmAction === 'delete_occ'
+              ? `Delete the occurrence for ${formatDueDate(activeBill.due_date)}?`
+              : `Skip "${activeBill.name}" for ${formatDueDate(activeBill.due_date)}?`
+          }
+          confirmLabel={confirmAction === 'skip' ? 'Skip' : 'Delete'}
+          onCancel={() => { setConfirmVisible(false); setConfirmAction(null); }}
+          onConfirm={async () => {
+            if (confirmAction === 'delete_occ') {
+              if (activeBill.id === bill.id) {
+                // Create a deleted override child row
+                const newId = await createBill({
+                  ...bill,
+                  is_recurring: 0,
+                  recurrence_type: null,
+                  parent_bill_id: bill.id,
+                });
+                await deleteBill(newId);
+              } else {
+                await deleteBill(activeBill.id);
+              }
+              load();
+            } else if (confirmAction === 'skip') {
+              await skipBill(activeBill.id);
+              load();
             }
+            setConfirmVisible(false);
+            setConfirmAction(null);
           }}
         />
-      </Card>
 
-      {/* ── Hero card ── */}
-      <Card style={{ marginBottom: Spacing.s }}>
-        {/* Icon + name + amount */}
-        <View style={{ alignItems: 'center', paddingBottom: 12 }}>
-          <View style={{
-            width: 60, height: 60, borderRadius: 30,
-            backgroundColor: `${display.color}20`,
-            alignItems: 'center', justifyContent: 'center', marginBottom: 10,
-          }}>
-            <MaterialCommunityIcons name={category?.icon || 'file-document-outline'} size={30} color={display.color} />
-          </View>
-          <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.text }}>{bill.name}</Text>
-          <Text style={{ fontSize: 30, fontWeight: '800', color: display.color, marginTop: 4 }}>
-            {formatCurrency(activeBill.amount)}
-          </Text>
-          <StatusBadge display={display} />
-        </View>
-
-        <Divider style={{ marginBottom: 10 }} />
-
-        <DetailRow label="Due date" value={formatDueDate(activeBill.due_date)} />
-        <DetailRow label="Category" value={category?.name || '—'} />
-        <DetailRow label="Source" value={source?.name || '—'} />
-        <DetailRow
-          label="Recurring"
-          value={bill.is_recurring
-            ? `Every ${bill.recurrence_interval || 1} ${bill.recurrence_type || 'month'}`
-            : 'No'}
+        {/* ISSUE 3: Link transaction modal */}
+        <LinkTransactionModal
+          visible={showLinkModal}
+          bill={activeBill}
+          onLink={handleLinkTransaction}
+          onClose={() => setShowLinkModal(false)}
         />
-        {bill.recurrence_end_date ? (
-          <DetailRow label="Ends on" value={formatDueDate(bill.recurrence_end_date)} />
-        ) : null}
-        <DetailRow label="Reminder" value={`${bill.reminder_days_before ?? 2} day(s) before`} />
-        <DetailRow label="Auto-pay" value={bill.auto_pay ? 'Enabled' : 'Disabled'} />
-        {activeBill.paid_at ? (
-          <DetailRow label="Paid at" value={new Date(activeBill.paid_at).toLocaleString('en-IN')} />
-        ) : null}
-        {bill.notes ? <DetailRow label="Notes" value={bill.notes} /> : null}
-      </Card>
+
+        <OccurrenceEditModal
+          visible={showEditOcc}
+          occurrence={selectedOcc}
+          onSave={handleSaveOccurrence}
+          onClose={() => setShowEditOcc(false)}
+        />
+      </ScrollView>
+
+
 
       {/* ── Action buttons ── */}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: Spacing.s }}>
-        {!isPaidOrSkipped && (
-          <PaperButton
-            mode="contained" icon="check"
-            onPress={handleMarkPaid}
-            style={{ flex: 1, minWidth: 140, opacity: isCurrentMonth ? 1 : 0.5 }}
-            buttonColor="#36B37E"
-            disabled={!isCurrentMonth}
-          >
-            Mark Paid
-          </PaperButton>
-        )}
-
-        {/* ISSUE 3: Link More Transactions (always show so user can link even after paid) */}
-        <PaperButton
-          mode="outlined"
-          icon={linkedTxs.length > 0 ? "link-off" : "link-variant-plus"}
-          onPress={() => {
-            if (linkedTxs.length > 0) {
-              handleUnlinkTransaction(linkedTxs[0]);
-            } else {
-              setShowLinkModal(true);
-            }
-          }}
-          style={{ flex: 1, minWidth: 140 }}
-        >
-          {linkedTxs.length > 0 ? "Unlink Transaction" : "Link Transaction"}
-        </PaperButton>
-
-        {!isPaidOrSkipped && (
-          <PaperButton
-            mode="outlined"
-            onPress={() => { setConfirmAction('skip'); setConfirmVisible(true); }}
-            style={{ flex: 1, minWidth: 90 }}
-          >
-            Skip
-          </PaperButton>
-        )}
-
-        <PaperButton mode="outlined" onPress={() => setShowEditOcc(true)} style={{ flex: 1, minWidth: 80 }}>
-          Edit Bill
-        </PaperButton>
-
-        <PaperButton
-          mode="outlined" textColor="#E46A6A"
-          onPress={() => { setConfirmAction('delete_occ'); setConfirmVisible(true); }}
-          style={{ flex: 1, minWidth: 80 }}
-        >
-          Delete Bill
-        </PaperButton>
-      </View>
-
-      {/* ISSUE 4: Linked transactions card */}
-      <LinkedTransactionsCard
-        linkedTxs={linkedTxs}
-        onAddMore={() => setShowLinkModal(true)}
-        onUnlink={handleUnlinkTransaction}
-      />
-
-      {/* Occurrence list (ISSUE 1 detail view) */}
-      <OccurrenceList
-        series={filteredSeries}
-        selectedId={selectedOcc?.id}
-        onSelect={handleSelectOccurrence}
-      />
-
-      {/* ── Confirm dialog ── */}
-      <ConfirmDialog
-        visible={confirmVisible}
-        title={confirmAction === 'delete_occ' ? 'Delete Bill' : 'Skip Bill'}
-        message={
-          confirmAction === 'delete_occ'
-            ? `Delete the occurrence for ${formatDueDate(activeBill.due_date)}?`
-            : `Skip "${activeBill.name}" for ${formatDueDate(activeBill.due_date)}?`
-        }
-        confirmLabel={confirmAction === 'skip' ? 'Skip' : 'Delete'}
-        onCancel={() => { setConfirmVisible(false); setConfirmAction(null); }}
-        onConfirm={async () => {
-          if (confirmAction === 'delete_occ') {
-            if (activeBill.id === bill.id) {
-              // Create a deleted override child row
-              const newId = await createBill({
-                ...bill,
-                is_recurring: 0,
-                recurrence_type: null,
-                parent_bill_id: bill.id,
-              });
-              await deleteBill(newId);
-            } else {
-              await deleteBill(activeBill.id);
-            }
-            load();
-          } else if (confirmAction === 'skip') {
-            await skipBill(activeBill.id);
-            load();
-          }
-          setConfirmVisible(false);
-          setConfirmAction(null);
+      <View
+        style={{
+          height: 8,
         }}
       />
 
-      {/* ISSUE 3: Link transaction modal */}
-      <LinkTransactionModal
-        visible={showLinkModal}
-        bill={activeBill}
-        onLink={handleLinkTransaction}
-        onClose={() => setShowLinkModal(false)}
-      />
+      <View
+        style={{
+          position: 'absolute',
+          left: 12,
+          right: 12,
+          bottom: 12,
+          backgroundColor: '#fff',
+          borderRadius: 20,
+          paddingHorizontal: 12,
+          paddingVertical: 10,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
 
-      <OccurrenceEditModal
-        visible={showEditOcc}
-        occurrence={selectedOcc}
-        onSave={handleSaveOccurrence}
-        onClose={() => setShowEditOcc(false)}
-      />
-    </ScrollView>
+          shadowColor: '#000',
+          shadowOpacity: 0.12,
+          shadowRadius: 12,
+          shadowOffset: {
+            width: 0,
+            height: 5,
+          },
+          elevation: 8,
+        }}
+      >
+
+        {!isPaidOrSkipped && (
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              {
+                backgroundColor: '#2DBE60',
+                opacity: isCurrentMonth ? 1 : 0.45,
+              },
+            ]}
+            disabled={!isCurrentMonth}
+            onPress={handleMarkPaid}
+          >
+            <MaterialCommunityIcons
+              name="check-circle"
+              color="#fff"
+              size={22}
+            />
+
+            <Text style={styles.actionTextWhite}>
+              Paid
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => setShowLinkModal(true)}
+        >
+          <MaterialCommunityIcons
+            name="link-variant"
+            color={Colors.primary}
+            size={22}
+          />
+
+          <Text style={styles.actionText}>
+            Link
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => setShowEditOcc(true)}
+        >
+          <MaterialCommunityIcons
+            name="square-edit-outline"
+            color="#FF9800"
+            size={22}
+          />
+
+          <Text style={styles.actionText}>
+            Edit
+          </Text>
+        </TouchableOpacity>
+
+        {!isPaidOrSkipped && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => {
+              setConfirmAction('skip');
+              setConfirmVisible(true);
+            }}
+          >
+            <MaterialCommunityIcons
+              name="skip-next-circle"
+              color="#F57C00"
+              size={22}
+            />
+
+            <Text style={styles.actionText}>
+              Skip
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => {
+            setConfirmAction('delete_occ');
+            setConfirmVisible(true);
+          }}
+        >
+          <MaterialCommunityIcons
+            name="delete-outline"
+            color="#F44336"
+            size={22}
+          />
+
+          <Text style={styles.actionText}>
+            Delete
+          </Text>
+        </TouchableOpacity>
+
+      </View>
+
+      {loading && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(255,255,255,0.75)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <ActivityIndicator
+            size="large"
+            color={Colors.primary}
+          />
+        </View>
+      )}
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  infoTile: {
+    width: '50%',
+    paddingVertical: 12,
+    flexDirection: 'column',
+  },
+  infoTitle: {
+    marginTop: 4,
+    fontSize: 11,
+    color: Colors.muted,
+  },
+  infoValue: {
+    marginTop: 2,
+    fontWeight: '700',
+    color: Colors.text,
+    fontSize: 14,
+  },
+  actionButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 14,
+  },
+  actionText: {
+    marginTop: 3,
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  actionTextWhite: {
+    marginTop: 3,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  bottomActionBar: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    bottom: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    elevation: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 14,
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+  },
+});

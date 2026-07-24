@@ -63,7 +63,7 @@ export default function PremiumRoundedBarChart({
   labels = [],
   values = [],
   width,
-  height = 250,
+  height = 165,
   baseColor,
   onBarPress,
   selectedLabel,
