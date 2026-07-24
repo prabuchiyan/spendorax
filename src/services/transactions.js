@@ -1,5 +1,9 @@
 import { executeSql } from '../database/db';
 import events from './events';
+import {
+  getBillsForTransaction,
+  removeTransactionFromBill,
+} from './bills';
 
 export async function createTransaction(tx) {
   const {
@@ -200,8 +204,38 @@ export async function getTransactions(
 }
 
 export async function deleteTransaction(id) {
-  await executeSql(`DELETE FROM transactions WHERE id = ?`, [id]);
-  try { events.emit('transactionsChanged', { action: 'delete', id }); } catch (e) { }
+  // Find every bill linked to this transaction
+  const result = await executeSql(
+    `SELECT bill_id
+     FROM bill_linked_transactions
+     WHERE transaction_id = ?`,
+    [id]
+  );
+
+  const linkedBills = [];
+  for (let i = 0; i < result.rows.length; i++) {
+    linkedBills.push(result.rows.item(i));
+  }
+
+  // Remove bill links FIRST
+  for (const row of linkedBills) {
+    await removeTransactionFromBill(row.bill_id, id);
+  }
+
+  // Now delete the transaction
+  await executeSql(
+    `DELETE FROM transactions
+     WHERE id = ?`,
+    [id]
+  );
+
+  try {
+    events.emit('transactionsChanged', {
+      action: 'delete',
+      id,
+    });
+    events.emit('billsChanged');
+  } catch (e) { }
 }
 
 export async function updateTransaction(id, fields) {

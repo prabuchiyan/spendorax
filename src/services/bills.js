@@ -70,6 +70,20 @@ export async function addTransactionToBill(billId, transactionId) {
 }
 
 export async function removeTransactionFromBill(billId, transactionId) {
+  console.log(
+    "removeTransactionFromBill",
+    "billId =", billId,
+    "transactionId =", transactionId
+  );
+
+  const before = await executeSql(
+    `SELECT id, parent_bill_id, due_date, status, is_paid
+   FROM bills
+   WHERE id = ?`,
+    [billId]
+  );
+
+  console.log("Before:", before.rows.item(0));
   await executeSql(
     `DELETE FROM bill_linked_transactions
      WHERE bill_id = ? AND transaction_id = ?`,
@@ -84,6 +98,24 @@ export async function removeTransactionFromBill(billId, transactionId) {
       [billId]
     )
   );
+
+  console.log(
+    "Remaining links:",
+    remaining.length,
+    remaining
+  );
+
+  const verify = rowsToArray(
+    await executeSql(
+      `SELECT *
+     FROM bill_linked_transactions
+     WHERE bill_id = ?
+       AND transaction_id = ?`,
+      [billId, transactionId]
+    )
+  );
+
+  console.log("Exact link after delete:", verify);
 
   // No linked transactions left -> reset bill status
   if (remaining.length === 0) {
@@ -104,6 +136,14 @@ export async function removeTransactionFromBill(billId, transactionId) {
       ]
     );
   }
+  const after = await executeSql(
+    `SELECT id, parent_bill_id, due_date, status, is_paid
+   FROM bills
+   WHERE id = ?`,
+    [billId]
+  );
+
+  console.log("After:", after.rows.item(0));
 }
 
 export async function getBillLinkedTransactions(billId) {
@@ -923,6 +963,32 @@ export async function skipBill(billId) {
   // Ensure next occurrence exists so series continues
   const parentId = bill.parent_bill_id || (bill.is_recurring ? bill.id : null);
   if (parentId) await _ensureNextOccurrence(parentId);
+  emitBillsChanged();
+}
+
+export async function unskipBill(billId) {
+  const bill = await getBillById(billId);
+
+  const today = todayStr();
+
+  const status =
+    bill?.due_date && bill.due_date.slice(0, 10) < today
+      ? BILL_STATUS.OVERDUE
+      : BILL_STATUS.PENDING;
+
+  await executeSql(
+    `UPDATE bills
+     SET
+       status = ?,
+       updated_at = ?
+     WHERE id = ?`,
+    [
+      status,
+      nowIso(),
+      billId,
+    ]
+  );
+
   emitBillsChanged();
 }
 

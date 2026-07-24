@@ -15,6 +15,7 @@ import {
   getBillSeries,
   markBillPaid,
   skipBill,
+  unskipBill,
   deleteBill,
   getTransactionsForBillLink,
   getBillLinkedTransactions,
@@ -788,6 +789,20 @@ export default function BillDetailScreen({ route, navigation }) {
 
   }
 
+  async function handleUnskip() {
+    if (!selectedOcc) return;
+
+    try {
+      setLoading(true);
+
+      await unskipBill(selectedOcc.id);
+
+      await load();
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function refreshSelectedOccurrence() {
     if (!selectedOcc) return;
 
@@ -1254,6 +1269,7 @@ export default function BillDetailScreen({ route, navigation }) {
         }}
       >
 
+        {/* Paid */}
         {!isPaidOrSkipped && (
           <TouchableOpacity
             style={[
@@ -1274,6 +1290,42 @@ export default function BillDetailScreen({ route, navigation }) {
 
             <Text style={styles.actionTextWhite}>
               Paid
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Skip / Unskip */}
+        {activeBill.status === BILL_STATUS.SKIPPED ? (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleUnskip}
+          >
+            <MaterialCommunityIcons
+              name="undo"
+              color="#1976D2"
+              size={22}
+            />
+
+            <Text style={styles.actionText}>
+              Unskip
+            </Text>
+          </TouchableOpacity>
+        ) : !isPaidOrSkipped && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => {
+              setConfirmAction('skip');
+              setConfirmVisible(true);
+            }}
+          >
+            <MaterialCommunityIcons
+              name="skip-next-circle"
+              color="#F57C00"
+              size={22}
+            />
+
+            <Text style={styles.actionText}>
+              Skip
             </Text>
           </TouchableOpacity>
         )}
@@ -1307,26 +1359,6 @@ export default function BillDetailScreen({ route, navigation }) {
             Edit
           </Text>
         </TouchableOpacity>
-
-        {!isPaidOrSkipped && (
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => {
-              setConfirmAction('skip');
-              setConfirmVisible(true);
-            }}
-          >
-            <MaterialCommunityIcons
-              name="skip-next-circle"
-              color="#F57C00"
-              size={22}
-            />
-
-            <Text style={styles.actionText}>
-              Skip
-            </Text>
-          </TouchableOpacity>
-        )}
 
         <TouchableOpacity
           style={styles.actionButton}
