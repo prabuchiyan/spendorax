@@ -797,7 +797,7 @@ export default function BillDetailScreen({ route, navigation }) {
 
       await unskipBill(selectedOcc.id);
 
-      await load();
+      await refreshSelectedOccurrence();
     } finally {
       setLoading(false);
     }
@@ -1212,7 +1212,8 @@ export default function BillDetailScreen({ route, navigation }) {
               load();
             } else if (confirmAction === 'skip') {
               await skipBill(activeBill.id);
-              load();
+
+              await refreshSelectedOccurrence();
             }
             setConfirmVisible(false);
             setConfirmAction(null);
