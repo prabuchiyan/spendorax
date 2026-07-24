@@ -158,7 +158,7 @@ export async function initDB() {
     // 4. Trigger immediate backfill of all recurring bill occurrences
     //    so existing users get past + future dues generated on first launch.
     try {
-      const { backfillBillOccurrences } = require('./bills'); // adjust path as needed
+      const { backfillBillOccurrences } = require('../services/bills');
       const { executeSql: sql } = require('./db');
       const templatesRes = await sql(
         `SELECT id FROM bills WHERE is_recurring = 1 AND parent_bill_id IS NULL AND deleted_at IS NULL`
