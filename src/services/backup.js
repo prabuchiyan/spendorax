@@ -13,7 +13,7 @@ import { getLoans } from './loans';
 import { getNotifications, updateNotification, getNotificationByType } from '../database/notifications';
 import { rescheduleAll } from './notificationService';
 
-const BACKUP_VERSION = 1;
+const BACKUP_VERSION = 2;
 
 export async function exportBackup() {
   try {
@@ -23,21 +23,46 @@ export async function exportBackup() {
     const budgets = await getBudgets();
     const bills = await getBills();
     const loans = await getLoans();
-    // fetch all loan payments directly (if table exists)
+
+    // Loan Payments
     let loanPayments = [];
     try {
-      const lp = await executeSql('SELECT * FROM loan_payments');
-      for (let i = 0; i < lp.rows.length; i++) loanPayments.push(lp.rows.item(i));
+      const res = await executeSql('SELECT * FROM loan_payments');
+      for (let i = 0; i < res.rows.length; i++) {
+        loanPayments.push(res.rows.item(i));
+      }
     } catch (e) {
       loanPayments = [];
     }
-    // Fetch notification settings
-    let notificationSettings = [];
+
+    // Category Budgets
+    let categoryBudgets = [];
     try {
-      const ns = await getNotifications();
-      notificationSettings = ns;
+      const res = await executeSql('SELECT * FROM category_budgets');
+      for (let i = 0; i < res.rows.length; i++) {
+        categoryBudgets.push(res.rows.item(i));
+      }
     } catch (e) {
-      notificationSettings = [];
+      categoryBudgets = [];
+    }
+
+    // Bill Linked Transactions
+    let billLinkedTransactions = [];
+    try {
+      const res = await executeSql('SELECT * FROM bill_linked_transactions');
+      for (let i = 0; i < res.rows.length; i++) {
+        billLinkedTransactions.push(res.rows.item(i));
+      }
+    } catch (e) {
+      billLinkedTransactions = [];
+    }
+
+    // Notifications
+    let notifications = [];
+    try {
+      notifications = await getNotifications();
+    } catch (e) {
+      notifications = [];
     }
 
     const backupData = {
@@ -48,10 +73,12 @@ export async function exportBackup() {
         categories,
         sources,
         budgets,
+        category_budgets: categoryBudgets,
         bills,
+        bill_linked_transactions: billLinkedTransactions,
         loans,
         loan_payments: loanPayments,
-        notification_settings: notificationSettings
+        notifications,
       },
     };
 
@@ -117,18 +144,72 @@ export async function pickBackupFile() {
 
 
     // Validation
-    if (backupData.version !== BACKUP_VERSION) {
-      throw new Error('Invalid backup version');
+    // Validation (Backward Compatible)
+    if (!backupData.version) {
+      throw new Error('Invalid backup file');
     }
 
-    const requiredKeys = ['transactions', 'categories', 'sources', 'budgets', 'bills', 'loans', 'loan_payments'];
-    for (const key of requiredKeys) {
-      if (!backupData.data || !backupData.data[key]) {
-        throw new Error(`Missing required data: ${key}`);
+    if (!backupData.data) {
+      throw new Error('Backup data is missing');
+    }
+
+    // -----------------------------
+    // Version 1 (Old backups)
+    // -----------------------------
+    if (backupData.version === 1) {
+      const requiredKeys = [
+        'transactions',
+        'categories',
+        'sources',
+        'budgets',
+        'bills',
+        'loans',
+        'loan_payments'
+      ];
+
+      for (const key of requiredKeys) {
+        if (!Array.isArray(backupData.data[key])) {
+          throw new Error(`Missing required data: ${key}`);
+        }
       }
+
+      // Populate new tables with empty arrays so restore logic
+      // never needs version-specific checks.
+      backupData.data.category_budgets ??= [];
+      backupData.data.bill_linked_transactions ??= [];
+      backupData.data.notifications ??=
+        backupData.data.notification_settings ?? [];
+
+      return backupData;
     }
 
-    return backupData;
+    // -----------------------------
+    // Version 2 (Current)
+    // -----------------------------
+    if (backupData.version >= 2) {
+      const requiredKeys = [
+        'transactions',
+        'categories',
+        'sources',
+        'budgets',
+        'category_budgets',
+        'bills',
+        'bill_linked_transactions',
+        'loans',
+        'loan_payments',
+        'notifications'
+      ];
+
+      for (const key of requiredKeys) {
+        if (!Array.isArray(backupData.data[key])) {
+          throw new Error(`Missing required data: ${key}`);
+        }
+      }
+
+      return backupData;
+    }
+
+    throw new Error(`Unsupported backup version: ${backupData.version}`);
   } catch (error) {
     console.error('Picking file failed:', error);
     throw error;
@@ -391,14 +472,35 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       categories = [],
       sources = [],
       budgets = [],
+      category_budgets = [],
       bills = [],
+      bill_linked_transactions = [],
       transactions = [],
       loans = [],
       loan_payments = [],
-      notification_settings = [],
+      notifications = [],
+      notification_settings = [], // Backward compatibility
     } = backupData.data || {};
+
+    // Support old backups
+    const restoredNotifications =
+      notifications.length > 0
+        ? notifications
+        : notification_settings;
+
     const billsWithLinkedTx = bills.filter(b => b.linked_transaction_id);
-    const totalItems = categories.length + sources.length + bills.length + transactions.length + budgets.length + billsWithLinkedTx.length + loans.length + loan_payments.length;
+    const totalItems =
+      categories.length +
+      sources.length +
+      bills.length +
+      transactions.length +
+      budgets.length +
+      billsWithLinkedTx.length +
+      loans.length +
+      loan_payments.length +
+      category_budgets.length +
+      bill_linked_transactions.length +
+      restoredNotifications.length;
     let processedItems = 0;
 
     const updateProgress = (completedInChunk, stepMessage) => {
@@ -797,11 +899,72 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       }
     );
 
+    // 8b. Category Budgets
+    await processBatch(
+      category_budgets || [],
+      async (item) => {
+        await executeSql(
+          `INSERT INTO category_budgets
+      (
+        category_id,
+        amount,
+        month,
+        year,
+        created_at,
+        updated_at
+      )
+      VALUES (?,?,?,?,?,?)`,
+          [
+            categoryMap[item.category_id] || null,
+            item.amount,
+            item.month,
+            item.year,
+            item.created_at || new Date().toISOString(),
+            item.updated_at || new Date().toISOString(),
+          ]
+        );
+      },
+      (count) => {
+        updateProgress(count, 'Importing category budgets...');
+      }
+    );
+
+    // 8c. Bill Linked Transactions
+    await processBatch(
+      bill_linked_transactions || [],
+      async (item) => {
+        const newBillId = billMap[item.bill_id];
+        const newTransactionId = transactionMap[item.transaction_id];
+
+        if (!newBillId || !newTransactionId) {
+          return;
+        }
+
+        await executeSql(
+          `INSERT INTO bill_linked_transactions
+      (
+        bill_id,
+        transaction_id,
+        linked_at
+      )
+      VALUES (?,?,?)`,
+          [
+            newBillId,
+            newTransactionId,
+            item.linked_at || new Date().toISOString(),
+          ]
+        );
+      },
+      (count) => {
+        updateProgress(count, 'Importing bill linked transactions...');
+      }
+    );
+
     // 9. Restore notification settings
     // Only restore user preferences (enabled, hour, minute)
     // Never restore notification_identifier — it's device-specific
-    if (notification_settings.length > 0) {
-      for (const ns of notification_settings) {
+    if (restoredNotifications.length > 0) {
+      for (const ns of restoredNotifications) {
         try {
           // Match by type — don't create new rows, just update existing seeded ones
           const existing = await getNotificationByType(ns.type);
