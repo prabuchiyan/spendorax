@@ -306,15 +306,22 @@ export async function getBillsForCurrentMonth(options = {}) {
 
   for (const row of allRaw) {
     if (!row.is_recurring || !row.recurrence_type) {
-      if (!row.parent_bill_id) nonRecurring.push(row);
+      if (!row.parent_bill_id) {
+        nonRecurring.push(row);
+      }
       continue;
     }
-    const key = `${(row.name || '').toLowerCase()}__${row.recurrence_type}`;
-    if (!recurringGroups[key] || row.id < recurringGroups[key].id) {
-      recurringGroups[key] = row;
+
+    // Every recurring series is uniquely identified by its template id.
+    const templateId = row.parent_bill_id || row.id;
+
+    if (
+      !recurringGroups[templateId] ||
+      row.parent_bill_id === null
+    ) {
+      recurringGroups[templateId] = row;
     }
   }
-
   const result = [];
 
   // ── Non-recurring bills ───────────────────────────────────────────────────
@@ -346,75 +353,46 @@ export async function getBillsForCurrentMonth(options = {}) {
       continue;
     }
 
-    let occurrenceRow = null;
-
-    // ── Case A: child row exists for this month ───────────────────────────────
-    const childRes = await executeSql(
-      `SELECT * FROM bills
-        WHERE parent_bill_id = ?
-        AND due_date LIKE ?
-        AND deleted_at IS NULL
-        LIMIT 1`,
-      [template.id, `${currentMonthPrefix}%`]   // e.g. '2026-07%'  — immune to time suffix
+    // Find this month's occurrence directly from memory.
+    // This works identically on Web and Mobile.
+    let occurrenceRow = allRaw.find(
+      b =>
+        Number(b.parent_bill_id) === Number(template.id) &&
+        b.due_date === thisMonthDate &&
+        !b.deleted_at
     );
-    if (childRes.rows.length) {
-      occurrenceRow = normalizeBill(childRes.rows.item(0));
-    }
 
-    // ── Case B: template's own due_date is this month ────────────────────────
-    if (!occurrenceRow && template.due_date?.startsWith(currentMonthPrefix)) {
+    if (occurrenceRow) {
+      occurrenceRow = normalizeBill(occurrenceRow);
+    } else if (template.due_date === thisMonthDate) {
       occurrenceRow = normalizeBill(template);
-    }
-
-    // ── Case C: create only if absolutely no occurrence exists ────────────────
-    if (!occurrenceRow) {
-      // Check for an existing row for the exact occurrence date
-      const existingRes = await executeSql(
-        `SELECT *
-     FROM bills
-     WHERE due_date = ?
-       AND (
-         id = ?
-         OR parent_bill_id = ?
-       )
-     LIMIT 1`,
-        [thisMonthDate, template.id, template.id]
+    } else {
+      const deleted = allRaw.find(
+        b =>
+          Number(b.parent_bill_id) === Number(template.id) &&
+          b.due_date === thisMonthDate &&
+          b.deleted_at
       );
 
-      if (existingRes.rows.length) {
-        occurrenceRow = normalizeBill(existingRes.rows.item(0));
-      } else {
-        // Check if this occurrence was intentionally deleted
-        const deletedRes = await executeSql(
-          `SELECT id
-       FROM bills
-       WHERE parent_bill_id = ?
-         AND due_date = ?
-         AND deleted_at IS NOT NULL
-       LIMIT 1`,
-          [template.id, thisMonthDate]
-        );
+      if (!deleted) {
+        const newId = await _insertBill({
+          name: template.name,
+          amount: template.amount,
+          due_date: thisMonthDate,
+          is_recurring: 0,
+          recurrence_type: null,
+          recurrence_interval: 1,
+          recurrence_end_date: null,
+          category_id: template.category_id,
+          source_id: template.source_id,
+          reminder_days_before: template.reminder_days_before,
+          auto_pay: template.auto_pay,
+          notes: template.notes,
+          attachment_url: template.attachment_url,
+          parent_bill_id: template.id,
+        });
 
-        if (!deletedRes.rows.length) {
-          const newId = await _insertBill({
-            name: template.name,
-            amount: template.amount,
-            due_date: thisMonthDate,
-            is_recurring: 0,
-            recurrence_type: null,
-            recurrence_interval: 1,
-            recurrence_end_date: null,
-            category_id: template.category_id,
-            source_id: template.source_id,
-            reminder_days_before: template.reminder_days_before,
-            auto_pay: template.auto_pay,
-            notes: template.notes,
-            attachment_url: template.attachment_url,
-            parent_bill_id: template.id,
-          });
-
-          occurrenceRow = normalizeBill(await getBillById(newId));
-        }
+        occurrenceRow = normalizeBill(await getBillById(newId));
       }
     }
 
