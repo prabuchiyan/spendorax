@@ -298,7 +298,7 @@ function OccurrenceEditModal({ visible, occurrence, onSave, onClose }) {
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 16 }}>
         <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 20 }}>
-          <Text style={{ fontWeight: '700', fontSize: 18, marginBottom: 16 }}>Edit Occurrence</Text>
+          <Text style={{ fontWeight: '700', fontSize: 18, marginBottom: 16 }}>Edit Bill Occurrence</Text>
 
           <Text style={{ fontSize: 13, color: Colors.muted, marginBottom: 6 }}>Amount</Text>
           <PaperTextInput
@@ -552,6 +552,11 @@ export default function BillDetailScreen({ route, navigation }) {
   const display = getBillDisplayStatus(activeBill);
   const isPaidOrSkipped = activeBill.status === BILL_STATUS.PAID || activeBill.status === BILL_STATUS.SKIPPED;
 
+  const now = new Date();
+  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const activeBillMonthStr = activeBill.due_date ? activeBill.due_date.slice(0, 7) : null;
+  const isCurrentMonth = currentMonthStr === activeBillMonthStr;
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: Colors.background }}
@@ -566,7 +571,7 @@ export default function BillDetailScreen({ route, navigation }) {
           labels={chartData.labels}
           values={chartData.values}
           width={screenWidth - 56}
-          height={180}
+          height={250}
           baseColor={category?.color || Colors.primary}
           isEmpty={chartData.labels.length === 0}
           onBarPress={(data) => {
@@ -629,8 +634,9 @@ export default function BillDetailScreen({ route, navigation }) {
           <PaperButton
             mode="contained" icon="check"
             onPress={handleMarkPaid}
-            style={{ flex: 1, minWidth: 140 }}
+            style={{ flex: 1, minWidth: 140, opacity: isCurrentMonth ? 1 : 0.5 }}
             buttonColor="#36B37E"
+            disabled={!isCurrentMonth}
           >
             Mark Paid
           </PaperButton>
@@ -656,7 +662,7 @@ export default function BillDetailScreen({ route, navigation }) {
         )}
 
         <PaperButton mode="outlined" onPress={() => setShowEditOcc(true)} style={{ flex: 1, minWidth: 80 }}>
-          Edit Occ.
+          Edit Bill
         </PaperButton>
 
         <PaperButton
@@ -664,7 +670,7 @@ export default function BillDetailScreen({ route, navigation }) {
           onPress={() => { setConfirmAction('delete_occ'); setConfirmVisible(true); }}
           style={{ flex: 1, minWidth: 80 }}
         >
-          Del Occ.
+          Delete Bill
         </PaperButton>
       </View>
 
@@ -685,12 +691,13 @@ export default function BillDetailScreen({ route, navigation }) {
       {/* ── Confirm dialog ── */}
       <ConfirmDialog
         visible={confirmVisible}
-        title={confirmAction === 'delete_occ' ? 'Delete Occurrence' : 'Skip Bill'}
+        title={confirmAction === 'delete_occ' ? 'Delete Bill' : 'Skip Bill'}
         message={
           confirmAction === 'delete_occ'
             ? `Delete the occurrence for ${formatDueDate(activeBill.due_date)}?`
             : `Skip "${activeBill.name}" for ${formatDueDate(activeBill.due_date)}?`
         }
+        confirmLabel={confirmAction === 'skip' ? 'Skip' : 'Delete'}
         onCancel={() => { setConfirmVisible(false); setConfirmAction(null); }}
         onConfirm={async () => {
           if (confirmAction === 'delete_occ') {

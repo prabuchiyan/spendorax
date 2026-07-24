@@ -719,17 +719,28 @@ export async function getTransactionsForBillLink(bill) {
     const linkedIds = new Set(linked.map(l => l.id));
     rows = rows.filter(t => !linkedIds.has(t.id));
 
-    // Prefer same category, then same month
-    const sameCategory = rows.filter(t => t.category_id === bill.category_id);
-    const others = rows.filter(t => t.category_id !== bill.category_id);
-    rows = [...sameCategory, ...others];
+    const candidates = [];
+    const others = [];
 
+    rows.forEach(t => {
+      const isSameCategory = t.category_id === bill.category_id;
+      const isSameAmount = Number(t.amount) === Number(bill.amount);
+      const isSameName = t.notes && bill.name && t.notes.toLowerCase().includes(bill.name.toLowerCase());
+      if (isSameCategory || isSameAmount || isSameName) {
+        candidates.push(t);
+      } else {
+        others.push(t);
+      }
+    });
+
+    let sortedCandidates = candidates;
     if (dueDateStr) {
-      const sameMonth = rows.filter(t => t.date && String(t.date).startsWith(dueDateStr));
-      if (sameMonth.length > 0) rows = sameMonth;
+      const sameMonth = candidates.filter(t => t.date && String(t.date).startsWith(dueDateStr));
+      const otherMonths = candidates.filter(t => !(t.date && String(t.date).startsWith(dueDateStr)));
+      sortedCandidates = [...sameMonth, ...otherMonths];
     }
 
-    return rows.slice(0, 50);
+    return [...sortedCandidates, ...others].slice(0, 50);
   } catch (e) {
     console.warn('getTransactionsForBillLink error', e);
     return [];
