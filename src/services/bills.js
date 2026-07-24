@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { executeSql } from '../database/db';
 import { createTransaction } from './transactions';
 import { emit } from './events';
@@ -701,20 +702,52 @@ export async function getTransactionsForBillLink(bill) {
   try {
     const dueDateStr = bill.due_date ? bill.due_date.slice(0, 7) : null;
 
-    const res = await executeSql(
-      `SELECT t.*, s.name as source_name, c.name as category_name,
-              c.color as category_color, c.icon as category_icon
-       FROM transactions t
-       LEFT JOIN sources s    ON s.id = t.source_id
-       LEFT JOIN categories c ON c.id = t.category_id
-       WHERE t.type = 'expense'
-       ORDER BY t.date DESC
-       LIMIT 300`,
-      []
-    );
-    let rows = rowsToArray(res);
+    let rows = [];
 
-    // Exclude already-linked transactions
+    if (Platform.OS === 'web') {
+      // Web shim doesn't support JOINs
+      const txRes = await executeSql(
+        `SELECT *
+         FROM transactions
+         WHERE type = ?
+         ORDER BY date DESC`,
+        ['expense']
+      );
+
+      const sourceRes = await executeSql(`SELECT * FROM sources`, []);
+      const categoryRes = await executeSql(`SELECT * FROM categories`, []);
+
+      const sourceMap = new Map(
+        rowsToArray(sourceRes).map(s => [s.id, s])
+      );
+
+      const categoryMap = new Map(
+        rowsToArray(categoryRes).map(c => [c.id, c])
+      );
+
+      rows = rowsToArray(txRes).map(t => ({
+        ...t,
+        source_name: sourceMap.get(t.source_id)?.name || '',
+        category_name: categoryMap.get(t.category_id)?.name || '',
+        category_color: categoryMap.get(t.category_id)?.color || '',
+        category_icon: categoryMap.get(t.category_id)?.icon || '',
+      }));
+    } else {
+      // Android / iOS
+      const res = await executeSql(
+        `SELECT t.*, s.name AS source_name, c.name AS category_name,
+                c.color AS category_color, c.icon AS category_icon
+         FROM transactions t
+         LEFT JOIN sources s ON s.id = t.source_id
+         LEFT JOIN categories c ON c.id = t.category_id
+         WHERE t.type = ?
+         ORDER BY t.date DESC`,
+        ['expense']
+      );
+      rows = rowsToArray(res);
+    }
+
+    // Exclude already linked transactions
     const linked = await getBillLinkedTransactions(bill.id);
     const linkedIds = new Set(linked.map(l => l.id));
     rows = rows.filter(t => !linkedIds.has(t.id));
@@ -725,7 +758,8 @@ export async function getTransactionsForBillLink(bill) {
     rows.forEach(t => {
       const isSameCategory = t.category_id === bill.category_id;
       const isSameAmount = Number(t.amount) === Number(bill.amount);
-      const isSameName = t.notes && bill.name && t.notes.toLowerCase().includes(bill.name.toLowerCase());
+      const isSameName = t.notes && bill.name &&
+        t.notes.toLowerCase().includes(bill.name.toLowerCase());
       if (isSameCategory || isSameAmount || isSameName) {
         candidates.push(t);
       } else {
@@ -735,8 +769,14 @@ export async function getTransactionsForBillLink(bill) {
 
     let sortedCandidates = candidates;
     if (dueDateStr) {
-      const sameMonth = candidates.filter(t => t.date && String(t.date).startsWith(dueDateStr));
-      const otherMonths = candidates.filter(t => !(t.date && String(t.date).startsWith(dueDateStr)));
+      const sameMonth = candidates.filter(
+        t => t.date && String(t.date).startsWith(dueDateStr)
+      );
+
+      const otherMonths = candidates.filter(
+        t => !(t.date && String(t.date).startsWith(dueDateStr))
+      );
+
       sortedCandidates = [...sameMonth, ...otherMonths];
     }
 
