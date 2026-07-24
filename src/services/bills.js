@@ -294,14 +294,13 @@ export async function getBillsForCurrentMonth(options = {}) {
 
   const now = new Date();
   const year = now.getFullYear();
-  const month = now.getMonth();
+  const month = now.getMonth();             // 0-based
   const today = todayStr();
+  const currentMonthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`; // e.g. '2026-07'
 
   const allRaw = await fetchAllBillsRaw();
 
   // ── Deduplicate recurring series ──────────────────────────────────────────
-  // Group recurring bills by (name, recurrence_type), keep min(id) as template.
-  // This absorbs old orphan rows created by the previous generateNextRecurringBill.
   const recurringGroups = {};
   const nonRecurring = [];
 
@@ -324,25 +323,24 @@ export async function getBillsForCurrentMonth(options = {}) {
     if (n) result.push(n);
   }
 
-  // ── Recurring series — find current-month occurrence ──────────────────────
+  // ── Recurring series ──────────────────────────────────────────────────────
   for (const template of Object.values(recurringGroups)) {
-    // Generate expected dates up to end of current month to find this month's date
-    const endOfMonth = new Date(year, month + 1, 0).toISOString().slice(0, 10);
+
+    // Determine this month's expected due date via string arithmetic
+    const endOfMonth = new Date(year, month + 1, 0)
+      .toISOString().slice(0, 10); // timezone-safe: local Date constructor
     const upTo = template.recurrence_end_date
       ? [template.recurrence_end_date.slice(0, 10), endOfMonth].sort()[0]
       : endOfMonth;
 
     const allDates = generateOccurrenceDates(template, upTo);
 
-    // Find this month's expected date
-    const thisMonthDate = allDates.find(d => {
-      const dt = new Date(d);
-      return dt.getFullYear() === year && dt.getMonth() === month;
-    });
+    // Find this month's date purely by string prefix — no Date parsing,
+    // no timezone risk.
+    const thisMonthDate = allDates.find(d => d.startsWith(currentMonthPrefix));
 
     if (!thisMonthDate) {
-      // Series has no occurrence this month (hasn't started yet or ended)
-      // Show template card so user knows the bill exists
+      // Series has no occurrence this month
       const n = normalizeBill(template);
       if (n) result.push({ ...n, _templateId: template.id, _isRecurringSeries: true });
       continue;
@@ -350,25 +348,35 @@ export async function getBillsForCurrentMonth(options = {}) {
 
     let occurrenceRow = null;
 
-    // Case 1: template itself is this month's occurrence
-    if (template.due_date?.slice(0, 10) === thisMonthDate) {
-      occurrenceRow = normalizeBill(template);
-    } else {
-      // Case 2: look for existing child row for this month (one DB query)
-      const childRes = await executeSql(
-        `SELECT * FROM bills
-         WHERE parent_bill_id = ?
-           AND due_date >= ? AND due_date <= ?
-           AND deleted_at IS NULL
-         LIMIT 1`,
-        [template.id, `${thisMonthDate.slice(0, 7)}-01`, `${thisMonthDate.slice(0, 7)}-31`]
-      );
+    // ── Case A: child row exists for this month ───────────────────────────────
+    const childRes = await executeSql(
+      `SELECT * FROM bills
+        WHERE parent_bill_id = ?
+        AND due_date LIKE ?
+        AND deleted_at IS NULL
+        LIMIT 1`,
+      [template.id, `${currentMonthPrefix}%`]   // e.g. '2026-07%'  — immune to time suffix
+    );
+    if (childRes.rows.length) {
+      occurrenceRow = normalizeBill(childRes.rows.item(0));
+    }
 
-      if (childRes.rows.length) {
-        occurrenceRow = normalizeBill(childRes.rows.item(0));
-      } else {
-        // Case 3: new month just started and backfill hasn't run for it yet.
-        // Create this one occurrence only — not a full backfill.
+    // ── Case B: template's own due_date is this month ────────────────────────
+    if (!occurrenceRow && template.due_date?.startsWith(currentMonthPrefix)) {
+      occurrenceRow = normalizeBill(template);
+    }
+
+    // ── Case C: no row yet — check if one was intentionally deleted first ─
+    if (!occurrenceRow) {
+      const deletedRes = await executeSql(
+        `SELECT id FROM bills
+     WHERE parent_bill_id = ?
+       AND due_date LIKE ?
+       AND deleted_at IS NOT NULL
+     LIMIT 1`,
+        [template.id, `${currentMonthPrefix}%`]
+      );
+      if (!deletedRes.rows.length) {
         const newId = await _insertBill({
           name: template.name,
           amount: template.amount,
@@ -385,6 +393,34 @@ export async function getBillsForCurrentMonth(options = {}) {
         });
         occurrenceRow = normalizeBill(await getBillById(newId));
       }
+    }
+
+    if (!occurrenceRow) continue;
+
+    // ── SAFETY NET: if occurrenceRow is the template but its due_date is NOT
+    //    this month, it means Case B matched incorrectly. Create a child.
+    if (
+      occurrenceRow &&
+      occurrenceRow.id === template.id &&
+      !occurrenceRow.due_date?.startsWith(currentMonthPrefix)
+    ) {
+      // Don't use the template as a stand-in for a different month's occurrence.
+      // Create a proper child row instead.
+      const newId = await _insertBill({
+        name: template.name,
+        amount: template.amount,
+        due_date: thisMonthDate,
+        is_recurring: 0,
+        recurrence_type: null,
+        category_id: template.category_id,
+        source_id: template.source_id,
+        reminder_days_before: template.reminder_days_before,
+        auto_pay: template.auto_pay,
+        notes: template.notes,
+        attachment_url: template.attachment_url,
+        parent_bill_id: template.id,
+      });
+      occurrenceRow = normalizeBill(await getBillById(newId));
     }
 
     if (occurrenceRow) {
@@ -700,87 +736,63 @@ export async function linkAdditionalTransaction(billId, transactionId) {
 
 export async function getTransactionsForBillLink(bill) {
   try {
-    const dueDateStr = bill.due_date ? bill.due_date.slice(0, 7) : null;
+    // month prefix e.g. '2026-02' — used as the primary filter
+    const dueDatePrefix = bill.due_date ? bill.due_date.slice(0, 7) : null;
 
     let rows = [];
 
     if (Platform.OS === 'web') {
-      // Web shim doesn't support JOINs
-      const txRes = await executeSql(
-        `SELECT *
-         FROM transactions
-         WHERE type = ?
-         ORDER BY date DESC`,
-        ['expense']
-      );
-
+      const txRes = await executeSql(`SELECT * FROM transactions WHERE type = 'expense' ORDER BY date DESC`, []);
       const sourceRes = await executeSql(`SELECT * FROM sources`, []);
-      const categoryRes = await executeSql(`SELECT * FROM categories`, []);
-
-      const sourceMap = new Map(
-        rowsToArray(sourceRes).map(s => [s.id, s])
-      );
-
-      const categoryMap = new Map(
-        rowsToArray(categoryRes).map(c => [c.id, c])
-      );
-
+      const catRes = await executeSql(`SELECT * FROM categories`, []);
+      const sourceMap = new Map(rowsToArray(sourceRes).map(s => [s.id, s]));
+      const catMap = new Map(rowsToArray(catRes).map(c => [c.id, c]));
       rows = rowsToArray(txRes).map(t => ({
         ...t,
         source_name: sourceMap.get(t.source_id)?.name || '',
-        category_name: categoryMap.get(t.category_id)?.name || '',
-        category_color: categoryMap.get(t.category_id)?.color || '',
-        category_icon: categoryMap.get(t.category_id)?.icon || '',
+        category_name: catMap.get(t.category_id)?.name || '',
+        category_color: catMap.get(t.category_id)?.color || '',
+        category_icon: catMap.get(t.category_id)?.icon || '',
       }));
     } else {
-      // Android / iOS
       const res = await executeSql(
         `SELECT t.*, s.name AS source_name, c.name AS category_name,
                 c.color AS category_color, c.icon AS category_icon
          FROM transactions t
-         LEFT JOIN sources s ON s.id = t.source_id
+         LEFT JOIN sources s    ON s.id = t.source_id
          LEFT JOIN categories c ON c.id = t.category_id
-         WHERE t.type = ?
+         WHERE t.type = 'expense'
          ORDER BY t.date DESC`,
-        ['expense']
+        []
       );
       rows = rowsToArray(res);
     }
 
-    // Exclude already linked transactions
+    // Remove already-linked transactions for this bill
     const linked = await getBillLinkedTransactions(bill.id);
     const linkedIds = new Set(linked.map(l => l.id));
     rows = rows.filter(t => !linkedIds.has(t.id));
 
-    const candidates = [];
-    const others = [];
-
-    rows.forEach(t => {
-      const isSameCategory = t.category_id === bill.category_id;
-      const isSameAmount = Number(t.amount) === Number(bill.amount);
-      const isSameName = t.notes && bill.name &&
-        t.notes.toLowerCase().includes(bill.name.toLowerCase());
-      if (isSameCategory || isSameAmount || isSameName) {
-        candidates.push(t);
-      } else {
-        others.push(t);
-      }
-    });
-
-    let sortedCandidates = candidates;
-    if (dueDateStr) {
-      const sameMonth = candidates.filter(
-        t => t.date && String(t.date).startsWith(dueDateStr)
-      );
-
-      const otherMonths = candidates.filter(
-        t => !(t.date && String(t.date).startsWith(dueDateStr))
-      );
-
-      sortedCandidates = [...sameMonth, ...otherMonths];
+    // ── PRIMARY FILTER: always restrict to the occurrence's month ────────────
+    // This is the main fix — the user must see only transactions from the
+    // same month as the bill occurrence they are trying to link.
+    if (dueDatePrefix) {
+      rows = rows.filter(t => t.date && String(t.date).startsWith(dueDatePrefix));
     }
 
-    return [...sortedCandidates, ...others].slice(0, 50);
+    // ── SORT: same-category & same-amount rows rise to the top ───────────────
+    rows.sort((a, b) => {
+      const aScore =
+        (a.category_id === bill.category_id ? 2 : 0) +
+        (Number(a.amount) === Number(bill.amount) ? 1 : 0);
+      const bScore =
+        (b.category_id === bill.category_id ? 2 : 0) +
+        (Number(b.amount) === Number(bill.amount) ? 1 : 0);
+      if (bScore !== aScore) return bScore - aScore;   // higher score first
+      return new Date(b.date) - new Date(a.date);      // then newest first
+    });
+
+    return rows.slice(0, 50);
   } catch (e) {
     console.warn('getTransactionsForBillLink error', e);
     return [];
@@ -845,10 +857,9 @@ export async function updateBill(id, fields) {
 
   // If recurrence settings changed on a template, re-run backfill
   const recurrenceChanged =
-    fields.recurrence_type !== undefined ||
-    fields.recurrence_interval !== undefined ||
-    fields.recurrence_end_date !== undefined ||
-    fields.due_date !== undefined;
+    (fields.recurrence_type !== undefined && fields.recurrence_type !== existing.recurrence_type) ||
+    (fields.recurrence_interval !== undefined && fields.recurrence_interval !== existing.recurrence_interval) ||
+    (fields.recurrence_end_date !== undefined && fields.recurrence_end_date !== existing.recurrence_end_date);
 
   if (existing.is_recurring && !existing.parent_bill_id && recurrenceChanged) {
     await backfillBillOccurrences(id);

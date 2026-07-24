@@ -10,7 +10,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {
   getBillsForCurrentMonth,
   getBillsSummary,
-  getBillInsights,
+  getBillById,
   markBillPaid,
   skipBill,
   deleteBill,
@@ -97,11 +97,11 @@ export default function BillsScreen({ navigation }) {
     });
   }
 
-  function openEdit(bill) {
-    // Always edit the template (root) for recurring series
-    setEditingBill(bill._templateId
-      ? { ...bill, id: bill._templateId }
-      : bill);
+  async function openEdit(bill) {
+    // Always load the real template row — never spread occurrence fields onto it.
+    const templateId = bill._templateId || bill.id;
+    const templateBill = await getBillById(templateId);
+    setEditingBill(templateBill || bill);
     setShowForm(true);
   }
 
