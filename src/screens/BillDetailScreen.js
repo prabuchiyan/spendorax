@@ -426,7 +426,7 @@ export default function BillDetailScreen({ route, navigation }) {
     }
     setSelectedOcc(occ);
     if (occ) {
-      const txs = await getBillLinkedTransactions(occ.id);
+      const txs = await getBillLinkedTransactions(occ.id);;
       setLinkedTxs(txs);
     }
 
@@ -458,26 +458,72 @@ export default function BillDetailScreen({ route, navigation }) {
     load();
   }
 
+  async function refreshSelectedOccurrence() {
+    if (!selectedOcc) return;
+
+    // Reload all occurrences
+    const updatedSeries = await getBillSeries(billId);
+    setSeries(updatedSeries);
+
+    // Reload selected occurrence
+    const occ =
+      updatedSeries.find(o => o.id === selectedOcc.id) ||
+      updatedSeries[0] ||
+      null;
+
+    setSelectedOcc(occ);
+
+    // Reload linked transactions
+    if (occ) {
+      const txs = await getBillLinkedTransactions(occ.id);
+      setLinkedTxs(txs);
+    } else {
+      setLinkedTxs([]);
+    }
+  }
+
   async function handleLinkTransaction(tx) {
     if (!selectedOcc) return;
     await linkAdditionalTransaction(selectedOcc.id, tx.id);
     setShowLinkModal(false);
-    load();
+    await refreshSelectedOccurrence();
   }
 
   async function handleUnlinkTransaction(tx) {
     if (!selectedOcc) return;
     await removeTransactionFromBill(selectedOcc.id, tx.id);
-    await reloadLinkedTxs(selectedOcc.id);
+    await refreshSelectedOccurrence();
   }
 
   async function handleSelectOccurrence(occ) {
     setSelectedOcc(occ);
+    // Always load links for THIS occurrence only.
     await reloadLinkedTxs(occ.id);
     if (occ.due_date) {
       const d = new Date(occ.due_date);
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      setSelectedChartLabel(`${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`);
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      setSelectedChartLabel(
+        `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`
+      );
+    }
+  }
+
+  async function handleSelectOccurrence(occ) {
+    setSelectedOcc(occ);
+    // Always load links for THIS occurrence only.
+    await reloadLinkedTxs(occ.id);
+    if (occ.due_date) {
+      const d = new Date(occ.due_date);
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      setSelectedChartLabel(
+        `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`
+      );
     }
   }
 
@@ -650,11 +696,18 @@ export default function BillDetailScreen({ route, navigation }) {
 
         {/* ISSUE 3: Link More Transactions (always show so user can link even after paid) */}
         <PaperButton
-          mode="outlined" icon="link-variant-plus"
-          onPress={() => setShowLinkModal(true)}
+          mode="outlined"
+          icon={linkedTxs.length > 0 ? "link-off" : "link-variant-plus"}
+          onPress={() => {
+            if (linkedTxs.length > 0) {
+              handleUnlinkTransaction(linkedTxs[0]);
+            } else {
+              setShowLinkModal(true);
+            }
+          }}
           style={{ flex: 1, minWidth: 140 }}
         >
-          Link Transaction
+          {linkedTxs.length > 0 ? "Unlink Transaction" : "Link Transaction"}
         </PaperButton>
 
         {!isPaidOrSkipped && (

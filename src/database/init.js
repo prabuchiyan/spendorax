@@ -282,7 +282,18 @@ export async function initDB() {
 }
 
 export async function clearAllTables() {
-  const tables = ['transactions', 'bills', 'budgets', 'category_budgets', 'categories', 'sources', 'loan_payments', 'loans', 'notifications'];
+  const tables = [
+    'transactions',
+    'bills',
+    'bill_linked_transactions',
+    'budgets',
+    'category_budgets',
+    'categories',
+    'sources',
+    'loan_payments',
+    'loans',
+    'notifications'
+  ];
 
   try {
     for (const table of tables) {

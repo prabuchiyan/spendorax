@@ -49,24 +49,66 @@ export async function createBillLinkedTransactionsTable() {
 }
 
 export async function addTransactionToBill(billId, transactionId) {
+  console.log('INSERT', billId, transactionId);
+
   try {
     await executeSql(
-      `INSERT OR IGNORE INTO bill_linked_transactions (bill_id, transaction_id) VALUES (?,?)`,
+      `INSERT OR IGNORE INTO bill_linked_transactions (bill_id, transaction_id) VALUES (?, ?)`,
       [billId, transactionId]
     );
+
+    const res = await executeSql(
+      `SELECT * FROM bill_linked_transactions WHERE bill_id = ?`,
+      [billId]
+    );
+
+    console.log('AFTER INSERT', rowsToArray(res));
   } catch (e) {
-    console.warn('addTransactionToBill error', e);
+    console.log(JSON.stringify(e, null, 2));
+    console.log(e);
   }
 }
 
 export async function removeTransactionFromBill(billId, transactionId) {
   await executeSql(
-    `DELETE FROM bill_linked_transactions WHERE bill_id = ? AND transaction_id = ?`,
+    `DELETE FROM bill_linked_transactions
+     WHERE bill_id = ? AND transaction_id = ?`,
     [billId, transactionId]
   );
+
+  // Any links remaining?
+  const remaining = rowsToArray(
+    await executeSql(
+      `SELECT * FROM bill_linked_transactions
+       WHERE bill_id = ?`,
+      [billId]
+    )
+  );
+
+  // No linked transactions left -> reset bill status
+  if (remaining.length === 0) {
+    await executeSql(
+      `UPDATE bills
+     SET
+       status = ?,
+       is_paid = ?,
+       linked_transaction_id = NULL,
+       paid_at = NULL,
+       updated_at = ?
+     WHERE id = ?`,
+      [
+        BILL_STATUS.PENDING,
+        0,
+        nowIso(),
+        billId,
+      ]
+    );
+  }
 }
 
 export async function getBillLinkedTransactions(billId) {
+  console.log('Loading bill links', billId);
+
   try {
     const res = await executeSql(
       `SELECT t.*, s.name as source_name, c.name as category_name,
@@ -81,7 +123,41 @@ export async function getBillLinkedTransactions(billId) {
     );
     return rowsToArray(res);
   } catch (e) {
-    return [];
+    // Web fallback (localStorage executeSql doesn't support JOIN)
+    const links = rowsToArray(
+      await executeSql(
+        `SELECT * FROM bill_linked_transactions WHERE bill_id = ?`,
+        [billId]
+      )
+    );
+
+    const transactions = rowsToArray(
+      await executeSql(`SELECT * FROM transactions`, [])
+    );
+
+    const sources = rowsToArray(
+      await executeSql(`SELECT * FROM sources`, [])
+    );
+
+    const categories = rowsToArray(
+      await executeSql(`SELECT * FROM categories`, [])
+    );
+
+    return links
+      .map(link => {
+        const tx = transactions.find(t => t.id == link.transaction_id);
+        if (!tx) return null;
+
+        return {
+          ...tx,
+          source_name: sources.find(s => s.id == tx.source_id)?.name,
+          category_name: categories.find(c => c.id == tx.category_id)?.name,
+          category_icon: categories.find(c => c.id == tx.category_id)?.icon,
+          category_color: categories.find(c => c.id == tx.category_id)?.color,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
   }
 }
 
@@ -741,14 +817,30 @@ async function _ensureNextOccurrence(templateId) {
 // ─── linkAdditionalTransaction ────────────────────────────────────────────────
 
 export async function linkAdditionalTransaction(billId, transactionId) {
+  console.log('Linking', billId, transactionId);
+
+  // Create the bill ↔ transaction link
   await addTransactionToBill(billId, transactionId);
-  const bill = await getBillById(billId);
-  if (bill && bill.status !== BILL_STATUS.PAID) {
-    await markBillPaid(billId, {
-      existingTransactionId: transactionId,
-      createTransaction: false,
-    });
-  }
+
+  // Always update the bill
+  await executeSql(
+    `UPDATE bills
+     SET
+       status = ?,
+       is_paid = 1,
+       paid_at = ?,
+       linked_transaction_id = ?,
+       updated_at = ?
+     WHERE id = ?`,
+    [
+      BILL_STATUS.PAID,
+      nowIso(),
+      transactionId,
+      nowIso(),
+      billId,
+    ]
+  );
+
   emitBillsChanged();
 }
 
