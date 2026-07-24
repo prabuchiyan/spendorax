@@ -1,19 +1,14 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  FlatList,
-  Modal,
-  TouchableOpacity,
-  TextInput
+  View, Text, FlatList, Modal,
+  TouchableOpacity, TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Searchbar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import {
-  getBillsForCurrentMonth, // ← replaces getBills for the main list
-  getBills,                  // kept for non-month-filtered use if needed
+  getBillsForCurrentMonth,
   getBillsSummary,
   getBillInsights,
   markBillPaid,
@@ -40,7 +35,6 @@ const STATUS_FILTERS = [
 export default function BillsScreen({ navigation }) {
   const [items, setItems] = useState([]);
   const [summary, setSummary] = useState(null);
-  const [insights, setInsights] = useState(null);
   const [categories, setCategories] = useState([]);
   const [categoriesMap, setCategoriesMap] = useState({});
   const [viewMode, setViewMode] = useState('list');
@@ -48,8 +42,8 @@ export default function BillsScreen({ navigation }) {
   const [categoryFilter, setCategoryFilter] = useState(null);
   const [sortBy, setSortBy] = useState('due_date');
   const [search, setSearch] = useState('');
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [showStatusDD, setShowStatusDD] = useState(false);
+  const [showCategoryDD, setShowCategoryDD] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingBill, setEditingBill] = useState(null);
@@ -60,9 +54,9 @@ export default function BillsScreen({ navigation }) {
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
 
+  // ── data load ──────────────────────────────────────────────────────────────
   async function load() {
-    const [rows, sum, ins, cats] = await Promise.all([
-      // Use getBillsForCurrentMonth so recurring bills always show current-month due
+    const [rows, sum, cats] = await Promise.all([
       getBillsForCurrentMonth({
         status: statusFilter === 'all' ? null : statusFilter,
         category_id: categoryFilter,
@@ -70,41 +64,33 @@ export default function BillsScreen({ navigation }) {
         sortDir: sortBy === 'amount' ? 'desc' : 'asc',
       }),
       getBillsSummary(),
-      getBillInsights(),
       getCategories(true),
     ]);
     setItems(rows);
     setSummary(sum);
-    setInsights(ins);
-    setCategories(cats.filter(c => c.type === 'expense'));
+    const expCats = cats.filter(c => c.type === 'expense');
+    setCategories(expCats);
     const map = {};
     cats.forEach(c => (map[c.id] = c));
     setCategoriesMap(map);
   }
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [statusFilter, categoryFilter, sortBy])
-  );
+  useFocusEffect(useCallback(() => { load(); }, [statusFilter, categoryFilter, sortBy]));
 
+  // ── derived lists ──────────────────────────────────────────────────────────
   const filteredItems = useMemo(() => {
     if (!search.trim()) return items;
-    return items.filter(b =>
-      b.name?.toLowerCase().includes(search.toLowerCase())
-    );
+    return items.filter(b => b.name?.toLowerCase().includes(search.toLowerCase()));
   }, [items, search]);
 
   const filteredCategories = useMemo(() => {
     if (!categorySearch.trim()) return categories;
-    return categories.filter(c =>
-      c.name.toLowerCase().includes(categorySearch.toLowerCase())
-    );
+    return categories.filter(c => c.name.toLowerCase().includes(categorySearch.toLowerCase()));
   }, [categories, categorySearch]);
 
+  // ── navigation ─────────────────────────────────────────────────────────────
+  // ISSUE 1: navigate to template id so detail page shows the full series.
   function openDetail(bill) {
-    // Navigate with both the occurrence id AND the template id so the detail
-    // screen can show the full series list.
     navigation.navigate('BillDetail', {
       billId: bill._templateId || bill.id,
       occurrenceId: bill._isRecurringSeries ? bill.id : undefined,
@@ -112,8 +98,10 @@ export default function BillsScreen({ navigation }) {
   }
 
   function openEdit(bill) {
-    // Always edit the template for recurring series
-    setEditingBill(bill);
+    // Always edit the template (root) for recurring series
+    setEditingBill(bill._templateId
+      ? { ...bill, id: bill._templateId }
+      : bill);
     setShowForm(true);
   }
 
@@ -129,6 +117,10 @@ export default function BillsScreen({ navigation }) {
     setConfirmVisible(true);
   }
 
+  // ── render ─────────────────────────────────────────────────────────────────
+  const now = new Date();
+  const monthLabel = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
   const renderBill = ({ item }) => (
     <SwipeableBillCard
       bill={item}
@@ -140,20 +132,13 @@ export default function BillsScreen({ navigation }) {
     />
   );
 
-  const now = new Date();
-  const monthLabel = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-
   const listHeader = (
     <View>
-
       <BillSummaryBar summary={summary} />
 
       {summary?.overdueCount > 0 && (
         <View style={{
-          backgroundColor: '#FFF0F0',
-          padding: 12,
-          borderRadius: 10,
-          marginBottom: Spacing.xs
+          backgroundColor: '#FFF0F0', padding: 12, borderRadius: 10, marginBottom: Spacing.xs,
         }}>
           <Text style={{ color: '#E46A6A', fontWeight: '700' }}>
             {summary.overdueCount} overdue — {formatCurrency(summary.overdueAmount)}
@@ -161,33 +146,57 @@ export default function BillsScreen({ navigation }) {
         </View>
       )}
 
-      {/* Current month label */}
+      {/* Current-month label */}
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-        <MaterialCommunityIcons name="calendar-month" size={16} color={Colors.muted} />
-        <Text style={{ marginLeft: 6, color: Colors.muted, fontSize: 13, fontWeight: '600' }}>
-          Showing dues for {monthLabel}
+        <MaterialCommunityIcons name="calendar-month" size={15} color={Colors.muted} />
+        <Text style={{ marginLeft: 5, color: Colors.muted, fontSize: 13, fontWeight: '600' }}>
+          Due this month · {monthLabel}
         </Text>
       </View>
 
-      {/* STATUS DROPDOWN */}
-      <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowStatusDropdown(true)}>
+      {/* View-mode toggle */}
+      <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+        {['list', 'calendar'].map(mode => (
+          <TouchableOpacity
+            key={mode}
+            onPress={() => setViewMode(mode)}
+            style={{
+              flexDirection: 'row', alignItems: 'center',
+              marginRight: 12, paddingBottom: 4,
+              borderBottomWidth: 2,
+              borderBottomColor: viewMode === mode ? Colors.primary : 'transparent',
+            }}
+          >
+            <MaterialCommunityIcons
+              name={mode === 'list' ? 'format-list-bulleted' : 'calendar-month-outline'}
+              size={16}
+              color={viewMode === mode ? Colors.primary : Colors.muted}
+            />
+            <Text style={{
+              marginLeft: 4, fontSize: 13, fontWeight: '600',
+              color: viewMode === mode ? Colors.primary : Colors.muted,
+            }}>
+              {mode === 'list' ? 'List' : 'Calendar'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Status dropdown */}
+      <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowStatusDD(true)}>
         <View>
           <Text style={styles.label}>Status</Text>
-          <Text style={styles.value}>
-            {STATUS_FILTERS.find(f => f.key === statusFilter)?.label}
-          </Text>
+          <Text style={styles.value}>{STATUS_FILTERS.find(f => f.key === statusFilter)?.label}</Text>
         </View>
         <MaterialCommunityIcons name="chevron-down" size={20} color={Colors.muted} />
       </TouchableOpacity>
 
-      {/* CATEGORY DROPDOWN */}
-      <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowCategoryDropdown(true)}>
+      {/* Category dropdown */}
+      <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowCategoryDD(true)}>
         <View>
           <Text style={styles.label}>Category</Text>
           <Text style={styles.value}>
-            {categoryFilter
-              ? categories.find(c => c.id === categoryFilter)?.name
-              : 'All categories'}
+            {categoryFilter ? categories.find(c => c.id === categoryFilter)?.name : 'All categories'}
           </Text>
         </View>
         <MaterialCommunityIcons name="chevron-down" size={20} color={Colors.muted} />
@@ -201,16 +210,13 @@ export default function BillsScreen({ navigation }) {
       />
 
       <View style={{ flexDirection: 'row', marginBottom: Spacing.xs }}>
-        <TouchableOpacity onPress={() => setSortBy('due_date')} style={{ marginRight: 16 }}>
-          <Text style={{ color: sortBy === 'due_date' ? Colors.primary : Colors.muted }}>
-            Sort: Due date
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setSortBy('amount')}>
-          <Text style={{ color: sortBy === 'amount' ? Colors.primary : Colors.muted }}>
-            Sort: Amount
-          </Text>
-        </TouchableOpacity>
+        {[['due_date', 'Due date'], ['amount', 'Amount']].map(([key, label]) => (
+          <TouchableOpacity key={key} onPress={() => setSortBy(key)} style={{ marginRight: 16 }}>
+            <Text style={{ color: sortBy === key ? Colors.primary : Colors.muted, fontWeight: '600', fontSize: 13 }}>
+              Sort: {label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {viewMode === 'calendar' && (
@@ -228,62 +234,60 @@ export default function BillsScreen({ navigation }) {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <FlatList
-        data={filteredItems}
-        keyExtractor={(i) => String(i.id)}
+        data={viewMode === 'list' ? filteredItems : []}
+        keyExtractor={i => String(i.id)}
         renderItem={renderBill}
         ListHeaderComponent={listHeader}
         contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 100 }}
+        ListEmptyComponent={
+          viewMode === 'list' ? (
+            <View style={{ alignItems: 'center', paddingTop: 32 }}>
+              <MaterialCommunityIcons name="clipboard-check-outline" size={48} color="#ccc" />
+              <Text style={{ color: Colors.muted, marginTop: 10 }}>No bills this month</Text>
+            </View>
+          ) : null
+        }
       />
 
-      {/* STATUS MODAL */}
-      <Modal visible={showStatusDropdown} transparent>
-        <TouchableOpacity style={styles.overlay} onPress={() => setShowStatusDropdown(false)}>
+      {/* Status modal */}
+      <Modal visible={showStatusDD} transparent>
+        <TouchableOpacity style={styles.overlay} onPress={() => setShowStatusDD(false)}>
           <View style={styles.modal}>
             {STATUS_FILTERS.map(f => (
-              <TouchableOpacity key={f.key} onPress={() => {
-                setStatusFilter(f.key);
-                setShowStatusDropdown(false);
-              }}>
-                <Text style={[styles.item, statusFilter === f.key && styles.selected]}>
-                  {f.label}
-                </Text>
+              <TouchableOpacity key={f.key} onPress={() => { setStatusFilter(f.key); setShowStatusDD(false); }}>
+                <Text style={[styles.item, statusFilter === f.key && styles.selected]}>{f.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </TouchableOpacity>
       </Modal>
 
-      {/* CATEGORY MODAL WITH SEARCH */}
-      <Modal visible={showCategoryDropdown} transparent>
-        <TouchableOpacity style={styles.overlay} onPress={() => setShowCategoryDropdown(false)}>
+      {/* Category modal */}
+      <Modal visible={showCategoryDD} transparent>
+        <TouchableOpacity style={styles.overlay} onPress={() => setShowCategoryDD(false)}>
           <View style={styles.modalLarge}>
-
             <TextInput
               placeholder="Search category..."
               value={categorySearch}
               onChangeText={setCategorySearch}
               style={styles.searchInput}
             />
-
             <FlatList
               data={[{ id: 'all', name: 'All categories' }, ...filteredCategories]}
-              keyExtractor={(i) => i.id.toString()}
+              keyExtractor={i => String(i.id)}
               renderItem={({ item }) => {
-                const selected = item.id === 'all'
-                  ? !categoryFilter
-                  : categoryFilter === item.id;
-
+                const sel = item.id === 'all' ? !categoryFilter : categoryFilter === item.id;
                 return (
                   <TouchableOpacity
                     style={styles.row}
                     onPress={() => {
                       setCategoryFilter(item.id === 'all' ? null : item.id);
-                      setShowCategoryDropdown(false);
+                      setShowCategoryDD(false);
                       setCategorySearch('');
                     }}
                   >
-                    <Text style={[styles.item, selected && styles.selected]}>{item.name}</Text>
-                    {selected && <MaterialCommunityIcons name="check" size={18} color={Colors.primary} />}
+                    <Text style={[styles.item, sel && styles.selected]}>{item.name}</Text>
+                    {sel && <MaterialCommunityIcons name="check" size={18} color={Colors.primary} />}
                   </TouchableOpacity>
                 );
               }}
@@ -294,6 +298,7 @@ export default function BillsScreen({ navigation }) {
 
       <FAB onPress={() => { setEditingBill(null); setShowForm(true); }} />
 
+      {/* Add / edit form */}
       <Modal visible={showForm}>
         <BillForm
           bill={editingBill}
@@ -321,23 +326,17 @@ export default function BillsScreen({ navigation }) {
 
 const styles = {
   dropdownTrigger: {
-    backgroundColor: Colors.card,
-    padding: 14,
-    borderRadius: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#eee',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    backgroundColor: Colors.card, padding: 14, borderRadius: 14, marginBottom: 10,
+    borderWidth: 1, borderColor: '#eee', flexDirection: 'row',
+    justifyContent: 'space-between', alignItems: 'center',
   },
   label: { fontSize: 11, color: Colors.muted },
   value: { fontSize: 14, fontWeight: '700', color: Colors.text },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', padding: 20 },
   modal: { backgroundColor: '#fff', borderRadius: 16, padding: 10 },
-  modalLarge: { backgroundColor: '#fff', borderRadius: 16, padding: 12 },
+  modalLarge: { backgroundColor: '#fff', borderRadius: 16, padding: 12, maxHeight: '70%' },
   item: { padding: 12, fontSize: 14 },
   selected: { color: Colors.primary, fontWeight: '700' },
-  searchInput: { borderBottomWidth: 1, borderColor: '#eee', marginBottom: 10, paddingVertical: 6 },
+  searchInput: { borderBottomWidth: 1, borderColor: '#eee', marginBottom: 10, paddingVertical: 6, paddingHorizontal: 4 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
 };

@@ -14,6 +14,7 @@ import CategoryCreateModal from './CategoryCreateModal';
 import SourceCreateModal from './SourceCreateModal';
 import ConfirmDialog from './ConfirmDialog';
 import { Feather } from '@expo/vector-icons';
+import LinkedBillCard from './LinkedBillCard';
 
 export default function TransactionForm({ onCreated, onCancel, transaction, isEdit }) {
   const [amount, setAmount] = useState(isEdit && transaction ? String(transaction.amount) : '');
@@ -1875,6 +1876,19 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             </TouchableOpacity>
           )}
         </View>
+      )}
+
+      {isEdit && transaction?.id && (
+        <LinkedBillCard
+          transactionId={transaction.id}
+          onPressBill={(bill) => {
+            // Optional: navigate to BillDetail if navigation prop is available.
+            // TransactionForm receives onCancel / onCreated but not navigation,
+            // so we just show the card for now. If you pass navigation as a prop,
+            // you can uncomment the line below:
+            navigation.navigate('BillDetail', { billId: bill._templateId || bill.id });
+          }}
+        />
       )}
 
       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
