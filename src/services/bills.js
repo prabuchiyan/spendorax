@@ -265,45 +265,52 @@ async function _insertBill({
  */
 export async function backfillBillOccurrences(templateId) {
   const template = await getBillById(templateId);
-  if (!template || !template.is_recurring || !template.recurrence_type) return;
-
-  // Generate dates from origin up to end of current month
+  if (!template || !template.is_recurring || !template.recurrence_type) {
+    return;
+  }
   const now = new Date();
-  const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    .toISOString().slice(0, 10); // last day of this month
+  const endOfCurrentMonth = new Date(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    0
+  )
+    .toISOString()
+    .slice(0, 10);
 
   const upTo = template.recurrence_end_date
-    ? [template.recurrence_end_date.slice(0, 10), endOfCurrentMonth].sort()[0] // min
+    ? [template.recurrence_end_date.slice(0, 10), endOfCurrentMonth].sort()[0]
     : endOfCurrentMonth;
 
   const expectedDates = generateOccurrenceDates(template, upTo);
 
-  if (!expectedDates.length) return;
-
-  // Fetch all existing dates for this series (template + children) in one query
   const existingRes = await executeSql(
-    `SELECT due_date FROM bills
-     WHERE (id = ? OR parent_bill_id = ?)`,
+    `SELECT id, parent_bill_id, due_date
+     FROM bills
+     WHERE id = ? OR parent_bill_id = ?
+     ORDER BY due_date`,
     [templateId, templateId]
   );
+
+  const existingRows = rowsToArray(existingRes);
   const existingDates = new Set(
-    rowsToArray(existingRes)
-      .map(r => r.due_date ? r.due_date.slice(0, 10) : null)
+    existingRows
+      .map(r => r.due_date?.slice(0, 10))
       .filter(Boolean)
   );
 
-  // Create only truly missing dates
   for (const dueDate of expectedDates) {
-    // Template row already covers its own due_date — skip it
-    if (dueDate === template.due_date?.slice(0, 10)) continue;
-    // Skip if already exists
-    if (existingDates.has(dueDate)) continue;
+      if (dueDate === template.due_date?.slice(0, 10)) {
+      continue;
+    }
+    if (existingDates.has(dueDate)) {
+      continue;
+    }
 
-    await _insertBill({
+    const newId = await _insertBill({
       name: template.name,
       amount: template.amount,
       due_date: dueDate,
-      is_recurring: 0,      // child occurrences are NOT templates
+      is_recurring: 0,
       recurrence_type: null,
       recurrence_interval: 1,
       recurrence_end_date: null,
@@ -316,7 +323,6 @@ export async function backfillBillOccurrences(templateId) {
       parent_bill_id: templateId,
     });
 
-    // Add to set so subsequent iterations in same loop don't re-create
     existingDates.add(dueDate);
   }
 }
@@ -474,12 +480,13 @@ export async function getBillsForCurrentMonth(options = {}) {
       continue;
     }
 
-    // Find this month's occurrence directly from memory.
-    // This works identically on Web and Mobile.
-    let occurrenceRow = allRaw.find(
+    // Always check latest DB state (avoids duplicate occurrence creation)
+    const allBills = await fetchAllBillsRaw();
+
+    let occurrenceRow = allBills.find(
       b =>
         Number(b.parent_bill_id) === Number(template.id) &&
-        b.due_date === thisMonthDate &&
+        (b.due_date?.slice(0, 10) === thisMonthDate) &&
         !b.deleted_at
     );
 
@@ -488,10 +495,10 @@ export async function getBillsForCurrentMonth(options = {}) {
     } else if (template.due_date === thisMonthDate) {
       occurrenceRow = normalizeBill(template);
     } else {
-      const deleted = allRaw.find(
+      const deleted = allBills.find(
         b =>
           Number(b.parent_bill_id) === Number(template.id) &&
-          b.due_date === thisMonthDate &&
+          (b.due_date?.slice(0, 10) === thisMonthDate) &&
           b.deleted_at
       );
 
@@ -518,46 +525,6 @@ export async function getBillsForCurrentMonth(options = {}) {
     }
 
     if (!occurrenceRow) continue;
-
-    // ── SAFETY NET: if occurrenceRow is the template but its due_date is NOT
-    //    this month, it means Case B matched incorrectly. Create a child.
-    // ── SAFETY NET ────────────────────────────────────────────────────────────
-    if (
-      occurrenceRow &&
-      occurrenceRow.id === template.id &&
-      !occurrenceRow.due_date?.startsWith(currentMonthPrefix)
-    ) {
-      // Before creating a child, verify one doesn't already exist.
-      const existing = (await fetchAllBillsRaw()).find(
-        b =>
-          Number(b.parent_bill_id) === Number(template.id) &&
-          b.due_date === thisMonthDate &&
-          !b.deleted_at
-      );
-
-      if (existing) {
-        occurrenceRow = normalizeBill(existing);
-      } else {
-        const newId = await _insertBill({
-          name: template.name,
-          amount: template.amount,
-          due_date: thisMonthDate,
-          is_recurring: 0,
-          recurrence_type: null,
-          recurrence_interval: 1,
-          recurrence_end_date: null,
-          category_id: template.category_id,
-          source_id: template.source_id,
-          reminder_days_before: template.reminder_days_before,
-          auto_pay: template.auto_pay,
-          notes: template.notes,
-          attachment_url: template.attachment_url,
-          parent_bill_id: template.id,
-        });
-
-        occurrenceRow = normalizeBill(await getBillById(newId));
-      }
-    }
 
     if (occurrenceRow) {
       result.push({
