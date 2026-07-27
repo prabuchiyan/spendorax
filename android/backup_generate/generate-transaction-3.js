@@ -959,6 +959,15 @@ const backup = {
         "created_at": "2026-07-25 09:08:21"
       },
       {
+        "id": 64,
+        "name": "Documents",
+        "type": "expense",
+        "icon": "file-document-multiple",
+        "color": "#64748B",
+        "is_active": 1,
+        "created_at": "2026-07-26 05:44:06"
+      },
+      {
         "id": 12,
         "name": "Donations",
         "type": "expense",
@@ -1498,7 +1507,7 @@ const backup = {
         "name": "Post Office Deposit",
         "amount": 4974,
         "due_date": "2020-11-01",
-        "status": "overdue",
+        "status": "paid",
         "is_recurring": 0,
         "recurrence_type": null,
         "recurrence_interval": 1,
@@ -1510,11 +1519,11 @@ const backup = {
         "auto_pay": 0,
         "notes": "Post Office Deposit For 15 Years",
         "attachment_url": null,
-        "linked_transaction_id": null,
-        "paid_at": null,
-        "is_paid": 0,
+        "linked_transaction_id": 4424,
+        "paid_at": "2026-07-26T06:22:37.471Z",
+        "is_paid": 1,
         "created_at": "2026-07-25T10:30:34.492Z",
-        "updated_at": "2026-07-25T10:30:35.206Z",
+        "updated_at": "2026-07-26T06:22:37.471Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1523,7 +1532,7 @@ const backup = {
         "name": "Post Office Deposit",
         "amount": 4974,
         "due_date": "2020-12-01",
-        "status": "overdue",
+        "status": "paid",
         "is_recurring": 0,
         "recurrence_type": null,
         "recurrence_interval": 1,
@@ -1535,11 +1544,11 @@ const backup = {
         "auto_pay": 0,
         "notes": "Post Office Deposit For 15 Years",
         "attachment_url": null,
-        "linked_transaction_id": null,
-        "paid_at": null,
-        "is_paid": 0,
+        "linked_transaction_id": 4494,
+        "paid_at": "2026-07-26T06:23:05.535Z",
+        "is_paid": 1,
         "created_at": "2026-07-25T10:30:34.495Z",
-        "updated_at": "2026-07-25T10:30:35.310Z",
+        "updated_at": "2026-07-26T06:23:05.535Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3225,6 +3234,18 @@ const backup = {
         "bill_id": 1,
         "transaction_id": 4337,
         "linked_at": "2026-07-25 10:31:00"
+      },
+      {
+        "id": 4,
+        "bill_id": 2,
+        "transaction_id": 4424,
+        "linked_at": "2026-07-26 06:22:37"
+      },
+      {
+        "id": 5,
+        "bill_id": 3,
+        "transaction_id": 4494,
+        "linked_at": "2026-07-26 06:23:05"
       }
     ],
     "loans": [
@@ -3856,14 +3877,71 @@ const backup = {
         "created_at": "2026-07-17 18:18:24"
       }
     ],
-    "notifications": []
+    "notifications": [
+      {
+        "id": 1,
+        "type": "DAILY_SPEND",
+        "reference_id": null,
+        "title": "Daily Expense Reminder",
+        "body": "Don't forget to record today's expenses!",
+        "enabled": 1,
+        "hour": 22,
+        "minute": 0,
+        "notification_identifier": "0b46783c-b930-45a6-b0e0-d60d096984c6",
+        "payload": "{\"screen\":\"TransactionAdd\",\"type\":\"DAILY_SPEND\"}",
+        "created_at": "2026-07-25 19:13:42",
+        "updated_at": "2026-07-27 02:51:17"
+      },
+      {
+        "id": 2,
+        "type": "YESTERDAY_SPEND",
+        "reference_id": null,
+        "title": "Yesterday Spend Check",
+        "body": "Did you forget to log yesterday's expenses?",
+        "enabled": 1,
+        "hour": 10,
+        "minute": 30,
+        "notification_identifier": "1e34713a-844f-40ac-8256-6def2e8abb06",
+        "payload": "{\"screen\":\"Transactions\",\"type\":\"YESTERDAY_SPEND\"}",
+        "created_at": "2026-07-25 19:13:42",
+        "updated_at": "2026-07-27 02:51:17"
+      },
+      {
+        "id": 3,
+        "type": "BILL_DUE",
+        "reference_id": null,
+        "title": "Bill Due Reminder",
+        "body": "You have bills due soon. Tap to review.",
+        "enabled": 1,
+        "hour": 9,
+        "minute": 0,
+        "notification_identifier": "3582f05d-762a-46c2-b2f6-c975f6326d7b",
+        "payload": "{\"screen\":\"Bills\",\"type\":\"BILL_DUE\"}",
+        "created_at": "2026-07-25 19:13:42",
+        "updated_at": "2026-07-27 02:51:17"
+      },
+      {
+        "id": 4,
+        "type": "LOAN_EMI",
+        "reference_id": null,
+        "title": "Loan EMI Reminder",
+        "body": "Your EMI payment is due. Tap to review.",
+        "enabled": 1,
+        "hour": 9,
+        "minute": 0,
+        "notification_identifier": "2c872f8c-4c33-44ca-a614-dbac63f91a44",
+        "payload": "{\"screen\":\"Loans\",\"type\":\"LOAN_EMI\"}",
+        "created_at": "2026-07-25 19:13:42",
+        "updated_at": "2026-07-27 02:51:17"
+      }
+    ]
   }
 };
 
 fs.writeFileSync(
-  "2020_12_income.json",
+  "2021_01_income.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2020_12_income.json created successfully.");
+console.log("2021_01_income.json created successfully.");
