@@ -204,7 +204,25 @@ export async function getBillLinkedTransactions(billId) {
 export async function getBillsForTransaction(transactionId) {
   try {
     const res = await executeSql(
-      `SELECT b.*
+      `SELECT
+        b.id,
+        b.name,
+        b.amount,
+        b.due_date,
+        b.status,
+        b.is_paid,
+        b.is_recurring,
+        b.recurrence_type,
+        b.category_id,
+        b.source_id,
+        b.notes,
+        b.reminder_days_before,
+        b.auto_pay,
+        b.attachment_url,
+        b.linked_transaction_id,
+        b.created_at,
+        b.updated_at,
+        b.deleted_at
        FROM bill_linked_transactions blt
        JOIN bills b ON b.id = blt.bill_id
        WHERE blt.transaction_id = ? AND b.deleted_at IS NULL`,
@@ -299,7 +317,7 @@ export async function backfillBillOccurrences(templateId) {
   );
 
   for (const dueDate of expectedDates) {
-      if (dueDate === template.due_date?.slice(0, 10)) {
+    if (dueDate === template.due_date?.slice(0, 10)) {
       continue;
     }
     if (existingDates.has(dueDate)) {

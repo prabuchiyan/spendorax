@@ -21,6 +21,12 @@ export default function TransactionAddScreen({ navigation, route }) {
       <Card style={{ margin: 0 }}>
         <TransactionForm
           onCancel={() => navigation.goBack()}
+          onPressBill={(bill) =>
+            navigation.navigate('BillDetail', {
+              billId: bill.parent_bill_id || bill.id,
+              occurrenceId: bill.id,
+            })
+          }
           {...route.params}
         />
       </Card>

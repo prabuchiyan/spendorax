@@ -57,6 +57,37 @@ export async function exportBackup() {
       billLinkedTransactions = [];
     }
 
+    // Backfill bill_id on transactions from bill_linked_transactions.
+    // When a transaction is linked to a bill via addTransactionToBill /
+    // linkAdditionalTransaction, the junction table is updated but the
+    // bill_id column on the transaction row itself may remain null.
+    // Without this backfill the restore has no way to know which bill
+    // a transaction belongs to, breaking the bill↔transaction link.
+    // We build a map of transaction_id → bill_id from the junction table
+    // and apply it to any transaction whose bill_id is currently null.
+    if (billLinkedTransactions.length > 0) {
+      // A transaction can appear in multiple bill_linked_transactions rows
+      // (one bill per occurrence paid). Use the first (lowest id) entry as
+      // the canonical bill_id so we don't pick arbitrarily.
+      const txToBillId = {};
+      for (const link of billLinkedTransactions) {
+        if (
+          link.transaction_id != null &&
+          link.bill_id != null &&
+          txToBillId[link.transaction_id] === undefined
+        ) {
+          txToBillId[link.transaction_id] = link.bill_id;
+        }
+      }
+
+      for (let i = 0; i < transactions.length; i++) {
+        const tx = transactions[i];
+        if (!tx.bill_id && txToBillId[tx.id] != null) {
+          transactions[i] = { ...tx, bill_id: txToBillId[tx.id] };
+        }
+      }
+    }
+
     // Notifications
     let notifications = [];
     try {
@@ -1118,7 +1149,28 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       }
     );
 
-    // 9. Restore notification settings
+    // 8d. Backfill bill_id on transactions from bill_linked_transactions.
+    // Handles old backups where bill_id was null on the transaction row but
+    // the junction table had the correct mapping. The export now writes bill_id
+    // correctly, but this step ensures older backups restore cleanly too.
+    // We also always run it as a safety net in case anything slipped through.
+    for (const item of cleanBillLinkedTxs) {
+      const newBillId = billMap[item.bill_id];
+      const newTransactionId = transactionMap[item.transaction_id];
+
+      if (!newBillId || !newTransactionId) continue;
+
+      try {
+        await executeSql(
+          `UPDATE transactions
+           SET bill_id = ?
+           WHERE id = ? AND (bill_id IS NULL OR bill_id = 0)`,
+          [newBillId, newTransactionId]
+        );
+      } catch (e) {
+        console.warn(`Failed to backfill bill_id on transaction ${newTransactionId}`, e);
+      }
+    }
     // Only restore user preferences (enabled, hour, minute)
     // Never restore notification_identifier — it's device-specific
     if (restoredNotifications.length > 0) {

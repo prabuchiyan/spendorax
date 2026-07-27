@@ -9,6 +9,30 @@ function makeRows(arr) {
   };
 }
 
+function executeCustomSelect(sql, lowerSql, params, readTable) {
+  // Bills JOIN
+  if (
+    lowerSql.includes('from bill_linked_transactions') &&
+    lowerSql.includes('join bills')
+  ) {
+    const transactionId = params[0];
+
+    const links = readTable('bill_linked_transactions')
+      .filter(link => String(link.transaction_id) === String(transactionId));
+
+    const bills = readTable('bills');
+
+    const result = links
+      .map(link => bills.find(bill => String(bill.id) === String(link.bill_id)))
+      .filter(Boolean)
+      .filter(bill => !bill.deleted_at);
+
+    return makeRows(result);
+  }
+
+  return null;
+}
+
 // Minimal localStorage-backed shim for web to emulate executeSql result shape
 function createWebExecuteSql() {
   const prefix = 'mm_db_';
@@ -67,6 +91,16 @@ function createWebExecuteSql() {
 
     // SELECT [cols] FROM table [WHERE ...] [ORDER BY ...] [LIMIT ?]
     if (l.startsWith('select')) {
+      const customRows = executeCustomSelect(
+        s,
+        l,
+        [...params],
+        readTable
+      );
+      if (customRows) {
+        return { rows: customRows };
+      }
+      
       const m = s.match(/select\s+(.+?)\s+from\s+([a-zA-Z0-9_]+)/i);
       if (!m) throw new Error('Unsupported SELECT SQL: ' + sql);
       const colsStr = m[1].trim();

@@ -10,11 +10,20 @@ export default function LinkedBillCard({ transactionId, onPressBill }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!transactionId) { setLoading(false); return; }
+    if (!transactionId) {
+      setLoading(false);
+      return;
+    }
     getBillsForTransaction(transactionId)
-      .then(setBills)
-      .catch(() => setBills([]))
-      .finally(() => setLoading(false));
+      .then(result => {
+        setBills(result);
+      })
+      .catch(err => {
+        setBills([]);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [transactionId]);
 
   if (loading) {
