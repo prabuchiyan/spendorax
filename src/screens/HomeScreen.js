@@ -256,7 +256,7 @@ export default function HomeScreen({ navigation }) {
   );
 
   const sortedBills = [...bills].sort(
-    (a, b) => new Date(a.due_date || 0) - new Date(b.due_date || 0)
+    (a, b) => new Date(b.due_date || 0) - new Date(a.due_date || 0)
   );
 
   const totalBalance = sourceBalances.reduce(
