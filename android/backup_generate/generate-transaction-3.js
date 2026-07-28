@@ -1,151 +1,135 @@
 const fs = require("fs");
 
 const raw = `
-01/07/2021 : Post Office Deposit : $4974
+01/08/2021 : Post Office Deposit : $4974
 
-01/07/2021 : Delivery : Breakfast : $42
+01/08/2021 : Snacks For Shivani : $5
 
-01/07/2021 : Delivery : Bike Petrol : $160
+01/08/2021 : Snacks & Drinks : $560
 
-01/07/2021 : Delivery : Bike Air : $3
+02/08/2021 : Gave it to Abi : $1100
 
-01/07/2021 : Hair Oil & Dandruff Shampoo : $609
+02/08/2021 : Car : Toll : $400
 
-01/07/2021 : Pediasure : $529
+02/08/2021 : Recharge For Akka : $219
 
-01/07/2021 : Delivery : Breakfast : $70
+02/08/2021 : Gave it to Akka : $500
 
-01/07/2021 : Eniyan Birthday : Chocolates : $80
+03/08/2021 : Shivani RD : $6000
 
-01/07/2021 : Eniyan Birthday : Biriyani Treat : $530
+04/08/2021 : Bike : 3rd Service : $71
 
-01/07/2021 : Delivery : Baby Thyroid Test : $500
+06/08/2021 : Donation : Donated in Temple : $10
 
-02/07/2021 : Delivery : Breakfast : $52
+06/08/2021 : Archana Things : $50
 
-02/07/2021 : Delivery Tea : $30
+07/08/2021 : Gold Chit For Mom : $2000
 
-02/07/2021 : Delivery : Insurance Claim Print Out : $40
+07/08/2021 : Gold Chit For Abi : $2000
 
-02/07/2021 : Delivery : Settlement : $12650
+07/08/2021 : Pdkt Home DTH Recharge : $200
 
-02/07/2021 : Delivery : Medicine : $904
+07/08/2021 : Bike Petrol : $150
 
-02/07/2021 : Delivery : Insurance Claim Document Xerox : $20
+07/08/2021 : Sweets From Bakery : $355
 
-02/07/2021 : Delivery : Clothes : $265
+07/08/2021 : Bike Petrol : $160
 
-02/07/2021 : Car : Fast Tag : $120
+07/08/2021 : Baby Powder : $171
 
-03/07/2021 : Shivani RD : $6000
+07/08/2021 : Pampers : $689
 
-03/07/2021 : Pdkt Home Electricity : $440
+07/08/2021 : Sensodyne Paste : $189
 
-03/07/2021 : Pdkt Home First Floor Electricity : $290
+08/08/2021 : Vadai & Samosa : $80
 
-03/07/2021 : Purchased Cot : $10,000
+08/08/2021 : Kidney Scan : $1200
 
-03/07/2021 : Shawarma : $100
+08/08/2021 : Sugarcane Juice : $40
 
-03/07/2021 : Give it Back to Agalya : $20,000
+08/08/2021 : Clothes For Eniyan : $580
 
-04/07/2021 : Pampers : $346
+08/08/2021 : Clothes For Chezhiyan : $290
 
-05/07/2021 : Recharge For Akka : $219
+09/08/2021 : Somewhere Spend : $20
 
-05/07/2021 : Gave it to Dad : $10,000
+09/08/2021 : Recharge For Myself : $558
 
-05/07/2021 : Delivery : Insurance Claim Document Xerox : $11
+09/08/2021 : Give it Back to Agalya : $10000
 
-05/07/2021 : Sweets For Akka Family : $85
+12/08/2021 : Drinks : $360
 
-05/07/2021 : Gold Loan Paid : $20,000
+13/08/2021 : Gave it to Shivani & Shreesha : $100
 
-06/07/2021 : Bike Petrol : $110
+13/08/2021 : Samosa & Vadai : $160
 
-06/07/2021 : Delivery : Courier & Cover : $65
+14/08/2021 : Recharge For Abi : $199
 
-06/07/2021 : Chicken Fried Rice : $80
+14/08/2021 : Car : Strickers : $140
 
-07/07/2021 : Gold Chit For Mom : $2000
+15/08/2021 : Car Petrol : $200
 
-07/07/2021 : Gold Chit For Abi : $2000
+15/08/2021 : Car Air : $10
 
-07/07/2021 : Car Petrol : $200
+15/08/2021 : Car Petrol : $1787
 
-07/07/2021 : Car Air : $5
+15/08/2021 : Car Parking Tips : $10
 
-07/07/2021 : Ice Cream : $20
+18/08/2021 :  Gave it to Abi : $500
 
-07/07/2021 : Piles : Tablet & Ointment : $220
+19/08/2021 : Pdkt Home Electricity : $280
 
-09/07/2021 : Delivery : ECG Amount : $500
+19/08/2021 : Pdkt First Floor Electricity : $520
 
-09/07/2021 : Hair Oil, Wipes & Comfort : $501
+19/08/2021 : Pdkt Shop Electricity : $500
 
-09/07/2021 : Pears Soap For Abi : $240
+19/08/2021 : Pdkt Shop Electricity : $957
 
-10/07/2021 : Gave it to Abi : $1100
+21/08/2021 : Car Petrol : $500
 
-13/07/2021 : Piles : Doctor Fees & Test : $300
+21/08/2021 : Donated : $10
 
-13/07/2021 : Piles : Dettol : $60
+22/08/2021 : Gave it Rafiq Anna : $1000
 
-13/07/2021 : Piles : Medicines : $734
+22/08/2021 : Bike Petrol : $170
 
-14/07/2021 : Birthday Saree For Abi : $700
+22/08/2021 : Drinks & Food : $810
 
-16/07/2021 : AC : 1st Paid Service : $700
+24/08/2021 : Lunch : Biriyani : $160
 
-16/07/2021 : Egg Buffs For Akka Family : $95
+25/08/2021 : Mixture From Super Market : $67
 
-16/07/2021 : Snacks For Shreesha : $25
+25/08/2021 : Cool Drinks From Super Market : $64
 
-16/07/2021 : Bathroom Cleaner & Brush : $200
+25/08/2021 : Cinthol Soap From Super Market : $210
 
-17/07/2021 : Recharge For Abi : $219
+25/08/2021 : Sensodyne Paste From Super Market : $189
 
-17/07/2021 : Drinks & Snacks : $397
+25/08/2021 : Gave it to Shivani & Shreesha : $20
 
-17/07/2021 : Snacks For Akka Family : $70
+25/08/2021 : Debit Card Annual Charge : $236
 
-18/07/2021 : Car : Petrol : $695
+26/08/2021 : Fruits : $20
 
-18/07/2021 : Chocolate For Eniyan & Geethan : $80
+28/08/2021 : Sweets & Snacks From PG Naidu : $310
 
-19/07/2021 : Car : Petrol : $695
+28/08/2021 : Car Petrol : $1000
 
-19/07/2021: Milkshake : $30
+28/08/2021 : Car Air : $7
 
-20/07/2021 : Mango Juice : $35
+28/08/2021 : Parotta & Omelette : $260
 
-20/07/2021 : Drinks & Snacks : $603
+29/08/2021 : Biriyani, Chicken Curries & Tips : $1330
 
-23/07/2021 : Bike Petrol : $120
+29/08/2021 : Pampers : $20
 
-23/07/2021 : Toys Batteries : $65
+29/08/2021 : Car Petrol : $992.50
 
-23/07/2021 : Pediasure : $1058
+30/08/2021 : Ice Cream For Eniyan & Geethan : $60
 
-23/07/2021 : Snacks For Eniyan : $37
+30/08/2021 : Gave it to Vivek : $500
 
-23/07/2021 : Snacks : Savu Bujji : $74
-
-23/07/2021 : Snacks For Akka Family : $200
-
-25/07/2021 : Juice & Tea : $150
-
-25/07/2021 : Car Petrol : $595
-
-26/07/2021 : Pdkt Home DTH Recharge : $195
-
-27/07/2021 : Birth Certificate Amount : $500
-
-27/07/2021 : Piles Medicines For Abi : $500
-
-29/07/2021 : Delivery : Insurance Claim Courier & Cover : $60
-
-30/07/2021 : Piles Medicines For Abi : $400
+31/08/2021 : Car Toll : $120
 `;
 
 const categoryMap = {
@@ -812,11 +796,15 @@ const categoryMap = {
   "Savings": 54,
 
   // Snacks
+  "Snacks : Savu Bujji": 55,
+  "Juice & Tea": 55,
   "Snacks From B.G.Naidu": 55,
   "Snacks From Backery": 55,
   "Cook Drinks For Eniyan": 55,
   "Sugarcane Juice": 55,
+  "Mango Juice": 55,
   "Corn": 55,
+  "Milkshake": 55,
   "Chocolate & Snacks For Kids": 55,
   "Snacks For Kids": 55,
   "Snacks From Super Market": 55,
@@ -1094,12 +1082,21 @@ const backup = {
       },
       {
         "id": 5,
-        "name": "Bike / Vehicle",
+        "name": "Bike",
         "type": "expense",
         "icon": "motorbike",
         "color": "#DC2626",
         "is_active": 1,
         "created_at": "2026-07-25 09:08:21"
+      },
+      {
+        "id": 66,
+        "name": "Car",
+        "type": "expense",
+        "icon": "car-electric",
+        "color": "#3B82F6",
+        "is_active": 1,
+        "created_at": "2026-07-27 15:18:18"
       },
       {
         "id": 6,
@@ -1154,15 +1151,6 @@ const backup = {
         "color": "#DC2626",
         "is_active": 1,
         "created_at": "2026-07-25 09:08:21"
-      },
-      {
-        "id": 64,
-        "name": "Documents",
-        "type": "expense",
-        "icon": "file-document-multiple",
-        "color": "#64748B",
-        "is_active": 1,
-        "created_at": "2026-07-26 05:44:06"
       },
       {
         "id": 12,
@@ -1633,6 +1621,15 @@ const backup = {
         "created_at": "2026-07-25 09:08:21"
       },
       {
+        "id": 64,
+        "name": "Documents",
+        "type": "expense",
+        "icon": "file-document-multiple",
+        "color": "#64748B",
+        "is_active": 1,
+        "created_at": "2026-07-26 05:44:06"
+      },
+      {
         "id": 65,
         "name": "Tata Tiago",
         "type": "expense",
@@ -1649,6 +1646,15 @@ const backup = {
         "color": "#3B82F6",
         "is_active": 1,
         "created_at": "2026-07-27 15:18:18"
+      },
+      {
+        "id": 67,
+        "name": "Chezhiyan",
+        "type": "expense",
+        "icon": "human-female-dance",
+        "color": "#84CC16",
+        "is_active": 1,
+        "created_at": "2026-07-28 07:52:05"
       },
     ],
     "sources": [
@@ -1713,7 +1719,7 @@ const backup = {
         "paid_at": "2026-07-25T10:31:01.192Z",
         "is_paid": 1,
         "created_at": "2026-07-25T10:30:34.425Z",
-        "updated_at": "2026-07-25T10:31:01.192Z",
+        "updated_at": "2026-07-28T07:45:19.756Z",
         "deleted_at": null,
         "parent_bill_id": null
       },
@@ -1738,7 +1744,7 @@ const backup = {
         "paid_at": "2026-07-26T06:22:37.471Z",
         "is_paid": 1,
         "created_at": "2026-07-25T10:30:34.492Z",
-        "updated_at": "2026-07-26T06:22:37.471Z",
+        "updated_at": "2026-07-28T07:45:19.756Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1763,7 +1769,7 @@ const backup = {
         "paid_at": "2026-07-26T06:23:05.535Z",
         "is_paid": 1,
         "created_at": "2026-07-25T10:30:34.495Z",
-        "updated_at": "2026-07-26T06:23:05.535Z",
+        "updated_at": "2026-07-28T07:45:19.756Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1788,7 +1794,7 @@ const backup = {
         "paid_at": "2026-07-27T14:23:19.319Z",
         "is_paid": 1,
         "created_at": "2026-07-25T10:30:34.498Z",
-        "updated_at": "2026-07-27T14:23:19.319Z",
+        "updated_at": "2026-07-28T07:45:19.756Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1813,7 +1819,7 @@ const backup = {
         "paid_at": "2026-07-27T14:23:40.042Z",
         "is_paid": 1,
         "created_at": "2026-07-25T10:30:34.502Z",
-        "updated_at": "2026-07-27T14:23:40.042Z",
+        "updated_at": "2026-07-28T07:45:19.756Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1838,7 +1844,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.506Z",
-        "updated_at": "2026-07-27T14:52:56.335Z",
+        "updated_at": "2026-07-28T07:45:19.757Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1863,7 +1869,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.511Z",
-        "updated_at": "2026-07-27T14:52:56.336Z",
+        "updated_at": "2026-07-28T07:45:19.757Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1888,7 +1894,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.516Z",
-        "updated_at": "2026-07-27T14:52:56.337Z",
+        "updated_at": "2026-07-28T07:45:19.757Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1913,7 +1919,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.521Z",
-        "updated_at": "2026-07-27T14:52:56.338Z",
+        "updated_at": "2026-07-28T07:45:19.757Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1938,7 +1944,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.533Z",
-        "updated_at": "2026-07-27T14:52:56.339Z",
+        "updated_at": "2026-07-28T07:45:19.757Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1963,7 +1969,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.538Z",
-        "updated_at": "2026-07-27T14:52:56.340Z",
+        "updated_at": "2026-07-28T07:45:19.757Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1988,7 +1994,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.543Z",
-        "updated_at": "2026-07-27T14:52:56.341Z",
+        "updated_at": "2026-07-28T07:45:19.758Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2013,7 +2019,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.550Z",
-        "updated_at": "2026-07-27T14:52:56.342Z",
+        "updated_at": "2026-07-28T07:45:19.758Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2038,7 +2044,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.564Z",
-        "updated_at": "2026-07-27T14:52:56.343Z",
+        "updated_at": "2026-07-28T07:45:19.758Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2063,7 +2069,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.572Z",
-        "updated_at": "2026-07-27T14:52:56.343Z",
+        "updated_at": "2026-07-28T07:45:19.758Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2088,7 +2094,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.581Z",
-        "updated_at": "2026-07-27T14:52:56.344Z",
+        "updated_at": "2026-07-28T07:45:19.758Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2113,7 +2119,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.588Z",
-        "updated_at": "2026-07-27T14:52:56.345Z",
+        "updated_at": "2026-07-28T07:45:19.758Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2138,7 +2144,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.596Z",
-        "updated_at": "2026-07-27T14:52:56.345Z",
+        "updated_at": "2026-07-28T07:45:19.759Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2163,7 +2169,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.603Z",
-        "updated_at": "2026-07-27T14:52:56.346Z",
+        "updated_at": "2026-07-28T07:45:19.759Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2188,7 +2194,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.613Z",
-        "updated_at": "2026-07-27T14:52:56.346Z",
+        "updated_at": "2026-07-28T07:45:19.759Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2213,7 +2219,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.620Z",
-        "updated_at": "2026-07-27T14:52:56.347Z",
+        "updated_at": "2026-07-28T07:45:19.759Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2238,7 +2244,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.626Z",
-        "updated_at": "2026-07-27T14:52:56.348Z",
+        "updated_at": "2026-07-28T07:45:19.759Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2263,7 +2269,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.633Z",
-        "updated_at": "2026-07-27T14:52:56.348Z",
+        "updated_at": "2026-07-28T07:45:19.760Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2288,7 +2294,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.639Z",
-        "updated_at": "2026-07-27T14:52:56.349Z",
+        "updated_at": "2026-07-28T07:45:19.760Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2313,7 +2319,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.645Z",
-        "updated_at": "2026-07-27T14:52:56.349Z",
+        "updated_at": "2026-07-28T07:45:19.760Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2338,7 +2344,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.651Z",
-        "updated_at": "2026-07-27T14:52:56.437Z",
+        "updated_at": "2026-07-28T07:45:19.817Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2363,7 +2369,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.659Z",
-        "updated_at": "2026-07-27T14:52:56.439Z",
+        "updated_at": "2026-07-28T07:45:19.817Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2388,7 +2394,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.664Z",
-        "updated_at": "2026-07-27T14:52:56.441Z",
+        "updated_at": "2026-07-28T07:45:19.818Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2413,7 +2419,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.672Z",
-        "updated_at": "2026-07-27T14:52:56.443Z",
+        "updated_at": "2026-07-28T07:45:19.818Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2438,7 +2444,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.682Z",
-        "updated_at": "2026-07-27T14:52:56.445Z",
+        "updated_at": "2026-07-28T07:45:19.819Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2463,7 +2469,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.689Z",
-        "updated_at": "2026-07-27T14:52:56.446Z",
+        "updated_at": "2026-07-28T07:45:19.819Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2488,7 +2494,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.695Z",
-        "updated_at": "2026-07-27T14:52:56.448Z",
+        "updated_at": "2026-07-28T07:45:19.820Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2513,7 +2519,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.701Z",
-        "updated_at": "2026-07-27T14:52:56.449Z",
+        "updated_at": "2026-07-28T07:45:19.820Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2538,7 +2544,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.708Z",
-        "updated_at": "2026-07-27T14:52:56.450Z",
+        "updated_at": "2026-07-28T07:45:19.820Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2563,7 +2569,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.715Z",
-        "updated_at": "2026-07-27T14:52:56.450Z",
+        "updated_at": "2026-07-28T07:45:19.821Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2588,7 +2594,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.725Z",
-        "updated_at": "2026-07-27T14:52:56.451Z",
+        "updated_at": "2026-07-28T07:45:19.821Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2613,7 +2619,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.736Z",
-        "updated_at": "2026-07-27T14:52:56.452Z",
+        "updated_at": "2026-07-28T07:45:19.822Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2638,7 +2644,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.745Z",
-        "updated_at": "2026-07-27T14:52:56.453Z",
+        "updated_at": "2026-07-28T07:45:19.823Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2663,7 +2669,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.751Z",
-        "updated_at": "2026-07-27T14:52:56.454Z",
+        "updated_at": "2026-07-28T07:45:19.823Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2688,7 +2694,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.758Z",
-        "updated_at": "2026-07-27T14:52:56.455Z",
+        "updated_at": "2026-07-28T07:45:19.824Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2713,7 +2719,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.766Z",
-        "updated_at": "2026-07-27T14:52:56.455Z",
+        "updated_at": "2026-07-28T07:45:19.824Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2738,7 +2744,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.771Z",
-        "updated_at": "2026-07-27T14:52:56.456Z",
+        "updated_at": "2026-07-28T07:45:19.824Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2763,7 +2769,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.778Z",
-        "updated_at": "2026-07-27T14:52:56.457Z",
+        "updated_at": "2026-07-28T07:45:19.824Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2788,7 +2794,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.784Z",
-        "updated_at": "2026-07-27T14:52:56.457Z",
+        "updated_at": "2026-07-28T07:45:19.825Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2813,7 +2819,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.790Z",
-        "updated_at": "2026-07-27T14:52:56.458Z",
+        "updated_at": "2026-07-28T07:45:19.825Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2838,7 +2844,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.794Z",
-        "updated_at": "2026-07-27T14:52:56.459Z",
+        "updated_at": "2026-07-28T07:45:19.825Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2863,7 +2869,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.800Z",
-        "updated_at": "2026-07-27T14:52:56.459Z",
+        "updated_at": "2026-07-28T07:45:19.826Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2888,7 +2894,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.807Z",
-        "updated_at": "2026-07-27T14:52:56.460Z",
+        "updated_at": "2026-07-28T07:45:19.826Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2913,7 +2919,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.814Z",
-        "updated_at": "2026-07-27T14:52:56.461Z",
+        "updated_at": "2026-07-28T07:45:19.826Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2938,7 +2944,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.824Z",
-        "updated_at": "2026-07-27T14:52:56.462Z",
+        "updated_at": "2026-07-28T07:45:19.827Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2963,7 +2969,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.834Z",
-        "updated_at": "2026-07-27T14:52:56.564Z",
+        "updated_at": "2026-07-28T07:45:19.879Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2988,7 +2994,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.840Z",
-        "updated_at": "2026-07-27T14:52:56.566Z",
+        "updated_at": "2026-07-28T07:45:19.879Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3013,7 +3019,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.846Z",
-        "updated_at": "2026-07-27T14:52:56.566Z",
+        "updated_at": "2026-07-28T07:45:19.880Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3038,7 +3044,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.853Z",
-        "updated_at": "2026-07-27T14:52:56.567Z",
+        "updated_at": "2026-07-28T07:45:19.880Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3063,7 +3069,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.859Z",
-        "updated_at": "2026-07-27T14:52:56.569Z",
+        "updated_at": "2026-07-28T07:45:19.880Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3088,7 +3094,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.865Z",
-        "updated_at": "2026-07-27T14:52:56.569Z",
+        "updated_at": "2026-07-28T07:45:19.881Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3113,7 +3119,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.870Z",
-        "updated_at": "2026-07-27T14:52:56.570Z",
+        "updated_at": "2026-07-28T07:45:19.881Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3138,7 +3144,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.879Z",
-        "updated_at": "2026-07-27T14:52:56.571Z",
+        "updated_at": "2026-07-28T07:45:19.881Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3163,7 +3169,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.883Z",
-        "updated_at": "2026-07-27T14:52:56.573Z",
+        "updated_at": "2026-07-28T07:45:19.882Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3188,7 +3194,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.891Z",
-        "updated_at": "2026-07-27T14:52:56.574Z",
+        "updated_at": "2026-07-28T07:45:19.882Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3213,7 +3219,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.899Z",
-        "updated_at": "2026-07-27T14:52:56.575Z",
+        "updated_at": "2026-07-28T07:45:19.882Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3238,7 +3244,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.904Z",
-        "updated_at": "2026-07-27T14:52:56.577Z",
+        "updated_at": "2026-07-28T07:45:19.883Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3263,7 +3269,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.911Z",
-        "updated_at": "2026-07-27T14:52:56.578Z",
+        "updated_at": "2026-07-28T07:45:19.883Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3288,7 +3294,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.917Z",
-        "updated_at": "2026-07-27T14:52:56.578Z",
+        "updated_at": "2026-07-28T07:45:19.883Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3313,7 +3319,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.923Z",
-        "updated_at": "2026-07-27T14:52:56.579Z",
+        "updated_at": "2026-07-28T07:45:19.884Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3338,7 +3344,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.934Z",
-        "updated_at": "2026-07-27T14:52:56.580Z",
+        "updated_at": "2026-07-28T07:45:19.884Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3363,7 +3369,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.943Z",
-        "updated_at": "2026-07-27T14:52:56.581Z",
+        "updated_at": "2026-07-28T07:45:19.884Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3388,7 +3394,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.949Z",
-        "updated_at": "2026-07-27T14:52:56.581Z",
+        "updated_at": "2026-07-28T07:45:19.885Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3413,7 +3419,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.954Z",
-        "updated_at": "2026-07-27T14:52:56.582Z",
+        "updated_at": "2026-07-28T07:45:19.885Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -3438,7 +3444,7 @@ const backup = {
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.960Z",
-        "updated_at": "2026-07-27T14:52:56.583Z",
+        "updated_at": "2026-07-28T07:45:19.886Z",
         "deleted_at": null,
         "parent_bill_id": 1
       }
@@ -4114,10 +4120,10 @@ const backup = {
         "enabled": 1,
         "hour": 22,
         "minute": 0,
-        "notification_identifier": "87f3fd86-4d36-4b74-a372-75904782ce3f",
+        "notification_identifier": "a69dcd72-d62c-46fb-a3ed-a51eff8a9061",
         "payload": "{\"screen\":\"TransactionAdd\",\"type\":\"DAILY_SPEND\"}",
         "created_at": "2026-07-25 19:13:42",
-        "updated_at": "2026-07-28 04:32:47"
+        "updated_at": "2026-07-28 09:38:23"
       },
       {
         "id": 2,
@@ -4128,10 +4134,10 @@ const backup = {
         "enabled": 1,
         "hour": 10,
         "minute": 30,
-        "notification_identifier": "26ec9ee0-8f1b-4339-955a-4ba4816a9121",
+        "notification_identifier": "72d3f1e2-ec6a-4a61-964f-ab69da4be96b",
         "payload": "{\"screen\":\"Transactions\",\"type\":\"YESTERDAY_SPEND\"}",
         "created_at": "2026-07-25 19:13:42",
-        "updated_at": "2026-07-28 04:32:47"
+        "updated_at": "2026-07-28 09:38:23"
       },
       {
         "id": 3,
@@ -4142,10 +4148,10 @@ const backup = {
         "enabled": 1,
         "hour": 9,
         "minute": 0,
-        "notification_identifier": "a2c4e4a6-49a8-4dea-9574-bafd2ec3fd44",
+        "notification_identifier": "050615c8-0cf3-4a77-ad3b-87da5b3ff71f",
         "payload": "{\"screen\":\"Bills\",\"type\":\"BILL_DUE\"}",
         "created_at": "2026-07-25 19:13:42",
-        "updated_at": "2026-07-28 04:32:47"
+        "updated_at": "2026-07-28 09:38:23"
       },
       {
         "id": 4,
@@ -4156,19 +4162,19 @@ const backup = {
         "enabled": 1,
         "hour": 9,
         "minute": 0,
-        "notification_identifier": "d9cc4133-6a7f-4279-a371-0d43478e593c",
+        "notification_identifier": "c068883d-cb7c-4664-8620-79737b9e3f9f",
         "payload": "{\"screen\":\"Loans\",\"type\":\"LOAN_EMI\"}",
         "created_at": "2026-07-25 19:13:42",
-        "updated_at": "2026-07-28 04:32:47"
+        "updated_at": "2026-07-28 09:38:24"
       }
     ]
   }
 };
 
 fs.writeFileSync(
-  "2021_07.json",
+  "2021_08.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2021_07.json created successfully.");
+console.log("2021_08.json created successfully.");
