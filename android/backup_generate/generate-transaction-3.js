@@ -1,143 +1,167 @@
 const fs = require("fs");
 
 const raw = `
-01/09/2021 : Post Office Deposit : $4974
+01/10/2021 : Gave it to Abi : $200
 
-02/09/2021 : Dio Bike Insurance Renewal : $408
+01/10/2021 : Tv Fitting : Labour : $300
 
-02/09/2021 : Mushroom Fry : $40
+02/10/2021 : Konnapatti Visit : Lunch : $260
 
-03/09/2021 : Shivani RD : $6000
+02/10/2021 : Konnapatti Visit : Ice Cream : $80
 
-03/09/2021 : Gold Chit For Mom : $2000
+03/10/2021 : Konnapatti Visit : Sweets & Snacks For Jothi Family : $395
 
-03/09/2021 : Gold Chit For Abi : $2000
+03/10/2021 : Konnapatti Visit :  Ice Cream For Eniyan : $15
 
-03/09/2021 : Bike Petrol : $160
+03/10/2021 : Konnapatti Visit : Paal Bun : $10
 
-03/09/2021 : Gave it to Dad : $10000
+03/10/2021 : Post Office Deposit : $4867
 
-04/09/2021 : Hospital Visit For Mom : $200
+03/10/2021 : Shawarma & BBQ Chicken : $290
 
-04/09/2021 : Car Petrol : $993.3
+03/10/2021 : Mushroom Fry : $40
 
-04/09/2021 : Anniversary Lunch Parking : $10
+04/10/2021 : Shivani RD : $6000
 
-04/09/2021 : Anniversary Lunch : $2110
+05/10/2021 : Gave it to Abi : $100
 
-04/09/2021 : Anniversary Lunch Tips : $20
+06/10/2021 : Biriyani & Chicken 65 : $190
 
-04/09/2021 : Thanjavur Park Visit : $75
+06/10/2021 : Gave it to Dad : $10000
 
-04/09/2021 : Condoms : $80
+06/10/2021 : Gave it to Abi : $100
 
-05/09/2021 : Chocolate For Eniyan & Geethan : $10
+06/10/2021 : Chocolate For Kids : $15
 
-07/09/2021 : Chicken Fried Rice & Egg Bhael Poori : $120
+06/10/2021 : Give it to Eniyan : $5
 
-07/09/2021 : Chocolate For Shreesha : $20
+07/10/2021 : Gave it to Abi : $100
 
-08/09/2021 : Car Petrol : $1494
+07/10/2021 : Milk : $100
 
-08/09/2021 : Car Air : $10
+07/10/2021 : Crackers : $20
 
-10/09/2021 : Car Petrol : $1500
+07/10/2021 : Cool Drink & Snacks : $25
 
-10/09/2021 : Car Air : $5
+07/10/2021 : Karuvadu : $13
 
-10/09/2021 : Koiyakai : $100
+07/10/2021 : Pampers : $267
 
-11/09/2021 : Glucose For Mom : $56
+08/10/2021 : Yippee Noodles : $45
 
-11/09/2021 : Donated : $4
+08/10/2021 : ACT II Pop Corn : $38
 
-11/09/2021 : Recharge For Abi : $249
+08/10/2021 : Biscuits, Chocolates & Snacks : $383
 
-11/09/2021 : Hospital Visit For Mom : Doctor Fees : $300
+08/10/2021 : Dry Fruits : $900
 
-11/09/2021 : Hospital Visit For Mom : Scan : $700
+08/10/2021 : Baloon : $10
 
-11/09/2021 : Gave it to Father-in-law : $95
+08/10/2021 : Aval Snacks : $20
 
-11/09/2021 : Chocolate For Eniyan & Geethan : $40
+08/10/2021 : Buffs & Jam For Akka Family : $125
 
-11/09/2021 : Dinner In Thanjavur : $560
+09/10/2021 : Kodiyakkarai Trip : Car Petrol : $994
 
-12/09/2021 : Drinks & Side Dish : $540
+09/10/2021 : Kodiyakkarai Trip : Car Air : $10
 
-12/09/2021 : Biriyani For Shivani & Shreesha : $100
+10/10/2021 : Kodiyakkarai Trip : Tea & Boonthi : $26
 
-13/09/2021 : Gave it to Abi : $1100
+10/10/2021 : Kodiyakkarai Trip : Arabic Mandi Food : $1915
 
-13/09/2021 : Masal Poori : $60
+11/10/2021 : Recharge For Abi : $129
 
-16/09/2021 : Donated For God : $102
+11/10/2021 : Vadai : $24
 
-19/09/2021 : Car Petrol : $1488.75
+11/10/2021 : Tv Remote : $80
 
-19/09/2021 : Chocolate For Eniyan & Geethan :$40
+11/10/2021 : Mom Mobile Repair : $300
 
-19/09/2021 : Purchased Bangles For Chezhiyan : $11,867.15
+13/10/2021 : Bike Petrol : $110
 
-20/09/2021 : Harpic : $151
+13/10/2021 : Peeda : $60
 
-20/09/2021 : Dabur Paste : $51
+13/10/2021 : Ice Creams : $280
 
-20/09/2021 : Milkist Biscuits : $47
+14/10/2021 : Car Petrol : $700
 
-20/09/2021 : Boost : $233
+14/10/2021 : Rameshwaram Trip : Drinks : $940
 
-20/09/2021 : Odomos : $44
+17/10/2021 : Rameshwaram Trip : Spend : $3131
 
-20/09/2021 : Dettol : $107
+17/10/2021 : Rameshwaram Trip : Karuvadu : $540
 
-20/09/2021 : Dabur Hair Oil : $44
+18/10/2021 : Rameshwaram Trip : Spend : $190
 
-20/09/2021 : Masaal & Bhel Poori : $90
+18/10/2021 : Cool Drinks : $37
 
-21/09/2021 : Chips : $125
+19/10/2021 : Pdkt First Floor Electricity Bill : $290
 
-21/09/2021 : Car Air : $20
+19/10/2021 : Hospital Visit For Eniyan : $310
 
-24/09/2021 : Bang DTH Recharge : $269
+20/10/2021 : Pdkt Home Electricity Bill : $300
 
-24/09/2021 : Cot Transport : $200
+20/10/2021 : Gave it to Eniyan : $3
 
-24/09/2021 : Gingelly Oil : $31
+21/10/2021 : Stationary Material For Eniyan : $178
 
-24/09/2021 : Added to Amazon Wallet : $500
+21/10/2021 : Gave it to Eniyan : $2
 
-25/09/2021 : Mutton Biryani : $660
+22/10/2021 : Samosas : $90
 
-25/09/2021 : Bike Petrol : $160
+22/10/2021 : Paal Bun : $20
 
-25/09/2021 : Drinks : $600
+23/10/2021 : Diwali : Saree For Mom & Sister : $1378
 
-25/09/2021 : Cigarette & Snacks : $50
+23/10/2021 : Diwali : T-shirts For Dad : $300
 
-25/09/2021 : Chocolates For Kids : $15
+23/10/2021 : Bijili Vedi & Role Cap : $50
 
-25/09/2021 : Gave it to Akka : $1500
+23/10/2021 : Doctor Movie : $650
 
-26/09/2021 : Gave it to Akka : $1000
+24/10/2021 : Diwali : Clothes For Chezhiyan : $395
 
-27/09/2021 : Milk : $100
+24/10/2021 : DTH Recharge For Bangalore Home : $260
 
-28/09/2021 : Harpic : $174
+24/10/2021 : Diwali : Clothe For Eniyan : $100
 
-28/09/2021 : Napkins : $185
+24/10/2021 : Diwali : Nighty For Abi : $440
 
-28/09/2021 : Juice : $18
+24/10/2021 : Hospital Visit For Mom : $278
 
-29/09/2021 : Gave it to Abi : $100
+26/10/2021 : Crackers From Uncle Shop : $1500
 
-30/09/2021 : Tv Fitting : Screws : $110
+27/10/2021 : Bijli : $40
 
-30/09/2021 : Tv Remote : $80
+27/10/2021 : Bike Petrol : $110
 
-30/09/2021 : Tv Fitting : Tv Stand : $500
+27/10/2021 : Gave it to Eniyan : $2
 
-30/09/2021 : Tv Fitting : Labour Charge : $150
+27/10/2021 : Milk : $200
+
+28/10/2021 : Crackers From Sivakasi : $2000
+
+29/10/2021 : Tablets For Abi : $100
+
+30/10/2021 : Car Petrol : $500
+
+30/10/2021 : Car Air : $10
+
+30/10/2021 : Seevarathnam Aunty Daughter New Born Baby : $300
+
+30/10/2021 : Gave it to Rajendran Uncle : $1000
+
+30/10/2021 : Gave it to Shanthi Son Santhosh :$200
+
+30/10/2021 : Poovampatti Visit : Rotti & Chicken : $575
+
+30/10/2021 : Gave it to Eniyan : $5
+
+31/10/2021 : Tea & Vadai : $18
+
+31/10/2021 : Hospital Visit For Chezhiyan : $900
+
+31/10/2021 : Gave it to Eniyan : $2
 `;
 
 const categoryMap = {
@@ -4192,9 +4216,9 @@ const backup = {
 };
 
 fs.writeFileSync(
-  "2021_09.json",
+  "2021_10.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2021_09.json created successfully.");
+console.log("2021_10.json created successfully.");
