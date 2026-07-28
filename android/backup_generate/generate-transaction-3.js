@@ -1,127 +1,13 @@
 const fs = require("fs");
 
 const raw = `
-01/05/2021 : Gave it to Dad : $10000
+08/02/2021 : Get it From Agalya : $5000
 
-01/05/2021 : Gave it to Abi : $1000
+11/02/2021 : Get it From Agalya : $80000
 
-01/05/2021 : Build Parking : Paid For Workers : $1000
+12/02/2021 : Get it From Agalya : $100000
 
-01/05/2021 : Post Office Deposit : $4974
-
-01/05/2021 : Cashew 250g : $200
-
-01/05/2021 : Pishtha 100g: $130
-
-01/05/2021 : Dates : 250g : $130
-
-01/05/2021 : Badam 100g : $80
-
-01/05/2021 : Chicken Fried Rice & Chilli Parotta : $120
-
-01/05/2021 : Ice Cream : $40
-
-01/05/2021 : Gave it Back to Agalya : $20000
-
-03/05/2021 : Shivani RD : $6000
-
-04/05/2021 : Gave it to Rajendran Uncle : $1000
-
-05/05/2021 : Burgers : $270
-
-06/05/2021 : Cold Tablets For Abi : $30
-
-07/05/2021 : Gold Chit For Mom : $2000
-
-07/05/2021 : Gold Chit For Abi : $2000
-
-07/05/2021 : Cool Drinks : $40
-
-08/05/2021 : Tablets & Vicks For Abi : $10
-
-09/05/2021 : Drinks, Cool Drinks & Cigarette : $550
-
-09/05/2021 : Mangoes : $200
-
-09/05/2021 : Cold Tablets For Abi : $20
-
-14/05/2021 : Ice Cream : $120
-
-15/05/2021 : Crabs : $750
-
-15/05/2021 : Fruits : $420
-
-15/05/2021 : Cool Drinks : $30
-
-15/05/2021 : Cool Drinks For Mix : $20
-
-16/05/2021 : Gave it to Eniyan : $10
-
-16/05/2021 : Pdkt Home DTH Recharge : $199
-
-18/05/2021 : 9th Check-up : Doctor Fees : $150
-
-18/05/2021 : Snacks From Backery : $200
-
-18/05/2021 : 9th Check-up : Medicines : $550
-
-19/05/2021 : Bike Petrol : $200
-
-20/05/2021 : 9th Check-up : Medicines : $100
-
-20/05/2021 : Munthiri Pazham : $20
-
-20/05/2021 : Food for Dinner : $188
-
-21/05/2021 : Milk : $200
-
-21/05/2021 : Gave it to Akka : $2000
-
-22/05/2021 : Debit Card : Annual Fees : $177
-
-22/05/2021 : Fruits for us & Akka Family : $1070
-
-22/05/2021 : Hospital Visit & Tablets For Akka : $550
-
-22/05/2021 : Tablets For Panjavarnam Aunty : $10
-
-22/05/2021 : Chips For Eniyan : $30
-
-23/05/2021 : Hospital Visit For Shivani : $130
-
-23/05/2021 : Dates : $140
-
-23/05/2021 : Masal Poori : $40
-
-23/05/2021 : Cool Drinks : $50
-
-24/05/2021 : Hospital Visit For Akka : Doctor Fees : $230
-
-24/05/2021 : Hospital Visit For Akka : Swap & Blood Test : $3650
-
-24/05/2021 : Hospital Visit For Akka : Medicine : $474
-
-24/05/2021 : Car Petrol : $1000
-
-24/05/2021 : Face Mask : $40
-
-27/05/2021 : Bangalore DTH Recharge : $249
-
-29/05/2021 : Cool Drinks For Eniyan : $10
-
-29/05/2021 : Mutton : $900
-
-31/05/2021 : Bath Soaps : $79
-
-31/05/2021 : Biscuits : $40
-
-31/05/2021 : Maggie : $24
-
-31/05/2021 : Cool Drinks For Eniyan : $30
-
-31/05/2021 : Chocolate For Eniyan : $60
-
-31/05/2021 : Chips : $55
+15/02/2021 : Get it From Agalya : $20000
 `;
 
 const categoryMap = {
@@ -169,6 +55,7 @@ const categoryMap = {
   // Cashback
   "Get it From Tez": 6,
   "Petrol Surcharge": 6,
+  "Cashback": 6,
 
   // Child Birth
   "Pregnancy Test": 7,
@@ -321,6 +208,9 @@ const categoryMap = {
   "Movie Tickets": 18,
 
   // Food & Dining
+  "Burgers": 21,
+  "Food for Dinner": 21,
+  "Food For Dinner": 21,
   "Chicken Biriyani & 65": 21,
   "Barbeque Chicken": 21,
   "Shawarma & BBQ Chicken": 21,
@@ -353,6 +243,7 @@ const categoryMap = {
   "Dinner & Cook Drinks": 21,
 
   // Fruits
+  "Munthiri Pazham": 22,
   "Mosambi": 22,
   "Fruits": 22,
   "Jackfruit": 22,
@@ -400,6 +291,7 @@ const categoryMap = {
   "Gold Chit For Abi": 27,
 
   // Groceries
+  "Bath Soaps": 29,
   "Dry Fruits": 29,
   "Dry Fruits For Abi": 29,
   "Toothbrush": 29,
@@ -542,6 +434,7 @@ const categoryMap = {
   "Oil": 29,
 
   // Medical
+  "Cold Tablets For Abi": 35,
   "Tablets For Eniyan": 35,
   "Medicine For Eniyan": 35,
   "Doctor Consulting Fee": 35,
@@ -620,6 +513,7 @@ const categoryMap = {
   "Abi Mobile Recharge": 42,
 
   // Money Given
+  "Gave it Back to Agalya": 43,
   "Gave it to Friend": 43,
   "Give it back to Vivek": 43,
   "Give it Back to Akka": 43,
@@ -775,6 +669,8 @@ const categoryMap = {
   "Savings": 54,
 
   // Snacks
+  "Snacks From Backery": 55,
+  "Cook Drinks For Eniyan": 55,
   "Sugarcane Juice": 55,
   "Corn": 55,
   "Chocolate & Snacks For Kids": 55,
@@ -983,7 +879,7 @@ const transactions = raw
     let [dd, mm, yyyy] = date.split("/");
     if (yyyy.length === 2) yyyy = `20${yyyy}`;
     const formattedDate = `${yyyy}-${mm}-${dd}`;
-    const type = "expense"; // expense OR income
+    const type = "income"; // expense OR income
     return {
       id: id++,
       type,
@@ -4124,9 +4020,9 @@ const backup = {
 };
 
 fs.writeFileSync(
-  "2021_05.json",
+  "2021_02_income.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2021_05.json created successfully.");
+console.log("2021_02_income.json created successfully.");

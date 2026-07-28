@@ -1,20 +1,77 @@
 {
   "version": 1,
-  "timestamp": "2026-07-27T13:35:28.081Z",
+  "timestamp": "2026-07-28T05:57:55.231Z",
   "data": {
     "transactions": [
       {
         "id": 1,
         "type": "income",
-        "amount": 72323,
-        "category_id": 51,
+        "amount": 5000,
+        "category_id": 44,
         "source_id": 1,
-        "date": "2021-01-30",
-        "notes": "Salary",
+        "date": "2021-02-08",
+        "notes": "Get it From Agalya",
         "bill_id": null,
         "transfer_group_id": null,
         "direction": null,
-        "created_at": "2021-01-30 00:00:00",
+        "created_at": "2021-02-08 00:00:00",
+        "loan_id": null,
+        "loan_payment_type": null,
+        "principal_component": null,
+        "interest_component": null,
+        "outstanding_after_payment": null,
+        "linked_date": null
+      },
+      {
+        "id": 2,
+        "type": "income",
+        "amount": 80000,
+        "category_id": 44,
+        "source_id": 1,
+        "date": "2021-02-11",
+        "notes": "Get it From Agalya",
+        "bill_id": null,
+        "transfer_group_id": null,
+        "direction": null,
+        "created_at": "2021-02-11 00:00:00",
+        "loan_id": null,
+        "loan_payment_type": null,
+        "principal_component": null,
+        "interest_component": null,
+        "outstanding_after_payment": null,
+        "linked_date": null
+      },
+      {
+        "id": 3,
+        "type": "income",
+        "amount": 100000,
+        "category_id": 44,
+        "source_id": 1,
+        "date": "2021-02-12",
+        "notes": "Get it From Agalya",
+        "bill_id": null,
+        "transfer_group_id": null,
+        "direction": null,
+        "created_at": "2021-02-12 00:00:00",
+        "loan_id": null,
+        "loan_payment_type": null,
+        "principal_component": null,
+        "interest_component": null,
+        "outstanding_after_payment": null,
+        "linked_date": null
+      },
+      {
+        "id": 4,
+        "type": "income",
+        "amount": 20000,
+        "category_id": 44,
+        "source_id": 1,
+        "date": "2021-02-15",
+        "notes": "Get it From Agalya",
+        "bill_id": null,
+        "transfer_group_id": null,
+        "direction": null,
+        "created_at": "2021-02-15 00:00:00",
         "loan_id": null,
         "loan_payment_type": null,
         "principal_component": null,
@@ -599,6 +656,24 @@
         "color": "#A3E635",
         "is_active": 1,
         "created_at": "2026-07-25 09:08:21"
+      },
+      {
+        "id": 65,
+        "name": "Tata Tiago",
+        "type": "expense",
+        "icon": "car-hatchback",
+        "color": "#64748B",
+        "is_active": 1,
+        "created_at": "2026-07-27 13:56:51"
+      },
+      {
+        "id": 66,
+        "name": "Car",
+        "type": "expense",
+        "icon": "car-electric",
+        "color": "#3B82F6",
+        "is_active": 1,
+        "created_at": "2026-07-27 15:18:18"
       }
     ],
     "sources": [
@@ -722,7 +797,7 @@
         "name": "Post Office Deposit",
         "amount": 4974,
         "due_date": "2021-01-01",
-        "status": "overdue",
+        "status": "paid",
         "is_recurring": 0,
         "recurrence_type": null,
         "recurrence_interval": 1,
@@ -734,11 +809,11 @@
         "auto_pay": 0,
         "notes": "Post Office Deposit For 15 Years",
         "attachment_url": null,
-        "linked_transaction_id": null,
-        "paid_at": null,
-        "is_paid": 0,
+        "linked_transaction_id": 4594,
+        "paid_at": "2026-07-27T14:23:19.319Z",
+        "is_paid": 1,
         "created_at": "2026-07-25T10:30:34.498Z",
-        "updated_at": "2026-07-25T10:30:35.320Z",
+        "updated_at": "2026-07-27T14:23:19.319Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -747,7 +822,7 @@
         "name": "Post Office Deposit",
         "amount": 4974,
         "due_date": "2021-02-01",
-        "status": "overdue",
+        "status": "paid",
         "is_recurring": 0,
         "recurrence_type": null,
         "recurrence_interval": 1,
@@ -759,11 +834,11 @@
         "auto_pay": 0,
         "notes": "Post Office Deposit For 15 Years",
         "attachment_url": null,
-        "linked_transaction_id": null,
-        "paid_at": null,
-        "is_paid": 0,
+        "linked_transaction_id": 4668,
+        "paid_at": "2026-07-27T14:23:40.042Z",
+        "is_paid": 1,
         "created_at": "2026-07-25T10:30:34.502Z",
-        "updated_at": "2026-07-25T10:30:35.465Z",
+        "updated_at": "2026-07-27T14:23:40.042Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -788,7 +863,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.506Z",
-        "updated_at": "2026-07-25T10:30:35.560Z",
+        "updated_at": "2026-07-27T14:52:56.335Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -813,7 +888,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.511Z",
-        "updated_at": "2026-07-25T10:30:35.573Z",
+        "updated_at": "2026-07-27T14:52:56.336Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -838,7 +913,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.516Z",
-        "updated_at": "2026-07-25T10:30:35.618Z",
+        "updated_at": "2026-07-27T14:52:56.337Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -863,7 +938,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.521Z",
-        "updated_at": "2026-07-25T10:30:35.635Z",
+        "updated_at": "2026-07-27T14:52:56.338Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -888,7 +963,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.533Z",
-        "updated_at": "2026-07-25T10:30:35.647Z",
+        "updated_at": "2026-07-27T14:52:56.339Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -913,7 +988,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.538Z",
-        "updated_at": "2026-07-25T10:30:35.662Z",
+        "updated_at": "2026-07-27T14:52:56.340Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -938,7 +1013,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.543Z",
-        "updated_at": "2026-07-25T10:30:35.685Z",
+        "updated_at": "2026-07-27T14:52:56.341Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -963,7 +1038,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.550Z",
-        "updated_at": "2026-07-25T10:30:35.702Z",
+        "updated_at": "2026-07-27T14:52:56.342Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -988,7 +1063,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.564Z",
-        "updated_at": "2026-07-25T10:30:35.721Z",
+        "updated_at": "2026-07-27T14:52:56.343Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1013,7 +1088,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.572Z",
-        "updated_at": "2026-07-25T10:30:35.740Z",
+        "updated_at": "2026-07-27T14:52:56.343Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1038,7 +1113,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.581Z",
-        "updated_at": "2026-07-25T10:30:35.757Z",
+        "updated_at": "2026-07-27T14:52:56.344Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1063,7 +1138,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.588Z",
-        "updated_at": "2026-07-25T10:30:35.771Z",
+        "updated_at": "2026-07-27T14:52:56.345Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1088,7 +1163,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.596Z",
-        "updated_at": "2026-07-25T10:30:35.790Z",
+        "updated_at": "2026-07-27T14:52:56.345Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1113,7 +1188,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.603Z",
-        "updated_at": "2026-07-25T10:30:35.805Z",
+        "updated_at": "2026-07-27T14:52:56.346Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1138,7 +1213,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.613Z",
-        "updated_at": "2026-07-25T10:30:35.828Z",
+        "updated_at": "2026-07-27T14:52:56.346Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1163,7 +1238,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.620Z",
-        "updated_at": "2026-07-25T10:30:35.844Z",
+        "updated_at": "2026-07-27T14:52:56.347Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1188,7 +1263,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.626Z",
-        "updated_at": "2026-07-25T10:30:35.857Z",
+        "updated_at": "2026-07-27T14:52:56.348Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1213,7 +1288,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.633Z",
-        "updated_at": "2026-07-25T10:30:35.874Z",
+        "updated_at": "2026-07-27T14:52:56.348Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1238,7 +1313,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.639Z",
-        "updated_at": "2026-07-25T10:30:35.887Z",
+        "updated_at": "2026-07-27T14:52:56.349Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1263,7 +1338,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.645Z",
-        "updated_at": "2026-07-25T10:30:35.899Z",
+        "updated_at": "2026-07-27T14:52:56.349Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1288,7 +1363,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.651Z",
-        "updated_at": "2026-07-25T10:30:35.921Z",
+        "updated_at": "2026-07-27T14:52:56.437Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1313,7 +1388,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.659Z",
-        "updated_at": "2026-07-25T10:30:35.935Z",
+        "updated_at": "2026-07-27T14:52:56.439Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1338,7 +1413,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.664Z",
-        "updated_at": "2026-07-25T10:30:35.954Z",
+        "updated_at": "2026-07-27T14:52:56.441Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1363,7 +1438,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.672Z",
-        "updated_at": "2026-07-25T10:30:35.969Z",
+        "updated_at": "2026-07-27T14:52:56.443Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1388,7 +1463,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.682Z",
-        "updated_at": "2026-07-25T10:30:35.986Z",
+        "updated_at": "2026-07-27T14:52:56.445Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1413,7 +1488,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.689Z",
-        "updated_at": "2026-07-25T10:30:36.003Z",
+        "updated_at": "2026-07-27T14:52:56.446Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1438,7 +1513,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.695Z",
-        "updated_at": "2026-07-25T10:30:36.019Z",
+        "updated_at": "2026-07-27T14:52:56.448Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1463,7 +1538,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.701Z",
-        "updated_at": "2026-07-25T10:30:36.033Z",
+        "updated_at": "2026-07-27T14:52:56.449Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1488,7 +1563,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.708Z",
-        "updated_at": "2026-07-25T10:30:36.049Z",
+        "updated_at": "2026-07-27T14:52:56.450Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1513,7 +1588,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.715Z",
-        "updated_at": "2026-07-25T10:30:36.067Z",
+        "updated_at": "2026-07-27T14:52:56.450Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1538,7 +1613,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.725Z",
-        "updated_at": "2026-07-25T10:30:36.084Z",
+        "updated_at": "2026-07-27T14:52:56.451Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1563,7 +1638,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.736Z",
-        "updated_at": "2026-07-25T10:30:36.100Z",
+        "updated_at": "2026-07-27T14:52:56.452Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1588,7 +1663,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.745Z",
-        "updated_at": "2026-07-25T10:30:36.118Z",
+        "updated_at": "2026-07-27T14:52:56.453Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1613,7 +1688,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.751Z",
-        "updated_at": "2026-07-25T10:30:36.140Z",
+        "updated_at": "2026-07-27T14:52:56.454Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1638,7 +1713,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.758Z",
-        "updated_at": "2026-07-25T10:30:36.156Z",
+        "updated_at": "2026-07-27T14:52:56.455Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1663,7 +1738,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.766Z",
-        "updated_at": "2026-07-25T10:30:36.172Z",
+        "updated_at": "2026-07-27T14:52:56.455Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1688,7 +1763,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.771Z",
-        "updated_at": "2026-07-25T10:30:36.190Z",
+        "updated_at": "2026-07-27T14:52:56.456Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1713,7 +1788,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.778Z",
-        "updated_at": "2026-07-25T10:30:36.206Z",
+        "updated_at": "2026-07-27T14:52:56.457Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1738,7 +1813,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.784Z",
-        "updated_at": "2026-07-25T10:30:36.223Z",
+        "updated_at": "2026-07-27T14:52:56.457Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1763,7 +1838,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.790Z",
-        "updated_at": "2026-07-25T10:30:36.241Z",
+        "updated_at": "2026-07-27T14:52:56.458Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1788,7 +1863,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.794Z",
-        "updated_at": "2026-07-25T10:30:36.258Z",
+        "updated_at": "2026-07-27T14:52:56.459Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1813,7 +1888,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.800Z",
-        "updated_at": "2026-07-25T10:30:36.273Z",
+        "updated_at": "2026-07-27T14:52:56.459Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1838,7 +1913,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.807Z",
-        "updated_at": "2026-07-25T10:30:36.289Z",
+        "updated_at": "2026-07-27T14:52:56.460Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1863,7 +1938,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.814Z",
-        "updated_at": "2026-07-25T10:30:36.304Z",
+        "updated_at": "2026-07-27T14:52:56.461Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1888,7 +1963,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.824Z",
-        "updated_at": "2026-07-25T10:30:36.321Z",
+        "updated_at": "2026-07-27T14:52:56.462Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1913,7 +1988,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.834Z",
-        "updated_at": "2026-07-25T10:30:36.339Z",
+        "updated_at": "2026-07-27T14:52:56.564Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1938,7 +2013,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.840Z",
-        "updated_at": "2026-07-25T10:30:36.355Z",
+        "updated_at": "2026-07-27T14:52:56.566Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1963,7 +2038,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.846Z",
-        "updated_at": "2026-07-25T10:30:36.371Z",
+        "updated_at": "2026-07-27T14:52:56.566Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -1988,7 +2063,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.853Z",
-        "updated_at": "2026-07-25T10:30:36.387Z",
+        "updated_at": "2026-07-27T14:52:56.567Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2013,7 +2088,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.859Z",
-        "updated_at": "2026-07-25T10:30:36.405Z",
+        "updated_at": "2026-07-27T14:52:56.569Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2038,7 +2113,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.865Z",
-        "updated_at": "2026-07-25T10:30:36.427Z",
+        "updated_at": "2026-07-27T14:52:56.569Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2063,7 +2138,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.870Z",
-        "updated_at": "2026-07-25T10:30:36.452Z",
+        "updated_at": "2026-07-27T14:52:56.570Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2088,7 +2163,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.879Z",
-        "updated_at": "2026-07-25T10:30:36.468Z",
+        "updated_at": "2026-07-27T14:52:56.571Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2113,7 +2188,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.883Z",
-        "updated_at": "2026-07-25T10:30:36.483Z",
+        "updated_at": "2026-07-27T14:52:56.573Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2138,7 +2213,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.891Z",
-        "updated_at": "2026-07-25T10:30:36.515Z",
+        "updated_at": "2026-07-27T14:52:56.574Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2163,7 +2238,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.899Z",
-        "updated_at": "2026-07-25T10:30:36.534Z",
+        "updated_at": "2026-07-27T14:52:56.575Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2188,7 +2263,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.904Z",
-        "updated_at": "2026-07-25T10:30:36.549Z",
+        "updated_at": "2026-07-27T14:52:56.577Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2213,7 +2288,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.911Z",
-        "updated_at": "2026-07-25T10:30:36.562Z",
+        "updated_at": "2026-07-27T14:52:56.578Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2238,7 +2313,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.917Z",
-        "updated_at": "2026-07-25T10:30:36.581Z",
+        "updated_at": "2026-07-27T14:52:56.578Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2263,7 +2338,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.923Z",
-        "updated_at": "2026-07-25T10:30:36.597Z",
+        "updated_at": "2026-07-27T14:52:56.579Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2288,7 +2363,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.934Z",
-        "updated_at": "2026-07-25T10:30:36.619Z",
+        "updated_at": "2026-07-27T14:52:56.580Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2313,7 +2388,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.943Z",
-        "updated_at": "2026-07-25T10:30:36.642Z",
+        "updated_at": "2026-07-27T14:52:56.581Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2338,7 +2413,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.949Z",
-        "updated_at": "2026-07-25T10:30:36.657Z",
+        "updated_at": "2026-07-27T14:52:56.581Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2363,7 +2438,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.954Z",
-        "updated_at": "2026-07-25T10:30:36.681Z",
+        "updated_at": "2026-07-27T14:52:56.582Z",
         "deleted_at": null,
         "parent_bill_id": 1
       },
@@ -2388,7 +2463,7 @@
         "paid_at": null,
         "is_paid": 0,
         "created_at": "2026-07-25T10:30:34.960Z",
-        "updated_at": "2026-07-25T10:30:36.690Z",
+        "updated_at": "2026-07-27T14:52:56.583Z",
         "deleted_at": null,
         "parent_bill_id": 1
       }
@@ -2411,6 +2486,18 @@
         "bill_id": 3,
         "transaction_id": 4494,
         "linked_at": "2026-07-26 06:23:05"
+      },
+      {
+        "id": 12,
+        "bill_id": 4,
+        "transaction_id": 4594,
+        "linked_at": "2026-07-27 14:23:19"
+      },
+      {
+        "id": 13,
+        "bill_id": 5,
+        "transaction_id": 4668,
+        "linked_at": "2026-07-27 14:23:39"
       }
     ],
     "loans": [
@@ -3052,10 +3139,10 @@
         "enabled": 1,
         "hour": 22,
         "minute": 0,
-        "notification_identifier": "96f62280-fc8c-4216-b344-e23b40ee274a",
+        "notification_identifier": "87f3fd86-4d36-4b74-a372-75904782ce3f",
         "payload": "{\"screen\":\"TransactionAdd\",\"type\":\"DAILY_SPEND\"}",
         "created_at": "2026-07-25 19:13:42",
-        "updated_at": "2026-07-27 11:02:45"
+        "updated_at": "2026-07-28 04:32:47"
       },
       {
         "id": 2,
@@ -3066,10 +3153,10 @@
         "enabled": 1,
         "hour": 10,
         "minute": 30,
-        "notification_identifier": "ff5559fa-db3e-40d7-a620-bed0b1b62f2e",
+        "notification_identifier": "26ec9ee0-8f1b-4339-955a-4ba4816a9121",
         "payload": "{\"screen\":\"Transactions\",\"type\":\"YESTERDAY_SPEND\"}",
         "created_at": "2026-07-25 19:13:42",
-        "updated_at": "2026-07-27 11:02:45"
+        "updated_at": "2026-07-28 04:32:47"
       },
       {
         "id": 3,
@@ -3080,10 +3167,10 @@
         "enabled": 1,
         "hour": 9,
         "minute": 0,
-        "notification_identifier": "04b2ed76-bc59-48d0-9079-3422ae674bec",
+        "notification_identifier": "a2c4e4a6-49a8-4dea-9574-bafd2ec3fd44",
         "payload": "{\"screen\":\"Bills\",\"type\":\"BILL_DUE\"}",
         "created_at": "2026-07-25 19:13:42",
-        "updated_at": "2026-07-27 11:02:45"
+        "updated_at": "2026-07-28 04:32:47"
       },
       {
         "id": 4,
@@ -3094,10 +3181,10 @@
         "enabled": 1,
         "hour": 9,
         "minute": 0,
-        "notification_identifier": "a3e5362d-b50e-4cb6-8789-1c804ec92963",
+        "notification_identifier": "d9cc4133-6a7f-4279-a371-0d43478e593c",
         "payload": "{\"screen\":\"Loans\",\"type\":\"LOAN_EMI\"}",
         "created_at": "2026-07-25 19:13:42",
-        "updated_at": "2026-07-27 11:02:45"
+        "updated_at": "2026-07-28 04:32:47"
       }
     ]
   }
