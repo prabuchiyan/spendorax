@@ -268,36 +268,44 @@ async function _insertBill({
   return res.insertId;
 }
 
-// ─── backfill (called ONLY on create/update — never on read) ─────────────────
+// ─── backfill ─────────────────────────────────────────────────────────────────
 
 /**
- * FIX: Only generates occurrences from due_date up to the CURRENT MONTH.
- * No future pre-generation — future bills appear naturally as months pass.
+ * FIX: Generates ALL occurrences up to recurrence_end_date (or today if no
+ * end date is set), instead of capping to the current month.
+ *
+ * Root cause of the original bug:
+ *   The old code computed `endOfCurrentMonth` and used it as the upper bound
+ *   for `upTo`. If the bill was created in Nov 2021, `endOfCurrentMonth` was
+ *   "2021-11-30" — meaning only the template's own date fell in that window,
+ *   which was then skipped by the `continue` guard. Result: 0 child rows
+ *   were ever inserted.
+ *
+ * Fix:
+ *   - When `recurrence_end_date` is set, use it directly as `upTo`.
+ *   - When it is not set, fall back to today's date so we don't generate
+ *     unbounded future bills for open-ended recurring series.
  *
  * Called once:
  *  • After createBill for a recurring bill
  *  • After updateBill when recurrence settings change
  *
  * Safe to call multiple times — existing dates are queried from DB first
- * and skipped. Uses string-date comparison so no timezone issues.
+ * and skipped.
  */
 export async function backfillBillOccurrences(templateId) {
   const template = await getBillById(templateId);
   if (!template || !template.is_recurring || !template.recurrence_type) {
     return;
   }
-  const now = new Date();
-  const endOfCurrentMonth = new Date(
-    now.getFullYear(),
-    now.getMonth() + 1,
-    0
-  )
-    .toISOString()
-    .slice(0, 10);
 
+  // FIX: Use recurrence_end_date directly when available, so ALL occurrences
+  // (including historical ones) are generated. Fall back to today only for
+  // open-ended series, to avoid creating unbounded future rows.
+  const today = todayStr();
   const upTo = template.recurrence_end_date
-    ? [template.recurrence_end_date.slice(0, 10), endOfCurrentMonth].sort()[0]
-    : endOfCurrentMonth;
+    ? template.recurrence_end_date.slice(0, 10)
+    : today;
 
   const expectedDates = generateOccurrenceDates(template, upTo);
 
@@ -324,7 +332,7 @@ export async function backfillBillOccurrences(templateId) {
       continue;
     }
 
-    const newId = await _insertBill({
+    await _insertBill({
       name: template.name,
       amount: template.amount,
       due_date: dueDate,
@@ -382,15 +390,6 @@ export async function getBillSeries(templateId) {
     return [template];
   }
 
-  // Fetch all children, including deleted, to properly check for overrides.
-  // Then filter out deleted ones for the returned series.
-  const childRes = await executeSql(
-    `SELECT * FROM bills
-     WHERE parent_bill_id = ?
-     ORDER BY due_date DESC`,
-    [templateId]
-  );
-  // Fetch children without relying on SQL parser (works on Web & Mobile)
   const allChildren = (await fetchAllBillsRaw())
     .filter(r => Number(r.parent_bill_id) === Number(templateId))
     .map(normalizeBill)
@@ -439,9 +438,9 @@ export async function getBillsForCurrentMonth(options = {}) {
 
   const now = new Date();
   const year = now.getFullYear();
-  const month = now.getMonth();             // 0-based
+  const month = now.getMonth();
   const today = todayStr();
-  const currentMonthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`; // e.g. '2026-07'
+  const currentMonthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
 
   const allRaw = await fetchAllBillsRaw();
 
@@ -480,7 +479,7 @@ export async function getBillsForCurrentMonth(options = {}) {
 
     // Determine this month's expected due date via string arithmetic
     const endOfMonth = new Date(year, month + 1, 0)
-      .toISOString().slice(0, 10); // timezone-safe: local Date constructor
+      .toISOString().slice(0, 10);
     const upTo = template.recurrence_end_date
       ? [template.recurrence_end_date.slice(0, 10), endOfMonth].sort()[0]
       : endOfMonth;
@@ -821,7 +820,7 @@ async function _ensureNextOccurrence(templateId) {
      LIMIT 1`,
     [templateId, `${nextDate.slice(0, 7)}-01`, `${nextDate.slice(0, 7)}-31`]
   );
-  if (existing.rows.length) return; // already there
+  if (existing.rows.length) return;
 
   await _insertBill({
     name: template.name,
@@ -925,8 +924,8 @@ export async function getTransactionsForBillLink(bill) {
       const bScore =
         (b.category_id === bill.category_id ? 2 : 0) +
         (Number(b.amount) === Number(bill.amount) ? 1 : 0);
-      if (bScore !== aScore) return bScore - aScore;   // higher score first
-      return new Date(b.date) - new Date(a.date);      // then newest first
+      if (bScore !== aScore) return bScore - aScore;
+      return new Date(b.date) - new Date(a.date);
     });
 
     return rows.slice(0, 50);
@@ -1084,7 +1083,7 @@ export default {
   addTransactionToBill, removeTransactionFromBill,
   getBillLinkedTransactions, getBillsForTransaction,
   getTransactionsForBillLink,
-  skipBill, updateBill, deleteBill,
+  skipBill, unskipBill, updateBill, deleteBill,
   runRecurringScheduler, processReminders, runBillMaintenance,
   syncBillStatuses, createBillLinkedTransactionsTable,
 };

@@ -472,6 +472,7 @@ const categoryMap = {
   "Toothbrush": 29,
   "Crabs & Fish Cleaning": 29,
   "Kothamalli & Pudhina": 29,
+  "Pudhina & Kothamalli": 29,
   "Fried Rice Mix": 29,
   "Paste & Soap": 29,
   "Dates": 29,

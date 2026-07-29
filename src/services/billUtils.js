@@ -29,16 +29,66 @@ export function daysBetween(fromStr, toStr) {
 
 export function addRecurrence(dateStr, type, interval = 1) {
   if (!dateStr || !type) return null;
-  const d = new Date(dateStr.slice(0, 10));
+
+  const [year, month, day] = dateStr.slice(0, 10).split('-').map(Number);
   const n = Math.max(1, Number(interval) || 1);
+
+  let y = year;
+  let m = month;
+  let d = day;
+
   switch (type) {
-    case 'daily': d.setDate(d.getDate() + n); break;
-    case 'weekly': d.setDate(d.getDate() + n * 7); break;
-    case 'monthly': d.setMonth(d.getMonth() + n); break;
-    case 'yearly': d.setFullYear(d.getFullYear() + n); break;
-    default: return null;
+    case 'daily': {
+      const dt = new Date(year, month - 1, day + n);
+      return [
+        dt.getFullYear(),
+        String(dt.getMonth() + 1).padStart(2, '0'),
+        String(dt.getDate()).padStart(2, '0'),
+      ].join('-');
+    }
+
+    case 'weekly': {
+      const dt = new Date(year, month - 1, day + (n * 7));
+      return [
+        dt.getFullYear(),
+        String(dt.getMonth() + 1).padStart(2, '0'),
+        String(dt.getDate()).padStart(2, '0'),
+      ].join('-');
+    }
+
+    case 'monthly': {
+      let totalMonths = (month - 1) + n;
+      y += Math.floor(totalMonths / 12);
+      m = (totalMonths % 12) + 1;
+
+      // Last day of target month
+      const lastDay = new Date(y, m, 0).getDate();
+      d = Math.min(day, lastDay);
+
+      return [
+        y,
+        String(m).padStart(2, '0'),
+        String(d).padStart(2, '0'),
+      ].join('-');
+    }
+
+    case 'yearly': {
+      y += n;
+
+      // Handle Feb 29 on non-leap years
+      const lastDay = new Date(y, month, 0).getDate();
+      d = Math.min(day, lastDay);
+
+      return [
+        y,
+        String(month).padStart(2, '0'),
+        String(d).padStart(2, '0'),
+      ].join('-');
+    }
+
+    default:
+      return null;
   }
-  return d.toISOString().slice(0, 10);
 }
 
 export function computeBillStatus(bill, today = todayStr()) {
