@@ -160,9 +160,51 @@ function OccurrenceList({ series, selectedId, onSelect }) {
             >
               <Text style={{ color: selected ? '#fff' : Colors.muted, fontSize: 11, fontWeight: '700' }}>{month}</Text>
               <Text style={{ fontSize: 24, fontWeight: '900', color: selected ? '#fff' : Colors.text }}>{day}</Text>
-              <Text numberOfLines={1} style={{ marginTop: 6, fontSize: 13, fontWeight: '700', color: selected ? '#fff' : display.color }}>
-                {formatCurrency(occ.amount)}
-              </Text>
+              <View
+                style={{
+                  marginTop: 8,
+                  alignItems: 'center',
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 10,
+                    color: selected ? '#fff' : Colors.muted,
+                  }}
+                >
+                  Due
+                </Text>
+
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: '700',
+                    color: selected ? '#fff' : Colors.text,
+                  }}
+                >
+                  {formatCurrency(occ.amount)}
+                </Text>
+
+                <Text
+                  style={{
+                    marginTop: 4,
+                    fontSize: 10,
+                    color: selected ? '#fff' : Colors.muted,
+                  }}
+                >
+                  Paid
+                </Text>
+
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: '700',
+                    color: selected ? '#fff' : '#2DBE60',
+                  }}
+                >
+                  {formatCurrency(occ.paid_amount || 0)}
+                </Text>
+              </View>
               <MaterialCommunityIcons
                 name={
                   display.label === 'Paid' ? 'check-circle' :
@@ -351,7 +393,7 @@ export default function BillDetailScreen({ route, navigation }) {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [showLinkModal, setShowLinkModal] = useState(false);
-  const [selectedChartLabel, setSelectedChartLabel] = useState(null);
+  const [selectedLabel, setSelectedLabel] = useState(null);
   const [showMoreDetails, setShowMoreDetails] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -363,32 +405,56 @@ export default function BillDetailScreen({ route, navigation }) {
     if (bill) navigation.setOptions({ title: bill.name });
   }, [bill]);
 
+  const filteredSeries = React.useMemo(() => {
+    if (!selectedOcc) return series;
+
+    return series.filter(
+      occ => occ.id === selectedOcc.id
+    );
+  }, [series, selectedOcc]);
+
   // ── hooks 17 & 18 — MUST be before any early return ──────────────────────
   // FIX: these were previously placed AFTER the early returns, causing
   // "Rendered more hooks than during the previous render" on mobile because
   // bill=null on first render triggered an early return, skipping these hooks.
   const chartData = React.useMemo(() => {
-    const map = {};
-    [...series].reverse().forEach(occ => {
-      if (!occ.due_date) return;
-      const d = new Date(occ.due_date);
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const label = `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
-      if (!map[label]) map[label] = 0;
-      map[label] += Number(occ.amount || 0);
+    return series.map(occ => {
+      const date = new Date(occ.due_date);
+
+      return {
+        id: occ.id,
+        label: date.toLocaleDateString("en", {
+          month: "short",
+          year: "2-digit",
+        }), // Jan 26, Feb 26, Jan 27...
+        due: Number(occ.amount || 0),
+        paid: Number(occ.paid_amount || 0),
+      };
     });
-    return { labels: Object.keys(map), values: Object.values(map) };
   }, [series]);
 
-  const filteredSeries = React.useMemo(() => {
-    if (!selectedChartLabel) return series;
-    return series.filter(occ => {
-      if (!occ.due_date) return false;
-      const d = new Date(occ.due_date);
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}` === selectedChartLabel;
-    });
-  }, [series, selectedChartLabel]);
+  const totalDueAmount = React.useMemo(() => {
+    return series.reduce((sum, bill) => sum + Number(bill.amount || 0), 0);
+  }, [series]);
+
+  const totalPaidAmount = React.useMemo(() => {
+    return series.reduce((sum, bill) => sum + Number(bill.paid_amount || 0), 0);
+  }, [series]);
+
+  const pendingAmount = totalDueAmount - totalPaidAmount;
+
+  const paidCount = React.useMemo(() => {
+    return series.filter(b => Number(b.paid_amount || 0) > 0).length;
+  }, [series]);
+
+  const paymentPercentage = React.useMemo(() => {
+    if (totalDueAmount === 0) return 0;
+
+    return Math.min(
+      100,
+      (totalPaidAmount / totalDueAmount) * 100
+    );
+  }, [totalDueAmount, totalPaidAmount]);
 
   // ── Early returns AFTER every hook ───────────────────────────────────────
   if (!bill && !editing) {
@@ -441,9 +507,12 @@ export default function BillDetailScreen({ route, navigation }) {
     if (occ) {
       setLinkedTxs(await getBillLinkedTransactions(occ.id));
       if (occ.due_date) {
-        const d = new Date(occ.due_date);
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        setSelectedChartLabel(`${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`);
+        setSelectedLabel(
+          new Date(occ.due_date).toLocaleDateString("en", {
+            month: "short",
+            year: "2-digit",
+          })
+        );
       }
     }
   }
@@ -504,11 +573,12 @@ export default function BillDetailScreen({ route, navigation }) {
   async function handleSelectOccurrence(occ) {
     setSelectedOcc(occ);
     setLinkedTxs(await getBillLinkedTransactions(occ.id));
-    if (occ.due_date) {
-      const d = new Date(occ.due_date);
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      setSelectedChartLabel(`${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`);
-    }
+    setSelectedLabel(
+      new Date(occ.due_date).toLocaleDateString("en", {
+        month: "short",
+        year: "2-digit",
+      })
+    );
   }
 
   async function handleSaveOccurrence(newAmount, newDueDate) {
@@ -549,28 +619,147 @@ export default function BillDetailScreen({ route, navigation }) {
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 120 }}
       >
+
+        {/* Bill Summary */}
+        <Card style={{ marginBottom: 12, borderRadius: 20 }}>
+          <Text style={{
+            fontSize: 18,
+            fontWeight: '800',
+            color: Colors.text,
+            marginBottom: 18,
+          }}>
+            Bill Summary
+          </Text>
+
+          <View style={{ alignItems: 'center', marginBottom: 20 }}>
+            <Text style={{
+              fontSize: 34,
+              fontWeight: '900',
+              color: '#2DBE60',
+            }}>
+              {formatCurrency(totalPaidAmount)}
+            </Text>
+
+            <Text style={{
+              color: Colors.muted,
+              fontWeight: '600',
+              marginTop: 4,
+            }}>
+              Total Amount Paid
+            </Text>
+          </View>
+
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+            }}
+          >
+            <View style={styles.summaryTile}>
+              <MaterialCommunityIcons
+                name="check-circle"
+                size={26}
+                color="#2DBE60"
+              />
+
+              <Text style={styles.summaryValue}>
+                {paidCount}
+              </Text>
+
+              <Text style={styles.summaryLabel}>
+                Paid Bills
+              </Text>
+            </View>
+
+            <View style={styles.summaryTile}>
+              <MaterialCommunityIcons
+                name="clock-outline"
+                size={26}
+                color="#FF9800"
+              />
+
+              <Text style={styles.summaryValue}>
+                {formatCurrency(pendingAmount)}
+              </Text>
+
+              <Text style={styles.summaryLabel}>
+                Pending
+              </Text>
+            </View>
+
+            <View style={styles.summaryTile}>
+              <MaterialCommunityIcons
+                name="receipt"
+                size={26}
+                color={Colors.primary}
+              />
+
+              <Text style={styles.summaryValue}>
+                {series.length}
+              </Text>
+
+              <Text style={styles.summaryLabel}>
+                Total Bills
+              </Text>
+            </View>
+          </View>
+
+          <View
+            style={{
+              marginTop: 20,
+            }}
+          >
+            <View
+              style={{
+                height: 10,
+                borderRadius: 6,
+                backgroundColor: '#ECECEC',
+                overflow: 'hidden',
+              }}
+            >
+              <View
+                style={{
+                  width: `${paymentPercentage}%`,
+                  height: '100%',
+                  backgroundColor: '#2DBE60',
+                }}
+              />
+            </View>
+
+            <Text
+              style={{
+                marginTop: 8,
+                textAlign: 'center',
+                color: Colors.muted,
+                fontWeight: '600',
+              }}
+            >
+              {formatCurrency(totalPaidAmount)} of {formatCurrency(totalDueAmount)} Paid
+            </Text>
+          </View>
+        </Card>
+
         {/* Chart */}
         <Card style={{ marginBottom: 12, borderRadius: 20, overflow: 'hidden' }}>
           <Text style={{ fontWeight: '800', fontSize: 17, color: Colors.text, marginBottom: 10 }}>
             Bill History
           </Text>
           <PremiumRoundedBarChart
-            labels={chartData.labels}
-            values={chartData.values}
+            labels={chartData.map(x => x.label)}
+            ids={chartData.map(x => x.id)}
+            dueValues={chartData.map(x => x.due)}
+            paidValues={chartData.map(x => x.paid)}
             width={screenWidth - 56}
             height={250}
             baseColor={category?.color || Colors.primary}
-            selectedLabel={selectedChartLabel}
-            isEmpty={chartData.labels.length === 0}
-            onBarPress={data => {
-              setSelectedChartLabel(data.label);
-              const match = series.find(occ => {
-                if (!occ.due_date) return false;
-                const d = new Date(occ.due_date);
-                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                return `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}` === data.label;
-              });
-              if (match) handleSelectOccurrence(match);
+            selectedLabel={selectedLabel}
+            isEmpty={chartData.length === 0}
+            onBarPress={(data) => {
+              const match = series.find(x => x.id === data.id);
+
+              if (match) {
+                handleSelectOccurrence(match);
+              }
             }}
           />
         </Card>
@@ -583,9 +772,48 @@ export default function BillDetailScreen({ route, navigation }) {
             </View>
             <View style={{ flex: 1, marginLeft: 15 }}>
               <Text numberOfLines={1} style={{ fontSize: 19, fontWeight: '800', color: Colors.text }}>{bill.name}</Text>
-              <Text style={{ fontSize: 28, marginTop: 4, fontWeight: '900', color: display.color }}>
-                {formatCurrency(activeBill.amount)}
-              </Text>
+              <View style={{ marginTop: 8 }}>
+
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: Colors.muted,
+                  }}
+                >
+                  Due Amount
+                </Text>
+
+                <Text
+                  style={{
+                    fontSize: 30,
+                    fontWeight: '900',
+                    color: display.color,
+                  }}
+                >
+                  {formatCurrency(activeBill.amount)}
+                </Text>
+
+                <Text
+                  style={{
+                    marginTop: 8,
+                    fontSize: 13,
+                    color: Colors.muted,
+                  }}
+                >
+                  Paid Amount
+                </Text>
+
+                <Text
+                  style={{
+                    fontSize: 24,
+                    fontWeight: '800',
+                    color: '#2DBE60',
+                  }}
+                >
+                  {formatCurrency(activeBill.paid_amount || 0)}
+                </Text>
+
+              </View>
               <View style={{ alignSelf: 'flex-start', marginTop: 8, backgroundColor: display.color, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 }}>
                 <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>{display.label}</Text>
               </View>
@@ -738,4 +966,19 @@ const styles = StyleSheet.create({
   actionButton: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: 14 },
   actionText: { marginTop: 3, fontSize: 11, fontWeight: '700', color: Colors.text },
   actionTextWhite: { marginTop: 3, fontSize: 11, fontWeight: '700', color: '#fff' },
+  summaryTile: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  summaryValue: {
+    marginTop: 8,
+    fontSize: 18,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  summaryLabel: {
+    marginTop: 3,
+    color: Colors.muted,
+    fontSize: 12,
+  },
 });

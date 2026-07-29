@@ -36,14 +36,17 @@ const formatCompactAmount = (amount) => {
   const num = Number(amount || 0);
   const abs = Math.abs(num);
   if (abs >= 10000000) return `₹${(num / 10000000).toFixed(1).replace(/\.0$/, '')}Cr`;
-  if (abs >= 100000)   return `₹${(num / 100000).toFixed(1).replace(/\.0$/, '')}L`;
-  if (abs >= 1000)     return `₹${(num / 1000).toFixed(1).replace(/\.0$/, '')}K`;
+  if (abs >= 100000) return `₹${(num / 100000).toFixed(1).replace(/\.0$/, '')}L`;
+  if (abs >= 1000) return `₹${(num / 1000).toFixed(1).replace(/\.0$/, '')}K`;
   return `₹${num.toLocaleString('en-IN')}`;
 };
 
 export default function PremiumRoundedBarChart({
   labels = [],
+  ids = [],
   values = [],
+  dueValues = [],
+  paidValues = [],
   width,
   height = 165,
   baseColor,
@@ -83,8 +86,10 @@ export default function PremiumRoundedBarChart({
     );
   }
 
-  const maxValue = Math.max(...values, 1);
   const chartInnerWidth = Math.max(width, labels.length * ITEM_WIDTH);
+  const finalDue = dueValues.length > 0 ? dueValues : values;
+  const finalPaid = paidValues.length > 0 ? paidValues : values;
+  const maxValue = Math.max(...finalDue, 1);
 
   return (
     <ScrollView
@@ -95,19 +100,39 @@ export default function PremiumRoundedBarChart({
     >
       <View style={[styles.customChartWrap, { width: chartInnerWidth, height }]}>
         <View style={styles.customChartBarsRow}>
-          {values.map((value, index) => {
+          {finalDue.map((due, index) => {
             const selected = labels[index] === selectedLabel;
-            const barHeight = maxValue > 0 ? (value / maxValue) * BAR_TRACK_HEIGHT : 0;
+            // const due = Number(finalDue[index] || 0);
+            const paid = Number(finalPaid[index] || 0);
+            const barHeight =
+              (due / maxValue) * BAR_TRACK_HEIGHT;
+            const paidHeight =
+              due === 0
+                ? 0
+                : (paid / due) * barHeight;
             const barColor = selected
               ? baseColor || Colors.primary
-              : getPremiumBarColor(baseColor, index, values.length, 0.55);
+              : getPremiumBarColor(
+                baseColor,
+                index,
+                finalDue.length,
+                0.55
+              );
 
             return (
               <TouchableOpacity
                 key={`${labels[index]}-${index}`}
                 activeOpacity={0.9}
                 style={styles.customBarItem}
-                onPress={() => onBarPress?.({ index, value, label: labels[index] })}
+                onPress={() =>
+                  onBarPress?.({
+                    id: ids[index],
+                    index,
+                    value: due,
+                    paid,
+                    label: labels[index],
+                  })
+                }
               >
                 <View style={styles.customBarTrack}>
                   <View style={[styles.customBarGroup, { height: barHeight + 22 }]}>
@@ -118,19 +143,31 @@ export default function PremiumRoundedBarChart({
                         selected && { color: baseColor || Colors.primary, fontSize: 11 },
                       ]}
                     >
-                      {formatCompactAmount(value)}
+                      {formatCompactAmount(due)}
                     </Text>
                     <View
                       style={[
                         styles.customBar,
                         {
                           height: barHeight,
-                          backgroundColor: barColor,
-                          borderRadius: selected ? 20 : 16,
                           width: selected ? 32 : 26,
+                          backgroundColor: "#ECECEC",
+                          borderRadius: selected ? 20 : 16,
+                          overflow: "hidden",
                         },
                       ]}
-                    />
+                    >
+                      <View
+                        style={{
+                          position: "absolute",
+                          bottom: 0,
+                          width: "100%",
+                          height: paidHeight,
+                          backgroundColor: barColor,
+                          borderRadius: selected ? 20 : 16,
+                        }}
+                      />
+                    </View>
                   </View>
                 </View>
                 <Text
@@ -152,14 +189,14 @@ export default function PremiumRoundedBarChart({
 }
 
 const styles = StyleSheet.create({
-  customChartWrap:    { justifyContent: 'flex-end' },
+  customChartWrap: { justifyContent: 'flex-end' },
   customChartBarsRow: { flexDirection: 'row', alignItems: 'flex-end' },
-  customBarItem:      { width: 42, marginRight: 10, alignItems: 'center' },
-  customBarTrack:     { width: 38, height: BAR_TRACK_HEIGHT + 22, justifyContent: 'flex-end', alignItems: 'center' },
-  customBarGroup:     { width: '100%', alignItems: 'center', justifyContent: 'flex-end' },
-  customBarValue:     { fontSize: 10, fontWeight: '800', color: Colors.text, marginBottom: 6, maxWidth: 56, textAlign: 'center' },
-  customBar:          { width: 28 },
-  customBarLabel:     { marginTop: 10, fontSize: 11, fontWeight: '700', color: Colors.muted },
-  emptyChartArea:     { alignItems: 'center', justifyContent: 'center' },
-  emptyChartText:     { fontSize: 13, fontWeight: '600', color: Colors.muted },
+  customBarItem: { width: 42, marginRight: 10, alignItems: 'center' },
+  customBarTrack: { width: 38, height: BAR_TRACK_HEIGHT + 22, justifyContent: 'flex-end', alignItems: 'center' },
+  customBarGroup: { width: '100%', alignItems: 'center', justifyContent: 'flex-end' },
+  customBarValue: { fontSize: 10, fontWeight: '800', color: Colors.text, marginBottom: 6, maxWidth: 56, textAlign: 'center' },
+  customBar: { width: 28 },
+  customBarLabel: { marginTop: 10, fontSize: 11, fontWeight: '700', color: Colors.muted },
+  emptyChartArea: { alignItems: 'center', justifyContent: 'center' },
+  emptyChartText: { fontSize: 13, fontWeight: '600', color: Colors.muted },
 });

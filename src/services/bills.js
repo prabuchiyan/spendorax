@@ -413,8 +413,36 @@ export async function getBillSeries(templateId) {
 
   // Combine and sort newest first
   const series = activeTemplate ? [activeTemplate, ...children] : [...children];
-  return series.sort((a, b) =>
-    (b.due_date || '').localeCompare(a.due_date || '')
+
+  const links = rowsToArray(
+    await executeSql(`SELECT * FROM bill_linked_transactions`, [])
+  );
+
+  const transactions = rowsToArray(
+    await executeSql(`SELECT * FROM transactions`, [])
+  );
+
+  const enriched = series.map(bill => {
+
+    const billLinks = links.filter(
+      l => Number(l.bill_id) === Number(bill.id)
+    );
+
+    const paidAmount = billLinks.reduce((sum, link) => {
+      const tx = transactions.find(
+        t => Number(t.id) === Number(link.transaction_id)
+      );
+      return sum + Number(tx?.amount || 0);
+    }, 0);
+
+    return {
+      ...bill,
+      paid_amount: paidAmount,
+    };
+  });
+
+  return enriched.sort((a, b) =>
+    (a.due_date || '').localeCompare(b.due_date || '')
   );
 }
 
