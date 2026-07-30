@@ -195,7 +195,8 @@ export async function pickBackupFile() {
         'budgets',
         'bills',
         'loans',
-        'loan_payments'
+        'loan_payments',
+        'notifications'
       ];
 
       for (const key of requiredKeys) {
@@ -228,7 +229,6 @@ export async function pickBackupFile() {
         'bill_linked_transactions',
         'loans',
         'loan_payments',
-        'notifications'
       ];
 
       for (const key of requiredKeys) {
@@ -236,6 +236,9 @@ export async function pickBackupFile() {
           throw new Error(`Missing required data: ${key}`);
         }
       }
+
+      // notifications is optional — older v2 exports may not include it
+      backupData.data.notifications ??= backupData.data.notification_settings ?? [];
 
       return backupData;
     }

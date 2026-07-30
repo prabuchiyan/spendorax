@@ -49,8 +49,6 @@ export async function createBillLinkedTransactionsTable() {
 }
 
 export async function addTransactionToBill(billId, transactionId) {
-  console.log('INSERT', billId, transactionId);
-
   try {
     await executeSql(
       `INSERT OR IGNORE INTO bill_linked_transactions (bill_id, transaction_id) VALUES (?, ?)`,
@@ -61,29 +59,12 @@ export async function addTransactionToBill(billId, transactionId) {
       `SELECT * FROM bill_linked_transactions WHERE bill_id = ?`,
       [billId]
     );
-
-    console.log('AFTER INSERT', rowsToArray(res));
   } catch (e) {
-    console.log(JSON.stringify(e, null, 2));
     console.log(e);
   }
 }
 
 export async function removeTransactionFromBill(billId, transactionId) {
-  console.log(
-    "removeTransactionFromBill",
-    "billId =", billId,
-    "transactionId =", transactionId
-  );
-
-  const before = await executeSql(
-    `SELECT id, parent_bill_id, due_date, status, is_paid
-   FROM bills
-   WHERE id = ?`,
-    [billId]
-  );
-
-  console.log("Before:", before.rows.item(0));
   await executeSql(
     `DELETE FROM bill_linked_transactions
      WHERE bill_id = ? AND transaction_id = ?`,
@@ -98,25 +79,6 @@ export async function removeTransactionFromBill(billId, transactionId) {
       [billId]
     )
   );
-
-  console.log(
-    "Remaining links:",
-    remaining.length,
-    remaining
-  );
-
-  const verify = rowsToArray(
-    await executeSql(
-      `SELECT *
-     FROM bill_linked_transactions
-     WHERE bill_id = ?
-       AND transaction_id = ?`,
-      [billId, transactionId]
-    )
-  );
-
-  console.log("Exact link after delete:", verify);
-
   // No linked transactions left -> reset bill status
   if (remaining.length === 0) {
     await executeSql(
@@ -136,19 +98,9 @@ export async function removeTransactionFromBill(billId, transactionId) {
       ]
     );
   }
-  const after = await executeSql(
-    `SELECT id, parent_bill_id, due_date, status, is_paid
-   FROM bills
-   WHERE id = ?`,
-    [billId]
-  );
-
-  console.log("After:", after.rows.item(0));
 }
 
 export async function getBillLinkedTransactions(billId) {
-  console.log('Loading bill links', billId);
-
   try {
     const res = await executeSql(
       `SELECT t.*, s.name as source_name, c.name as category_name,
@@ -869,8 +821,6 @@ async function _ensureNextOccurrence(templateId) {
 // ─── linkAdditionalTransaction ────────────────────────────────────────────────
 
 export async function linkAdditionalTransaction(billId, transactionId) {
-  console.log('Linking', billId, transactionId);
-
   // Create the bill ↔ transaction link
   await addTransactionToBill(billId, transactionId);
 
