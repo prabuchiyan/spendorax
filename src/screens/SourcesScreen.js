@@ -10,15 +10,16 @@ import { Colors, Spacing } from '../components/Theme';
 import SourceCreateModal from '../components/SourceCreateModal';
 import { Searchbar, Avatar } from 'react-native-paper';
 import FAB from '../components/FAB';
+import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 
 export default function SourcesScreen({ route, navigation }) {
-
   const [items, setItems] = useState([]);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmTargetId, setConfirmTargetId] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editSource, setEditSource] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const { balanceVisible } = useBalanceVisibility();
 
   async function load() {
     const sources = await getSources(true);
@@ -135,14 +136,10 @@ export default function SourcesScreen({ route, navigation }) {
                 </View>
 
                 <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
-                  <Text
-                    style={{
-                      fontWeight: '800',
-                      fontSize: 16,
-                      color: Number(item.balance || 0) < 0 ? '#E46A6A' : '#36B37E'
-                    }}
-                  >
-                    ₹{Number(item.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  <Text style={{ fontWeight: '800', fontSize: 16, color: Number(item.balance || 0) < 0 ? '#E46A6A' : '#36B37E' }}>
+                    {balanceVisible
+                      ? `₹${Number(item.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                      : '••••••'}
                   </Text>
 
                   <Text style={{ color: Colors.muted, fontSize: 10, marginTop: 2 }}>

@@ -4,6 +4,7 @@ import { Text, View, Image, BackHandler } from 'react-native';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import ErrorBoundary from './src/screens/ErrorBoundary';
+import { BalanceVisibilityProvider } from './src/context/BalanceVisibilityContext';
 import {
   requestPermission,
   rescheduleAll,
@@ -113,34 +114,36 @@ export default function App() {
           style="light"
           backgroundColor="#0B1F3A"
         />
-        <NavigationContainer ref={navigationRef}>
-          <Stack.Navigator>
-            <Stack.Screen
-              name="Drawer"
-              component={DrawerNavigator}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen name="Search" component={SearchScreen} />
-            <Stack.Screen name="TransactionAdd" component={TransactionAddScreen} options={{ title: 'Add Transaction' }} />
-            <Stack.Screen name="SourcesDashboard" component={SourcesDashboard} />
-            <Stack.Screen name="SourcesDetails" component={SourcesDetails} />
-            <Stack.Screen name="SpendAreasDashboard" component={SpendAreasDashboard} />
-            <Stack.Screen name="CategoriesDetails" component={CategoriesDetails} />
-            <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Financial Reports' }} />
-            <Stack.Screen name="Bills" component={BillsScreen} options={{ title: 'Bills' }} />
-            <Stack.Screen name="BillDetail" component={BillDetailScreen} options={{ title: 'Bill Details' }} />
-            <Stack.Screen name="Backup" component={BackupScreen} options={{ title: 'Backup & Restore' }} />
-            <Stack.Screen name="LoanForm" component={LoanFormScreen} options={{ title: 'Add / Edit Loan' }} />
-            <Stack.Screen name="LoanDetails" component={LoanDetailsScreen} options={{ title: 'Loan Details' }} />
-            <Stack.Screen name="LoanPayment" component={LoanPaymentScreen} options={{ title: 'Record Payment' }} />
-            <Stack.Screen name="LoanForeclose" component={LoanForeclosureScreen} options={{ title: 'Loan Foreclose' }} />
-            <Stack.Screen name="LendMore" component={LendMoreScreen} options={{ title: 'Lend More' }} />
-            <Stack.Screen name="LoanList" component={LoanListScreen} options={{ title: 'All Loans' }} />
-            <Stack.Screen name="LoanHistory" component={require('./src/screens/LoanHistoryScreen').default} options={{ title: 'Loan History' }} />
-            <Stack.Screen name="LoanReports" component={require('./src/screens/LoanReportsScreen').default} options={{ title: 'Loan Reports' }} />
-            <Stack.Screen name="NotificationSettings" component={require('./src/screens/NotificationSettingsScreen').default} options={{ title: 'Notifications' }} />
-          </Stack.Navigator>
-        </NavigationContainer>
+        <BalanceVisibilityProvider>
+          <NavigationContainer ref={navigationRef}>
+            <Stack.Navigator>
+              <Stack.Screen
+                name="Drawer"
+                component={DrawerNavigator}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen name="Search" component={SearchScreen} />
+              <Stack.Screen name="TransactionAdd" component={TransactionAddScreen} options={{ title: 'Add Transaction' }} />
+              <Stack.Screen name="SourcesDashboard" component={SourcesDashboard} />
+              <Stack.Screen name="SourcesDetails" component={SourcesDetails} />
+              <Stack.Screen name="SpendAreasDashboard" component={SpendAreasDashboard} />
+              <Stack.Screen name="CategoriesDetails" component={CategoriesDetails} />
+              <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Financial Reports' }} />
+              <Stack.Screen name="Bills" component={BillsScreen} options={{ title: 'Bills' }} />
+              <Stack.Screen name="BillDetail" component={BillDetailScreen} options={{ title: 'Bill Details' }} />
+              <Stack.Screen name="Backup" component={BackupScreen} options={{ title: 'Backup & Restore' }} />
+              <Stack.Screen name="LoanForm" component={LoanFormScreen} options={{ title: 'Add / Edit Loan' }} />
+              <Stack.Screen name="LoanDetails" component={LoanDetailsScreen} options={{ title: 'Loan Details' }} />
+              <Stack.Screen name="LoanPayment" component={LoanPaymentScreen} options={{ title: 'Record Payment' }} />
+              <Stack.Screen name="LoanForeclose" component={LoanForeclosureScreen} options={{ title: 'Loan Foreclose' }} />
+              <Stack.Screen name="LendMore" component={LendMoreScreen} options={{ title: 'Lend More' }} />
+              <Stack.Screen name="LoanList" component={LoanListScreen} options={{ title: 'All Loans' }} />
+              <Stack.Screen name="LoanHistory" component={require('./src/screens/LoanHistoryScreen').default} options={{ title: 'Loan History' }} />
+              <Stack.Screen name="LoanReports" component={require('./src/screens/LoanReportsScreen').default} options={{ title: 'Loan Reports' }} />
+              <Stack.Screen name="NotificationSettings" component={require('./src/screens/NotificationSettingsScreen').default} options={{ title: 'Notifications' }} />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </BalanceVisibilityProvider>
         <ExitConfirmationModal
           visible={visible}
           onCancel={hideDialog}

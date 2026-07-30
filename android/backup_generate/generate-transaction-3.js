@@ -343,6 +343,7 @@ const categoryMap = {
   "Electricity Bill For Shop": 15,
   "Pdkt Home First Floor Electricity": 15,
   "Pdkt Home First Floor Electricity Bill": 15,
+  "Pdkt Home Ground Floor Electricity": 15,
   "Electricity Bill Bangalore": 15,
   "Electricity Bill": 15,
   "Pdkt Home Electricity Bill": 15,
@@ -486,6 +487,7 @@ const categoryMap = {
   "Gold Chit For Abi": 27,
 
   // Groceries
+  "Loreal Shampoo": 38,
   "Odonil": 38,
   "Tooth Brush": 38,
   "Oral Tooth Brush": 38,
@@ -694,6 +696,7 @@ const categoryMap = {
   "Bang Sony TV 32 Inch: Auto Debit": 40,
 
   // Mobile
+  "Reacharge For Myself": 42,
   "Recharge For Myself": 42,
   "Mobile Case For Abi": 42,
   "Recharge For Myself Airtel": 42,
@@ -877,9 +880,11 @@ const categoryMap = {
   "Savings": 54,
 
   // Snacks
+  "Cook Drink For Eniyan": 55,
   "Masaal Poori": 55,
   "Egg Sundal": 55,
   "Cool Drink": 55,
+  "Biscuits For Eniyan": 55,
   "Biscuits & Chocolates": 55,
   "Pop Corn": 55,
   "Sweets From Bakery": 55,
@@ -897,6 +902,10 @@ const categoryMap = {
   "Snacks From Super Market": 55,
   "Cake & Sweets": 55,
   "Snacks For Eniyan": 55,
+  "Biscuits & Chocolate": 55,
+  "Biscuits & Chocolates": 55,
+  "Chocolates & Biscuits": 55,
+  "Chocolate & Biscuits": 55,
   "Chocolate For Eniyan": 55,
   "Chocolates For Eniyan": 55,
   "Cool Drinks For Abi": 55,
@@ -1087,6 +1096,7 @@ const categoryMap = {
   "Pedia Sure 200g": 67,
   "Pedia Sure 400g": 67,
   "Pedia Sure": 67,
+  "Pampers For Chezhiyan": 67,
 
   // Default
   "Default_expense": 41,
