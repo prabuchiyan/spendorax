@@ -7,10 +7,11 @@ import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 
 export default function SourcesDetails({ route, navigation }) {
   const { sourceId, sourceName } = route.params;
-
+  const { balanceVisible } = useBalanceVisibility();
   const [transactions, setTransactions] = useState([]);
   const [categoriesMap, setCategoriesMap] = useState({});
   const [loading, setLoading] = useState(true);
@@ -144,7 +145,9 @@ export default function SourcesDetails({ route, navigation }) {
       <View style={styles.hero}>
         <Text style={styles.heroLabel}>Available Balance</Text>
         <Text style={styles.heroAmount}>
-          ₹{totalBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+          {balanceVisible
+            ? `₹ ${totalBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+            : '••••••'}
         </Text>
       </View>
 
@@ -152,27 +155,29 @@ export default function SourcesDetails({ route, navigation }) {
         <Text style={styles.headerTitle}>Recent Activity</Text>
       </View>
 
-      {loading ? (
-        <View style={styles.center}><Text>Loading...</Text></View>
-      ) : transactions.length === 0 ? (
-        <View style={styles.center}>
-          <MaterialCommunityIcons name="clipboard-text-outline" size={48} color={Colors.muted} />
-          <Text style={{ marginTop: 12, color: Colors.muted }}>No transactions found</Text>
-        </View>
-      ) : (
-        <FlatList
-          ref={flatListRef}
-          data={transactions}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderItem}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 2, }}
-          onScroll={(e) => {
-            lastOffset.current = e.nativeEvent.contentOffset.y;
-          }}
-          scrollEventThrottle={16}
-        />
-      )}
+      {
+        loading ? (
+          <View style={styles.center}><Text>Loading...</Text></View>
+        ) : transactions.length === 0 ? (
+          <View style={styles.center}>
+            <MaterialCommunityIcons name="clipboard-text-outline" size={48} color={Colors.muted} />
+            <Text style={{ marginTop: 12, color: Colors.muted }}>No transactions found</Text>
+          </View>
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            data={transactions}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderItem}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 2, }}
+            onScroll={(e) => {
+              lastOffset.current = e.nativeEvent.contentOffset.y;
+            }}
+            scrollEventThrottle={16}
+          />
+        )
+      }
 
     </View>
   );
