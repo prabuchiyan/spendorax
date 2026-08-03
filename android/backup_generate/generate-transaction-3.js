@@ -1039,6 +1039,7 @@ const categoryMap = {
   "Water Cane": 62,
 
   // Car
+  "Car Parking": 66,
   "Car Petrol": 66,
   "Car : Petrol": 66,
   "Car: Petrol": 66,
