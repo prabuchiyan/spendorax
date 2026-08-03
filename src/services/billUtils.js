@@ -29,25 +29,66 @@ export function daysBetween(fromStr, toStr) {
 
 export function addRecurrence(dateStr, type, interval = 1) {
   if (!dateStr || !type) return null;
-  const d = new Date(dateStr.slice(0, 10));
+
+  const [year, month, day] = dateStr.slice(0, 10).split('-').map(Number);
   const n = Math.max(1, Number(interval) || 1);
+
+  let y = year;
+  let m = month;
+  let d = day;
+
   switch (type) {
-    case 'daily':
-      d.setDate(d.getDate() + n);
-      break;
-    case 'weekly':
-      d.setDate(d.getDate() + n * 7);
-      break;
-    case 'monthly':
-      d.setMonth(d.getMonth() + n);
-      break;
-    case 'yearly':
-      d.setFullYear(d.getFullYear() + n);
-      break;
+    case 'daily': {
+      const dt = new Date(year, month - 1, day + n);
+      return [
+        dt.getFullYear(),
+        String(dt.getMonth() + 1).padStart(2, '0'),
+        String(dt.getDate()).padStart(2, '0'),
+      ].join('-');
+    }
+
+    case 'weekly': {
+      const dt = new Date(year, month - 1, day + (n * 7));
+      return [
+        dt.getFullYear(),
+        String(dt.getMonth() + 1).padStart(2, '0'),
+        String(dt.getDate()).padStart(2, '0'),
+      ].join('-');
+    }
+
+    case 'monthly': {
+      let totalMonths = (month - 1) + n;
+      y += Math.floor(totalMonths / 12);
+      m = (totalMonths % 12) + 1;
+
+      // Last day of target month
+      const lastDay = new Date(y, m, 0).getDate();
+      d = Math.min(day, lastDay);
+
+      return [
+        y,
+        String(m).padStart(2, '0'),
+        String(d).padStart(2, '0'),
+      ].join('-');
+    }
+
+    case 'yearly': {
+      y += n;
+
+      // Handle Feb 29 on non-leap years
+      const lastDay = new Date(y, month, 0).getDate();
+      d = Math.min(day, lastDay);
+
+      return [
+        y,
+        String(month).padStart(2, '0'),
+        String(d).padStart(2, '0'),
+      ].join('-');
+    }
+
     default:
       return null;
   }
-  return d.toISOString().slice(0, 10);
 }
 
 export function computeBillStatus(bill, today = todayStr()) {
@@ -65,12 +106,8 @@ export function getBillDisplayStatus(bill, today = todayStr()) {
   if (status === BILL_STATUS.SKIPPED) return { key: 'skipped', label: 'Skipped', color: STATUS_COLORS.skipped };
   if (status === BILL_STATUS.OVERDUE) return { key: 'overdue', label: 'Overdue', color: STATUS_COLORS.overdue };
   const days = daysBetween(today, bill.due_date);
-  if (days !== null && days >= 0 && days <= 3) {
-    return { key: 'due_soon', label: 'Due Soon', color: STATUS_COLORS.due_soon };
-  }
-  if (days !== null && days > 3) {
-    return { key: 'future', label: 'Upcoming', color: STATUS_COLORS.future };
-  }
+  if (days !== null && days >= 0 && days <= 3) return { key: 'due_soon', label: 'Due Soon', color: STATUS_COLORS.due_soon };
+  if (days !== null && days > 3) return { key: 'future', label: 'Upcoming', color: STATUS_COLORS.future };
   return { key: 'pending', label: 'Pending', color: STATUS_COLORS.pending };
 }
 
@@ -81,9 +118,7 @@ export function formatCurrency(amount) {
 export function formatDueDate(dateStr) {
   if (!dateStr) return 'No due date';
   return new Date(dateStr.slice(0, 10)).toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
+    day: 'numeric', month: 'short', year: 'numeric',
   });
 }
 
@@ -95,4 +130,54 @@ export function isSameMonth(dateStr, year, month) {
 
 export function monthKey(year, month) {
   return `${year}-${String(month + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Generate every expected due date for a recurring bill.
+ * Respects recurrence_end_date. Goes from bill.due_date up to upToDate (inclusive).
+ * FIX: end-date check happens BEFORE push so no extra date leaks past recurrence_end_date.
+ */
+export function generateOccurrenceDates(bill, upToDate = todayStr()) {
+  if (!bill.is_recurring || !bill.recurrence_type || !bill.due_date) return [];
+
+  const dates = [];
+  let cursor = bill.due_date.slice(0, 10);
+  const endDate = bill.recurrence_end_date ? bill.recurrence_end_date.slice(0, 10) : null;
+  const maxIter = 500;
+  let iter = 0;
+
+  while (cursor <= upToDate && iter < maxIter) {
+    iter++;
+    // Check end date BEFORE pushing so nothing past it is ever included
+    if (endDate && cursor > endDate) break;
+    dates.push(cursor);
+    const next = addRecurrence(cursor, bill.recurrence_type, bill.recurrence_interval || 1);
+    if (!next || next === cursor) break;
+    cursor = next;
+  }
+
+  return dates;
+}
+
+/**
+ * Generate future occurrence dates from today+1 up to a horizon (default +13 months).
+ * Used to pre-create upcoming bills on creation.
+ */
+export function generateFutureOccurrenceDates(bill, fromDate = todayStr(), monthsAhead = 13) {
+  if (!bill.is_recurring || !bill.recurrence_type || !bill.due_date) return [];
+
+  const horizon = new Date(fromDate);
+  horizon.setMonth(horizon.getMonth() + monthsAhead);
+  const upTo = horizon.toISOString().slice(0, 10);
+
+  const all = generateOccurrenceDates(bill, upTo);
+  // Return only dates strictly after fromDate
+  return all.filter(d => d > fromDate);
+}
+
+export function getMissingOccurrenceDates(occurrenceDates, existingBills) {
+  const existingDates = new Set(
+    existingBills.map(b => b.due_date?.slice(0, 10)).filter(Boolean)
+  );
+  return occurrenceDates.filter(d => !existingDates.has(d));
 }

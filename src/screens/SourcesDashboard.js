@@ -5,48 +5,38 @@ import { getTransactions } from '../services/transactions';
 import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 
 export default function SourcesDashboard({ navigation }) {
   const [sources, setSources] = useState([]);
   const [totalBalance, setTotalBalance] = useState(0);
+  const { balanceVisible } = useBalanceVisibility();
 
   async function load() {
     const availableSources = await getSources(true);
     const transactions = await getTransactions(1000000, 'Yes');
 
-    // Build balance map using reduce
     const balanceMap = transactions.reduce((acc, txn) => {
       const amt = Number(txn.amount || 0);
       const id = txn.source_id;
-
       if (!id) return acc;
-
       if (!acc[id]) acc[id] = 0;
-
       if (txn.type === 'income') {
         acc[id] += amt;
       } else if (txn.type === 'expense') {
         acc[id] -= amt;
       }
-
       return acc;
     }, {});
 
-    // Merge with initial balance
     const updatedSources = availableSources.map(s => {
       const initial = Number(s.initial_balance || 0);
       const txnBalance = balanceMap[s.id] || 0;
-
-      return {
-        ...s,
-        balance: initial + txnBalance
-      };
+      return { ...s, balance: initial + txnBalance };
     });
 
     setSources(updatedSources);
-
-    const total = updatedSources.reduce((sum, s) => sum + s.balance, 0);
-    setTotalBalance(total);
+    setTotalBalance(updatedSources.reduce((sum, s) => sum + s.balance, 0));
   }
 
   useEffect(() => {
@@ -58,11 +48,13 @@ export default function SourcesDashboard({ navigation }) {
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <ScrollView contentContainerStyle={styles.container}>
 
-        {/* Total Balance */}
+        {/* Total Balance / Net Worth */}
         <View style={styles.heroSection}>
           <Text style={styles.heroLabel}>Net Worth</Text>
           <Text style={styles.heroAmount}>
-            ₹ {totalBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            {balanceVisible
+              ? `₹ ${totalBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+              : '••••••'}
           </Text>
         </View>
 
@@ -101,7 +93,9 @@ export default function SourcesDashboard({ navigation }) {
 
                   <View style={styles.amountWrapper}>
                     <Text style={styles.sourceAmount}>
-                      ₹{Number(item.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      {balanceVisible
+                        ? `₹${Number(item.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                        : '••••••'}
                     </Text>
                     <MaterialCommunityIcons name="chevron-right" size={20} color={Colors.muted} />
                   </View>

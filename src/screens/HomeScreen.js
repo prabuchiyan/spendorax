@@ -16,6 +16,7 @@ import Card from '../components/Card';
 import FAB from '../components/FAB';
 import { Colors, Spacing } from '../components/Theme';
 import BottomStatsBar from '../components/BottomStatsBar';
+import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 
 function daysRemainingInMonth() {
   const now = new Date();
@@ -27,7 +28,7 @@ function daysRemainingInMonth() {
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-function BudgetDonut({ limit = 0, spent = 0, remaining = 0, daysLeft = 0 }) {
+function BudgetDonut({ limit = 0, spent = 0, remaining = 0, daysLeft = 0, balanceVisible = true }) {
   const percentRaw = limit > 0 ? (spent / limit) : 0;
   const percent = Math.max(0, percentRaw);
   const pct = limit > 0 ? Math.min(100, Math.round(percent * 100)) : 0;
@@ -74,7 +75,11 @@ function BudgetDonut({ limit = 0, spent = 0, remaining = 0, daysLeft = 0 }) {
         />
       </Svg>
       <View style={{ position: 'absolute', width: size * 0.7, alignItems: 'center', justifyContent: 'center', padding: 6 }}>
-        <Text style={{ fontWeight: '700', color: innerColor, textAlign: 'center' }}> {remaining >= 0 ? `Safe to Spend: ${fmt(remaining)}` : `Overspent: ${fmt(Math.abs(remaining))}`} </Text>
+        <Text style={{ fontWeight: '700', color: innerColor, textAlign: 'center' }}>
+          {remaining >= 0
+            ? `Safe to Spend: ${balanceVisible ? fmt(remaining) : '••••••'}`
+            : `Overspent: ${balanceVisible ? fmt(Math.abs(remaining)) : '••••••'}`}
+        </Text>
         <Text style={{ fontSize: 13, color: '#666', marginTop: 6, textAlign: 'center' }}>{daysLeft} day(s) left</Text>
         {limit > 0 ? <Text style={{ fontSize: 11, color: '#999', marginTop: 6 }}>Used: {pct}%</Text> : null}
       </View>
@@ -137,6 +142,7 @@ function CategoryDonut({ data = [], categoriesMap = {} }) {
 }
 
 export default function HomeScreen({ navigation }) {
+  const { balanceVisible } = useBalanceVisibility();
   const [balance, setBalance] = useState(null);
   const [topCategories, setTopCategories] = useState([]);
   const [trends, setTrends] = useState([]);
@@ -256,7 +262,7 @@ export default function HomeScreen({ navigation }) {
   );
 
   const sortedBills = [...bills].sort(
-    (a, b) => new Date(a.due_date || 0) - new Date(b.due_date || 0)
+    (a, b) => new Date(b.due_date || 0) - new Date(a.due_date || 0)
   );
 
   const totalBalance = sourceBalances.reduce(
@@ -290,7 +296,7 @@ export default function HomeScreen({ navigation }) {
                 return (
                   <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 12 }}>
                     <TouchableOpacity onPress={() => navigation.navigate('Budgets', { editId: sel.budget.id })}>
-                      <BudgetDonut limit={limit} spent={spent} remaining={remaining} daysLeft={daysLeft} />
+                      <BudgetDonut limit={limit} spent={spent} remaining={remaining} daysLeft={daysLeft} balanceVisible={balanceVisible} />
                     </TouchableOpacity>
                   </View>
                 );
@@ -307,12 +313,7 @@ export default function HomeScreen({ navigation }) {
               }}
             >
               <TouchableOpacity onPress={() => navigation.navigate('Budgets')}>
-                <BudgetDonut
-                  limit={0}
-                  spent={0}
-                  remaining={0}
-                  daysLeft={daysRemainingInMonth()}
-                />
+                <BudgetDonut limit={0} spent={0} remaining={0} daysLeft={daysRemainingInMonth()} balanceVisible={balanceVisible} />
               </TouchableOpacity>
 
               <View
@@ -383,7 +384,9 @@ export default function HomeScreen({ navigation }) {
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontWeight: '600', fontSize: 14 }}>{budget.categoryName}</Text>
                         <Text style={{ fontSize: 12, color: Colors.muted }}>
-                          ₹{budget.spent.toLocaleString('en-IN')} / ₹{budget.budget.toLocaleString('en-IN')}
+                          {balanceVisible
+                            ? `₹${budget.spent.toLocaleString('en-IN')} / ₹${budget.budget.toLocaleString('en-IN')}`
+                            : '•••••• / ••••••'}
                         </Text>
                       </View>
                     </View>
@@ -392,7 +395,9 @@ export default function HomeScreen({ navigation }) {
                         {Math.round(budget.percentage)}%
                       </Text>
                       <Text style={{ fontSize: 11, color: budget.exceeded ? '#E46A6A' : '#36B37E' }}>
-                        {budget.exceeded ? `+₹${Math.abs(budget.remaining).toLocaleString('en-IN')}` : `₹${budget.remaining.toLocaleString('en-IN')}`}
+                        {balanceVisible
+                          ? (budget.exceeded ? `+₹${Math.abs(budget.remaining).toLocaleString('en-IN')}` : `₹${budget.remaining.toLocaleString('en-IN')}`)
+                          : '••••••'}
                       </Text>
                     </View>
                   </View>
@@ -500,15 +505,8 @@ export default function HomeScreen({ navigation }) {
                 </View>
 
                 <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
-                  <Text
-                    style={{
-                      color: r.type === 'expense' ? '#E46A6A' : '#4CAF50',
-                      fontWeight: '700'
-                    }}
-                  >
-                    {r.type === 'expense'
-                      ? `${formatCurrency(r.amount.toFixed(2))}`
-                      : `${formatCurrency(r.amount.toFixed(2))}`}
+                  <Text style={{ color: r.type === 'expense' ? '#E46A6A' : '#4CAF50', fontWeight: '700' }}>
+                    {balanceVisible ? formatCurrency(r.amount.toFixed(2)) : '••••••'}
                   </Text>
                   <Text style={{ color: Colors.muted, fontSize: 12 }}>
                     {new Date(r.date).toLocaleDateString()}
@@ -639,19 +637,19 @@ export default function HomeScreen({ navigation }) {
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
               <View style={{ width: '50%', marginBottom: 6 }}>
                 <Text style={{ fontSize: 11, color: Colors.muted }}>This month</Text>
-                <Text style={{ fontWeight: '700', color: Colors.text }}>{formatCurrency(billsSummary.totalThisMonth)}</Text>
+                <Text style={{ fontWeight: '700', color: Colors.text }}>{balanceVisible ? formatCurrency(billsSummary.totalThisMonth) : '••••••'}</Text>
               </View>
               <View style={{ width: '50%', marginBottom: 6 }}>
                 <Text style={{ fontSize: 11, color: Colors.muted }}>Paid</Text>
-                <Text style={{ fontWeight: '700', color: '#36B37E' }}>{formatCurrency(billsSummary.totalPaid)}</Text>
+                <Text style={{ fontWeight: '700', color: '#36B37E' }}>{balanceVisible ? formatCurrency(billsSummary.totalPaid) : '••••••'}</Text>
               </View>
               <View style={{ width: '50%' }}>
                 <Text style={{ fontSize: 11, color: Colors.muted }}>Overdue</Text>
-                <Text style={{ fontWeight: '700', color: '#E46A6A' }}>{formatCurrency(billsSummary.overdueAmount)}</Text>
+                <Text style={{ fontWeight: '700', color: '#E46A6A' }}>{balanceVisible ? formatCurrency(billsSummary.overdueAmount) : '••••••'}</Text>
               </View>
               <View style={{ width: '50%' }}>
                 <Text style={{ fontSize: 11, color: Colors.muted }}>Next 7 days</Text>
-                <Text style={{ fontWeight: '700', color: '#FFB020' }}>{formatCurrency(billsSummary.upcoming7)}</Text>
+                <Text style={{ fontWeight: '700', color: '#FFB020' }}>{balanceVisible ? formatCurrency(billsSummary.upcoming7) : '••••••'}</Text>
               </View>
             </View>
           ) : null}
@@ -692,7 +690,7 @@ export default function HomeScreen({ navigation }) {
 
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={{ fontWeight: '700', color: display.color }}>
-                    {formatCurrency(b.amount)}
+                    {balanceVisible ? formatCurrency(b.amount) : '••••••'}
                   </Text>
                   <Text style={{ fontSize: 12, color: display.color }}>
                     {display.label}
@@ -712,7 +710,7 @@ export default function HomeScreen({ navigation }) {
           {topCategories.length ? topCategories.map(c => (
             <View key={c.category_id} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
               <Text style={{ color: Colors.text }}>{c.category_name}</Text>
-              <Text style={{ color: '#E46A6A' }}>-{Number(c.amount).toFixed(2)}</Text>
+              <Text style={{ color: '#E46A6A' }}>{balanceVisible ? `-${Number(c.amount).toFixed(2)}` : '••••••'}</Text>
             </View>
           )) : <Text style={{ color: Colors.muted }}>No data</Text>}
         </Card>
@@ -732,6 +730,7 @@ export default function HomeScreen({ navigation }) {
         totalBalance={totalBalance}
         billsSummary={billsSummary?.upcomingAndPendingDueAmt}
         totalMonthlySpend={totalMonthlySpend}
+        balanceVisible={balanceVisible}
       />
       <FAB
         onPress={() => navigation.navigate('TransactionAdd')}

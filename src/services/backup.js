@@ -13,7 +13,7 @@ import { getLoans } from './loans';
 import { getNotifications, updateNotification, getNotificationByType } from '../database/notifications';
 import { rescheduleAll } from './notificationService';
 
-const BACKUP_VERSION = 1;
+const BACKUP_VERSION = 2;
 
 export async function exportBackup() {
   try {
@@ -23,21 +23,77 @@ export async function exportBackup() {
     const budgets = await getBudgets();
     const bills = await getBills();
     const loans = await getLoans();
-    // fetch all loan payments directly (if table exists)
+
+    // Loan Payments
     let loanPayments = [];
     try {
-      const lp = await executeSql('SELECT * FROM loan_payments');
-      for (let i = 0; i < lp.rows.length; i++) loanPayments.push(lp.rows.item(i));
+      const res = await executeSql('SELECT * FROM loan_payments');
+      for (let i = 0; i < res.rows.length; i++) {
+        loanPayments.push(res.rows.item(i));
+      }
     } catch (e) {
       loanPayments = [];
     }
-    // Fetch notification settings
-    let notificationSettings = [];
+
+    // Category Budgets
+    let categoryBudgets = [];
     try {
-      const ns = await getNotifications();
-      notificationSettings = ns;
+      const res = await executeSql('SELECT * FROM category_budgets');
+      for (let i = 0; i < res.rows.length; i++) {
+        categoryBudgets.push(res.rows.item(i));
+      }
     } catch (e) {
-      notificationSettings = [];
+      categoryBudgets = [];
+    }
+
+    // Bill Linked Transactions
+    let billLinkedTransactions = [];
+    try {
+      const res = await executeSql('SELECT * FROM bill_linked_transactions');
+      for (let i = 0; i < res.rows.length; i++) {
+        billLinkedTransactions.push(res.rows.item(i));
+      }
+    } catch (e) {
+      billLinkedTransactions = [];
+    }
+
+    // Backfill bill_id on transactions from bill_linked_transactions.
+    // When a transaction is linked to a bill via addTransactionToBill /
+    // linkAdditionalTransaction, the junction table is updated but the
+    // bill_id column on the transaction row itself may remain null.
+    // Without this backfill the restore has no way to know which bill
+    // a transaction belongs to, breaking the bill↔transaction link.
+    // We build a map of transaction_id → bill_id from the junction table
+    // and apply it to any transaction whose bill_id is currently null.
+    if (billLinkedTransactions.length > 0) {
+      // A transaction can appear in multiple bill_linked_transactions rows
+      // (one bill per occurrence paid). Use the first (lowest id) entry as
+      // the canonical bill_id so we don't pick arbitrarily.
+      const txToBillId = {};
+      for (const link of billLinkedTransactions) {
+        if (
+          link.transaction_id != null &&
+          link.bill_id != null &&
+          txToBillId[link.transaction_id] === undefined
+        ) {
+          txToBillId[link.transaction_id] = link.bill_id;
+        }
+      }
+
+      for (let i = 0; i < transactions.length; i++) {
+        const tx = transactions[i];
+        if (!tx.bill_id && txToBillId[tx.id] != null) {
+          transactions[i] = { ...tx, bill_id: txToBillId[tx.id] };
+        }
+      }
+    }
+
+    // Notifications
+    let notifications = [];
+    try {
+      notifications = await getNotifications();
+    } catch (e) {
+      notifications = [];
     }
 
     const backupData = {
@@ -48,10 +104,12 @@ export async function exportBackup() {
         categories,
         sources,
         budgets,
+        category_budgets: categoryBudgets,
         bills,
+        bill_linked_transactions: billLinkedTransactions,
         loans,
         loan_payments: loanPayments,
-        notification_settings: notificationSettings
+        notifications,
       },
     };
 
@@ -117,18 +175,75 @@ export async function pickBackupFile() {
 
 
     // Validation
-    if (backupData.version !== BACKUP_VERSION) {
-      throw new Error('Invalid backup version');
+    // Validation (Backward Compatible)
+    if (!backupData.version) {
+      throw new Error('Invalid backup file');
     }
 
-    const requiredKeys = ['transactions', 'categories', 'sources', 'budgets', 'bills', 'loans', 'loan_payments'];
-    for (const key of requiredKeys) {
-      if (!backupData.data || !backupData.data[key]) {
-        throw new Error(`Missing required data: ${key}`);
+    if (!backupData.data) {
+      throw new Error('Backup data is missing');
+    }
+
+    // -----------------------------
+    // Version 1 (Old backups)
+    // -----------------------------
+    if (backupData.version === 1) {
+      const requiredKeys = [
+        'transactions',
+        'categories',
+        'sources',
+        'budgets',
+        'bills',
+        'loans',
+        'loan_payments',
+        'notifications'
+      ];
+
+      for (const key of requiredKeys) {
+        if (!Array.isArray(backupData.data[key])) {
+          throw new Error(`Missing required data: ${key}`);
+        }
       }
+
+      // Populate new tables with empty arrays so restore logic
+      // never needs version-specific checks.
+      backupData.data.category_budgets ??= [];
+      backupData.data.bill_linked_transactions ??= [];
+      backupData.data.notifications ??=
+        backupData.data.notification_settings ?? [];
+
+      return backupData;
     }
 
-    return backupData;
+    // -----------------------------
+    // Version 2 (Current)
+    // -----------------------------
+    if (backupData.version >= 2) {
+      const requiredKeys = [
+        'transactions',
+        'categories',
+        'sources',
+        'budgets',
+        'category_budgets',
+        'bills',
+        'bill_linked_transactions',
+        'loans',
+        'loan_payments',
+      ];
+
+      for (const key of requiredKeys) {
+        if (!Array.isArray(backupData.data[key])) {
+          throw new Error(`Missing required data: ${key}`);
+        }
+      }
+
+      // notifications is optional — older v2 exports may not include it
+      backupData.data.notifications ??= backupData.data.notification_settings ?? [];
+
+      return backupData;
+    }
+
+    throw new Error(`Unsupported backup version: ${backupData.version}`);
   } catch (error) {
     console.error('Picking file failed:', error);
     throw error;
@@ -391,14 +506,103 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       categories = [],
       sources = [],
       budgets = [],
+      category_budgets = [],
       bills = [],
+      bill_linked_transactions = [],
       transactions = [],
       loans = [],
       loan_payments = [],
-      notification_settings = [],
+      notifications = [],
+      notification_settings = [], // Backward compatibility
     } = backupData.data || {};
-    const billsWithLinkedTx = bills.filter(b => b.linked_transaction_id);
-    const totalItems = categories.length + sources.length + bills.length + transactions.length + budgets.length + billsWithLinkedTx.length + loans.length + loan_payments.length;
+
+    // Support old backups
+    const restoredNotifications =
+      notifications.length > 0
+        ? notifications
+        : notification_settings;
+
+    // ---------------------------------------------------------------
+    // PRE-RESTORE DEDUPLICATION
+    // A corrupted backup may contain two bill rows for the same logical slot:
+    // same name + due_date + parent_bill_id. One is the "orphan" (overdue,
+    // no linked_transaction_id) and the other is the correct one (paid, linked).
+    // We keep the best bill per slot and re-point bill_linked_transactions that
+    // reference a discarded bill id onto the winner.
+    // ---------------------------------------------------------------
+    const deduplicateBills = (rawBills, rawBillLinkedTxs) => {
+      const bestBySlot = new Map();
+
+      for (const bill of rawBills) {
+        const key = `${bill.name}|${bill.due_date}|${bill.parent_bill_id ?? ''}`;
+        const current = bestBySlot.get(key);
+        if (!current) {
+          bestBySlot.set(key, bill);
+          continue;
+        }
+        // Prefer paid bill with a linked transaction; tiebreak by higher id
+        const score = b => (b.is_paid ? 2 : 0) + (b.linked_transaction_id ? 1 : 0);
+        if (score(bill) > score(current) || (score(bill) === score(current) && bill.id > current.id)) {
+          bestBySlot.set(key, bill);
+        }
+      }
+
+      const winnerSet = new Set(Array.from(bestBySlot.values()).map(b => b.id));
+      const discardedToWinner = {};
+      for (const bill of rawBills) {
+        if (winnerSet.has(bill.id)) continue;
+        const key = `${bill.name}|${bill.due_date}|${bill.parent_bill_id ?? ''}`;
+        const winner = bestBySlot.get(key);
+        if (winner) discardedToWinner[bill.id] = winner.id;
+      }
+
+      // Re-point bill_linked_transactions whose bill_id was discarded, then dedup pairs
+      const seenPairs = new Set();
+      const fixedLinkedTxs = rawBillLinkedTxs
+        .map(item => ({
+          ...item,
+          bill_id: discardedToWinner[item.bill_id] !== undefined
+            ? discardedToWinner[item.bill_id]
+            : item.bill_id,
+        }))
+        .filter(item => {
+          const k = `${item.bill_id}|${item.transaction_id}`;
+          if (seenPairs.has(k)) return false;
+          seenPairs.add(k);
+          return true;
+        });
+
+      console.log(
+        `Bill dedup: ${rawBills.length} → ${bestBySlot.size} bills, ` +
+        `${rawBillLinkedTxs.length} → ${fixedLinkedTxs.length} bill_linked_transactions`
+      );
+
+      return {
+        dedupedBills: Array.from(bestBySlot.values()),
+        dedupedBillLinkedTxs: fixedLinkedTxs,
+        discardedToWinner,
+      };
+    };
+
+    const { dedupedBills, dedupedBillLinkedTxs, discardedToWinner } =
+      deduplicateBills(bills, bill_linked_transactions);
+
+    const cleanBills = dedupedBills;
+    const cleanBillLinkedTxs = dedupedBillLinkedTxs;
+
+    const billsWithLinkedTx = cleanBills.filter(b => b.linked_transaction_id);
+    const totalItems =
+      categories.length +
+      sources.length +
+      cleanBills.length +
+      transactions.length +
+      budgets.length +
+      billsWithLinkedTx.length +
+      loans.length +
+      loan_payments.length +
+      category_budgets.length +
+      cleanBillLinkedTxs.length +
+      restoredNotifications.length;
     let processedItems = 0;
 
     const updateProgress = (completedInChunk, stepMessage) => {
@@ -464,29 +668,95 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
     );
 
     // 3. Bills
+    // CRITICAL FIX: Use direct SQL INSERT instead of createBill().
+    // createBill() calls backfillBillOccurrences() for any recurring template
+    // (is_recurring=1, no parent_bill_id), which auto-generates ALL child bill
+    // rows up to today. The restore then also inserts those same child rows
+    // explicitly from the backup array — doubling every child bill.
+    // Direct INSERT bypasses all side-effect logic, exactly like loans do.
+    //
+    // linked_transaction_id is always set to NULL here — transactions haven't
+    // been restored yet so backup IDs are meaningless at this point.
+    // Step 6 re-links correctly after transactionMap is fully populated.
+    //
+    // Bills are sorted so parent (is_recurring=1) rows come first, ensuring
+    // parent_bill_id foreign keys resolve correctly during merge checks.
+    const sortedBills = [...cleanBills].sort((a, b) => {
+      if (!a.parent_bill_id && b.parent_bill_id) return -1;
+      if (a.parent_bill_id && !b.parent_bill_id) return 1;
+      return (a.id || 0) - (b.id || 0);
+    });
+
     await processBatch(
-      bills,
+      sortedBills,
       async (bill) => {
         if (mode === 'merge') {
+          // Match on name + due_date + parent_bill_id to uniquely identify a bill slot.
+          // parent_bill_id distinguishes child occurrences from each other and from
+          // the template, preventing false merges across different recurring series.
           const existing = await executeSql(
-            `SELECT id FROM bills WHERE name = ? AND due_date = ?`,
-            [bill.name, bill.due_date]
+            `SELECT id FROM bills
+             WHERE name = ?
+               AND due_date = ?
+               AND IFNULL(parent_bill_id, 0) = IFNULL(?, 0)
+             LIMIT 1`,
+            [bill.name, bill.due_date, bill.parent_bill_id
+              ? (billMap[bill.parent_bill_id] || bill.parent_bill_id)
+              : null]
           );
 
           if (existing.rows.length > 0) {
             billMap[bill.id] = existing.rows.item(0).id;
+            // Clear stale linked_transaction_id so step 6 can set the
+            // correctly remapped value without leaving a dangling old ID.
+            await executeSql(
+              `UPDATE bills SET linked_transaction_id = NULL, updated_at = ? WHERE id = ?`,
+              [new Date().toISOString(), existing.rows.item(0).id]
+            );
             return;
           }
         }
 
-        const billToCreate = {
-          ...bill,
-          category_id: categoryMap[bill.category_id] || null,
-          source_id: sourceMap[bill.source_id] || null,
-        };
+        // Direct INSERT — no side effects, no backfill, no duplicate children.
+        const now = new Date().toISOString();
+        const res = await executeSql(
+          `INSERT INTO bills (
+            name, amount, due_date, status,
+            is_recurring, recurrence_type, recurrence_interval, recurrence_end_date,
+            category_id, source_id, reminder_days_before, last_reminded_at,
+            auto_pay, notes, attachment_url,
+            linked_transaction_id, paid_at, is_paid,
+            parent_bill_id, created_at, updated_at, deleted_at
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [
+            bill.name,
+            bill.amount,
+            bill.due_date,
+            bill.status,
+            bill.is_recurring ? 1 : 0,
+            bill.recurrence_type || null,
+            bill.recurrence_interval || 1,
+            bill.recurrence_end_date || null,
+            categoryMap[bill.category_id] || null,
+            sourceMap[bill.source_id] || null,
+            bill.reminder_days_before ?? 2,
+            bill.last_reminded_at || null,
+            bill.auto_pay ? 1 : 0,
+            bill.notes || null,
+            bill.attachment_url || null,
+            null,                                    // linked_transaction_id — set in step 6
+            bill.paid_at || null,
+            bill.is_paid ? 1 : 0,
+            bill.parent_bill_id
+              ? (billMap[bill.parent_bill_id] || null)
+              : null,
+            bill.created_at || now,
+            bill.updated_at || now,
+            bill.deleted_at || null,
+          ]
+        );
 
-        const newId = await createBill(billToCreate);
-        billMap[bill.id] = newId;
+        billMap[bill.id] = res.insertId;
       },
       (count) => {
         updateProgress(count, 'Importing bills...');
@@ -568,6 +838,12 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       async (tx) => {
         // Merge mode duplicate detection
         if (mode === 'merge') {
+          // FIX: Include bill_id in the duplicate check. Bills like recurring deposits
+          // share the same amount, date, and notes across months but belong to different
+          // bill instances. Without bill_id, all those transactions collapse into one
+          // restored row, leaving every other bill unlinked (the "duplicate unlinked bill"
+          // symptom). bill_id is remapped via billMap before comparison.
+          const mappedBillId = tx.bill_id ? (billMap[tx.bill_id] || null) : null;
           const existing = await executeSql(
             `SELECT id
               FROM transactions
@@ -576,13 +852,15 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
               AND date = ?
               AND IFNULL(notes,'') = IFNULL(?, '')
               AND IFNULL(loan_id,0) = IFNULL(?,0)
+              AND IFNULL(bill_id,0) = IFNULL(?,0)
               LIMIT 1`,
             [
               tx.type,
               tx.amount,
               tx.date,
               tx.notes,
-              tx.loan_id ? (loanMap[tx.loan_id] || null) : null
+              tx.loan_id ? (loanMap[tx.loan_id] || null) : null,
+              mappedBillId,
             ]
           );
 
@@ -640,6 +918,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
     }
 
     // 6. Update Bills with linked transactions
+    // Direct SQL UPDATE — avoids updateBill()'s backfillBillOccurrences side effect.
     await processBatch(
       billsWithLinkedTx,
       async (bill) => {
@@ -650,9 +929,10 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           return;
         }
 
-        await updateBill(newBillId, {
-          linked_transaction_id: newTransactionId
-        });
+        await executeSql(
+          `UPDATE bills SET linked_transaction_id = ?, updated_at = ? WHERE id = ?`,
+          [newTransactionId, new Date().toISOString(), newBillId]
+        );
       },
       (count) => {
         updateProgress(count, 'Linking transactions to bills...');
@@ -797,11 +1077,107 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       }
     );
 
-    // 9. Restore notification settings
+    // 8b. Category Budgets
+    await processBatch(
+      category_budgets || [],
+      async (item) => {
+        await executeSql(
+          `INSERT INTO category_budgets
+      (
+        category_id,
+        amount,
+        month,
+        year,
+        created_at,
+        updated_at
+      )
+      VALUES (?,?,?,?,?,?)`,
+          [
+            categoryMap[item.category_id] || null,
+            item.amount,
+            item.month,
+            item.year,
+            item.created_at || new Date().toISOString(),
+            item.updated_at || new Date().toISOString(),
+          ]
+        );
+      },
+      (count) => {
+        updateProgress(count, 'Importing category budgets...');
+      }
+    );
+
+    // 8c. Bill Linked Transactions
+    // Use cleanBillLinkedTxs — already deduplicated and re-pointed above.
+    await processBatch(
+      cleanBillLinkedTxs || [],
+      async (item) => {
+        const newBillId = billMap[item.bill_id];
+        const newTransactionId = transactionMap[item.transaction_id];
+
+        if (!newBillId || !newTransactionId) {
+          return;
+        }
+
+        // FIX: Check for an existing (bill_id, transaction_id) pair before inserting.
+        // In replace mode this is normally safe, but in merge mode — or if step 6
+        // already wrote linked_transaction_id on the bill — a duplicate row can slip
+        // through and cause the bill to appear twice in the UI.
+        const existingLink = await executeSql(
+          `SELECT id FROM bill_linked_transactions WHERE bill_id = ? AND transaction_id = ? LIMIT 1`,
+          [newBillId, newTransactionId]
+        );
+
+        if (existingLink.rows.length > 0) {
+          return;
+        }
+
+        await executeSql(
+          `INSERT INTO bill_linked_transactions
+      (
+        bill_id,
+        transaction_id,
+        linked_at
+      )
+      VALUES (?,?,?)`,
+          [
+            newBillId,
+            newTransactionId,
+            item.linked_at || new Date().toISOString(),
+          ]
+        );
+      },
+      (count) => {
+        updateProgress(count, 'Importing bill linked transactions...');
+      }
+    );
+
+    // 8d. Backfill bill_id on transactions from bill_linked_transactions.
+    // Handles old backups where bill_id was null on the transaction row but
+    // the junction table had the correct mapping. The export now writes bill_id
+    // correctly, but this step ensures older backups restore cleanly too.
+    // We also always run it as a safety net in case anything slipped through.
+    for (const item of cleanBillLinkedTxs) {
+      const newBillId = billMap[item.bill_id];
+      const newTransactionId = transactionMap[item.transaction_id];
+
+      if (!newBillId || !newTransactionId) continue;
+
+      try {
+        await executeSql(
+          `UPDATE transactions
+           SET bill_id = ?
+           WHERE id = ? AND (bill_id IS NULL OR bill_id = 0)`,
+          [newBillId, newTransactionId]
+        );
+      } catch (e) {
+        console.warn(`Failed to backfill bill_id on transaction ${newTransactionId}`, e);
+      }
+    }
     // Only restore user preferences (enabled, hour, minute)
     // Never restore notification_identifier — it's device-specific
-    if (notification_settings.length > 0) {
-      for (const ns of notification_settings) {
+    if (restoredNotifications.length > 0) {
+      for (const ns of restoredNotifications) {
         try {
           // Match by type — don't create new rows, just update existing seeded ones
           const existing = await getNotificationByType(ns.type);

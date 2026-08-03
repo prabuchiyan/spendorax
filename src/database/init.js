@@ -115,6 +115,62 @@ export async function initDB() {
       // web shim may not support complex UPDATE; handled in service layer
     }
 
+    try {
+      await executeSql(`ALTER TABLE bills ADD COLUMN parent_bill_id INTEGER NULL`);
+    } catch (e) {
+      // Column already exists on upgraded installs — safe to ignore
+    }
+
+    // 1. parent_bill_id — links occurrence rows to their template
+    try {
+      await executeSql(`ALTER TABLE bills ADD COLUMN parent_bill_id INTEGER NULL`);
+    } catch (e) { /* column already exists on upgraded installs */ }
+
+    // 2. bill_linked_transactions — junction table for Issue 3 (multiple tx links)
+    try {
+      await executeSql(`
+    CREATE TABLE IF NOT EXISTS bill_linked_transactions (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      bill_id        INTEGER NOT NULL,
+      transaction_id INTEGER NOT NULL,
+      linked_at      TEXT DEFAULT (datetime('now')),
+      UNIQUE(bill_id, transaction_id)
+    )
+  `);
+    } catch (e) {
+      console.warn('bill_linked_transactions table creation failed', e);
+    }
+
+    // 3. Back-fill junction table from legacy linked_transaction_id column
+    //    so previously paid bills immediately appear in getBillLinkedTransactions.
+    try {
+      await executeSql(`
+    INSERT OR IGNORE INTO bill_linked_transactions (bill_id, transaction_id)
+    SELECT id, linked_transaction_id
+    FROM   bills
+    WHERE  linked_transaction_id IS NOT NULL
+      AND  deleted_at IS NULL
+  `);
+    } catch (e) {
+      console.warn('bill_linked_transactions back-fill failed', e);
+    }
+
+    // 4. Trigger immediate backfill of all recurring bill occurrences
+    //    so existing users get past + future dues generated on first launch.
+    try {
+      const { backfillBillOccurrences } = require('../services/bills');
+      const { executeSql: sql } = require('./db');
+      const templatesRes = await sql(
+        `SELECT id FROM bills WHERE is_recurring = 1 AND parent_bill_id IS NULL AND deleted_at IS NULL`
+      );
+      for (let i = 0; i < templatesRes.rows.length; i++) {
+        const { id } = templatesRes.rows.item(i);
+        try { await backfillBillOccurrences(id); } catch (e) { /* skip bad row */ }
+      }
+    } catch (e) {
+      console.warn('Recurring bill backfill on init failed', e);
+    }
+
     console.log('Database initialized');
     try {
       await createLoanTables();
@@ -129,14 +185,10 @@ export async function initDB() {
       console.warn('Notifications table creation failed', e);
     }
 
-    // One-time migration: enable all notifications by default
-    try {
-      await executeSql(
-        `UPDATE notifications SET enabled = 1 WHERE enabled = 0`
-      );
-    } catch (e) {
-      console.warn('Notification default enable migration failed', e);
-    }
+    // IMPORTANT:
+    // Do NOT reset notification preferences here.
+    // The enabled/disabled state is managed by the Notification Settings screen
+    // and must persist across app restarts.
 
     try {
       await executeSql('ALTER TABLE loan_payments ADD COLUMN payment_category_id INTEGER');
@@ -226,7 +278,18 @@ export async function initDB() {
 }
 
 export async function clearAllTables() {
-  const tables = ['transactions', 'bills', 'budgets', 'category_budgets', 'categories', 'sources', 'loan_payments', 'loans', 'notifications'];
+  const tables = [
+    'transactions',
+    'bills',
+    'bill_linked_transactions',
+    'budgets',
+    'category_budgets',
+    'categories',
+    'sources',
+    'loan_payments',
+    'loans',
+    'notifications'
+  ];
 
   try {
     for (const table of tables) {

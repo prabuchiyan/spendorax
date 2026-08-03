@@ -14,8 +14,9 @@ import CategoryCreateModal from './CategoryCreateModal';
 import SourceCreateModal from './SourceCreateModal';
 import ConfirmDialog from './ConfirmDialog';
 import { Feather } from '@expo/vector-icons';
+import LinkedBillCard from './LinkedBillCard';
 
-export default function TransactionForm({ onCreated, onCancel, transaction, isEdit }) {
+export default function TransactionForm({ onCreated, onCancel, transaction, isEdit, onPressBill }) {
   const [amount, setAmount] = useState(isEdit && transaction ? String(transaction.amount) : '');
   const [amountError, setAmountError] = useState(false);
   const [type, setType] = useState(isEdit && transaction ? transaction.type : 'expense');
@@ -1875,6 +1876,13 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             </TouchableOpacity>
           )}
         </View>
+      )}
+
+      {isEdit && transaction?.id && (
+        <LinkedBillCard
+          transactionId={transaction.id}
+          onPressBill={onPressBill}
+        />
       )}
 
       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>

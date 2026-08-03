@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Colors } from './Theme';
+import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 
 export default function BottomStatsBar({
   navigation,
@@ -8,6 +9,7 @@ export default function BottomStatsBar({
   billsSummary = {},
   totalMonthlySpend = 0
 }) {
+  const { balanceVisible } = useBalanceVisibility();
 
   return (
     <View style={styles.container}>
@@ -18,7 +20,9 @@ export default function BottomStatsBar({
       >
         <Text style={styles.label}>Balance</Text>
         <Text style={styles.value}>
-          ₹{Number(totalBalance).toLocaleString('en-IN')}
+          {balanceVisible
+            ? `₹${Number(totalBalance).toLocaleString('en-IN')}`
+            : '••••••'}
         </Text>
       </TouchableOpacity>
 
@@ -29,7 +33,9 @@ export default function BottomStatsBar({
         onPress={() => navigation.navigate('Bills')}
       >
         <Text style={[styles.value, { color: '#FF9800' }]}>
-          ₹{Number(billsSummary?.totalAmount || 0).toLocaleString('en-IN')}
+          {balanceVisible
+            ? `₹${Number(billsSummary?.totalAmount || 0).toLocaleString('en-IN')}`
+            : '••••••'}
         </Text>
         <Text style={styles.subLabel}>
           {billsSummary?.count || 0} Bill Due
@@ -44,7 +50,9 @@ export default function BottomStatsBar({
       >
         <Text style={styles.label}>Spend</Text>
         <Text style={[styles.value, { color: '#E46A6A' }]}>
-          ₹{Number(totalMonthlySpend).toLocaleString('en-IN')}
+          {balanceVisible
+            ? `₹${Number(totalMonthlySpend).toLocaleString('en-IN')}`
+            : '••••••'}
         </Text>
       </TouchableOpacity>
 
@@ -64,8 +72,6 @@ const styles = StyleSheet.create({
     borderColor: '#eee',
     paddingVertical: 10,
     elevation: 10,
-
-    // iOS shadow
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,

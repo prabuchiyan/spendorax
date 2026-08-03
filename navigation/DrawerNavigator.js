@@ -11,8 +11,9 @@ import BudgetsScreen from '../src/screens/BudgetsScreen';
 import CategoriesScreen from '../src/screens/CategoriesScreen';
 import SourcesScreen from '../src/screens/SourcesScreen';
 import LoanDashboardScreen from '../src/screens/LoanDashboardScreen';
-
 import { Colors } from '../src/components/Theme';
+import { Switch } from 'react-native';
+import { useBalanceVisibility } from '../src/context/BalanceVisibilityContext';
 
 const Drawer = createDrawerNavigator();
 
@@ -20,71 +21,32 @@ function CustomDrawerContent(props) {
   const insets = useSafeAreaInsets();
   const { state, navigation } = props;
   const activeRouteName = state.routeNames[state.index];
+  const { balanceVisible, toggleBalance } = useBalanceVisibility();
 
   const menuItems = [
-    {
-      name: 'Dashboard',
-      label: 'Dashboard',
-      icon: 'view-dashboard-outline',
-      activeIcon: 'view-dashboard',
-    },
-    {
-      name: 'Budgets',
-      label: 'Budgets',
-      icon: 'wallet-outline',
-      activeIcon: 'wallet',
-    },
-    {
-      name: 'Sources',
-      label: 'Sources',
-      icon: 'credit-card-outline',
-      activeIcon: 'credit-card',
-    },
-    {
-      name: 'Categories',
-      label: 'Categories',
-      icon: 'tag-multiple-outline',
-      activeIcon: 'tag-multiple',
-    },
-    {
-      name: 'Bills',
-      label: 'Bills',
-      icon: 'file-document-outline',
-      activeIcon: 'file-document',
-    },
-    {
-      name: 'Transactions',
-      label: 'Transactions',
-      icon: 'format-list-bulleted',
-      activeIcon: 'format-list-bulleted',
-    },
-    {
-      name: 'Loans',
-      label: 'Loans',
-      icon: 'bank-outline',
-      activeIcon: 'bank',
-    },
+    { name: 'Dashboard', label: 'Dashboard', icon: 'view-dashboard-outline', activeIcon: 'view-dashboard' },
+    { name: 'Budgets', label: 'Budgets', icon: 'wallet-outline', activeIcon: 'wallet' },
+    { name: 'Sources', label: 'Sources', icon: 'credit-card-outline', activeIcon: 'credit-card' },
+    { name: 'Categories', label: 'Categories', icon: 'tag-multiple-outline', activeIcon: 'tag-multiple' },
+    { name: 'Bills', label: 'Bills', icon: 'file-document-outline', activeIcon: 'file-document' },
+    { name: 'Transactions', label: 'Transactions', icon: 'format-list-bulleted', activeIcon: 'format-list-bulleted' },
+    { name: 'Loans', label: 'Loans', icon: 'bank-outline', activeIcon: 'bank' },
   ];
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      {/* Drawer Header */}
       <View style={[styles.headerContainer, { paddingTop: insets.top + 20 }]}>
         <View style={styles.avatarContainer}>
-          <Image
-            source={require('../assets/logo.png')}
-            style={{ width: 56, height: 56, resizeMode: 'contain' }}
-          />
+          <Image source={require('../assets/logo.png')} style={{ width: 56, height: 56, resizeMode: 'contain' }} />
         </View>
         <View style={styles.headerTextContainer}>
           <Text style={styles.appName}>SpendoraX</Text>
-          <Text style={styles.appVersion}>v3.7.8</Text>
+          <Text style={styles.appVersion}>v3.8.0</Text>
         </View>
       </View>
 
       <View style={styles.divider} />
 
-      {/* Drawer Items */}
       <DrawerContentScrollView {...props} contentContainerStyle={styles.scrollContainer}>
         {menuItems.map((item) => {
           const isActive = activeRouteName === item.name;
@@ -92,14 +54,8 @@ function CustomDrawerContent(props) {
             <TouchableOpacity
               key={item.name}
               activeOpacity={0.7}
-              onPress={() => {
-                navigation.navigate(item.name);
-                navigation.closeDrawer();
-              }}
-              style={[
-                styles.drawerItem,
-                isActive && styles.drawerItemActive,
-              ]}
+              onPress={() => { navigation.navigate(item.name); navigation.closeDrawer(); }}
+              style={[styles.drawerItem, isActive && styles.drawerItemActive]}
             >
               <MaterialCommunityIcons
                 name={isActive ? item.activeIcon : item.icon}
@@ -107,12 +63,7 @@ function CustomDrawerContent(props) {
                 color={isActive ? '#fff' : '#666'}
                 style={styles.drawerIcon}
               />
-              <Text
-                style={[
-                  styles.drawerLabel,
-                  isActive && styles.drawerLabelActive,
-                ]}
-              >
+              <Text style={[styles.drawerLabel, isActive && styles.drawerLabelActive]}>
                 {item.label}
               </Text>
             </TouchableOpacity>
@@ -121,12 +72,26 @@ function CustomDrawerContent(props) {
       </DrawerContentScrollView>
 
       <View style={[styles.footerContainer, { paddingBottom: insets.bottom + 20 }]}>
+        {/* ── BALANCE TOGGLE ── */}
+        <View style={styles.footerButton}>
+          <MaterialCommunityIcons
+            name={balanceVisible ? 'eye-outline' : 'eye-off-outline'}
+            size={18}
+            color="#666"
+            style={{ marginRight: 10 }}
+          />
+          <Text style={[styles.footerText, { flex: 1 }]}>Show Balance</Text>
+          <Switch
+            value={balanceVisible}
+            onValueChange={toggleBalance}
+            trackColor={{ false: '#ddd', true: Colors.primary + '80' }}
+            thumbColor={balanceVisible ? Colors.primary : '#aaa'}
+          />
+        </View>
+
         <TouchableOpacity
           style={styles.footerButton}
-          onPress={() => {
-            navigation.navigate('NotificationSettings');
-            navigation.closeDrawer();
-          }}
+          onPress={() => { navigation.navigate('NotificationSettings'); navigation.closeDrawer(); }}
         >
           <MaterialCommunityIcons name="bell-outline" size={18} color="#666" style={{ marginRight: 10 }} />
           <Text style={styles.footerText}>Notifications</Text>
@@ -134,10 +99,7 @@ function CustomDrawerContent(props) {
 
         <TouchableOpacity
           style={styles.footerButton}
-          onPress={() => {
-            navigation.navigate('Backup');
-            navigation.closeDrawer();
-          }}
+          onPress={() => { navigation.navigate('Backup'); navigation.closeDrawer(); }}
         >
           <Feather name="settings" size={18} color="#666" style={{ marginRight: 10 }} />
           <Text style={styles.footerText}>Settings & Backup</Text>

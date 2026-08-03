@@ -9,6 +9,30 @@ function makeRows(arr) {
   };
 }
 
+function executeCustomSelect(sql, lowerSql, params, readTable) {
+  // Bills JOIN
+  if (
+    lowerSql.includes('from bill_linked_transactions') &&
+    lowerSql.includes('join bills')
+  ) {
+    const transactionId = params[0];
+
+    const links = readTable('bill_linked_transactions')
+      .filter(link => String(link.transaction_id) === String(transactionId));
+
+    const bills = readTable('bills');
+
+    const result = links
+      .map(link => bills.find(bill => String(bill.id) === String(link.bill_id)))
+      .filter(Boolean)
+      .filter(bill => !bill.deleted_at);
+
+    return makeRows(result);
+  }
+
+  return null;
+}
+
 // Minimal localStorage-backed shim for web to emulate executeSql result shape
 function createWebExecuteSql() {
   const prefix = 'mm_db_';
@@ -42,8 +66,9 @@ function createWebExecuteSql() {
     }
 
     // INSERT
-    if (l.startsWith('insert into')) {
-      const m = s.match(/insert into\s+([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*values\s*\(([^)]+)\)/i);
+    if (l.startsWith('insert')) {
+      // const m = s.match(/insert(?:\s+or\s+ignore)?\s+into\s+([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*values\s*\(([^)]+)\)/i);
+      const m = s.match(/^insert(?:\s+or\s+(?:ignore|replace|abort|fail|rollback))?\s+into\s+([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*values\s*\(([^)]+)\)/i);
       if (!m) throw new Error('Unsupported INSERT SQL: ' + sql);
       const table = m[1];
       const cols = m[2].split(',').map(c => c.trim());
@@ -66,6 +91,16 @@ function createWebExecuteSql() {
 
     // SELECT [cols] FROM table [WHERE ...] [ORDER BY ...] [LIMIT ?]
     if (l.startsWith('select')) {
+      const customRows = executeCustomSelect(
+        s,
+        l,
+        [...params],
+        readTable
+      );
+      if (customRows) {
+        return { rows: customRows };
+      }
+      
       const m = s.match(/select\s+(.+?)\s+from\s+([a-zA-Z0-9_]+)/i);
       if (!m) throw new Error('Unsupported SELECT SQL: ' + sql);
       const colsStr = m[1].trim();
@@ -196,6 +231,7 @@ function createWebExecuteSql() {
     }
 
     // DELETE FROM table WHERE column = ?
+    // DELETE FROM table WHERE ...
     if (l.startsWith('delete')) {
       const m = s.match(/delete from\s+([a-zA-Z0-9_]+)(\s+where\s+(.+))?/i);
       if (!m) throw new Error('Unsupported DELETE SQL: ' + sql);
@@ -209,27 +245,44 @@ function createWebExecuteSql() {
         writeTable(table, []);
         return {
           rowsAffected: rows.length,
-          rows: makeRows([])
+          rows: makeRows([]),
         };
       }
 
-      // DELETE WHERE <column> = ?
-      const whereMatch = where.match(/([a-zA-Z0-9_]+)\s*=\s*\?/i);
-      if (whereMatch) {
-        const column = whereMatch[1];
-        const value = params[0];
+      // Support multiple WHERE conditions joined by AND
+      const conditions = where
+        .split(/\s+and\s+/i)
+        .map(c => c.trim());
 
-        const filtered = rows.filter(
-          r => String(r[column]) !== String(value)
-        );
-        writeTable(table, filtered);
-        return {
-          rowsAffected: rows.length - filtered.length,
-          rows: makeRows([])
-        };
-      }
+      let paramIndex = 0;
 
-      throw new Error('Unsupported DELETE WHERE: ' + where);
+      const filtered = rows.filter(row => {
+        for (const cond of conditions) {
+          const match = cond.match(/([a-zA-Z0-9_]+)\s*=\s*\?/i);
+
+          if (!match) {
+            throw new Error('Unsupported DELETE WHERE: ' + cond);
+          }
+
+          const column = match[1];
+          const value = params[paramIndex++];
+
+          if (String(row[column]) !== String(value)) {
+            paramIndex = 0;
+            return true;
+          }
+        }
+
+        paramIndex = 0;
+        return false;
+      });
+
+      writeTable(table, filtered);
+
+      return {
+        rowsAffected: rows.length - filtered.length,
+        rows: makeRows([]),
+      };
     }
 
     // fallback: no-op
