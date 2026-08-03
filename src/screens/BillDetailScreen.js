@@ -1030,19 +1030,21 @@ export default function BillDetailScreen({ route, navigation }) {
                     onPress={async () => {
 
                       try {
-                        await payCreditCardBill({
-                          bill,
+                        const paymentId = await payCreditCardBill({
+                          bill: activeBill,
                           card: selectedCreditCard,
                           paymentSourceId: source.id,
                         });
                         await markBillPaid(
-                          bill.id,
+                          activeBill.id,
                           {
                             createTransaction: false,
+                            existingTransactionId: paymentId,
                           }
                         );
                         setShowPaymentSourcePicker(false);
-                        navigation.goBack();
+                        setSelectedCreditCard(null);
+                        await load();
                       } catch (e) {
                         console.error(e);
                         Alert.alert(

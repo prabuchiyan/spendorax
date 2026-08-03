@@ -357,19 +357,19 @@ export async function createCreditCardPayment({
         date,
     });
 
-    const res = await executeSql(
+    await executeSql(
         `INSERT INTO credit_card_payments
-    (
-      card_id,
-      statement_id,
-      bank_transaction_id,
-      card_transaction_id,
-      amount,
-      payment_date,
-      source_id,
-      notes
-    )
-    VALUES (?,?,?,?,?,?,?,?)`,
+            (
+            card_id,
+            statement_id,
+            bank_transaction_id,
+            card_transaction_id,
+            amount,
+            payment_date,
+            source_id,
+            notes
+            )
+        VALUES (?,?,?,?,?,?,?,?)`,
         [
             cardId,
             statementId,
@@ -408,7 +408,11 @@ export async function createCreditCardPayment({
         );
     }
 
-    return res.insertId;
+    /*
+     Return the BANK transaction id.
+     markBillPaid() links this transaction to the bill.
+    */
+    return transfer.debitTransactionId;
 }
 
 export async function payCreditCardBill({
