@@ -9,7 +9,6 @@ import {
   daysBetween,
   monthKey,
   generateOccurrenceDates,
-  getMissingOccurrenceDates,
 } from './billUtils';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -522,7 +521,13 @@ export async function getBillsForCurrentMonth(options = {}) {
     }
 
     if (!occurrenceRow) continue;
-
+    console.log({
+      templateId: template.id,
+      templateAmount: template.amount,
+      occurrenceId: occurrenceRow?.id,
+      occurrenceAmount: occurrenceRow?.amount,
+      dueDate: occurrenceRow?.due_date,
+    });
     if (occurrenceRow) {
       result.push({
         ...occurrenceRow,
@@ -1023,6 +1028,238 @@ export async function runRecurringScheduler() {
   await syncBillStatuses();
 }
 
+function padDateValue(value) {
+  return String(value).padStart(2, '0');
+}
+
+function formatDate(date) {
+  return `${date.getFullYear()}-${padDateValue(date.getMonth() + 1)}-${padDateValue(date.getDate())}`;
+}
+
+function normalizeStatementDay(day, year, month) {
+  const lastDay = new Date(year, month, 0).getDate();
+  return Math.min(Number(day) || 1, lastDay);
+}
+
+function getStatementPeriod(statementDay, today) {
+  const year = today.getFullYear();
+  const month = today.getMonth() + 1;
+  const currentStatementDay = normalizeStatementDay(statementDay, year, month);
+  const statementDate = new Date(year, month - 1, currentStatementDay);
+
+  const previousMonth = new Date(year, month - 2, 1);
+  const previousStatementDay = normalizeStatementDay(statementDay, previousMonth.getFullYear(), previousMonth.getMonth() + 1);
+  const previousStatementDate = new Date(previousMonth.getFullYear(), previousMonth.getMonth(), previousStatementDay);
+
+  const statementStart = new Date(previousStatementDate);
+  statementStart.setDate(statementStart.getDate() + 1);
+
+  return {
+    statementStart,
+    statementEnd: statementDate,
+    statementDate,
+  };
+}
+
+export async function runCreditCardStatementScheduler() {
+  const today = new Date();
+  const todayStrValue = today.toISOString().slice(0, 10);
+
+  const cardsRes = await executeSql(
+    `SELECT * FROM credit_cards WHERE status = 'active' AND statement_day IS NOT NULL`,
+    []
+  );
+
+  for (let i = 0; i < cardsRes.rows.length; i++) {
+    const card = cardsRes.rows.item(i);
+
+    // FIX: Use statement_day from DB
+    const statementDay = Number(card.statement_day);
+    if (!statementDay) continue;
+
+    const { statementStart, statementEnd, statementDate } =
+      getStatementPeriod(statementDay, today);
+
+    const statementDateStr = formatDate(statementDate);
+
+    if (statementDateStr !== todayStrValue) continue;
+
+    const existing = await executeSql(
+      `SELECT id
+       FROM credit_card_statements
+       WHERE card_id = ?
+         AND statement_date = ?
+       LIMIT 1`,
+      [card.id, statementDateStr]
+    );
+
+    if (existing.rows.length > 0) continue;
+
+    const startDateStr = formatDate(statementStart);
+    const endDateStr = formatDate(statementEnd);
+
+    const txRes = await executeSql(
+      `SELECT type, amount, date
+       FROM transactions
+       WHERE source_id = ?`,
+      [card.source_id]
+    );
+
+    let openingBalance = 0;
+    let purchases = 0;
+    let payments = 0;
+
+    for (let j = 0; j < txRes.rows.length; j++) {
+      const tx = txRes.rows.item(j);
+      const txDate = tx.date ? String(tx.date).slice(0, 10) : null;
+      if (!txDate) continue;
+
+      const amount = Number(tx.amount || 0);
+
+      if (txDate < startDateStr) {
+        openingBalance += tx.type === 'expense' ? amount : -amount;
+      } else if (txDate >= startDateStr && txDate <= endDateStr) {
+        if (tx.type === 'expense') {
+          purchases += amount;
+        } else {
+          payments += amount;
+        }
+      }
+    }
+
+    const closingBalance = openingBalance + purchases - payments;
+
+    const minimumDue =
+      closingBalance > 0
+        ? closingBalance * (Number(card.minimum_due_percent || 0) / 100)
+        : 0;
+
+    const dueDate = new Date(statementEnd);
+
+    if (card.due_after_days != null) {
+      dueDate.setDate(
+        dueDate.getDate() + Number(card.due_after_days || 0)
+      );
+    }
+
+    const dueDateStr = formatDate(dueDate);
+
+    let billId = null;
+
+    if (closingBalance > 0 && card.payment_bill_id) {
+
+      const template = await getBillById(card.payment_bill_id);
+
+      if (!template) {
+        throw new Error(
+          `Credit card template bill not found for card ${card.id}`
+        );
+      }
+
+      // Reuse child bill if already created for this due date
+      const existingBill = await executeSql(
+        `SELECT id
+       FROM bills
+      WHERE parent_bill_id = ?
+        AND due_date = ?
+        AND deleted_at IS NULL
+      LIMIT 1`,
+        [
+          template.id,
+          dueDateStr,
+        ]
+      );
+
+      if (existingBill.rows.length > 0) {
+
+        billId = existingBill.rows.item(0).id;
+
+        await updateBill(billId, {
+          amount: closingBalance,
+          status: BILL_STATUS.PENDING,
+          notes:
+            `Statement ${statementDateStr}\n\n` +
+            (template.notes || ''),
+        });
+
+      } else {
+
+        billId = await _insertBill({
+          name: template.name,
+          amount: closingBalance,
+          due_date: dueDateStr,
+
+          status: BILL_STATUS.PENDING,
+
+          is_recurring: 0,
+          recurrence_type: null,
+          recurrence_interval: 1,
+          recurrence_end_date: null,
+
+          category_id: template.category_id,
+          source_id: template.source_id,
+
+          reminder_days_before: template.reminder_days_before,
+          auto_pay: template.auto_pay,
+
+          notes:
+            `Statement ${statementDateStr}\n\n` +
+            (template.notes || ''),
+
+          attachment_url: template.attachment_url,
+
+          parent_bill_id: template.id,
+        });
+      }
+    }
+
+    await executeSql(
+      `INSERT INTO credit_card_statements (
+        card_id,
+        bill_id,
+        statement_start,
+        statement_end,
+        statement_date,
+        due_date,
+        opening_balance,
+        purchases,
+        refunds,
+        fees,
+        interest,
+        payments,
+        closing_balance,
+        minimum_due,
+        is_generated,
+        generated_at,
+        status,
+        created_at
+      ) VALUES (
+        ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
+        datetime('now')
+      )`,
+      [
+        card.id,
+        billId,
+        startDateStr,
+        endDateStr,
+        statementDateStr,
+        dueDateStr,
+        openingBalance,
+        purchases,
+        0,
+        0,
+        0,
+        payments,
+        closingBalance,
+        minimumDue,
+        1,
+        new Date().toISOString(),
+        'generated',
+      ]
+    );
+  }
+}
+
 export async function processReminders() {
   await syncBillStatuses();
   const today = todayStr();
@@ -1050,6 +1287,7 @@ export async function processReminders() {
 export async function runBillMaintenance() {
   await syncBillStatuses();
   await runRecurringScheduler();
+  await runCreditCardStatementScheduler();
   return processReminders();
 }
 

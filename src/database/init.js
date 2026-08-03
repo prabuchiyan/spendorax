@@ -114,9 +114,11 @@ export async function initDB() {
       notes TEXT,
       status TEXT DEFAULT 'active',
       source_id INTEGER,
+      payment_bill_id INTEGER,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY(source_id) REFERENCES sources(id)
+      FOREIGN KEY(source_id) REFERENCES sources(id),
+      FOREIGN KEY(payment_bill_id) REFERENCES bills(id)
     );`);
 
     await executeSql(`CREATE TABLE IF NOT EXISTS credit_card_statements (

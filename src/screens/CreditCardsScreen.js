@@ -230,6 +230,27 @@ const styles = StyleSheet.create({
         padding: 8,
         marginLeft: 8,
     },
+    actionRow: {
+        paddingHorizontal: Spacing.s,
+        paddingBottom: Spacing.s,
+    },
+    statementButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#fff',
+        borderRadius: 14,
+        paddingVertical: 12,
+        paddingHorizontal: 18,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    statementButtonText: {
+        marginLeft: 10,
+        color: Colors.primary,
+        fontWeight: '700',
+        fontSize: 14,
+    },
     emptyState: {
         alignItems: 'center',
         marginTop: 60,
