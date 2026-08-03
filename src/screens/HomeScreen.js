@@ -5,7 +5,10 @@ import { getTotalBalance, getCategorySpending, getMonthlyTrends, getSourceBalanc
 import { getBudgetsWithRemaining } from '../services/budgets';
 import { getCategoryBudgetSummary } from '../services/categoryBudgets';
 import { getTransactions, deleteTransaction } from '../services/transactions';
-import { getBills, getBillsSummary } from '../services/bills';
+import {
+  getBillsForCurrentMonth,
+  getBillsSummary,
+} from '../services/bills';
 import { getBillDisplayStatus, formatCurrency } from '../services/billUtils';
 import { getSources } from '../services/sources';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -176,7 +179,10 @@ export default function HomeScreen({ navigation }) {
     setBalance(b);
     const t = await getMonthlyTrends(6);
     setTrends(t);
-    const bl = await getBills({ sortBy: 'due_date' });
+    // Use the same logic as Bills screen.
+    // This hides Credit Card template bills and only shows
+    // the generated statement bill.
+    const bl = await getBillsForCurrentMonth({ sortBy: 'due_date' });
     setBills(bl);
     const bsum = await getBillsSummary();
     setBillsSummary(bsum);

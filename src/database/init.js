@@ -221,11 +221,21 @@ export async function initDB() {
       const { backfillBillOccurrences } = require('../services/bills');
       const { executeSql: sql } = require('./db');
       const templatesRes = await sql(
-        `SELECT id FROM bills WHERE is_recurring = 1 AND parent_bill_id IS NULL AND deleted_at IS NULL`
+        `SELECT *
+         FROM bills
+         WHERE is_recurring = 1
+          AND parent_bill_id IS NULL
+          AND deleted_at IS NULL`
       );
       for (let i = 0; i < templatesRes.rows.length; i++) {
-        const { id } = templatesRes.rows.item(i);
-        try { await backfillBillOccurrences(id); } catch (e) { /* skip bad row */ }
+        const bill = templatesRes.rows.item(i);
+        if (
+          bill.notes &&
+          bill.notes.startsWith('Recurring payment template for')
+        ) {
+          continue;
+        }
+        await backfillBillOccurrences(bill.id);
       }
     } catch (e) {
       console.warn('Recurring bill backfill on init failed', e);

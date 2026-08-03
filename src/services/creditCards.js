@@ -2,9 +2,9 @@ import { executeSql } from '../database/db';
 import { createSource, updateSource } from './sources';
 import { createTransfer } from './transactions';
 import {
-  createBill,
-  updateBill,
-  deleteBill,
+    createBill,
+    updateBill,
+    deleteBill,
 } from './bills';
 import { BILL_STATUS } from './billUtils';
 

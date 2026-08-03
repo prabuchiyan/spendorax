@@ -10,6 +10,32 @@ function makeRows(arr) {
 }
 
 function executeCustomSelect(sql, lowerSql, params, readTable) {
+  // Credit Card by ID
+  if (
+    lowerSql.includes('from credit_cards') &&
+    lowerSql.includes('left join sources') &&
+    lowerSql.includes('where cc.id = ?')
+  ) {
+    const id = params[0];
+
+    const cards = readTable('credit_cards');
+    const sources = readTable('sources');
+
+    const card = cards.find(c => String(c.id) === String(id));
+    if (!card) {
+      return makeRows([]);
+    }
+
+    const source = sources.find(s => String(s.id) === String(card.source_id));
+
+    return makeRows([{
+      ...card,
+      source_name: source?.name,
+      source_type: source?.type,
+      source_active: source?.is_active,
+    }]);
+  }
+
   // Bills JOIN
   if (
     lowerSql.includes('from bill_linked_transactions') &&
@@ -107,25 +133,33 @@ function createWebExecuteSql() {
       const table = m[2];
       let rows = readTable(table);
 
-      // WHERE id = ? or other simple equality conditions chained with AND
+      // WHERE column = ? (supports multiple AND conditions)
       const whereMatch = s.match(/where\s+(.+?)(order by|limit|$)/i);
       if (whereMatch) {
         const cond = whereMatch[1].trim();
-        const parts = cond.split(/\s+and\s+/i);
+        const parts = cond
+          .split(/\s+and\s+/i)
+          .map(p => p.trim())
+          .filter(Boolean);
+
+        // IMPORTANT: Don't mutate params with shift()
+        let paramIndex = 0;
 
         for (const p of parts) {
-          const eqMatch = p.match(/([a-zA-Z0-9_]+)\s*=\s*\?/);
+          const eqMatch = p.match(/^\s*([a-zA-Z0-9_]+)\s*=\s*\?\s*$/i);
           if (eqMatch) {
             const col = eqMatch[1];
-            const val = params.shift();
+            const val = params[paramIndex++];
             rows = rows.filter(r => String(r[col]) === String(val));
-          } else {
-            const litMatch = p.match(/([a-zA-Z0-9_]+)\s*=\s*['"]?([^'"\s]+)['"]?/);
-            if (litMatch) {
-              const col = litMatch[1];
-              const val = litMatch[2];
-              rows = rows.filter(r => String(r[col]) === String(val));
-            }
+            continue;
+          }
+          const litMatch = p.match(
+            /^\s*([a-zA-Z0-9_]+)\s*=\s*['"]?([^'"]+)['"]?\s*$/i
+          );
+          if (litMatch) {
+            const col = litMatch[1];
+            const val = litMatch[2];
+            rows = rows.filter(r => String(r[col]) === String(val));
           }
         }
       }
@@ -203,8 +237,16 @@ function createWebExecuteSql() {
       // LIMIT
       const limitMatch = s.match(/limit\s+\?/i);
       if (limitMatch) {
-        const lim = params[0];
-        rows = rows.slice(0, lim);
+        // Number of ? consumed by WHERE
+        const whereParamCount = whereMatch
+          ? (whereMatch[1].match(/\?/g) || []).length
+          : 0;
+
+        const lim = Number(params[whereParamCount]);
+
+        if (!Number.isNaN(lim)) {
+          rows = rows.slice(0, lim);
+        }
       }
 
       return { rows: makeRows(rows) };
