@@ -411,6 +411,21 @@ export async function createCreditCardPayment({
     return res.insertId;
 }
 
+export async function payCreditCardBill({
+    bill,
+    card,
+    paymentSourceId,
+}) {
+    const paymentId = await createCreditCardPayment({
+        cardId: card.id,
+        amount: bill.amount,
+        source_id: paymentSourceId,
+        statementId: null,
+        notes: `Paid ${bill.name}`,
+    });
+    return paymentId;
+}
+
 export async function createCreditCardStatement(fields) {
     const keys = [
         'card_id', 'statement_start', 'statement_end', 'statement_date', 'due_date',

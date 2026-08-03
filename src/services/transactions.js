@@ -328,6 +328,7 @@ export async function createTransfer({
     creditTransactionId,
   };
 }
+
 export async function getTransactionNoteSuggestions() {
   const transactions = await getTransactions(1000000, 'Yes');
   const categoriesRes = await executeSql(`SELECT * FROM categories`);

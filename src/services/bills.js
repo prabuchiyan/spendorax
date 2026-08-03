@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import { executeSql } from '../database/db';
-import { createTransaction } from './transactions';
+import { createTransaction, createTransfer } from './transactions';
 import { emit } from './events';
 import {
   BILL_STATUS,
@@ -777,15 +777,39 @@ export async function markBillPaid(
   let txId = existingTransactionId || bill.linked_transaction_id;
 
   if (!txId && shouldCreateTx) {
-    txId = await createTransaction({
-      type: 'expense',
-      amount: bill.amount,
-      category_id: bill.category_id,
-      source_id: paySource,
-      date: payDate,
-      notes: notes || `Paid: ${bill.name}`,
-      bill_id: billId,
-    });
+
+    // Check whether this bill belongs to a Credit Card
+    const ccRes = await executeSql(
+      `SELECT *
+        FROM credit_cards
+        WHERE payment_bill_id = ?
+        LIMIT 1`,
+      [bill.parent_bill_id || bill.id]
+    );
+    const isCreditCardBill = ccRes.rows.length > 0;
+    if (isCreditCardBill) {
+      const card = ccRes.rows.item(0);
+      const transfer = await createTransfer({
+        fromAccount: paySource,
+        toAccount: card.source_id,
+        amount: bill.amount,
+        note: notes || `Credit Card Payment - ${card.name}`,
+        date: payDate,
+      });
+      // Link the debit transaction with the bill
+      txId = transfer.debitTransactionId;
+    } else {
+      // Normal bill payment
+      txId = await createTransaction({
+        type: 'expense',
+        amount: bill.amount,
+        category_id: bill.category_id,
+        source_id: paySource,
+        date: payDate,
+        notes: notes || `Paid: ${bill.name}`,
+        bill_id: billId,
+      });
+    }
   }
 
   await executeSql(

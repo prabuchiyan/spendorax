@@ -34,6 +34,10 @@ import {
   formatCurrency, formatDueDate,
   getBillDisplayStatus, BILL_STATUS,
 } from '../services/billUtils';
+import {
+  getCreditCards,
+  payCreditCardBill,
+} from '../services/creditCards';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -394,8 +398,11 @@ export default function BillDetailScreen({ route, navigation }) {
   const [confirmAction, setConfirmAction] = useState(null);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState(null);
-  const [showMoreDetails, setShowMoreDetails] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPaymentSourcePicker, setShowPaymentSourcePicker] = useState(false);
+  const [paymentSources, setPaymentSources] = useState([]);
+  const [paymentSourceSearch, setPaymentSourceSearch] = useState('');
+  const [selectedCreditCard, setSelectedCreditCard] = useState(null);
 
   // ── hook 15 ───────────────────────────────────────────────────────────────
   useFocusEffect(useCallback(() => { load(); }, [billId]));
@@ -525,16 +532,31 @@ export default function BillDetailScreen({ route, navigation }) {
     setLinkedTxs(occ ? await getBillLinkedTransactions(occ.id) : []);
   }
 
-  async function handleMarkPaid() {
-    if (!selectedOcc) return;
-    try {
-      setLoading(true);
-      await markBillPaid(selectedOcc.id, { source_id: selectedOcc.source_id });
-      await load();
-    } finally {
-      setLoading(false);
+  const handleMarkPaid = async () => {
+    const cards = await getCreditCards(false);
+    const card = cards.find(
+      c =>
+        Number(c.payment_bill_id) === Number(bill.parent_bill_id || bill.id)
+    );
+    // Normal bill
+    if (!card) {
+      await markBillPaid(bill.id, {
+        source_id: bill.source_id,
+      });
+      navigation.goBack();
+      return;
     }
-  }
+
+    // Credit Card bill
+    const sources = await getSources(true);
+    setPaymentSources(
+      sources.filter(
+        s => Number(s.id) !== Number(card.source_id)
+      )
+    );
+    setSelectedCreditCard(card);
+    setShowPaymentSourcePicker(true);
+  };
 
   async function handleUnskip() {
     if (!selectedOcc) return;
@@ -947,6 +969,124 @@ export default function BillDetailScreen({ route, navigation }) {
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       )}
+
+      <Modal
+        visible={showPaymentSourcePicker}
+        transparent
+        animationType="slide"
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            justifyContent: 'flex-end',
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: '#fff',
+              maxHeight: '55%',
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              padding: 16,
+            }}
+          >
+
+            <Text
+              style={{
+                fontWeight: '700',
+                fontSize: 16,
+                marginBottom: 12,
+              }}
+            >
+              Select Payment Source
+            </Text>
+
+            <PaperTextInput
+              placeholder="Search source..."
+              value={paymentSourceSearch}
+              onChangeText={setPaymentSourceSearch}
+              mode="outlined"
+              style={{ marginBottom: 10 }}
+            />
+
+            <ScrollView>
+
+              {paymentSources
+                .filter(s =>
+                  s.name
+                    .toLowerCase()
+                    .includes(paymentSourceSearch.toLowerCase())
+                )
+                .map(source => (
+
+                  <TouchableOpacity
+                    key={source.id}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 12,
+                    }}
+                    onPress={async () => {
+
+                      try {
+                        await payCreditCardBill({
+                          bill,
+                          card: selectedCreditCard,
+                          paymentSourceId: source.id,
+                        });
+                        await markBillPaid(
+                          bill.id,
+                          {
+                            createTransaction: false,
+                          }
+                        );
+                        setShowPaymentSourcePicker(false);
+                        navigation.goBack();
+                      } catch (e) {
+                        console.error(e);
+                        Alert.alert(
+                          'Error',
+                          'Unable to complete payment.'
+                        );
+                      }
+                    }}
+                  >
+
+                    <MaterialCommunityIcons
+                      name={source.icon || 'wallet'}
+                      size={22}
+                      color={Colors.primary}
+                    />
+
+                    <Text
+                      style={{
+                        marginLeft: 10,
+                        flex: 1,
+                      }}
+                    >
+                      {source.name}
+                    </Text>
+
+                  </TouchableOpacity>
+
+                ))}
+
+            </ScrollView>
+
+            <PaperButton
+              onPress={() => {
+                setShowPaymentSourcePicker(false);
+                setSelectedPaymentBill(null);
+                setSelectedCreditCard(null);
+              }}
+            >
+              Cancel
+            </PaperButton>
+
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
