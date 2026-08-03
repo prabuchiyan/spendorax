@@ -120,35 +120,39 @@ export async function initDB() {
     );`);
 
     await executeSql(`CREATE TABLE IF NOT EXISTS credit_card_statements (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      card_id INTEGER NOT NULL,
-      statement_start TEXT,
-      statement_end TEXT,
-      statement_date TEXT,
-      due_date TEXT,
-      opening_balance REAL DEFAULT 0,
-      purchases REAL DEFAULT 0,
-      refunds REAL DEFAULT 0,
-      fees REAL DEFAULT 0,
-      interest REAL DEFAULT 0,
-      payments REAL DEFAULT 0,
-      closing_balance REAL DEFAULT 0,
-      minimum_due REAL DEFAULT 0,
-      status TEXT DEFAULT 'pending',
-      created_at TEXT DEFAULT (datetime('now'))
-    );`);
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    card_id INTEGER NOT NULL,
+    bill_id INTEGER,
+    statement_start TEXT,
+    statement_end TEXT,
+    statement_date TEXT,
+    due_date TEXT,
+    opening_balance REAL DEFAULT 0,
+    purchases REAL DEFAULT 0,
+    refunds REAL DEFAULT 0,
+    fees REAL DEFAULT 0,
+    interest REAL DEFAULT 0,
+    payments REAL DEFAULT 0,
+    closing_balance REAL DEFAULT 0,
+    minimum_due REAL DEFAULT 0,
+    is_generated INTEGER DEFAULT 1,
+    generated_at TEXT,
+    status TEXT,
+    created_at TEXT DEFAULT(datetime('now'))
+);`);
 
     await executeSql(`CREATE TABLE IF NOT EXISTS credit_card_payments (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      card_id INTEGER NOT NULL,
-      statement_id INTEGER,
-      transaction_id INTEGER,
-      amount REAL NOT NULL,
-      payment_date TEXT,
-      source_id INTEGER,
-      notes TEXT,
-      created_at TEXT DEFAULT (datetime('now'))
-    );`);
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    card_id INTEGER NOT NULL,
+    statement_id INTEGER,
+    bank_transaction_id INTEGER,
+    card_transaction_id INTEGER,
+    amount REAL NOT NULL,
+    payment_date TEXT NOT NULL,
+    source_id INTEGER,
+    notes TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+);`);
 
     // Migrate legacy is_paid rows to status column
     try {

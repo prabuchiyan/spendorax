@@ -295,8 +295,9 @@ export async function createTransfer({
   date
 }) {
   const groupId = Date.now().toString();
-  // Debit
-  await createTransaction({
+
+  // Debit Transaction
+  const debitTransactionId = await createTransaction({
     type: 'expense',
     amount,
     category_id: null,
@@ -308,8 +309,8 @@ export async function createTransfer({
     direction: 'debit'
   });
 
-  // Credit
-  await createTransaction({
+  // Credit Transaction
+  const creditTransactionId = await createTransaction({
     type: 'income',
     amount,
     category_id: null,
@@ -320,8 +321,13 @@ export async function createTransfer({
     transfer_group_id: groupId,
     direction: 'credit'
   });
-}
 
+  return {
+    groupId,
+    debitTransactionId,
+    creditTransactionId,
+  };
+}
 export async function getTransactionNoteSuggestions() {
   const transactions = await getTransactions(1000000, 'Yes');
   const categoriesRes = await executeSql(`SELECT * FROM categories`);

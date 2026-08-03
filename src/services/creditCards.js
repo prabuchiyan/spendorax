@@ -1,6 +1,6 @@
 import { executeSql } from '../database/db';
 import { createSource, updateSource } from './sources';
-import { createTransaction } from './transactions';
+import { createTransfer } from './transactions';
 
 export async function createCreditCard({
   name,
@@ -231,44 +231,48 @@ export async function createCreditCardPayment({
   notes = null,
 }) {
   const card = await getCreditCardById(cardId);
-  if (!card) throw new Error('Credit card not found');
-  if (!card.source_id) throw new Error('Credit card source is missing');
-  if (!source_id) throw new Error('Payment source is required');
+
+  if (!card) {
+    throw new Error('Credit card not found');
+  }
+
+  if (!card.source_id) {
+    throw new Error('Credit card source is missing');
+  }
+
+  if (!source_id) {
+    throw new Error('Payment source is required');
+  }
 
   const date = payment_date || new Date().toISOString();
-  const groupId = Date.now().toString();
 
-  const debitTxId = await createTransaction({
-    type: 'expense',
+  // Create transfer and capture both transaction ids
+  const transfer = await createTransfer({
+    fromAccount: source_id,
+    toAccount: card.source_id,
     amount,
-    category_id: null,
-    source_id,
+    note: notes || `Credit Card Payment - ${card.name}`,
     date,
-    notes: notes || `Credit card payment to ${card.name}`,
-    bill_id: null,
-    transfer_group_id: groupId,
-    direction: 'debit',
-  });
-
-  await createTransaction({
-    type: 'income',
-    amount,
-    category_id: null,
-    source_id: card.source_id,
-    date,
-    notes: notes || `Credit card payment from ${card.name}`,
-    bill_id: null,
-    transfer_group_id: groupId,
-    direction: 'credit',
   });
 
   const res = await executeSql(
-    `INSERT INTO credit_card_payments (card_id, statement_id, transaction_id, amount, payment_date, source_id, notes)
-     VALUES (?,?,?,?,?,?,?)`,
+    `INSERT INTO credit_card_payments
+    (
+      card_id,
+      statement_id,
+      bank_transaction_id,
+      card_transaction_id,
+      amount,
+      payment_date,
+      source_id,
+      notes
+    )
+    VALUES (?,?,?,?,?,?,?,?)`,
     [
       cardId,
       statementId,
-      debitTxId,
+      transfer.debitTransactionId,
+      transfer.creditTransactionId,
       amount,
       date,
       source_id,
@@ -276,8 +280,33 @@ export async function createCreditCardPayment({
     ]
   );
 
+  // Refresh card totals
   await refreshCreditCardTotals(cardId);
-  return { paymentId: res.insertId, debitTxId };
+
+  // Update statement payment amount if linked
+  if (statementId) {
+    await executeSql(
+      `UPDATE credit_card_statements
+       SET payments = COALESCE(payments,0) + ?
+       WHERE id = ?`,
+      [amount, statementId]
+    );
+
+    // Auto close statement if fully paid
+    await executeSql(
+      `UPDATE credit_card_statements
+       SET status =
+         CASE
+           WHEN closing_balance <= (COALESCE(payments,0))
+           THEN 'paid'
+           ELSE status
+         END
+       WHERE id = ?`,
+      [statementId]
+    );
+  }
+
+  return res.insertId;
 }
 
 export async function createCreditCardStatement(fields) {
