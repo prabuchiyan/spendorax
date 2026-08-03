@@ -130,12 +130,50 @@ function createWebExecuteSql() {
         }
       }
 
-      // Projection (selecting specific columns)
+      // Projection (supports *, table.*, column, table.column AS alias)
       if (colsStr !== '*') {
-        const cols = colsStr.split(',').map(c => c.trim().split(/\s+/).pop()); // handle table.col or col as alias
+        const cols = colsStr.split(',').map(c => c.trim());
+
         rows = rows.map(r => {
           const projected = {};
-          cols.forEach(c => projected[c] = r[c]);
+
+          cols.forEach(col => {
+            const lower = col.toLowerCase();
+
+            // SELECT *
+            if (col === '*') {
+              Object.assign(projected, r);
+              return;
+            }
+
+            // SELECT cc.*
+            if (/\.\*$/.test(col)) {
+              Object.assign(projected, r);
+              return;
+            }
+
+            // SELECT cc.name AS card_name
+            const aliasMatch = col.match(/^(.+?)\s+as\s+([a-zA-Z0-9_]+)$/i);
+            if (aliasMatch) {
+              const source = aliasMatch[1].trim();
+              const alias = aliasMatch[2];
+
+              const sourceCol = source.includes('.')
+                ? source.split('.').pop()
+                : source;
+
+              projected[alias] = r[sourceCol];
+              return;
+            }
+
+            // SELECT cc.name
+            const sourceCol = col.includes('.')
+              ? col.split('.').pop()
+              : col;
+
+            projected[sourceCol] = r[sourceCol];
+          });
+
           return projected;
         });
       }
