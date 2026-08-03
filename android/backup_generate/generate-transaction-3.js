@@ -1444,15 +1444,6 @@ const backup = {
         "created_at": "2026-07-25 09:08:21"
       },
       {
-        "id": 32,
-        "name": "Hair Treatment",
-        "type": "expense",
-        "icon": "all-inclusive",
-        "color": "#334155",
-        "is_active": 1,
-        "created_at": "2026-07-25 09:08:21"
-      },
-      {
         "id": 33,
         "name": "Home Improvement",
         "type": "expense",
