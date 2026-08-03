@@ -13,6 +13,7 @@ import SourcesScreen from '../src/screens/SourcesScreen';
 import CreditCardsScreen from '../src/screens/CreditCardsScreen';
 import LoanDashboardScreen from '../src/screens/LoanDashboardScreen';
 import ReportsScreen from '../src/screens/ReportsScreen';
+import CreditCardStatementsScreen from '../src/screens/CreditCardStatementsScreen';
 import { Colors } from '../src/components/Theme';
 import { Switch } from 'react-native';
 import { useBalanceVisibility } from '../src/context/BalanceVisibilityContext';
@@ -31,6 +32,7 @@ function CustomDrawerContent(props) {
     { name: 'Bills', label: 'Bills', icon: 'file-document-outline', activeIcon: 'file-document' },
     { name: 'Loans', label: 'Loans', icon: 'bank-outline', activeIcon: 'bank' },
     { name: 'CreditCards', label: 'Credit Cards', icon: 'credit-card-outline', activeIcon: 'credit-card' },
+    { name: 'CreditCardStatements', label: 'Statements', icon: 'file-document-outline', activeIcon: 'file-document' },
     { name: 'Sources', label: 'Sources', icon: 'wallet-outline', activeIcon: 'wallet' },
     { name: 'Reports', label: 'Reports', icon: 'chart-bar', activeIcon: 'chart-bar' },
     { name: 'Categories', label: 'Categories', icon: 'tag-multiple-outline', activeIcon: 'tag-multiple' },
@@ -166,6 +168,7 @@ export default function DrawerNavigator() {
       <Drawer.Screen name="Transactions" component={TransactionsScreen} />
       <Drawer.Screen name="Loans" component={LoanDashboardScreen} />
       <Drawer.Screen name="CreditCards" component={CreditCardsScreen} options={{ title: 'Credit Cards' }} />
+      <Drawer.Screen name="CreditCardStatements" component={CreditCardStatementsScreen} options={{ title: 'Credit Card Statements' }} />
       <Drawer.Screen name="Budgets" component={BudgetsScreen} />
       <Drawer.Screen name="Sources" component={SourcesScreen} />
       <Drawer.Screen name="Reports" component={ReportsScreen} />
