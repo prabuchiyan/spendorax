@@ -1,157 +1,121 @@
 const fs = require("fs");
 
 const raw = `
-01/12/2023 : Bashmati Rice 2kg : £109
+01/12/2024 : Mom KMC Visit: Breakfast: £50
 
-01/12/2023 : PPF : £5000
+01/12/2024 : Mom KMC Visit: Bike Petrol: £100
 
-01/12/2023 : Gave it to Abi : £4500
+01/12/2024 : Mom KMC Visit: Lunch: £280
 
-02/12/2023 : Chicken Biryani Family Pack : £580
+01/12/2024 : Drinks: Fried Chicken: £509
 
-02/12/2023 : Peeda : £45
+02/12/2024 : Mom KMC Visit: Breakfast: £50
 
-03/12/2023 : Bike Petrol : £140
+02/12/2024 : Groceries: £652
 
-03/12/2023 : Drink : Beer : £180
+02/12/2024 : Gave it to Abi: £5000
 
-03/12/2023 : Idly Rice : £88
+02/12/2024 : Mom KMC Visit: Car Petrol: £1000
 
-04/12/2023 : Bang DTH Recharge : £189
+02/12/2024 : Mom KMC Visit: Snacks: £40
 
-04/12/2023 : Gave it to Abi : £2011
+02/12/2024 : Mom KMC Visit: Discharge Settlement: £20966
 
-06/12/2023 : Milk : £22
+02/12/2024 : Mom KMC Visit: Dinner: £25
 
-06/12/2023 : House Rent : £13,500
+02/12/2024 : Mom KMC Visit: Tablets: £250
 
-06/12/2023 : Mushroom : £45
+02/12/2024 : Mom KMC Visit: Dinner: £280
 
-06/12/2023 : Pdkt DTH Recharge : £179
+03/12/2024 : Mom KMC Visit: Bus: Pdkt to Bang: £507
 
-07/12/2023 : Milk : £25
+04/12/2024 : Bananas: £10
 
-08/12/2023 : Post Office Deposit : £4868
+05/12/2024 : Bang DTH Receiver Replacement: £500
 
-09/12/2023 : Medicine For My Boys : £60
+05/12/2024 : Minoxidil For Myself: £1630
 
-10/12/2023 : Game CD : Last of Us Remastered : £500
+06/12/2024 : House Rent: £13,800
 
-10/12/2023 : Milk : £25
+06/12/2024 : Lunch: £100
 
-10/12/2023 : Hospital Visit For Eniyan : £210
+06/12/2024 : Drinks: Spend: £577
 
-10/12/2023 : Sweets From Jothpur Sweets : £120
+06/12/2024 : Milk: £27
 
-11/12/2023 : Snacks From Bakery : £180
+07/12/2024 : Lunch: Castle Restaurant: £890
 
-12/12/2023 : Gave it to Dad : £10,000
+09/12/2024 : Mom KMC Post Visit: Medicine & Check-up: £2000
 
-12/12/2023 : Gave it to Mom : £1,000
+09/12/2024 : Postpaid Bill Paid: £824.82
 
-12/12/2023 : Medicine For Eniyan : £80
+09/12/2024 : Drinks: Cool Drinks & Snacks: £335
 
-13/12/2023 : Hospital Visit & Urine & Blood Test : £2762
+10/12/2024 : Gave it to Dad: £10,000
 
-13/12/2023 : Eniyan 3rd Term Fees : £26999
+10/12/2024 : Gave it to Mom: £1,000
 
-13/12/2023 : Eniyan School Sports Meet : £2,000
+11/12/2024 : Gave it to Abi: £2000
 
-14/12/2023 : Birthday : Lunch : £785
+12/12/2024 : Car Petrol: £1300
 
-14/12/2023 : Birthday : Parking Tips : £20
+14/12/2024 : Pdkt Dth Recharge: £199
 
-14/12/2023 : Birthday : Sugarcane Juice : £40
+14/12/2024 : Groceries From Zepto: £574
 
-14/12/2023 : Postpaid Bill Paid Myself : £1179
+14/12/2024 : Treat: Drinks: Cool Drinks: £434
 
-15/12/2023 : Diaper For Chezhiyan : £580
+14/12/2024 : Treat: Drinks: Magic Moments: £1210
 
-15/12/2023 : Sensodyne Paste  : £220
+14/12/2024 : Treat: Dinner: £1470
 
-15/12/2023 : Car : Rat Spary : £265
+16/12/2024 : Gave it to Abi: £2385
 
-15/12/2023 : Gave it to Abi : £200
+16/12/2024 : Gave it to Agalya: £2500
 
-19/12/2023 : Milk : £27
+17/12/2024 : Lunch: £210
 
-19/13/2023 : Gave it to Abi : £222
+19/12/2024 : 4th Paid Service: Transport: £10
 
-19/12/2023 : Snacks From Bakery : £110
+20/12/2024 : Groceries From Dmart: £514
 
-20/12/2023 : Milk : £25
+20/12/2024 : Groceries From Amazon: £967
 
-20/12/2023 : Gave it to Abi : £222
+20/12/2024 : Bike Petrol: £100
 
-20/12/2023 : Bike Petrol : £80
+20/12/2024 : 4th Paid: Service: £3000
 
-20/12/2023 : Snacks From Bakery : £80
+20/12/2024 : 4th Paid: Service: £7675
 
-20/12/2023 : Chicken Rice & Noodles : £180
+20/12/2024 : Diaper For Agalya: £559
 
-21/12/2023 : Bang Electricity Bill Paid : £846
+21/12/2024 : Bang to Home: Toll Gate 1: £35
 
-21/12/2023 : Bang to Home : Car Petrol : £1122
+21/12/2024 : Bang to Home: Toll Gate 2: £90
 
-21/12/2023 : Bang to Home : Car Air : £20
+21/12/2024 : Bang to Home: Toll Gate 3: £120
 
-21/12/2023 : Medicine For Chezhiyan : £45
+21/12/2024 : Bang to Home: Toll Gate 4: £95
 
-22/12/2023 : Gas Refill : £955
+21/12/2024 : Bang to Home: Lunch: Tips: £20
 
-22/12/2023 : Bang to Home : Snacks : £100
+21/12/2024 : Bang to Home: Lunch: £1160
 
-22/12/2023 : Bang to Home : Lunch : £240
+21/12/2024 : Bang to Home: Car Petrol: £1800
 
-22/12/2023 : Bang to Home : Toll Gate 1 : £60
+22/12/2024 : Thanjavur Visit: Dinner: £530
 
-22/12/2023 : Bang to Home : Toll Gate 2 : £35
+24/12/2024 : Bang to Home: Toll Gate 5: £55
 
-22/12/2023 : Bang to Home : Toll Gate 3 : £85
+30/12/2024: Kerala Trip: Entire Spend: £10703.2
 
-22/12/2023 : Bang to Home : Toll Gate 4 : £120
+27/12/2024 : Gave it to Abi: £1,000
 
-22/12/2023 : Bang to Home : Toll Gate 5 : £95
+29/12/2024 : Jagan Prabha Akka Pudhunanmai: Moi: £500
 
-22/12/2023 : Bang to Home : Tea Break : £103
+30/12/2024 : Pdkt Shop Electricity Bill Paid: £474
 
-23/12/2023 : 3rd Service : Paid : £6021
-
-23/12/2023 : 3rd Service : Transport : £150
-
-23/12/2023 : 3rd Service : Out Pass Tips : £10
-
-24/12/2023 : Thanjavur Exhibition Visit : Car Parking : £25
-
-24/12/2023 : Thanjavur Exhibition Visit : Entry Tickets : £240
-
-24/12/2023 : Thanjavur Exhibition Visit : Spend : £240
-
-24/12/2023 : Thanjavur Visit : Dinner : £150
-
-25/12/2023 : Thanjavur Visit : Toll Gate 1 : £50
-
-25/12/2023 : Sathu Maavu : £387
-
-26/12/2023 : Dinner : Garmat : £877
-
-26/12/2023 : Dinner : Tips : £10
-
-26/12/2023 : Dinner : Cool Drinks : £45
-
-29/12/2023 : Swimming Pool : £299
-
-29/12/2023 : Snacks : Egg Buffs : £140
-
-30/12/2023 : Jegan Birthday Vatchu Kouduthathu : £200
-
-30/12/2023 : Dinner : Fast Food : £460
-
-30/12/2023 : Home to Bang : Car Petrol : £1967
-
-31/12/2023 : Pdkt Home Electricity Bill : £234
-
-31/12/2023 : Pdkt Shop Electricity Bill : £621
+30/12/2024 : Pdkt Home Ground Floor Electricity Bill Paid: £190
 `;
 
 const categoryMap = {
@@ -6820,9 +6784,9 @@ const backup = {
 };
 
 fs.writeFileSync(
-  "2023_12.json",
+  "2024_12.json",
   JSON.stringify(backup, null, 2),
   "utf8"
 );
 
-console.log("2023_12.json created successfully.");
+console.log("2024_12.json created successfully.");
