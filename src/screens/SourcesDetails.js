@@ -3,8 +3,9 @@ import React, {
   useState,
   useLayoutEffect,
   useCallback,
-  useRef,
+  useMemo,
 } from 'react';
+
 import {
   View,
   Text,
@@ -12,750 +13,1250 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
+
 import { getTransactions } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
-import { Colors, Spacing } from '../components/Theme';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
-import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
+
+import {
+  Colors,
+  Spacing,
+} from '../components/Theme';
+
+import {
+  MaterialCommunityIcons,
+} from '@expo/vector-icons';
+
+import {
+  useFocusEffect,
+} from '@react-navigation/native';
+
+import {
+  useBalanceVisibility,
+} from '../context/BalanceVisibilityContext';
 
 export default function SourcesDetails({
   route,
   navigation,
 }) {
-  const { sourceId, sourceName } = route.params;
+  const {
+    sourceId,
+    sourceName,
+  } = route.params || {};
 
-  const { balanceVisible } =
-    useBalanceVisibility();
+  const {
+    balanceVisible,
+  } = useBalanceVisibility();
 
-  const [transactions, setTransactions] =
-    useState([]);
+  const [
+    transactions,
+    setTransactions,
+  ] = useState([]);
 
-  const [categoriesMap, setCategoriesMap] =
-    useState({});
+  const [
+    categoriesMap,
+    setCategoriesMap,
+  ] = useState({});
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    sourcesMap,
+    setSourcesMap,
+  ] = useState({});
 
-  const [source, setSource] =
-    useState(null);
+  const [
+    source,
+    setSource,
+  ] = useState(null);
 
-  const flatListRef = useRef(null);
-  const lastOffset = useRef(0);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  // ---------------------------------------------------------
+  // =========================================================
   // HEADER
-  // ---------------------------------------------------------
+  // =========================================================
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: sourceName,
+      title:
+        sourceName || 'Source',
     });
-  }, [sourceName]);
+  }, [
+    navigation,
+    sourceName,
+  ]);
 
-  // ---------------------------------------------------------
-  // LOAD TRANSACTIONS
-  // ---------------------------------------------------------
+  // =========================================================
+  // SAFE DATE
+  // =========================================================
 
-  const loadTransactions = async () => {
-    try {
-      setLoading(true);
+  const parseDate = useCallback(
+    (value) => {
+      if (!value) {
+        return null;
+      }
 
-      const [
-        txData,
-        catData,
-      ] = await Promise.all([
-        getTransactions(
-          1000000,
-          null,
-          sourceId
-        ),
-        getCategories(true),
-      ]);
+      const date =
+        new Date(value);
 
-      const cmap = {};
+      if (
+        Number.isNaN(
+          date.getTime()
+        )
+      ) {
+        return null;
+      }
 
-      catData.forEach(c => {
-        cmap[c.id] = c;
-      });
-
-      setCategoriesMap(cmap);
-      setTransactions(txData);
-
-      requestAnimationFrame(() => {
-        flatListRef.current?.scrollToOffset({
-          offset: lastOffset.current,
-          animated: false,
-        });
-      });
-    } catch (error) {
-      console.error(
-        'Error loading transactions:',
-        error
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  async function load() {
-    await loadTransactions();
-
-    if (sourceId) {
-      const src =
-        await getSources(true);
-
-      setSource(
-        src.find(
-          s => s.id === sourceId
-        ) || null
-      );
-    }
-  }
-
-  useEffect(() => {
-    load();
-  }, []);
-
-  // ---------------------------------------------------------
-  // REFRESH WHEN SCREEN FOCUSED
-  // ---------------------------------------------------------
-
-  useFocusEffect(
-    useCallback(() => {
-      loadTransactions();
-    }, [])
+      return date;
+    },
+    []
   );
 
-  // ---------------------------------------------------------
-  // EDIT
-  // ---------------------------------------------------------
-
-  const handleEdit = item => {
-    navigation.navigate(
-      'TransactionAdd',
-      {
-        isEdit: true,
-        transaction: item,
-      }
-    );
-  };
-
-  // ---------------------------------------------------------
-  // DATE
-  // ---------------------------------------------------------
-
-  const formatDate = dateString => {
-    if (!dateString) {
-      return 'No date';
-    }
-
-    const d = new Date(dateString);
-
-    return d.toLocaleDateString(
-      'en-IN',
-      {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      }
-    );
-  };
-
-  // ---------------------------------------------------------
-  // BALANCE
-  // ---------------------------------------------------------
-
-  const totalBalance =
-    Number(
-      source?.initial_balance || 0
-    ) +
-    transactions.reduce(
-      (sum, tx) => {
-        const amount =
-          Number(tx.amount) || 0;
-
-        const type =
-          String(
-            tx.type || ''
-          ).toLowerCase();
-
-        if (
-          type === 'expense' ||
-          type === 'debit'
-        ) {
-          return sum - amount;
-        }
-
-        return sum + amount;
-      },
-      0
-    );
-
   // =========================================================
-  // GROUP TRANSACTIONS BY DATE
+  // LOAD DATA
   // =========================================================
 
-  const groupedTransactions = React.useMemo(() => {
-    const groups = {};
-
-    const getDateKey = (dateValue) => {
-      const date = new Date(dateValue);
-
-      return `${date.getFullYear()}-${String(
-        date.getMonth() + 1
-      ).padStart(2, '0')}-${String(
-        date.getDate()
-      ).padStart(2, '0')}`;
-    };
-
-    transactions.forEach(item => {
-      const key = getDateKey(item.date);
-
-      if (!groups[key]) {
-        groups[key] = [];
+  const loadData = useCallback(
+    async () => {
+      if (
+        sourceId === null ||
+        sourceId === undefined
+      ) {
+        setTransactions([]);
+        setSource(null);
+        setLoading(false);
+        return;
       }
 
-      groups[key].push(item);
-    });
+      try {
+        setLoading(true);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+        // -----------------------------------------------------
+        // Load all required data
+        // -----------------------------------------------------
 
-    const yesterday = new Date(today);
-    yesterday.setDate(
-      yesterday.getDate() - 1
-    );
+        const [
+          txData,
+          catData,
+          sourceData,
+        ] = await Promise.all([
+          getTransactions(
+            1000000,
+            'Yes'
+          ),
 
-    return Object.keys(groups)
-      .sort((a, b) => b.localeCompare(a))
-      .map(dateKey => {
-        const [year, month, day] =
-          dateKey.split('-').map(Number);
+          getCategories(true),
 
-        const date = new Date(
-          year,
-          month - 1,
-          day
-        );
+          getSources(true),
+        ]);
 
-        date.setHours(0, 0, 0, 0);
+        // -----------------------------------------------------
+        // CATEGORY MAP
+        // -----------------------------------------------------
 
-        let title;
+        const categoryMap = {};
 
         if (
-          date.getTime() ===
-          today.getTime()
+          Array.isArray(catData)
         ) {
-          title = 'Today';
-        } else if (
-          date.getTime() ===
-          yesterday.getTime()
-        ) {
-          title = 'Yesterday';
-        } else {
-          title = date.toLocaleDateString(
-            'en-IN',
-            {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
+          catData.forEach(
+            (category) => {
+              categoryMap[
+                category.id
+              ] = category;
             }
           );
         }
 
-        const dailyExpense =
-          groups[dateKey].reduce(
-            (sum, item) => {
-              const type =
-                String(
-                  item.type || ''
-                ).toLowerCase();
+        // -----------------------------------------------------
+        // SOURCE MAP
+        // -----------------------------------------------------
 
-              if (
-                type === 'expense' ||
-                type === 'debit'
-              ) {
-                return (
-                  sum +
-                  Number(item.amount || 0)
-                );
-              }
+        const sourceMap = {};
 
-              return sum;
-            },
-            0
+        if (
+          Array.isArray(sourceData)
+        ) {
+          sourceData.forEach(
+            (src) => {
+              sourceMap[
+                src.id
+              ] = src;
+            }
+          );
+        }
+
+        // -----------------------------------------------------
+        // SOURCE ID
+        // -----------------------------------------------------
+
+        const selectedSourceId =
+          Number(sourceId);
+
+        // -----------------------------------------------------
+        // FILTER TRANSACTIONS
+        // -----------------------------------------------------
+
+        const filteredTransactions =
+          (
+            Array.isArray(txData)
+              ? txData
+              : []
+          ).filter(
+            (transaction) =>
+              Number(
+                transaction.source_id
+              ) ===
+              selectedSourceId
           );
 
-        const dailyIncome =
-          groups[dateKey].reduce(
-            (sum, item) => {
-              const type =
-                String(
-                  item.type || ''
-                ).toLowerCase();
+        // -----------------------------------------------------
+        // CURRENT SOURCE
+        // -----------------------------------------------------
 
-              if (
-                type === 'income' ||
-                type === 'credit'
-              ) {
-                return (
-                  sum +
-                  Number(item.amount || 0)
+        const currentSource =
+          (
+            Array.isArray(
+              sourceData
+            )
+              ? sourceData
+              : []
+          ).find(
+            (src) =>
+              Number(src.id) ===
+              selectedSourceId
+          ) || null;
+
+        // -----------------------------------------------------
+        // UPDATE STATE
+        // -----------------------------------------------------
+
+        setCategoriesMap(
+          categoryMap
+        );
+
+        setSourcesMap(
+          sourceMap
+        );
+
+        setSource(
+          currentSource
+        );
+
+        setTransactions(
+          filteredTransactions
+        );
+      } catch (error) {
+        console.error(
+          'SourcesDetails load error:',
+          error
+        );
+
+        setTransactions([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [sourceId]
+  );
+
+  // =========================================================
+  // INITIAL LOAD
+  // =========================================================
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // =========================================================
+  // REFRESH WHEN SCREEN FOCUSED
+  // =========================================================
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  // =========================================================
+  // EDIT TRANSACTION
+  // =========================================================
+
+  const handleEdit =
+    useCallback(
+      (item) => {
+        navigation.navigate(
+          'TransactionAdd',
+          {
+            isEdit: true,
+            transaction: item,
+          }
+        );
+      },
+      [navigation]
+    );
+
+  // =========================================================
+  // BALANCE
+  // =========================================================
+
+  const totalBalance =
+    useMemo(() => {
+      const initialBalance =
+        Number(
+          source?.initial_balance ||
+          0
+        );
+
+      const transactionBalance =
+        transactions.reduce(
+          (sum, tx) => {
+            const amount =
+              Number(
+                tx.amount
+              ) || 0;
+
+            const type =
+              String(
+                tx.type || ''
+              ).toLowerCase();
+
+            if (
+              type === 'expense' ||
+              type === 'debit'
+            ) {
+              return (
+                sum - amount
+              );
+            }
+
+            return (
+              sum + amount
+            );
+          },
+          0
+        );
+
+      return (
+        initialBalance +
+        transactionBalance
+      );
+    }, [
+      source,
+      transactions,
+    ]);
+
+  // =========================================================
+  // GROUP TRANSACTIONS
+  // =========================================================
+
+  const groupedTransactions =
+    useMemo(() => {
+      const groups = {};
+
+      transactions.forEach(
+        (item) => {
+          const date =
+            parseDate(
+              item.date
+            );
+
+          if (!date) {
+            return;
+          }
+
+          const year =
+            date.getFullYear();
+
+          const month =
+            String(
+              date.getMonth() + 1
+            ).padStart(2, '0');
+
+          const day =
+            String(
+              date.getDate()
+            ).padStart(2, '0');
+
+          const key =
+            `${year}-${month}-${day}`;
+
+          if (!groups[key]) {
+            groups[key] = [];
+          }
+
+          groups[key].push(item);
+        }
+      );
+
+      // -----------------------------------------------------
+      // TODAY
+      // -----------------------------------------------------
+
+      const today =
+        new Date();
+
+      today.setHours(
+        0,
+        0,
+        0,
+        0
+      );
+
+      // -----------------------------------------------------
+      // YESTERDAY
+      // -----------------------------------------------------
+
+      const yesterday =
+        new Date(today);
+
+      yesterday.setDate(
+        yesterday.getDate() - 1
+      );
+
+      // -----------------------------------------------------
+      // CREATE SECTIONS
+      // -----------------------------------------------------
+
+      return Object.keys(groups)
+        .sort(
+          (a, b) =>
+            b.localeCompare(a)
+        )
+        .map(
+          (dateKey) => {
+            const [
+              year,
+              month,
+              day,
+            ] =
+              dateKey
+                .split('-')
+                .map(Number);
+
+            const date =
+              new Date(
+                year,
+                month - 1,
+                day
+              );
+
+            date.setHours(
+              0,
+              0,
+              0,
+              0
+            );
+
+            let title;
+
+            if (
+              date.getTime() ===
+              today.getTime()
+            ) {
+              title =
+                'Today';
+            } else if (
+              date.getTime() ===
+              yesterday.getTime()
+            ) {
+              title =
+                'Yesterday';
+            } else {
+              title =
+                date.toLocaleDateString(
+                  'en-IN',
+                  {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                  }
                 );
-              }
+            }
 
-              return sum;
-            },
-            0
-          );
+            // -------------------------------------------------
+            // DAILY INCOME
+            // -------------------------------------------------
 
-        return {
-          title,
-          dateKey,
-          data: groups[dateKey],
-          dailyExpense,
-          dailyIncome,
-        };
-      });
-  }, [transactions]);
+            const dailyIncome =
+              groups[
+                dateKey
+              ].reduce(
+                (sum, item) => {
+                  const type =
+                    String(
+                      item.type ||
+                      ''
+                    ).toLowerCase();
 
-  // ---------------------------------------------------------
-  // TRANSACTION TYPE
-  // ---------------------------------------------------------
+                  if (
+                    type ===
+                    'income' ||
+                    type ===
+                    'credit'
+                  ) {
+                    return (
+                      sum +
+                      Number(
+                        item.amount ||
+                        0
+                      )
+                    );
+                  }
 
-  const getTransactionType = item => {
-    const type =
-      String(
-        item.type || ''
-      ).toLowerCase();
+                  return sum;
+                },
+                0
+              );
 
-    if (
-      type === 'transfer' ||
-      item.transfer_group_id ||
-      item.is_transfer
-    ) {
-      return 'transfer';
-    }
+            // -------------------------------------------------
+            // DAILY EXPENSE
+            // -------------------------------------------------
 
-    if (type === 'income') {
-      return 'income';
-    }
+            const dailyExpense =
+              groups[
+                dateKey
+              ].reduce(
+                (sum, item) => {
+                  const type =
+                    String(
+                      item.type ||
+                      ''
+                    ).toLowerCase();
 
-    return 'expense';
-  };
+                  if (
+                    type ===
+                    'expense' ||
+                    type ===
+                    'debit'
+                  ) {
+                    return (
+                      sum +
+                      Number(
+                        item.amount ||
+                        0
+                      )
+                    );
+                  }
 
-  // ---------------------------------------------------------
+                  return sum;
+                },
+                0
+              );
+
+            return {
+              title,
+              dateKey,
+              data:
+                groups[
+                dateKey
+                ],
+              dailyIncome,
+              dailyExpense,
+            };
+          }
+        );
+    }, [
+      transactions,
+      parseDate,
+    ]);
+
+  // =========================================================
   // TRANSACTION CARD
-  // ---------------------------------------------------------
+  // =========================================================
 
-  const renderItem = ({
-    item,
-    index,
-    section,
-  }) => {
-    const category =
-      categoriesMap[
-      item.category_id
-      ] || {};
+  const renderItem =
+    useCallback(
+      ({
+        item,
+        index,
+        section,
+      }) => {
+        const category =
+          categoriesMap[
+          item.category_id
+          ] || {};
 
-    const type =
-      getTransactionType(item);
+        const sourceItem =
+          sourcesMap[
+          item.source_id
+          ] || {};
 
-    const amountColor =
-      type === 'income'
-        ? '#20A56A'
-        : type === 'transfer'
-          ? '#718096'
-          : '#E35D6A';
+        const rawType =
+          String(
+            item.type || ''
+          ).toLowerCase();
 
-    const amountPrefix =
-      type === 'income'
-        ? '+'
-        : type === 'expense'
-          ? '-'
-          : '';
+        const isTransfer =
+          rawType ===
+          'transfer' ||
+          !!item.transfer_group_id ||
+          !!item.is_transfer;
 
-    const accentColor =
-      type === 'income'
-        ? '#20A56A'
-        : type === 'transfer'
-          ? '#718096'
-          : '#E35D6A';
+        const isIncome =
+          !isTransfer &&
+          (
+            rawType ===
+            'income' ||
+            rawType ===
+            'credit'
+          );
 
-    const iconColor =
-      category.color ||
-      accentColor;
+        const type =
+          isTransfer
+            ? 'transfer'
+            : isIncome
+              ? 'income'
+              : 'expense';
 
-    const transactionDate =
-      new Date(item.date);
+        // -----------------------------------------------------
+        // COLORS
+        // -----------------------------------------------------
 
-    const dateText =
-      transactionDate.toLocaleDateString(
-        'en-IN',
-        {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-        }
-      );
+        const accentColor =
+          type === 'income'
+            ? '#20A56A'
+            : type ===
+              'transfer'
+              ? '#718096'
+              : '#E35D6A';
 
-    const timeText =
-      transactionDate.toLocaleTimeString(
-        'en-IN',
-        {
-          hour: '2-digit',
-          minute: '2-digit',
-        }
-      );
+        const amountColor =
+          accentColor;
 
-    const isLast =
-      index ===
-      section.data.length - 1;
+        const amountPrefix =
+          type === 'income'
+            ? '+'
+            : type ===
+              'expense'
+              ? '-'
+              : '';
 
-    return (
-      <TouchableOpacity
-        activeOpacity={0.88}
-        onPress={() =>
-          handleEdit(item)
-        }
-        style={{
-          marginBottom:
-            isLast ? 12 : 8,
-        }}
-      >
-        <View
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderRadius: 17,
-            overflow: 'hidden',
+        const iconColor =
+          typeof category.color ===
+            'string' &&
+            category.color.length >
+            0
+            ? category.color
+            : accentColor;
 
-            shadowColor: '#000',
-            shadowOffset: {
-              width: 0,
-              height: 3,
-            },
-            shadowOpacity: 0.06,
-            shadowRadius: 8,
-            elevation: 2,
-          }}
-        >
+        // -----------------------------------------------------
+        // DATE
+        // -----------------------------------------------------
 
-          {/* LEFT ACCENT */}
+        const date =
+          parseDate(
+            item.date
+          );
 
-          <View
+        const dateText =
+          date
+            ? date.toLocaleDateString(
+              'en-IN',
+              {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              }
+            )
+            : 'No date';
+
+        const timeText =
+          date
+            ? date.toLocaleTimeString(
+              'en-IN',
+              {
+                hour: '2-digit',
+                minute: '2-digit',
+              }
+            )
+            : '--:--';
+
+        const isLast =
+          index ===
+          section.data.length -
+          1;
+
+        // -----------------------------------------------------
+        // CARD
+        // -----------------------------------------------------
+
+        return (
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() =>
+              handleEdit(item)
+            }
             style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 4,
-              backgroundColor:
-                accentColor,
-            }}
-          />
-
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-
-              minHeight: 82,
-
-              paddingLeft: 15,
-              paddingRight: 12,
-              paddingVertical: 12,
+              marginBottom:
+                isLast
+                  ? 12
+                  : 8,
             }}
           >
-
-            {/* CATEGORY ICON */}
-
             <View
               style={{
-                width: 50,
-                height: 50,
-                borderRadius: 16,
-
                 backgroundColor:
-                  iconColor,
+                  '#FFFFFF',
 
-                justifyContent: 'center',
-                alignItems: 'center',
+                borderRadius:
+                  17,
 
-                marginRight: 12,
+                overflow:
+                  'hidden',
 
                 shadowColor:
-                  iconColor,
+                  '#000',
 
                 shadowOffset: {
                   width: 0,
                   height: 3,
                 },
 
-                shadowOpacity: 0.22,
-                shadowRadius: 6,
-                elevation: 3,
-              }}
-            >
-              <MaterialCommunityIcons
-                name={
-                  category.icon ||
-                  (
-                    type === 'income'
-                      ? 'arrow-down-circle-outline'
-                      : type === 'transfer'
-                        ? 'swap-horizontal'
-                        : 'arrow-up-circle-outline'
-                  )
-                }
-                size={23}
-                color="#FFFFFF"
-              />
-            </View>
+                shadowOpacity:
+                  0.06,
 
-            {/* DETAILS */}
+                shadowRadius:
+                  8,
 
-            <View
-              style={{
-                flex: 1,
-                minWidth: 0,
-                justifyContent: 'center',
-                paddingRight: 8,
+                elevation: 2,
               }}
             >
 
-              {/* NOTES */}
-
-              <Text
-                numberOfLines={2}
-                ellipsizeMode="tail"
-                style={{
-                  fontSize: 15,
-                  lineHeight: 19,
-                  fontWeight: '800',
-                  color: Colors.text,
-                  letterSpacing: -0.15,
-                }}
-              >
-                {item.notes ||
-                  category.name ||
-                  'Untitled'}
-              </Text>
-
-              {/* CATEGORY */}
+              {/* LEFT ACCENT */}
 
               <View
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  marginTop: 6,
-                  minWidth: 0,
+                  position:
+                    'absolute',
+
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+
+                  width: 4,
+
+                  backgroundColor:
+                    accentColor,
+                }}
+              />
+
+              <View
+                style={{
+                  flexDirection:
+                    'row',
+
+                  alignItems:
+                    'center',
+
+                  minHeight:
+                    82,
+
+                  paddingLeft:
+                    15,
+
+                  paddingRight:
+                    12,
+
+                  paddingVertical:
+                    12,
                 }}
               >
+
+                {/* CATEGORY ICON */}
+
                 <View
                   style={{
-                    flexShrink: 1,
-                    maxWidth: '75%',
+                    width: 50,
+                    height: 50,
+
+                    borderRadius:
+                      16,
 
                     backgroundColor:
-                      iconColor + '12',
+                      iconColor,
 
-                    borderRadius: 6,
+                    justifyContent:
+                      'center',
 
-                    paddingHorizontal: 7,
-                    paddingVertical: 4,
+                    alignItems:
+                      'center',
 
-                    borderWidth: 1,
-                    borderColor:
-                      iconColor + '18',
+                    marginRight:
+                      12,
+
+                    shadowColor:
+                      iconColor,
+
+                    shadowOffset: {
+                      width: 0,
+                      height: 3,
+                    },
+
+                    shadowOpacity:
+                      0.22,
+
+                    shadowRadius:
+                      6,
+
+                    elevation: 3,
                   }}
                 >
-                  <Text
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                    style={{
-                      color: iconColor,
-                      fontSize: 11,
-                      lineHeight: 13,
-                      fontWeight: '800',
-                    }}
-                  >
-                    {category.name ||
-                      'Uncategorized'}
-                  </Text>
+                  <MaterialCommunityIcons
+                    name={
+                      category.icon ||
+                      (
+                        type ===
+                          'income'
+                          ? 'arrow-down-circle-outline'
+                          : type ===
+                            'transfer'
+                            ? 'swap-horizontal'
+                            : 'arrow-up-circle-outline'
+                      )
+                    }
+                    size={23}
+                    color="#FFFFFF"
+                  />
                 </View>
 
-                {type === 'transfer' && (
-                  <>
+                {/* DETAILS */}
+
+                <View
+                  style={{
+                    flex: 1,
+
+                    minWidth: 0,
+
+                    justifyContent:
+                      'center',
+
+                    paddingRight:
+                      8,
+                  }}
+                >
+
+                  {/* NOTES */}
+
+                  <Text
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                    style={{
+                      fontSize:
+                        15,
+
+                      lineHeight:
+                        19,
+
+                      fontWeight:
+                        '800',
+
+                      color:
+                        Colors.text,
+
+                      letterSpacing:
+                        -0.15,
+                    }}
+                  >
+                    {item.notes ||
+                      category.name ||
+                      'Untitled'}
+                  </Text>
+
+                  {/* CATEGORY + SOURCE */}
+
+                  <View
+                    style={{
+                      flexDirection:
+                        'row',
+
+                      alignItems:
+                        'center',
+
+                      marginTop:
+                        6,
+
+                      minWidth:
+                        0,
+                    }}
+                  >
+
+                    {/* CATEGORY */}
+
+                    <View
+                      style={{
+                        flexShrink:
+                          1,
+
+                        maxWidth:
+                          '52%',
+
+                        backgroundColor:
+                          `${iconColor}12`,
+
+                        borderRadius:
+                          6,
+
+                        paddingHorizontal:
+                          7,
+
+                        paddingVertical:
+                          4,
+
+                        borderWidth:
+                          1,
+
+                        borderColor:
+                          `${iconColor}18`,
+                      }}
+                    >
+                      <Text
+                        numberOfLines={
+                          1
+                        }
+                        ellipsizeMode="tail"
+                        style={{
+                          color:
+                            iconColor,
+
+                          fontSize:
+                            11,
+
+                          lineHeight:
+                            13,
+
+                          fontWeight:
+                            '800',
+                        }}
+                      >
+                        {category.name ||
+                          'Uncategorized'}
+                      </Text>
+                    </View>
+
+                    {/* DOT */}
+
                     <View
                       style={{
                         width: 3,
                         height: 3,
-                        borderRadius: 2,
+
+                        borderRadius:
+                          2,
+
                         backgroundColor:
                           '#C7CBD1',
-                        marginHorizontal: 6,
+
+                        marginHorizontal:
+                          6,
+
+                        flexShrink:
+                          0,
                       }}
+                    />
+
+                    {/* SOURCE */}
+
+                    <Text
+                      numberOfLines={
+                        1
+                      }
+                      ellipsizeMode="tail"
+                      style={{
+                        flex: 1,
+
+                        minWidth: 0,
+
+                        color:
+                          '#9299A3',
+
+                        fontSize:
+                          11,
+
+                        lineHeight:
+                          14,
+
+                        fontWeight:
+                          '600',
+                      }}
+                    >
+                      {sourceItem.name ||
+                        sourceName ||
+                        'No source'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* RIGHT */}
+
+                <View
+                  style={{
+                    width: 96,
+
+                    flexShrink: 0,
+
+                    alignItems:
+                      'flex-end',
+
+                    justifyContent:
+                      'center',
+                  }}
+                >
+
+                  {/* AMOUNT */}
+
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={
+                      0.72
+                    }
+                    style={{
+                      width:
+                        '100%',
+
+                      textAlign:
+                        'right',
+
+                      fontSize:
+                        15,
+
+                      fontWeight:
+                        '900',
+
+                      color:
+                        amountColor,
+
+                      letterSpacing:
+                        -0.35,
+                    }}
+                  >
+                    {balanceVisible
+                      ? `${amountPrefix}₹${Number(
+                        item.amount ||
+                        0
+                      ).toLocaleString(
+                        'en-IN',
+                        {
+                          minimumFractionDigits:
+                            2,
+
+                          maximumFractionDigits:
+                            2,
+                        }
+                      )}`
+                      : '••••••'}
+                  </Text>
+
+                  {/* DATE */}
+
+                  <View
+                    style={{
+                      flexDirection:
+                        'row',
+
+                      alignItems:
+                        'center',
+
+                      marginTop:
+                        5,
+                    }}
+                  >
+                    <MaterialCommunityIcons
+                      name="calendar-month-outline"
+                      size={11}
+                      color="#A3A9B2"
                     />
 
                     <Text
                       style={{
-                        color: '#9299A3',
-                        fontSize: 10,
-                        fontWeight: '600',
+                        color:
+                          '#9299A3',
+
+                        fontSize:
+                          10,
+
+                        fontWeight:
+                          '700',
+
+                        marginLeft:
+                          3,
                       }}
                     >
-                      Transfer
+                      {dateText}
                     </Text>
-                  </>
-                )}
+                  </View>
+
+                  {/* TIME */}
+
+                  <View
+                    style={{
+                      flexDirection:
+                        'row',
+
+                      alignItems:
+                        'center',
+
+                      marginTop:
+                        3,
+
+                      minHeight:
+                        14,
+                    }}
+                  >
+                    {type ===
+                      'transfer' ? (
+                      <View
+                        style={{
+                          flexDirection:
+                            'row',
+
+                          alignItems:
+                            'center',
+
+                          backgroundColor:
+                            '#F1F3F5',
+
+                          paddingHorizontal:
+                            6,
+
+                          paddingVertical:
+                            2,
+
+                          borderRadius:
+                            5,
+                        }}
+                      >
+                        <MaterialCommunityIcons
+                          name="swap-horizontal"
+                          size={10}
+                          color="#718096"
+                        />
+
+                        <Text
+                          style={{
+                            fontSize:
+                              7.5,
+
+                            fontWeight:
+                              '900',
+
+                            color:
+                              '#718096',
+
+                            marginLeft:
+                              3,
+
+                            letterSpacing:
+                              0.2,
+                          }}
+                        >
+                          TRANSFER
+                        </Text>
+                      </View>
+                    ) : (
+                      <View
+                        style={{
+                          flexDirection:
+                            'row',
+
+                          alignItems:
+                            'center',
+                        }}
+                      >
+                        <MaterialCommunityIcons
+                          name="clock-outline"
+                          size={10}
+                          color="#A3A9B2"
+                        />
+
+                        <Text
+                          style={{
+                            color:
+                              '#A3A9B2',
+
+                            fontSize:
+                              9,
+
+                            fontWeight:
+                              '600',
+
+                            marginLeft:
+                              3,
+                          }}
+                        >
+                          {timeText}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
               </View>
             </View>
-
-            {/* RIGHT COLUMN */}
-
-            <View
-              style={{
-                width: 96,
-                flexShrink: 0,
-                alignItems: 'flex-end',
-                justifyContent: 'center',
-              }}
-            >
-
-              {/* AMOUNT */}
-
-              <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.72}
-                style={{
-                  width: '100%',
-                  textAlign: 'right',
-                  fontSize: 15,
-                  fontWeight: '900',
-                  color: amountColor,
-                  letterSpacing: -0.35,
-                }}
-              >
-                {balanceVisible
-                  ? `${amountPrefix}₹${Number(
-                    item.amount || 0
-                  ).toLocaleString(
-                    'en-IN',
-                    {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    }
-                  )}`
-                  : '••••••'}
-              </Text>
-
-              {/* DATE */}
-
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  marginTop: 5,
-                }}
-              >
-                <MaterialCommunityIcons
-                  name="calendar-month-outline"
-                  size={11}
-                  color="#A3A9B2"
-                />
-
-                <Text
-                  style={{
-                    color: '#9299A3',
-                    fontSize: 10,
-                    fontWeight: '700',
-                    marginLeft: 3,
-                  }}
-                >
-                  {dateText}
-                </Text>
-              </View>
-
-              {/* TIME */}
-
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  marginTop: 3,
-                }}
-              >
-                <MaterialCommunityIcons
-                  name="clock-outline"
-                  size={10}
-                  color="#A3A9B2"
-                />
-
-                <Text
-                  style={{
-                    color: '#A3A9B2',
-                    fontSize: 9,
-                    fontWeight: '600',
-                    marginLeft: 3,
-                  }}
-                >
-                  {timeText}
-                </Text>
-              </View>
-
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
+          </TouchableOpacity>
+        );
+      },
+      [
+        categoriesMap,
+        sourcesMap,
+        balanceVisible,
+        sourceName,
+        handleEdit,
+        parseDate,
+      ]
     );
-  };
 
-  // ---------------------------------------------------------
+  // =========================================================
   // SCREEN
-  // ---------------------------------------------------------
+  // =========================================================
 
   return (
     <View
-      style={styles.container}
+      style={
+        styles.container
+      }
     >
 
-      {/* ================================================ */}
-      {/* BALANCE HERO */}
-      {/* ================================================ */}
+      {/* BALANCE */}
 
       <View
         style={styles.hero}
       >
         <Text
-          style={styles.heroLabel}
+          style={
+            styles.heroLabel
+          }
         >
           Available Balance
         </Text>
 
         <Text
-          style={styles.heroAmount}
+          style={
+            styles.heroAmount
+          }
         >
           {balanceVisible
             ? `₹ ${totalBalance.toLocaleString(
               'en-IN',
               {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
+                minimumFractionDigits:
+                  2,
+
+                maximumFractionDigits:
+                  2,
               }
             )}`
             : '••••••'}
         </Text>
       </View>
 
-      {/* ================================================ */}
-      {/* SECTION HEADER */}
-      {/* ================================================ */}
+      {/* HEADER */}
 
       <View
-        style={styles.headerRow}
+        style={
+          styles.headerRow
+        }
       >
         <View>
           <Text
@@ -790,13 +1291,13 @@ export default function SourcesDetails({
         </View>
       </View>
 
-      {/* ================================================ */}
       {/* CONTENT */}
-      {/* ================================================ */}
 
       {loading ? (
         <View
-          style={styles.center}
+          style={
+            styles.center
+          }
         >
           <Text
             style={{
@@ -807,9 +1308,12 @@ export default function SourcesDetails({
             Loading...
           </Text>
         </View>
-      ) : transactions.length === 0 ? (
+      ) : transactions.length ===
+        0 ? (
         <View
-          style={styles.center}
+          style={
+            styles.center
+          }
         >
           <View
             style={
@@ -836,123 +1340,185 @@ export default function SourcesDetails({
               styles.emptySubtitle
             }
           >
-            Transactions for this source
-            will appear here
+            Transactions for this
+            source will appear
+            here
           </Text>
         </View>
       ) : (
         <SectionList
-          ref={flatListRef}
-          sections={groupedTransactions}
-          keyExtractor={(item) =>
-            item.id.toString()
+          sections={
+            groupedTransactions
           }
-          renderItem={renderItem}
-          showsVerticalScrollIndicator={false}
-          stickySectionHeadersEnabled={false}
+
+          keyExtractor={
+            (item) =>
+              String(item.id)
+          }
+
+          renderItem={
+            renderItem
+          }
+
+          showsVerticalScrollIndicator={
+            false
+          }
+
+          stickySectionHeadersEnabled={
+            false
+          }
 
           contentContainerStyle={{
-            paddingBottom: 40,
-            paddingHorizontal: 1,
-            flexGrow: 1,
-          }}
+            paddingBottom:
+              40,
 
-          onScroll={(e) => {
-            lastOffset.current =
-              e.nativeEvent.contentOffset.y;
+            paddingHorizontal:
+              1,
           }}
-
-          scrollEventThrottle={16}
 
           renderSectionHeader={({
             section,
           }) => (
             <View
               style={{
-                paddingTop: 9,
-                paddingBottom: 7,
+                paddingTop:
+                  9,
+
+                paddingBottom:
+                  7,
+
                 backgroundColor:
                   Colors.background,
               }}
             >
               <View
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
+                  flexDirection:
+                    'row',
+
+                  alignItems:
+                    'center',
+
                   justifyContent:
                     'space-between',
                 }}
               >
+
+                {/* DATE */}
+
                 <View>
                   <Text
                     style={{
-                      fontSize: 13,
-                      fontWeight: '900',
-                      color: Colors.text,
+                      fontSize:
+                        13,
+
+                      fontWeight:
+                        '900',
+
+                      color:
+                        Colors.text,
+
                       textTransform:
                         'uppercase',
-                      letterSpacing: 0.4,
+
+                      letterSpacing:
+                        0.4,
                     }}
                   >
-                    {section.title}
+                    {
+                      section.title
+                    }
                   </Text>
 
                   <Text
                     style={{
-                      fontSize: 11,
-                      color: Colors.muted,
-                      marginTop: 2,
+                      fontSize:
+                        11,
+
+                      color:
+                        Colors.muted,
+
+                      marginTop:
+                        2,
                     }}
                   >
-                    {section.data.length}{' '}
-                    {section.data.length === 1
+                    {
+                      section
+                        .data
+                        .length
+                    }{' '}
+                    {section
+                      .data
+                      .length ===
+                      1
                       ? 'transaction'
                       : 'transactions'}
                   </Text>
                 </View>
 
+                {/* DAILY TOTAL */}
+
                 <View
                   style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
+                    flexDirection:
+                      'row',
+
+                    alignItems:
+                      'center',
                   }}
                 >
-                  {section.dailyIncome > 0 && (
-                    <Text
-                      style={{
-                        color: '#20A56A',
-                        fontSize: 11,
-                        fontWeight: '800',
-                        marginRight: 8,
-                      }}
-                    >
-                      +₹
-                      {section.dailyIncome.toLocaleString(
-                        'en-IN',
-                        {
-                          maximumFractionDigits: 0,
-                        }
-                      )}
-                    </Text>
-                  )}
+                  {section.dailyIncome >
+                    0 && (
+                      <Text
+                        style={{
+                          color:
+                            '#20A56A',
 
-                  {section.dailyExpense > 0 && (
-                    <Text
-                      style={{
-                        color: '#E35D6A',
-                        fontSize: 11,
-                        fontWeight: '800',
-                      }}
-                    >
-                      -₹
-                      {section.dailyExpense.toLocaleString(
-                        'en-IN',
-                        {
-                          maximumFractionDigits: 0,
-                        }
-                      )}
-                    </Text>
-                  )}
+                          fontSize:
+                            11,
+
+                          fontWeight:
+                            '800',
+
+                          marginRight:
+                            8,
+                        }}
+                      >
+                        +₹
+                        {section.dailyIncome.toLocaleString(
+                          'en-IN',
+                          {
+                            maximumFractionDigits:
+                              0,
+                          }
+                        )}
+                      </Text>
+                    )}
+
+                  {section.dailyExpense >
+                    0 && (
+                      <Text
+                        style={{
+                          color:
+                            '#E35D6A',
+
+                          fontSize:
+                            11,
+
+                          fontWeight:
+                            '800',
+                        }}
+                      >
+                        -₹
+                        {section.dailyExpense.toLocaleString(
+                          'en-IN',
+                          {
+                            maximumFractionDigits:
+                              0,
+                          }
+                        )}
+                      </Text>
+                    )}
                 </View>
               </View>
             </View>
@@ -971,9 +1537,12 @@ const styles =
   StyleSheet.create({
     container: {
       flex: 1,
+
       backgroundColor:
         Colors.background,
-      padding: Spacing.xs,
+
+      padding:
+        Spacing.xs,
     },
 
     hero: {
@@ -982,24 +1551,33 @@ const styles =
 
       borderRadius: 20,
 
-      paddingVertical: 15,
-      paddingHorizontal: 14,
+      paddingVertical:
+        15,
 
-      alignItems: 'center',
+      paddingHorizontal:
+        14,
 
-      marginBottom: 13,
+      alignItems:
+        'center',
+
+      marginBottom:
+        13,
 
       borderWidth: 1,
-      borderColor: '#F0F1F3',
 
-      shadowColor: '#000',
+      borderColor:
+        '#F0F1F3',
+
+      shadowColor:
+        '#000',
 
       shadowOffset: {
         width: 0,
         height: 3,
       },
 
-      shadowOpacity: 0.05,
+      shadowOpacity:
+        0.05,
 
       shadowRadius: 8,
 
@@ -1017,7 +1595,8 @@ const styles =
       textTransform:
         'uppercase',
 
-      letterSpacing: 0.5,
+      letterSpacing:
+        0.5,
     },
 
     heroAmount: {
@@ -1030,7 +1609,8 @@ const styles =
 
       marginTop: 7,
 
-      letterSpacing: -0.5,
+      letterSpacing:
+        -0.5,
     },
 
     headerRow: {
@@ -1132,6 +1712,8 @@ const styles =
 
       textAlign:
         'center',
+
+      maxWidth: 260,
     },
 
     center: {
