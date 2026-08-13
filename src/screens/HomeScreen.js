@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getTotalBalance, getCategorySpending, getMonthlyTrends, getSourceBalances } from '../services/reports';
 import { getBudgetsWithRemaining } from '../services/budgets';
 import { getCategoryBudgetSummary } from '../services/categoryBudgets';
@@ -430,97 +431,477 @@ export default function HomeScreen({ navigation }) {
         )}
 
         <Card>
-          <Text style={{ fontWeight: '600', marginBottom: 8 }}>Latest transactions</Text>
-          {recentTx.length ? recentTx.slice(0, 3).map(r => {
-            const cat = categoriesMap[r.category_id] || {};
-            return (
-              <View
-                key={r.id}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 10,
+            }}
+          >
+            <View>
+              <Text
                 style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  paddingVertical: 8
+                  fontWeight: '800',
+                  fontSize: 16,
+                  color: Colors.text,
                 }}
               >
-                <View
+                Latest transactions
+              </Text>
+
+              <Text
+                style={{
+                  fontSize: 11,
+                  color: Colors.muted,
+                  marginTop: 2,
+                }}
+              >
+                Your most recent activity
+              </Text>
+            </View>
+          </View>
+          {recentTx.length ? (
+            recentTx.slice(0, 3).map((r, index) => {
+              const cat = categoriesMap[r.category_id] || {};
+
+              const source = sources.find(
+                s => s.id === r.source_id
+              );
+
+              const type =
+                String(r.type || '').toLowerCase();
+
+              const isTransfer =
+                type === 'transfer' ||
+                r.transfer_group_id ||
+                r.is_transfer;
+
+              const transactionType =
+                isTransfer
+                  ? 'transfer'
+                  : type === 'income'
+                    ? 'income'
+                    : 'expense';
+
+              const amountColor =
+                transactionType === 'income'
+                  ? '#20A56A'
+                  : transactionType === 'transfer'
+                    ? '#718096'
+                    : '#E35D6A';
+
+              const amountPrefix =
+                transactionType === 'income'
+                  ? '+'
+                  : transactionType === 'expense'
+                    ? '-'
+                    : '';
+
+              const accentColor =
+                transactionType === 'income'
+                  ? '#20A56A'
+                  : transactionType === 'transfer'
+                    ? '#718096'
+                    : '#E35D6A';
+
+              const iconColor =
+                cat.color || accentColor;
+
+              const transactionDate =
+                new Date(r.date);
+
+              const dateText =
+                transactionDate.toLocaleDateString(
+                  undefined,
+                  {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                  }
+                );
+
+              const timeText =
+                transactionDate.toLocaleTimeString(
+                  undefined,
+                  {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }
+                );
+
+              return (
+                <TouchableOpacity
+                  key={r.id}
+                  activeOpacity={0.88}
+                  onPress={() => {
+                    navigation.navigate(
+                      'TransactionAdd',
+                      {
+                        isEdit: true,
+                        transaction: r,
+                      }
+                    );
+                  }}
                   style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    flex: 1,
+                    marginBottom:
+                      index ===
+                        recentTx.slice(0, 3).length - 1
+                        ? 4
+                        : 8,
                   }}
                 >
                   <View
                     style={{
-                      width: 52,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 12,
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: 17,
+                      overflow: 'hidden',
+
+                      shadowColor: '#000',
+                      shadowOffset: {
+                        width: 0,
+                        height: 3,
+                      },
+                      shadowOpacity: 0.06,
+                      shadowRadius: 8,
+                      elevation: 2,
                     }}
                   >
-                    <Avatar.Icon
-                      size={50}
-                      icon={cat.icon || 'currency-inr'}
+
+                    {/* LEFT ACCENT */}
+
+                    <View
                       style={{
-                        backgroundColor: cat.color || Colors.card,
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 4,
+                        backgroundColor:
+                          accentColor,
                       }}
                     />
-                  </View>
 
-                  <View style={{ flex: 1 }}>
-                    {!!r.notes && (
-                      <Text
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+
+                        minHeight: 82,
+
+                        paddingLeft: 15,
+                        paddingRight: 12,
+                        paddingVertical: 12,
+                      }}
+                    >
+
+                      {/* ============================================ */}
+                      {/* CATEGORY ICON */}
+                      {/* ============================================ */}
+
+                      <View
                         style={{
-                          color: '#1F2937',
-                          fontSize: 15,
-                          fontWeight: '700',
-                          lineHeight: 20,
-                          letterSpacing: 0.2,
+                          width: 50,
+                          height: 50,
+                          borderRadius: 16,
+
+                          backgroundColor:
+                            iconColor,
+
+                          justifyContent: 'center',
+                          alignItems: 'center',
+
+                          marginRight: 12,
+
+                          shadowColor:
+                            iconColor,
+
+                          shadowOffset: {
+                            width: 0,
+                            height: 3,
+                          },
+
+                          shadowOpacity: 0.22,
+                          shadowRadius: 6,
+                          elevation: 3,
                         }}
-                        numberOfLines={2}
                       >
-                        {r.notes}
-                      </Text>
-                    )}
+                        <MaterialCommunityIcons
+                          name={
+                            cat.icon ||
+                            (
+                              transactionType ===
+                                'income'
+                                ? 'arrow-down-circle-outline'
+                                : transactionType ===
+                                  'transfer'
+                                  ? 'swap-horizontal'
+                                  : 'arrow-up-circle-outline'
+                            )
+                          }
+                          size={23}
+                          color="#FFFFFF"
+                        />
+                      </View>
 
-                    <Text
-                      style={{
-                        color: '#6B7280',
-                        fontSize: 13,
-                        fontWeight: '600',
-                        marginTop: 2,
-                        lineHeight: 18,
-                      }}
-                      numberOfLines={1}
-                    >
-                      {cat.name || 'Uncategorized'}
-                    </Text>
+                      {/* ============================================ */}
+                      {/* TRANSACTION DETAILS */}
+                      {/* ============================================ */}
 
-                    <Text
-                      style={{
-                        color: '#9CA3AF',
-                        fontSize: 12,
-                        fontWeight: '500',
-                        marginTop: 2,
-                      }}
-                      numberOfLines={1}
-                    >
-                      {sources.find(s => s.id === r.source_id)?.name || 'No source'}
-                    </Text>
+                      <View
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          justifyContent: 'center',
+                          paddingRight: 8,
+                        }}
+                      >
+
+                        {/* NOTES */}
+
+                        <Text
+                          numberOfLines={2}
+                          ellipsizeMode="tail"
+                          style={{
+                            fontSize: 15,
+                            lineHeight: 19,
+                            fontWeight: '800',
+                            color: Colors.text,
+                            letterSpacing: -0.15,
+                          }}
+                        >
+                          {r.notes || 'No notes'}
+                        </Text>
+
+                        {/* CATEGORY + SOURCE */}
+
+                        <View
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            marginTop: 6,
+                            minWidth: 0,
+                          }}
+                        >
+
+                          {/* CATEGORY */}
+
+                          <View
+                            style={{
+                              flexShrink: 1,
+                              maxWidth: '58%',
+
+                              backgroundColor:
+                                iconColor + '12',
+
+                              borderRadius: 6,
+
+                              paddingHorizontal: 7,
+                              paddingVertical: 4,
+
+                              borderWidth: 1,
+                              borderColor:
+                                iconColor + '18',
+                            }}
+                          >
+                            <Text
+                              numberOfLines={1}
+                              ellipsizeMode="tail"
+                              style={{
+                                color: iconColor,
+                                fontSize: 11,
+                                lineHeight: 13,
+                                fontWeight: '800',
+                              }}
+                            >
+                              {cat.name ||
+                                'Uncategorized'}
+                            </Text>
+                          </View>
+
+                          {/* DOT */}
+
+                          <View
+                            style={{
+                              width: 3,
+                              height: 3,
+                              borderRadius: 2,
+                              backgroundColor:
+                                '#C7CBD1',
+                              marginHorizontal: 6,
+                              flexShrink: 0,
+                            }}
+                          />
+
+                          {/* SOURCE */}
+
+                          <Text
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              color: '#9299A3',
+                              fontSize: 11,
+                              lineHeight: 14,
+                              fontWeight: '600',
+                            }}
+                          >
+                            {source?.name ||
+                              'No source'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* ============================================ */}
+                      {/* RIGHT COLUMN */}
+                      {/* AMOUNT + DATE */}
+                      {/* ============================================ */}
+
+                      <View
+                        style={{
+                          width: 96,
+                          flexShrink: 0,
+                          alignItems: 'flex-end',
+                          justifyContent: 'center',
+                        }}
+                      >
+
+                        {/* AMOUNT */}
+
+                        <Text
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.72}
+                          style={{
+                            width: '100%',
+                            textAlign: 'right',
+                            fontSize: 15,
+                            fontWeight: '900',
+                            color: amountColor,
+                            letterSpacing: -0.35,
+                          }}
+                        >
+                          {balanceVisible
+                            ? `${amountPrefix}₹${Number(
+                              r.amount || 0
+                            ).toFixed(2)}`
+                            : '••••••'}
+                        </Text>
+
+                        {/* DATE */}
+
+                        <View
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            marginTop: 5,
+                          }}
+                        >
+                          <MaterialCommunityIcons
+                            name="calendar-month-outline"
+                            size={11}
+                            color="#A3A9B2"
+                          />
+
+                          <Text
+                            style={{
+                              color: '#9299A3',
+                              fontSize: 10,
+                              fontWeight: '700',
+                              marginLeft: 3,
+                            }}
+                          >
+                            {dateText}
+                          </Text>
+                        </View>
+
+                        {/* TIME / TRANSFER */}
+
+                        <View
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            marginTop: 3,
+                            minHeight: 14,
+                          }}
+                        >
+                          {transactionType ===
+                            'transfer' ? (
+                            <View
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor:
+                                  '#F1F3F5',
+                                paddingHorizontal: 6,
+                                paddingVertical: 2,
+                                borderRadius: 5,
+                              }}
+                            >
+                              <MaterialCommunityIcons
+                                name="swap-horizontal"
+                                size={10}
+                                color="#718096"
+                              />
+
+                              <Text
+                                style={{
+                                  fontSize: 7.5,
+                                  fontWeight: '900',
+                                  color: '#718096',
+                                  marginLeft: 3,
+                                  letterSpacing: 0.2,
+                                }}
+                              >
+                                TRANSFER
+                              </Text>
+                            </View>
+                          ) : (
+                            <View
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                              }}
+                            >
+                              <MaterialCommunityIcons
+                                name="clock-outline"
+                                size={10}
+                                color="#A3A9B2"
+                              />
+
+                              <Text
+                                style={{
+                                  color: '#A3A9B2',
+                                  fontSize: 9,
+                                  fontWeight: '600',
+                                  marginLeft: 3,
+                                }}
+                              >
+                                {timeText}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+
+                      </View>
+                    </View>
                   </View>
-                </View>
-
-                <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
-                  <Text style={{ color: r.type === 'expense' ? '#E46A6A' : '#4CAF50', fontWeight: '700' }}>
-                    {balanceVisible ? formatCurrency(r.amount.toFixed(2)) : '••••••'}
-                  </Text>
-                  <Text style={{ color: Colors.muted, fontSize: 12 }}>
-                    {new Date(r.date).toLocaleDateString()}
-                  </Text>
-                </View>
-              </View>
-            );
-          }) : <Text style={{ color: Colors.muted }}>No recent transactions</Text>}
+                </TouchableOpacity>
+              );
+            })
+          ) : (
+            <Text
+              style={{
+                color: Colors.muted,
+                paddingVertical: 8,
+              }}
+            >
+              No recent transactions
+            </Text>
+          )}
           {recentTx.length > 2 && (
             <TouchableOpacity
               onPress={() => navigation.navigate('Transactions')}
