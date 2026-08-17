@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { getTotalBalance, getCategorySpending, getMonthlyTrends, getSourceBalances } from '../services/reports';
+import { getTotalBalance, getCategorySpending, getMonthlyTrends } from '../services/reports';
 import { getBudgetsWithRemaining } from '../services/budgets';
 import { getCategoryBudgetSummary } from '../services/categoryBudgets';
 import { getTransactions, deleteTransaction } from '../services/transactions';
@@ -189,6 +189,45 @@ export default function HomeScreen({ navigation }) {
     setBillsSummary(bsum);
     const availableSources = await getSources(true);
     setSources(availableSources);
+    const allTransactions = await getTransactions(
+      1000000,
+      'Yes'
+    );
+
+    const balanceMap = allTransactions.reduce(
+      (acc, txn) => {
+        const amount = Number(txn.amount || 0);
+        const sourceId = txn.source_id;
+
+        if (!sourceId) {
+          return acc;
+        }
+
+        if (!acc[sourceId]) {
+          acc[sourceId] = 0;
+        }
+
+        if (txn.type === 'income') {
+          acc[sourceId] += amount;
+        } else if (txn.type === 'expense') {
+          acc[sourceId] -= amount;
+        }
+
+        return acc;
+      },
+      {}
+    );
+
+    const calculatedSourceBalances =
+      availableSources.map(source => ({
+        ...source,
+
+        balance:
+          Number(source.initial_balance || 0) +
+          Number(balanceMap[source.id] || 0),
+      }));
+
+    setSourceBalances(calculatedSourceBalances);
     const sb = await getSourceBalances();
     setSourceBalances(sb);
     const bs = await getBudgetsWithRemaining();
@@ -272,10 +311,17 @@ export default function HomeScreen({ navigation }) {
     (a, b) => new Date(b.due_date || 0) - new Date(a.due_date || 0)
   );
 
-  const totalBalance = sourceBalances.reduce(
-    (sum, s) => sum + Number(s.balance || 0),
-    0
-  );
+  const totalBalance = sourceBalances
+    .filter(
+      source =>
+        String(source.type || '').toLowerCase() !==
+        'credit_card'
+    )
+    .reduce(
+      (sum, source) =>
+        sum + Number(source.balance || 0),
+      0
+    );
 
   const totalMonthlySpend = topCategories.reduce(
     (sum, c) => sum + Number(c.amount || 0),
