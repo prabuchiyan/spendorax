@@ -517,3 +517,53 @@ export async function deleteCreditCard(id) {
         }
     }
 }
+
+export async function syncCreditCardBillAmount(cardId) {
+    let card = await getCreditCardById(cardId);
+    if (!card) return;
+
+    // ── Self-heal: if payment_bill_id missing, find template bill by notes ──
+    if (!card.payment_bill_id) {
+        const billsRes = await executeSql(`SELECT * FROM bills`, []);
+        for (let i = 0; i < billsRes.rows.length; i++) {
+            const b = billsRes.rows.item(i);
+            if (
+                !b.deleted_at &&
+                b.is_recurring &&
+                typeof b.notes === 'string' &&
+                b.notes === `Recurring payment template for ${card.name}`
+            ) {
+                // Write it back to the card row
+                await executeSql(
+                    `UPDATE credit_cards SET payment_bill_id = ? WHERE id = ?`,
+                    [b.id, cardId]
+                );
+                card = { ...card, payment_bill_id: b.id };
+                console.log('[syncCC] self-healed payment_bill_id:', b.id);
+                break;
+            }
+        }
+    }
+
+    if (!card.payment_bill_id) return; // template bill doesn't exist yet
+
+    const outstanding = card.outstanding;
+
+    // Update template
+    await updateBill(card.payment_bill_id, { amount: outstanding });
+
+    // Update all unpaid child bills
+    const billsRes = await executeSql(
+        `SELECT * FROM bills WHERE parent_bill_id = ?`,
+        [card.payment_bill_id]
+    );
+
+    for (let i = 0; i < billsRes.rows.length; i++) {
+        const bill = billsRes.rows.item(i);
+        if (bill.deleted_at || bill.is_paid || !bill.due_date) continue;
+        await executeSql(
+            `UPDATE bills SET amount = ?, updated_at = ? WHERE id = ?`,
+            [outstanding, new Date().toISOString(), bill.id]
+        );
+    }
+}

@@ -379,11 +379,22 @@ function OccurrenceEditModal({ visible, occurrence, onSave, onClose }) {
   );
 }
 
+function isCreditCardBill(bill) {
+  return (
+    typeof bill?.notes === 'string' && (
+      bill.notes.startsWith('Recurring payment template for') ||
+      bill.notes.startsWith('Statement ')
+    )
+  );
+}
+
 // ─── main screen ─────────────────────────────────────────────────────────────
 
 export default function BillDetailScreen({ route, navigation }) {
-  const billId = route.params?.billId;
+  const rawId = route.params?.billId ?? route.params?.id;
   const occurrenceId = route.params?.occurrenceId;
+  const [resolvedTemplateId, setResolvedTemplateId] = useState(null);
+  const billId = resolvedTemplateId ?? rawId;
 
   // ── All useState hooks first (hooks 1-14) ─────────────────────────────────
   const [bill, setBill] = useState(null);
@@ -405,7 +416,7 @@ export default function BillDetailScreen({ route, navigation }) {
   const [selectedCreditCard, setSelectedCreditCard] = useState(null);
 
   // ── hook 15 ───────────────────────────────────────────────────────────────
-  useFocusEffect(useCallback(() => { load(); }, [billId]));
+  useFocusEffect(useCallback(() => { load(); }, [rawId]));
 
   // ── hook 16 ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -485,20 +496,34 @@ export default function BillDetailScreen({ route, navigation }) {
   // ── helpers / actions ─────────────────────────────────────────────────────
 
   async function load() {
-    if (!billId) return;
+    if (!rawId) return;
+
+    // Resolve: if rawId is a child bill, walk up to the template
+    const rawBill = await getBillById(rawId);
+    const templateId = rawBill?.parent_bill_id || rawId;
+    setResolvedTemplateId(templateId);
+
     const [b, s, cats, srcs] = await Promise.all([
-      getBillById(billId),
-      getBillSeries(billId),
+      getBillById(templateId),
+      getBillSeries(templateId),
       getCategories(true),
       getSources(true),
     ]);
+
     setBill(b);
     setSeries(s);
     if (b?.category_id) setCategory(cats.find(c => c.id === b.category_id) || null);
     if (b?.source_id) setSource(srcs.find(ss => ss.id === b.source_id) || null);
 
+    // Select the right occurrence
     let occ = null;
-    if (occurrenceId) occ = s.find(o => o.id === occurrenceId) || null;
+    if (occurrenceId) {
+      occ = s.find(o => o.id === occurrenceId) || null;
+    }
+    if (!occ && rawBill?.parent_bill_id) {
+      // came from statements screen with child bill id directly
+      occ = s.find(o => o.id === rawId) || null;
+    }
     if (!occ) {
       const now = new Date();
       occ = s.find(o => {
@@ -508,17 +533,14 @@ export default function BillDetailScreen({ route, navigation }) {
           d.getMonth() === now.getMonth() &&
           o.status !== BILL_STATUS.PAID &&
           o.status !== BILL_STATUS.SKIPPED;
-      }) || s[0] || null;
+      }) || s[s.length - 1] || null;
     }
     setSelectedOcc(occ);
     if (occ) {
       setLinkedTxs(await getBillLinkedTransactions(occ.id));
       if (occ.due_date) {
         setSelectedLabel(
-          new Date(occ.due_date).toLocaleDateString("en", {
-            month: "short",
-            year: "2-digit",
-          })
+          new Date(occ.due_date).toLocaleDateString('en', { month: 'short', year: '2-digit' })
         );
       }
     }
@@ -536,24 +558,20 @@ export default function BillDetailScreen({ route, navigation }) {
     const cards = await getCreditCards(false);
     const card = cards.find(
       c =>
-        Number(c.payment_bill_id) === Number(bill.parent_bill_id || bill.id)
+        Number(c.payment_bill_id) === Number(activeBill.id) ||
+        Number(c.payment_bill_id) === Number(activeBill.parent_bill_id)
     );
-    // Normal bill
+
     if (!card) {
-      await markBillPaid(bill.id, {
-        source_id: bill.source_id,
+      await markBillPaid(activeBill.id, {   // ← activeBill not bill
+        source_id: activeBill.source_id,
       });
       navigation.goBack();
       return;
     }
 
-    // Credit Card bill
     const sources = await getSources(true);
-    setPaymentSources(
-      sources.filter(
-        s => Number(s.id) !== Number(card.source_id)
-      )
-    );
+    setPaymentSources(sources.filter(s => Number(s.id) !== Number(card.source_id)));
     setSelectedCreditCard(card);
     setShowPaymentSourcePicker(true);
   };
@@ -607,7 +625,10 @@ export default function BillDetailScreen({ route, navigation }) {
     if (!selectedOcc) return;
     try {
       setLoading(true);
-      if (selectedOcc.id === bill.id) {
+      // For CC statement bills (child bills), always use updateBill
+      // Only create a child tombstone if it's the template itself
+      // AND it's a regular recurring bill (not a CC template)
+      if (selectedOcc.id === bill.id && bill.is_recurring && !isCreditCardBill(bill)) {
         await createBill({
           ...bill,
           amount: newAmount,
@@ -867,7 +888,7 @@ export default function BillDetailScreen({ route, navigation }) {
 
         {/* Occurrence timeline */}
         <OccurrenceList
-          series={filteredSeries}
+          series={series}
           selectedId={selectedOcc?.id}
           onSelect={handleSelectOccurrence}
         />
@@ -887,12 +908,18 @@ export default function BillDetailScreen({ route, navigation }) {
             try {
               setLoading(true);
               if (confirmAction === 'delete_occ') {
-                if (activeBill.id === bill.id) {
+                const isTemplate = activeBill.id === bill?.id && bill?.is_recurring;
+                if (isTemplate) {
+                  // Template occurrence — create a tombstone child then delete it
                   const newId = await createBill({
-                    ...bill, is_recurring: 0, recurrence_type: null, parent_bill_id: bill.id,
+                    ...bill,
+                    is_recurring: 0,
+                    recurrence_type: null,
+                    parent_bill_id: bill.id,
                   });
                   await deleteBill(newId);
                 } else {
+                  // Regular child bill — just delete it directly
                   await deleteBill(activeBill.id);
                 }
                 await load();
@@ -953,10 +980,12 @@ export default function BillDetailScreen({ route, navigation }) {
           <Text style={styles.actionText}>Link</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={() => setShowEditOcc(true)}>
-          <MaterialCommunityIcons name="square-edit-outline" color="#FF9800" size={22} />
-          <Text style={styles.actionText}>Edit</Text>
-        </TouchableOpacity>
+        {!isCreditCardBill(activeBill) && (
+          <TouchableOpacity style={styles.actionButton} onPress={() => setShowEditOcc(true)}>
+            <MaterialCommunityIcons name="square-edit-outline" color="#FF9800" size={22} />
+            <Text style={styles.actionText}>Edit</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity style={styles.actionButton} onPress={() => { setConfirmAction('delete_occ'); setConfirmVisible(true); }}>
           <MaterialCommunityIcons name="delete-outline" color="#F44336" size={22} />
@@ -1079,7 +1108,6 @@ export default function BillDetailScreen({ route, navigation }) {
             <PaperButton
               onPress={() => {
                 setShowPaymentSourcePicker(false);
-                setSelectedPaymentBill(null);
                 setSelectedCreditCard(null);
               }}
             >

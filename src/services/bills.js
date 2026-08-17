@@ -1136,221 +1136,169 @@ export async function runCreditCardStatementScheduler() {
     const card = cardsRes.rows.item(i);
 
     try {
-      // FIX: Use statement_day from DB
       const statementDay = Number(card.statement_day);
       if (!statementDay) continue;
 
-      const { statementStart, statementEnd, statementDate } =
-        getStatementPeriod(statementDay, today);
+      // Build candidate statement periods to check:
+      // - Current month's cycle
+      // - Previous month's cycle (catches missed statements)
+      const candidateDates = [today];
 
-      const statementDateStr = formatDate(statementDate);
+      // Add previous month as a catch-up candidate
+      const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+      candidateDates.push(prevMonth);
 
-      if (statementDateStr !== todayStrValue) continue;
+      for (const referenceDate of candidateDates) {
+        const { statementStart, statementEnd, statementDate } =
+          getStatementPeriod(statementDay, referenceDate);
 
-      // Web-safe statement lookup
-      const allStatements = await executeSql(
-        `SELECT * FROM credit_card_statements`,
-        []
-      );
+        const statementDateStr = formatDate(statementDate);
 
-      let alreadyGenerated = false;
+        // Only process past or present statement dates
+        if (statementDateStr > todayStrValue) continue;
 
-      for (let statementIndex = 0; statementIndex < allStatements.rows.length; statementIndex++) {
-        const statement = allStatements.rows.item(statementIndex);
-
-        if (
-          Number(statement.card_id) === Number(card.id) &&
-          String(statement.statement_date).slice(0, 10) === statementDateStr
-        ) {
-          alreadyGenerated = true;
-          break;
-        }
-      }
-
-      if (alreadyGenerated) {
-        continue;
-      }
-
-      const startDateStr = formatDate(statementStart);
-      const endDateStr = formatDate(statementEnd);
-
-      const txRes = await executeSql(
-        `SELECT type, amount, date
-       FROM transactions
-       WHERE source_id = ?`,
-        [card.source_id]
-      );
-
-      let openingBalance = 0;
-      let purchases = 0;
-      let payments = 0;
-
-      for (let j = 0; j < txRes.rows.length; j++) {
-        const tx = txRes.rows.item(j);
-        const txDate = tx.date ? String(tx.date).slice(0, 10) : null;
-        if (!txDate) continue;
-
-        const amount = Number(tx.amount || 0);
-
-        if (txDate < startDateStr) {
-          openingBalance += tx.type === 'expense' ? amount : -amount;
-        } else if (txDate >= startDateStr && txDate <= endDateStr) {
-          if (tx.type === 'expense') {
-            purchases += amount;
-          } else {
-            payments += amount;
-          }
-        }
-      }
-
-      const closingBalance = openingBalance + purchases - payments;
-
-      const minimumDue =
-        closingBalance > 0
-          ? closingBalance * (Number(card.minimum_due_percent || 0) / 100)
-          : 0;
-
-      const dueDate = new Date(statementEnd);
-
-      if (card.due_after_days != null) {
-        dueDate.setDate(
-          dueDate.getDate() + Number(card.due_after_days || 0)
+        // Check if already generated for this statement date
+        const allStatements = await executeSql(
+          `SELECT * FROM credit_card_statements`,
+          []
         );
-      }
 
-      const dueDateStr = formatDate(dueDate);
-
-      let billId = null;
-
-      if (closingBalance > 0 && card.payment_bill_id) {
-
-        const template = await getBillById(card.payment_bill_id);
-
-        if (!template) {
-          throw new Error(
-            `Credit card template bill not found for card ${card.id}`
-          );
-        }
-
-        // Reuse child bill if already created for this due date
-        const billsRes = await executeSql(`SELECT * FROM bills`, []);
-
-        let existingChildBill = null;
-
-        for (let billIndex = 0; billIndex < billsRes.rows.length; billIndex++) {
-          const bill = billsRes.rows.item(billIndex);
-
+        let alreadyGenerated = false;
+        for (let si = 0; si < allStatements.rows.length; si++) {
+          const stmt = allStatements.rows.item(si);
           if (
-            Number(bill.parent_bill_id) === Number(template.id) &&
-            bill.due_date === dueDateStr &&
-            !bill.deleted_at
+            Number(stmt.card_id) === Number(card.id) &&
+            String(stmt.statement_date).slice(0, 10) === statementDateStr
           ) {
-            existingChildBill = bill;
+            alreadyGenerated = true;
             break;
           }
         }
 
-        if (existingChildBill) {
+        if (alreadyGenerated) continue;
 
-          billId = existingChildBill.id;
+        const startDateStr = formatDate(statementStart);
+        const endDateStr = formatDate(statementEnd);
 
-          await executeSql(
-            `UPDATE bills
-                SET amount = ?,
-                    status = ?,
-                    notes = ?,
-                    updated_at = ?
-                WHERE id = ?`,
-            [
-              closingBalance,
-              BILL_STATUS.PENDING,
-              `Statement ${statementDateStr}\n\n${template.notes || ''}`,
-              nowIso(),
-              billId,
-            ]
-          );
+        const txRes = await executeSql(
+          `SELECT type, amount, date FROM transactions WHERE source_id = ?`,
+          [card.source_id]
+        );
 
-        } else {
+        let openingBalance = 0;
+        let purchases = 0;
+        let payments = 0;
 
-          billId = await _insertBill({
-            name: template.name,
-            amount: closingBalance,
-            due_date: dueDateStr,
+        for (let j = 0; j < txRes.rows.length; j++) {
+          const tx = txRes.rows.item(j);
+          const txDate = tx.date ? String(tx.date).slice(0, 10) : null;
+          if (!txDate) continue;
 
-            status: BILL_STATUS.PENDING,
+          const amount = Number(tx.amount || 0);
 
-            is_recurring: 0,
-            recurrence_type: null,
-            recurrence_interval: 1,
-            recurrence_end_date: null,
-
-            category_id: template.category_id,
-            source_id: template.source_id,
-
-            reminder_days_before: template.reminder_days_before,
-            auto_pay: template.auto_pay,
-
-            notes:
-              `Statement ${statementDateStr}\n\n` +
-              (template.notes || ''),
-
-            attachment_url: template.attachment_url,
-
-            parent_bill_id: template.id,
-          });
+          if (txDate < startDateStr) {
+            openingBalance += tx.type === 'expense' ? amount : -amount;
+          } else if (txDate >= startDateStr && txDate <= endDateStr) {
+            if (tx.type === 'expense') {
+              purchases += amount;
+            } else {
+              payments += amount;
+            }
+          }
         }
-      }
 
-      await executeSql(
-        `INSERT INTO credit_card_statements (
-        card_id,
-        bill_id,
-        statement_start,
-        statement_end,
-        statement_date,
-        due_date,
-        opening_balance,
-        purchases,
-        refunds,
-        fees,
-        interest,
-        payments,
-        closing_balance,
-        minimum_due,
-        is_generated,
-        generated_at,
-        status,
-        created_at
-      ) VALUES (
-        ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-        datetime('now')
-      )`,
-        [
-          card.id,
-          billId,
-          startDateStr,
-          endDateStr,
-          statementDateStr,
-          dueDateStr,
-          openingBalance,
-          purchases,
-          0,
-          0,
-          0,
-          payments,
-          closingBalance,
-          minimumDue,
-          1,
-          new Date().toISOString(),
-          'generated',
-        ]
-      );
+        const closingBalance = openingBalance + purchases - payments;
+
+        const minimumDue =
+          closingBalance > 0
+            ? closingBalance * (Number(card.minimum_due_percent || 0) / 100)
+            : 0;
+
+        const dueDate = new Date(statementEnd);
+        if (card.due_after_days != null) {
+          dueDate.setDate(dueDate.getDate() + Number(card.due_after_days || 0));
+        }
+        const dueDateStr = formatDate(dueDate);
+
+        let billId = null;
+
+        if (closingBalance > 0 && card.payment_bill_id) {
+          const template = await getBillById(card.payment_bill_id);
+          if (!template) throw new Error(`Credit card template bill not found for card ${card.id}`);
+
+          const billsRes = await executeSql(`SELECT * FROM bills`, []);
+          let existingChildBill = null;
+
+          for (let bi = 0; bi < billsRes.rows.length; bi++) {
+            const bill = billsRes.rows.item(bi);
+            if (
+              Number(bill.parent_bill_id) === Number(template.id) &&
+              bill.due_date === dueDateStr &&
+              !bill.deleted_at
+            ) {
+              existingChildBill = bill;
+              break;
+            }
+          }
+
+          if (existingChildBill) {
+            billId = existingChildBill.id;
+            await executeSql(
+              `UPDATE bills SET amount = ?, status = ?, notes = ?, updated_at = ? WHERE id = ?`,
+              [
+                closingBalance,
+                BILL_STATUS.PENDING,
+                `Statement ${statementDateStr}\n\n${template.notes || ''}`,
+                nowIso(),
+                billId,
+              ]
+            );
+          } else {
+            billId = await _insertBill({
+              name: template.name,
+              amount: closingBalance,
+              due_date: dueDateStr,
+              status: BILL_STATUS.PENDING,
+              is_recurring: 0,
+              recurrence_type: null,
+              recurrence_interval: 1,
+              recurrence_end_date: null,
+              category_id: template.category_id,
+              source_id: template.source_id,
+              reminder_days_before: template.reminder_days_before,
+              auto_pay: template.auto_pay,
+              notes: `Statement ${statementDateStr}\n\n${template.notes || ''}`,
+              attachment_url: template.attachment_url,
+              parent_bill_id: template.id,
+            });
+          }
+        }
+
+        // AFTER: skip zero-balance cycles entirely
+        if (closingBalance <= 0) {
+          console.log(`[scheduler] Skipping statement for card ${card.id} — zero balance for ${startDateStr} → ${endDateStr}`);
+          continue;
+        }
+        
+        await executeSql(
+          `INSERT INTO credit_card_statements (
+            card_id, bill_id, statement_start, statement_end, statement_date,
+            due_date, opening_balance, purchases, refunds, fees, interest,
+            payments, closing_balance, minimum_due, is_generated, generated_at,
+            status, created_at
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))`,
+          [
+            card.id, billId, startDateStr, endDateStr, statementDateStr,
+            dueDateStr, openingBalance, purchases, 0, 0, 0,
+            payments, closingBalance, minimumDue, 1,
+            new Date().toISOString(), 'generated',
+          ]
+        );
+
+        console.log(`[scheduler] Generated statement for card ${card.id} period ${startDateStr} → ${endDateStr}`);
+      }
     } catch (e) {
-      console.error('====================================');
-      console.error('Credit Card Scheduler Error');
-      console.error('Card:', card.id, card.name);
-      console.error(e);
-      console.error('====================================');
+      console.error('Credit Card Scheduler Error — Card:', card.id, card.name, e);
       throw e;
     }
   }

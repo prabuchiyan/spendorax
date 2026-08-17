@@ -8,10 +8,11 @@ import {
 async function refreshCreditCardBySource(sourceId) {
   if (!sourceId) return;
   try {
-    const { getCreditCardBySourceId, refreshCreditCardTotals } = require('./creditCards');
+    const { getCreditCardBySourceId, refreshCreditCardTotals, syncCreditCardBillAmount } = require('./creditCards');
     const card = await getCreditCardBySourceId(sourceId);
     if (card) {
       await refreshCreditCardTotals(card.id);
+      await syncCreditCardBillAmount(card.id);
     }
   } catch (e) {
     console.warn('Credit card refresh failed', e);

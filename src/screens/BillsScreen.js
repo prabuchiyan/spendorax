@@ -37,6 +37,17 @@ const STATUS_FILTERS = [
   { key: BILL_STATUS.PAID, label: 'Paid' },
 ];
 
+// Add this helper near the top of the component
+function isCreditCardBill(bill) {
+  return (
+    typeof bill.notes === 'string' &&
+    bill.notes.startsWith('Recurring payment template for')
+  ) || (
+      typeof bill.notes === 'string' &&
+      bill.notes.startsWith('Statement ')
+    );
+}
+
 export default function BillsScreen({ navigation }) {
   const [items, setItems] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -167,7 +178,7 @@ export default function BillsScreen({ navigation }) {
       onPress={openDetail}
       onMarkPaid={handleMarkPaid}
       onSkip={handleSkip}
-      onEdit={openEdit}
+      onEdit={isCreditCardBill(item) ? null : openEdit}
     />
   );
 
@@ -405,7 +416,7 @@ export default function BillsScreen({ navigation }) {
                     }}
                     onPress={async () => {
                       try {
-                        await payCreditCardBill({
+                        const paymentId = await payCreditCardBill({
                           bill: selectedPaymentBill,
                           card: selectedCreditCard,
                           paymentSourceId: source.id,
@@ -414,6 +425,7 @@ export default function BillsScreen({ navigation }) {
                           selectedPaymentBill.id,
                           {
                             createTransaction: false,
+                            existingTransactionId: paymentId,
                           }
                         );
                         setShowPaymentSourcePicker(false);
@@ -422,12 +434,8 @@ export default function BillsScreen({ navigation }) {
                         await load();
                       } catch (e) {
                         console.error(e);
-                        Alert.alert(
-                          'Error',
-                          'Unable to complete payment.'
-                        );
+                        Alert.alert('Error', 'Unable to complete payment.');
                       }
-
                     }}
                   >
 
