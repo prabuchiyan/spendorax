@@ -5,35 +5,248 @@ import React, {
   useCallback,
   useMemo,
 } from 'react';
-
 import {
   View,
   Text,
   SectionList,
   StyleSheet,
   TouchableOpacity,
+  Animated,
+  Easing,
 } from 'react-native';
-
 import { getTransactions } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
-
 import {
   Colors,
   Spacing,
 } from '../components/Theme';
-
 import {
   MaterialCommunityIcons,
 } from '@expo/vector-icons';
-
 import {
   useFocusEffect,
 } from '@react-navigation/native';
-
 import {
   useBalanceVisibility,
 } from '../context/BalanceVisibilityContext';
+
+function PageLoader({
+  message = 'Loading transactions...',
+}) {
+  const rotation =
+    React.useRef(
+      new Animated.Value(0)
+    ).current;
+
+  const pulse =
+    React.useRef(
+      new Animated.Value(0)
+    ).current;
+
+  React.useEffect(() => {
+    const rotateAnimation =
+      Animated.loop(
+        Animated.timing(
+          rotation,
+          {
+            toValue: 1,
+            duration: 900,
+            easing:
+              Easing.linear,
+            useNativeDriver: true,
+          }
+        )
+      );
+
+    const pulseAnimation =
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(
+            pulse,
+            {
+              toValue: 1,
+              duration: 700,
+              easing:
+                Easing.inOut(
+                  Easing.ease
+                ),
+              useNativeDriver: true,
+            }
+          ),
+
+          Animated.timing(
+            pulse,
+            {
+              toValue: 0,
+              duration: 700,
+              easing:
+                Easing.inOut(
+                  Easing.ease
+                ),
+              useNativeDriver: true,
+            }
+          ),
+        ])
+      );
+
+    rotateAnimation.start();
+    pulseAnimation.start();
+
+    return () => {
+      rotateAnimation.stop();
+      pulseAnimation.stop();
+    };
+  }, []);
+
+  const spin =
+    rotation.interpolate({
+      inputRange: [0, 1],
+      outputRange: [
+        '0deg',
+        '360deg',
+      ],
+    });
+
+  const scale =
+    pulse.interpolate({
+      inputRange: [0, 1],
+      outputRange: [
+        0.94,
+        1.06,
+      ],
+    });
+
+  const opacity =
+    pulse.interpolate({
+      inputRange: [0, 1],
+      outputRange: [
+        0.65,
+        1,
+      ],
+    });
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor:
+          Colors.background,
+      }}
+    >
+      {/* OUTER LOADER */}
+
+      <View
+        style={{
+          width: 76,
+          height: 76,
+          borderRadius: 38,
+
+          alignItems: 'center',
+          justifyContent: 'center',
+
+          backgroundColor:
+            '#FFFFFF',
+
+          borderWidth: 1,
+          borderColor:
+            '#ECEEF1',
+
+          shadowColor: '#000',
+
+          shadowOffset: {
+            width: 0,
+            height: 4,
+          },
+
+          shadowOpacity: 0.08,
+          shadowRadius: 10,
+
+          elevation: 4,
+        }}
+      >
+        {/* ROTATING RING */}
+
+        <Animated.View
+          style={{
+            position: 'absolute',
+
+            width: 58,
+            height: 58,
+
+            borderRadius: 29,
+
+            borderWidth: 3,
+
+            borderColor:
+              '#E5E7EB',
+
+            borderTopColor:
+              '#5B67F1',
+
+            transform: [
+              {
+                rotate: spin,
+              },
+            ],
+          }}
+        />
+
+        {/* CENTER ICON */}
+
+        <Animated.View
+          style={{
+            transform: [
+              {
+                scale,
+              },
+            ],
+
+            opacity,
+          }}
+        >
+          <MaterialCommunityIcons
+            name="wallet-outline"
+            size={25}
+            color="#5B67F1"
+          />
+        </Animated.View>
+      </View>
+
+      {/* TEXT */}
+
+      <Text
+        style={{
+          marginTop: 18,
+
+          fontSize: 14,
+
+          fontWeight: '800',
+
+          color:
+            Colors.text,
+        }}
+      >
+        {message}
+      </Text>
+
+      <Text
+        style={{
+          marginTop: 5,
+
+          fontSize: 11,
+
+          color:
+            Colors.muted,
+        }}
+      >
+        Please wait...
+      </Text>
+    </View>
+  );
+}
 
 export default function SourcesDetails({
   route,
@@ -1294,22 +1507,10 @@ export default function SourcesDetails({
       {/* CONTENT */}
 
       {loading ? (
-        <View
-          style={
-            styles.center
-          }
-        >
-          <Text
-            style={{
-              color:
-                Colors.muted,
-            }}
-          >
-            Loading...
-          </Text>
-        </View>
-      ) : transactions.length ===
-        0 ? (
+        <PageLoader
+          message="Loading transactions..."
+        />
+      ) : transactions.length === 0 ? (
         <View
           style={
             styles.center
