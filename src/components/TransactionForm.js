@@ -4,7 +4,6 @@ import {
   FlatList, Modal, Text,
   Platform, BackHandler
 } from 'react-native';
-import DatePicker from 'react-native-date-picker';
 import { createTransaction, createTransfer, getTransactionNoteSuggestions, updateTransaction, deleteTransaction } from '../services/transactions';
 import { getLoans, linkTransactionToLoan, unlinkTransactionFromLoan } from '../services/loans';
 import { getCategories } from '../services/categories';
@@ -30,9 +29,11 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [transferGroupId, setTransferGroupId] = useState(isEdit && transaction ? transaction.transfer_group_id : '');
   const [showDateTimePicker, setShowDateTimePicker] = useState(false);
   const [showCategoryCreateModal, setShowCategoryCreateModal] = useState(false);
+  const [pickerMode, setPickerMode] = useState('date');
   const [notesError, setNotesError] = useState(false);
   const [toAccount, setToAccount] = useState(null);
   const [selectingFor, setSelectingFor] = useState('from');
+  const [openTimePicker, setOpenTimePicker] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [noteSuggestions, setNoteSuggestions] = useState([]);
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
@@ -352,17 +353,14 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
   const accent = type === 'expense' ? '#E46A6A' : type === 'income' ? '#36B37E' : '#000';
 
-  // Only Active loans can be used for new transaction loan payments.
-  // Keep loansList untouched because it may still be needed to display
-  // an already-linked loan while editing an existing transaction.
-  const activeLoans = loansList.filter(
-    loan => String(loan.status || '').toLowerCase() === 'active'
-  );
-
-  const filteredLoans = [...activeLoans]
-    .sort((a, b) => b.id - a.id)
+  const filteredLoans = [...loansList]
+    .sort((a, b) => {
+      if (a.status === 'Active' && b.status !== 'Active') return -1;
+      if (a.status !== 'Active' && b.status === 'Active') return 1;
+      return b.id - a.id;
+    })
     .filter(l =>
-      (l.loan_name || '').toLowerCase().includes(loanSearch.toLowerCase()) ||
+      l.loan_name.toLowerCase().includes(loanSearch.toLowerCase()) ||
       (l.lender || '').toLowerCase().includes(loanSearch.toLowerCase()) ||
       (l.loan_type || '').toLowerCase().includes(loanSearch.toLowerCase())
     );
@@ -624,8 +622,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           activeOpacity={0.8}
           disabled={submitting}
           onPress={() => {
+            setPickerMode('date');
             setShowDateTimePicker(true);
-            markDirty();
           }}
         >
           <PaperTextInput
@@ -637,10 +635,10 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             style={{ marginBottom: 8 }}
             right={
               <PaperTextInput.Icon
-                icon="calendar-clock"
+                icon="calendar"
                 onPress={() => {
+                  setPickerMode('date');
                   setShowDateTimePicker(true);
-                  markDirty();
                 }}
               />
             }
@@ -1034,7 +1032,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       </View>
 
       {/* Loan Payment */}
-      {type === 'expense' && activeLoans.length > 0 && (
+      {type === 'expense' && (
         <View style={{ marginBottom: 18 }}>
           <Text
             style={{
@@ -1916,142 +1914,121 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         <View style={{ width: 12 }} />
       </View>
 
-      {/* ============================================================
-      DATE & TIME PICKER
+      {/* Native DateTimePicker usage with fallback modal for platforms without library */}
+      {showDateTimePicker && (
+        (() => {
+          // Prefer native datetimepicker only on native platforms; on web use the ManualDateTimePicker fallback
+          if (Platform.OS !== 'web') {
+            try {
+              // Try to use community datetimepicker if available
+              // eslint-disable-next-line global-require
+              const DateTimePicker = require('@react-native-community/datetimepicker').default;
+              return (
+                <DateTimePicker
+                  value={new Date(date)}
+                  mode={pickerMode}
+                  is24Hour={true}
+                  display={
+                    Platform.OS === 'android'
+                      ? (pickerMode === 'date' ? 'calendar' : 'clock')
+                      : 'spinner'
+                  }
+                  onChange={(event, selected) => {
+                    if (Platform.OS === 'android') {
+                      if (event.type === 'dismissed') {
+                        setShowDateTimePicker(false);
+                        setPickerMode('date');
+                        setOpenTimePicker(false);
+                        return;
+                      }
 
-      Native:
-      - Android / iOS
-      - react-native-date-picker
-      - Single Date + Time picker
-      - 12-hour AM/PM
+                      if (!selected) return;
 
-      Web:
-      - Existing ManualDateTimePicker
-      - Used for browser testing
-    ============================================================ */}
+                      if (pickerMode === 'date') {
+                        // Preserve existing time
+                        const current = new Date(date);
+                        const newDate = new Date(selected);
 
-      {Platform.OS === 'web' ? (
-        /* ------------------------------------------------------------
-           WEB FALLBACK
-           ------------------------------------------------------------ */
-        <Modal
-          visible={showDateTimePicker}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowDateTimePicker(false)}
-        >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: 'rgba(0,0,0,0.4)',
-              justifyContent: 'center',
-              padding: 20,
-            }}
-          >
-            <View
-              style={{
-                backgroundColor: '#fff',
-                padding: 12,
-                borderRadius: 8,
-              }}
-            >
-              <Text
-                style={{
-                  fontWeight: '600',
-                  marginBottom: 8,
-                }}
-              >
-                Pick Date / Time
-              </Text>
+                        newDate.setHours(
+                          current.getHours(),
+                          current.getMinutes(),
+                          current.getSeconds(),
+                          0
+                        );
 
-              {(() => {
-                const dt = new Date(
-                  date || new Date().toISOString()
-                );
+                        setDate(newDate.toISOString());
 
-                const [
-                  y,
-                  m,
-                  d,
-                  h,
-                  min,
-                ] = [
-                    dt.getFullYear(),
-                    dt.getMonth() + 1,
-                    dt.getDate(),
-                    dt.getHours(),
-                    dt.getMinutes(),
-                  ];
+                        // Close date picker first
+                        setShowDateTimePicker(false);
 
-                const Manual =
-                  require('../components/ManualDateTimePicker').default;
+                        // Open time picker after animation finishes
+                        requestAnimationFrame(() => {
+                          setTimeout(() => {
+                            setPickerMode('time');
+                            setShowDateTimePicker(true);
+                          }, 500);
+                        });
 
-                return (
-                  <Manual
-                    year={y}
-                    month={m}
-                    day={d}
-                    hour={h}
-                    minute={min}
-                    onChange={(
-                      ny,
-                      nm,
-                      nd,
-                      nh,
-                      nmin
-                    ) => {
-                      const ndt = new Date(
-                        ny,
-                        nm - 1,
-                        nd,
-                        nh,
-                        nmin
+                        return;
+                      }
+
+                      // TIME PICKER
+                      const current = new Date(date);
+
+                      current.setHours(
+                        selected.getHours(),
+                        selected.getMinutes(),
+                        0,
+                        0
                       );
 
-                      setDate(ndt.toISOString());
-                      markDirty();
-                    }}
-                    onClose={() => {
+                      setDate(current.toISOString());
+
                       setShowDateTimePicker(false);
-                    }}
-                  />
-                );
-              })()}
-            </View>
-          </View>
-        </Modal>
-      ) : (
-        /* ------------------------------------------------------------
-           NATIVE ANDROID / IOS
-           ------------------------------------------------------------ */
-        <DatePicker
-          modal
-          open={showDateTimePicker}
-          date={
-            new Date(
-              date || new Date().toISOString()
-            )
+                      setPickerMode('date');
+                      setOpenTimePicker(false);
+                    } else {
+                      if (selected) {
+                        setDate(selected.toISOString());
+                      }
+
+                      setShowDateTimePicker(false);
+                      setPickerMode('date');
+                    }
+                  }}
+                />
+              );
+            } catch (e) {
+              // fall through to manual picker
+            }
           }
-          mode="datetime"
-          locale="en-US"
-          is24hourSource="locale"
-          minuteInterval={1}
-          title="Select Date & Time"
-          confirmText="Done"
-          cancelText="Cancel"
-          theme="light"
-          onConfirm={(selectedDate) => {
-            setShowDateTimePicker(false);
 
-            if (!selectedDate) return;
-
-            setDate(selectedDate.toISOString());
-            markDirty();
-          }}
-          onCancel={() => {
-            setShowDateTimePicker(false);
-          }}
-        />
+          // Fallback manual picker for web or if native picker not available
+          return (
+            <Modal visible={showDateTimePicker} transparent animationType="slide" onRequestClose={() => setShowDateTimePicker(false)}>
+              <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 20 }}>
+                <View style={{ backgroundColor: '#fff', padding: 12, borderRadius: 8 }}>
+                  <Text style={{ fontWeight: '600', marginBottom: 8 }}>Pick Date / Time</Text>
+                  {(() => {
+                    const dt = new Date(date || new Date().toISOString());
+                    const [y, m, d, h, min] = [dt.getFullYear(), dt.getMonth() + 1, dt.getDate(), dt.getHours(), dt.getMinutes()];
+                    const Manual = require('../components/ManualDateTimePicker').default;
+                    return (
+                      <Manual
+                        year={y} month={m} day={d} hour={h} minute={min}
+                        onChange={(ny, nm, nd, nh, nmin) => {
+                          const ndt = new Date(ny, nm - 1, nd, nh, nmin);
+                          setDate(ndt.toISOString());
+                        }}
+                        onClose={() => setShowDateTimePicker(false)}
+                      />
+                    );
+                  })()}
+                </View>
+              </View>
+            </Modal>
+          );
+        })()
       )}
 
       <ConfirmDialog
