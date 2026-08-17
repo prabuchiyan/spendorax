@@ -165,103 +165,323 @@ export default function HomeScreen({ navigation }) {
   const [categoryBudgets, setCategoryBudgets] = useState([]);
 
   async function load() {
-    // Load categories first to ensure we have colors/icons for reports
     try {
-      const catsAll = await getCategories(true);
-      const cmap = {};
-      catsAll.forEach(c => { cmap[c.id] = c; });
-      setCategoriesMap(cmap);
-      setCategories(catsAll);
-    } catch (e) {
-      console.error('Error loading categories:', e);
-    }
+      // =========================================================
+      // CATEGORIES
+      // =========================================================
 
-    const b = await getTotalBalance();
-    setBalance(b);
-    const t = await getMonthlyTrends(6);
-    setTrends(t);
-    // Use the same logic as Bills screen.
-    // This hides Credit Card template bills and only shows
-    // the generated statement bill.
-    const bl = await getBillsForCurrentMonth({ sortBy: 'due_date' });
-    setBills(bl);
-    const bsum = await getBillsSummary();
-    setBillsSummary(bsum);
-    const availableSources = await getSources(true);
-    setSources(availableSources);
-    const allTransactions = await getTransactions(
-      1000000,
-      'Yes'
-    );
+      try {
+        const catsAll = await getCategories(true);
 
-    const balanceMap = allTransactions.reduce(
-      (acc, txn) => {
-        const amount = Number(txn.amount || 0);
-        const sourceId = txn.source_id;
+        const cmap = {};
 
-        if (!sourceId) {
-          return acc;
+        catsAll.forEach(c => {
+          cmap[c.id] = c;
+        });
+
+        setCategoriesMap(cmap);
+        setCategories(catsAll);
+      } catch (e) {
+        console.error(
+          'Error loading categories:',
+          e
+        );
+      }
+
+      // =========================================================
+      // TOTAL BALANCE / REPORT DATA
+      // =========================================================
+
+      try {
+        const b = await getTotalBalance();
+        setBalance(b);
+      } catch (e) {
+        console.error(
+          'Error loading total balance:',
+          e
+        );
+      }
+
+      try {
+        const t = await getMonthlyTrends(6);
+        setTrends(t);
+      } catch (e) {
+        console.error(
+          'Error loading monthly trends:',
+          e
+        );
+      }
+
+      // =========================================================
+      // BILLS
+      // =========================================================
+
+      try {
+        const bl = await getBillsForCurrentMonth({
+          sortBy: 'due_date',
+        });
+
+        setBills(bl);
+
+        const bsum =
+          await getBillsSummary();
+
+        setBillsSummary(bsum);
+      } catch (e) {
+        console.error(
+          'Error loading bills:',
+          e
+        );
+
+        setBills([]);
+        setBillsSummary(null);
+      }
+
+      // =========================================================
+      // SOURCES
+      // Same calculation as SourcesDashboard:
+      //
+      // Initial Balance
+      // + Income
+      // - Expense
+      //
+      // Credit cards are NOT removed here because the
+      // source list itself is needed by the dashboard.
+      // =========================================================
+
+      let availableSources = [];
+
+      try {
+        availableSources =
+          await getSources(true);
+
+        setSources(
+          availableSources
+        );
+      } catch (e) {
+        console.error(
+          'Error loading sources:',
+          e
+        );
+
+        setSources([]);
+      }
+
+      // =========================================================
+      // SOURCE TRANSACTIONS / BALANCES
+      // =========================================================
+
+      try {
+        const allTransactions =
+          await getTransactions(
+            1000000,
+            'Yes'
+          );
+
+        const balanceMap =
+          allTransactions.reduce(
+            (acc, txn) => {
+              const amount =
+                Number(
+                  txn.amount || 0
+                );
+
+              const sourceId =
+                txn.source_id;
+
+              if (!sourceId) {
+                return acc;
+              }
+
+              if (!acc[sourceId]) {
+                acc[sourceId] = 0;
+              }
+
+              if (
+                txn.type === 'income'
+              ) {
+                acc[sourceId] += amount;
+              } else if (
+                txn.type === 'expense'
+              ) {
+                acc[sourceId] -= amount;
+              }
+
+              return acc;
+            },
+            {}
+          );
+
+        const calculatedSourceBalances =
+          availableSources.map(
+            source => ({
+              ...source,
+
+              balance:
+                Number(
+                  source.initial_balance ||
+                  0
+                ) +
+                Number(
+                  balanceMap[
+                  source.id
+                  ] || 0
+                ),
+            })
+          );
+
+        setSourceBalances(
+          calculatedSourceBalances
+        );
+      } catch (e) {
+        console.error(
+          'Error calculating source balances:',
+          e
+        );
+
+        setSourceBalances([]);
+      }
+
+      // =========================================================
+      // BUDGETS
+      // =========================================================
+
+      let bs = [];
+
+      try {
+        bs =
+          await getBudgetsWithRemaining();
+
+        console.debug &&
+          console.debug(
+            'Home.load budgets:',
+            bs
+          );
+
+        setBudgets(bs);
+
+        if (
+          bs &&
+          bs.length &&
+          !selectedBudgetId
+        ) {
+          const firstId =
+            String(
+              bs[0].budget.id
+            );
+
+          console.debug &&
+            console.debug(
+              'Home.load setSelectedBudgetId ->',
+              firstId
+            );
+
+          setSelectedBudgetId(
+            firstId
+          );
         }
+      } catch (e) {
+        console.error(
+          'Error loading budgets:',
+          e
+        );
 
-        if (!acc[sourceId]) {
-          acc[sourceId] = 0;
-        }
+        setBudgets([]);
+      }
 
-        if (txn.type === 'income') {
-          acc[sourceId] += amount;
-        } else if (txn.type === 'expense') {
-          acc[sourceId] -= amount;
-        }
+      // =========================================================
+      // TOP CATEGORY SPENDING
+      // =========================================================
 
-        return acc;
-      },
-      {}
-    );
+      try {
+        const cats =
+          await getCategorySpending();
 
-    const calculatedSourceBalances =
-      availableSources.map(source => ({
-        ...source,
+        setTopCategories(
+          cats
+        );
+      } catch (e) {
+        console.error(
+          'Error loading category spending:',
+          e
+        );
 
-        balance:
-          Number(source.initial_balance || 0) +
-          Number(balanceMap[source.id] || 0),
-      }));
+        setTopCategories([]);
+      }
 
-    setSourceBalances(calculatedSourceBalances);
-    const sb = await getSourceBalances();
-    setSourceBalances(sb);
-    const bs = await getBudgetsWithRemaining();
-    console.debug && console.debug('Home.load budgets:', bs);
+      // =========================================================
+      // CATEGORY BUDGETS
+      // =========================================================
 
-    const cats = await getCategorySpending();
-    setTopCategories(cats);
+      try {
+        const now =
+          new Date();
 
-    setBudgets(bs);
-    if (bs && bs.length && !selectedBudgetId) {
-      const firstId = String(bs[0].budget.id);
-      console.debug && console.debug('Home.load setSelectedBudgetId ->', firstId);
-      setSelectedBudgetId(firstId);
-    }
+        const month =
+          now.getMonth() + 1;
 
-    // Load category budgets
-    try {
-      const now = new Date();
-      const month = now.getMonth() + 1;
-      const year = now.getFullYear();
-      const catBudgets = await getCategoryBudgetSummary(month, year);
-      setCategoryBudgets(catBudgets);
+        const year =
+          now.getFullYear();
+
+        const catBudgets =
+          await getCategoryBudgetSummary(
+            month,
+            year
+          );
+
+        setCategoryBudgets(
+          catBudgets
+        );
+      } catch (e) {
+        console.error(
+          'Error loading category budgets:',
+          e
+        );
+
+        setCategoryBudgets([]);
+      }
+
+      // =========================================================
+      // RECENT TRANSACTIONS
+      // IMPORTANT:
+      // This now executes because there is NO leftover
+      // getSourceBalances() call crashing load().
+      // =========================================================
+
+      try {
+        const tx =
+          await getTransactions(
+            3,
+            'Yes'
+          );
+
+        setRecentTx(
+          Array.isArray(tx)
+            ? tx
+            : []
+        );
+      } catch (e) {
+        console.error(
+          'Error loading recent transactions:',
+          e
+        );
+
+        setRecentTx([]);
+      }
+
+      return bs;
     } catch (e) {
-      console.error('Error loading category budgets:', e);
-    }
+      // =========================================================
+      // FINAL SAFETY NET
+      // =========================================================
 
-    // recent transactions
-    try {
-      const tx = await getTransactions(3, 'Yes');
-      setRecentTx(tx);
-    } catch (e) {
-      // ignore
+      console.error(
+        'Home.load failed:',
+        e
+      );
+
+      return [];
     }
-    return bs;
   }
 
   useEffect(() => {

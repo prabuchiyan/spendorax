@@ -22,6 +22,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [type, setType] = useState(isEdit && transaction ? transaction.type : 'expense');
   const [categories, setCategories] = useState([]);
   const [sources, setSources] = useState([]);
+  const [categoryUsage, setCategoryUsage] = useState({});
+  const [sourceUsage, setSourceUsage] = useState({});
   const [categoryId, setCategoryId] = useState(isEdit && transaction ? transaction.category_id : null);
   const [sourceId, setSourceId] = useState(isEdit && transaction ? transaction.source_id : null);
   const [date, setDate] = useState(isEdit && transaction ? transaction.date : new Date().toISOString());
@@ -71,18 +73,69 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
   useEffect(() => {
     (async () => {
-      const cats = await getCategories(true);
-      setCategories(cats);
-      const src = await getSources(true);
-      setSources(src);
-      const notes = await getTransactionNoteSuggestions();
-      setNoteSuggestions(notes);
-      // load loans for possible linking (keep small list)
       try {
-        const lns = await getLoans();
-        setLoansList(lns);
+        const cats = await getCategories(true);
+        const src = await getSources(true);
+        setCategories(cats);
+        setSources(src);
+        try {
+          const transactions = await getTransactions(
+            1000000,
+            'Yes'
+          );
+          const categoryCount = {};
+          const sourceCount = {};
+          transactions.forEach(txn => {
+            // Category usage
+            if (
+              txn.category_id &&
+              txn.type !== 'transfer'
+            ) {
+              const categoryKey =
+                String(txn.category_id);
+
+              categoryCount[categoryKey] =
+                (categoryCount[categoryKey] || 0) + 1;
+            }
+
+            // Source usage
+            if (txn.source_id) {
+              const sourceKey =
+                String(txn.source_id);
+
+              sourceCount[sourceKey] =
+                (sourceCount[sourceKey] || 0) + 1;
+            }
+          });
+
+          setCategoryUsage(categoryCount);
+          setSourceUsage(sourceCount);
+        } catch (usageError) {
+          console.warn(
+            'Unable to calculate category/source usage:',
+            usageError
+          );
+
+          setCategoryUsage({});
+          setSourceUsage({});
+        }
+        // NOTE SUGGESTIONS
+        const notes =
+          await getTransactionNoteSuggestions();
+
+        setNoteSuggestions(notes);
+        // LOANS
+        try {
+          const lns = await getLoans();
+          setLoansList(lns);
+        } catch (e) {
+          // ignore
+        }
       } catch (e) {
-        // ignore
+        console.warn(
+          'TransactionForm initial load failed:',
+          e
+        );
       }
     })();
   }, []);
@@ -334,22 +387,94 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
     setShowSuggestions(matches.length > 0);
   };
 
-  const filteredCategories = categories.filter(c => {
-    if (type === 'transfer') return false;
-    return c.type === type;
-  });
+  // CATEGORIES
+  // Most-used categories come first.
+  // Usage = number of transactions.
+  const filteredCategories = categories
+    .filter(c => {
+      if (type === 'transfer') {
+        return false;
+      }
 
-  const visibleCategories = filteredCategories.slice(0, 12);
+      return c.type === type;
+    })
+    .sort((a, b) => {
+      const usageA =
+        Number(categoryUsage[String(a.id)] || 0);
 
-  const searchedCategories = filteredCategories.filter(c =>
-    c.name.toLowerCase().includes(categorySearch.toLowerCase())
-  );
+      const usageB =
+        Number(categoryUsage[String(b.id)] || 0);
 
-  const searchedSources = sources.filter(s =>
-    (s.is_active === undefined || s.is_active) &&
-    s.name.toLowerCase().includes(sourceSearch.toLowerCase())
-  );
-  const visibleSources = searchedSources.slice(0, 4);
+      // Most used first
+      if (usageA !== usageB) {
+        return usageB - usageA;
+      }
+
+      // If usage is same, keep original ID order
+      return Number(a.id) - Number(b.id);
+    });
+
+  const visibleCategories =
+    filteredCategories.slice(0, 8);
+
+  const searchedCategories =
+    filteredCategories.filter(c =>
+      c.name
+        .toLowerCase()
+        .includes(
+          categorySearch.toLowerCase()
+        )
+    );
+
+  // SOURCES
+  // Most-used sources come first.
+  // Usage = number of transactions.
+
+  const sortedSources = sources
+    .filter(
+      s =>
+        s.is_active === undefined ||
+        s.is_active
+    )
+    .sort((a, b) => {
+      const usageA =
+        Number(sourceUsage[String(a.id)] || 0);
+
+      const usageB =
+        Number(sourceUsage[String(b.id)] || 0);
+
+      // Most used first
+      if (usageA !== usageB) {
+        return usageB - usageA;
+      }
+
+      // If usage is same, keep original ID order
+      return Number(a.id) - Number(b.id);
+    });
+
+  const searchedSources =
+    sortedSources.filter(s =>
+      s.name
+        .toLowerCase()
+        .includes(
+          sourceSearch.toLowerCase()
+        )
+    );
+
+  // TO ACCOUNT SOURCES
+  // Exclude the selected "From" source BEFORE taking
+  // the first 4 sources.
+  // This ensures To Account always shows 4 sources
+  // whenever at least 4 valid alternatives exist.
+
+  const toAccountSources = searchedSources
+    .filter(s => s.id !== sourceId);
+
+  const visibleToAccountSources =
+    toAccountSources.slice(0, 4);
+
+  const visibleSources =
+    searchedSources.slice(0, 4);
 
   const accent = type === 'expense' ? '#E46A6A' : type === 'income' ? '#36B37E' : '#000';
 
@@ -1698,82 +1823,87 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   marginTop: 8,
                 }}
               >
-                {visibleSources
-                  .filter(s => s.id !== sourceId)
-                  .map((s, index) => (
-                    <TouchableOpacity
-                      key={s.id}
-                      disabled={submitting}
-                      onPress={() => {
-                        setToAccount(s.id);
-                        setShowToAccountGrid(false);
-                        setSourceSearch('');
-                        markDirty();
-                      }}
-                      style={{
-                        width: '23%',
-                        height: 72,
-                        marginBottom: 8,
-                        marginRight: (index + 1) % 4 === 0 ? 0 : '2.66%',
-                        borderRadius: 10,
-                        backgroundColor: s.color || '#4B7CF3',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        paddingHorizontal: 4,
-                        paddingVertical: 6,
-                        transform: [
-                          {
-                            scale: toAccount === s.id ? 1.05 : 1,
-                          },
-                        ],
-                      }}
-                    >
-                      <MaterialCommunityIcons
-                        name={s.icon || 'cash'}
-                        size={18}
-                        color="#fff"
-                      />
+                {visibleToAccountSources.map((s, index) => (
+                  <TouchableOpacity
+                    key={s.id}
+                    disabled={submitting}
+                    onPress={() => {
+                      setToAccount(s.id);
+                      setShowToAccountGrid(false);
+                      setSourceSearch('');
+                      markDirty();
+                    }}
+                    style={{
+                      width: '23%',
+                      height: 72,
+                      marginBottom: 8,
+                      marginRight:
+                        (index + 1) % 4 === 0
+                          ? 0
+                          : '2.66%',
+                      borderRadius: 10,
+                      backgroundColor:
+                        s.color || '#4B7CF3',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      paddingHorizontal: 4,
+                      paddingVertical: 6,
+                      transform: [
+                        {
+                          scale:
+                            toAccount === s.id
+                              ? 1.05
+                              : 1,
+                        },
+                      ],
+                    }}
+                  >
+                    <MaterialCommunityIcons
+                      name={s.icon || 'cash'}
+                      size={18}
+                      color="#fff"
+                    />
 
-                      {toAccount === s.id && (
-                        <View
-                          style={{
-                            position: 'absolute',
-                            top: 4,
-                            right: 4,
-                            width: 18,
-                            height: 18,
-                            borderRadius: 9,
-                            backgroundColor: '#fff',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                          }}
-                        >
-                          <MaterialCommunityIcons
-                            name="check"
-                            size={12}
-                            color="#2E7D32"
-                          />
-                        </View>
-                      )}
-
-                      <Text
-                        numberOfLines={2}
+                    {toAccount === s.id && (
+                      <View
                         style={{
-                          color: '#fff',
-                          textAlign: 'center',
-                          marginTop: 6,
-                          fontWeight: '600',
-                          fontSize: 12,
-                          lineHeight: 16,
+                          position: 'absolute',
+                          top: 4,
+                          right: 4,
+                          width: 18,
+                          height: 18,
+                          borderRadius: 9,
+                          backgroundColor: '#fff',
+                          justifyContent: 'center',
+                          alignItems: 'center',
                         }}
                       >
-                        {s.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                        <MaterialCommunityIcons
+                          name="check"
+                          size={12}
+                          color="#2E7D32"
+                        />
+                      </View>
+                    )}
+
+                    <Text
+                      numberOfLines={2}
+                      style={{
+                        color: '#fff',
+                        textAlign: 'center',
+                        marginTop: 6,
+                        fontWeight: '600',
+                        fontSize: 12,
+                        lineHeight: 16,
+                      }}
+                    >
+                      {s.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
 
-              {searchedSources.filter(s => s.id !== sourceId).length > 4 && (
+              {toAccountSources.length > 4 && (
                 <TouchableOpacity
                   disabled={submitting}
                   onPress={() => {
@@ -1832,14 +1962,20 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                     height: 42,
                     borderRadius: 21,
                     backgroundColor:
-                      sources.find(x => x.id === toAccount)?.color || '#4B7CF3',
+                      sources.find(
+                        x => x.id === toAccount
+                      )?.color || '#4B7CF3',
                     justifyContent: 'center',
                     alignItems: 'center',
                     marginRight: 12,
                   }}
                 >
                   <MaterialCommunityIcons
-                    name={sources.find(x => x.id === toAccount)?.icon || 'cash'}
+                    name={
+                      sources.find(
+                        x => x.id === toAccount
+                      )?.icon || 'cash'
+                    }
                     size={22}
                     color="#fff"
                   />
@@ -1863,7 +1999,11 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                       color: '#222',
                     }}
                   >
-                    {sources.find(x => x.id === toAccount)?.name}
+                    {
+                      sources.find(
+                        x => x.id === toAccount
+                      )?.name
+                    }
                   </Text>
                 </View>
 
