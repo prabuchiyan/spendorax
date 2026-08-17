@@ -353,14 +353,17 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
   const accent = type === 'expense' ? '#E46A6A' : type === 'income' ? '#36B37E' : '#000';
 
-  const filteredLoans = [...loansList]
-    .sort((a, b) => {
-      if (a.status === 'Active' && b.status !== 'Active') return -1;
-      if (a.status !== 'Active' && b.status === 'Active') return 1;
-      return b.id - a.id;
-    })
+  // Only Active loans can be used for new transaction loan payments.
+  // Keep loansList untouched because it may still be needed to display
+  // an already-linked loan while editing an existing transaction.
+  const activeLoans = loansList.filter(
+    loan => String(loan.status || '').toLowerCase() === 'active'
+  );
+
+  const filteredLoans = [...activeLoans]
+    .sort((a, b) => b.id - a.id)
     .filter(l =>
-      l.loan_name.toLowerCase().includes(loanSearch.toLowerCase()) ||
+      (l.loan_name || '').toLowerCase().includes(loanSearch.toLowerCase()) ||
       (l.lender || '').toLowerCase().includes(loanSearch.toLowerCase()) ||
       (l.loan_type || '').toLowerCase().includes(loanSearch.toLowerCase())
     );
@@ -1032,7 +1035,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       </View>
 
       {/* Loan Payment */}
-      {type === 'expense' && (
+      {type === 'expense' && activeLoans.length > 0 && (
         <View style={{ marginBottom: 18 }}>
           <Text
             style={{

@@ -1,9 +1,6 @@
 import { executeSql } from '../database/db';
 import events from './events';
-import {
-  getBillsForTransaction,
-  removeTransactionFromBill,
-} from './bills';
+import { removeTransactionFromBill } from './bills';
 
 async function refreshCreditCardBySource(sourceId) {
   if (!sourceId) return;
