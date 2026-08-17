@@ -791,11 +791,6 @@ export default function SourcesDetails({
           item.category_id
           ] || {};
 
-        const sourceItem =
-          sourcesMap[
-          item.source_id
-          ] || {};
-
         const rawType =
           String(
             item.type || ''
@@ -1077,126 +1072,42 @@ export default function SourcesDetails({
                       'Untitled'}
                   </Text>
 
-                  {/* CATEGORY + SOURCE */}
+                  {/* CATEGORY */}
 
                   <View
                     style={{
-                      flexDirection:
-                        'row',
+                      alignSelf: 'flex-start',
 
-                      alignItems:
-                        'center',
+                      backgroundColor:
+                        `${iconColor}12`,
 
-                      marginTop:
-                        6,
+                      borderRadius: 6,
 
-                      minWidth:
-                        0,
+                      paddingHorizontal: 7,
+
+                      paddingVertical: 4,
+
+                      borderWidth: 1,
+
+                      borderColor:
+                        `${iconColor}18`,
                     }}
                   >
-
-                    {/* CATEGORY */}
-
-                    <View
-                      style={{
-                        flexShrink:
-                          1,
-
-                        maxWidth:
-                          '52%',
-
-                        backgroundColor:
-                          `${iconColor}12`,
-
-                        borderRadius:
-                          6,
-
-                        paddingHorizontal:
-                          7,
-
-                        paddingVertical:
-                          4,
-
-                        borderWidth:
-                          1,
-
-                        borderColor:
-                          `${iconColor}18`,
-                      }}
-                    >
-                      <Text
-                        numberOfLines={
-                          1
-                        }
-                        ellipsizeMode="tail"
-                        style={{
-                          color:
-                            iconColor,
-
-                          fontSize:
-                            11,
-
-                          lineHeight:
-                            13,
-
-                          fontWeight:
-                            '800',
-                        }}
-                      >
-                        {category.name ||
-                          'Uncategorized'}
-                      </Text>
-                    </View>
-
-                    {/* DOT */}
-
-                    <View
-                      style={{
-                        width: 3,
-                        height: 3,
-
-                        borderRadius:
-                          2,
-
-                        backgroundColor:
-                          '#C7CBD1',
-
-                        marginHorizontal:
-                          6,
-
-                        flexShrink:
-                          0,
-                      }}
-                    />
-
-                    {/* SOURCE */}
-
                     <Text
-                      numberOfLines={
-                        1
-                      }
+                      numberOfLines={1}
                       ellipsizeMode="tail"
                       style={{
-                        flex: 1,
+                        color: iconColor,
 
-                        minWidth: 0,
+                        fontSize: 11,
 
-                        color:
-                          '#9299A3',
+                        lineHeight: 13,
 
-                        fontSize:
-                          11,
-
-                        lineHeight:
-                          14,
-
-                        fontWeight:
-                          '600',
+                        fontWeight: '800',
                       }}
                     >
-                      {sourceItem.name ||
-                        sourceName ||
-                        'No source'}
+                      {category.name ||
+                        'Uncategorized'}
                     </Text>
                   </View>
                 </View>
