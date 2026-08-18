@@ -350,25 +350,6 @@ export default function TransactionsScreen({ navigation }) {
               {items.length === 1 ? '' : 's'}
             </Text>
           </View>
-
-          <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={() => navigation.navigate('TransactionAdd')}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: Colors.text,
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-          >
-            <MaterialCommunityIcons
-              name="plus"
-              size={23}
-              color="#fff"
-            />
-          </TouchableOpacity>
         </View>
       </View>
 
