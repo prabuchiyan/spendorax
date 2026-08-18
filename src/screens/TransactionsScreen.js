@@ -13,6 +13,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Spacing } from '../components/Theme';
 import FAB from '../components/FAB';
 import { useFocusEffect } from '@react-navigation/native';
+import { usePageLoader } from '../context/PageLoaderContext';
 
 export default function TransactionsScreen({ navigation }) {
   const [items, setItems] = useState([]);
@@ -20,26 +21,49 @@ export default function TransactionsScreen({ navigation }) {
   const [sources, setSources] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
+  const { show: showLoader, hide: hideLoader } = usePageLoader();
 
-  async function load() {
-    const t = await getTransactions(1000000, 'Yes');
-    setItems(t);
+  const load = useCallback(async () => {
+    showLoader();
 
-    const cats = await getCategories(true);
-    setCategories(cats);
+    const startTime = Date.now();
+    const minimumLoaderDelay = 700;
 
-    const src = await getSources(true);
-    setSources(src);
-  }
+    try {
+      const [transactionsData, categoriesData, sourcesData] = await Promise.all([
+        getTransactions(1000000, 'Yes'),
+        getCategories(true),
+        getSources(true),
+      ]);
+
+      setItems(transactionsData || []);
+      setCategories(categoriesData || []);
+      setSources(sourcesData || []);
+    } catch (error) {
+      console.error('Error loading transaction data:', error);
+      setItems([]);
+      setCategories([]);
+      setSources([]);
+    } finally {
+      const elapsed = Date.now() - startTime;
+      const remainingDelay = minimumLoaderDelay - elapsed;
+
+      if (remainingDelay > 0) {
+        await new Promise(resolve => setTimeout(resolve, remainingDelay));
+      }
+
+      hideLoader();
+    }
+  }, [showLoader, hideLoader]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [])
+    }, [load])
   );
 
   const handleEdit = (item) => {
@@ -56,7 +80,7 @@ export default function TransactionsScreen({ navigation }) {
   const filteredItems = useMemo(() => {
     let result = items;
 
-    // Type filter
+      hideLoader();
     if (activeFilter !== 'all') {
       result = result.filter(item => {
         const type = String(item.type || '').toLowerCase();
@@ -311,7 +335,6 @@ export default function TransactionsScreen({ navigation }) {
         backgroundColor: '#F8F9FB',
       }}
     >
-
       {/* HEADER */}
       <View
         style={{
@@ -934,6 +957,8 @@ export default function TransactionsScreen({ navigation }) {
           );
         }}
       />
+
+      {/* global PageLoader is provided by PageLoaderProvider */}
 
       {/* FAB */}
       <FAB

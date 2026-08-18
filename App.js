@@ -5,6 +5,7 @@ import { NavigationContainer, useNavigationContainerRef } from '@react-navigatio
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import ErrorBoundary from './src/screens/ErrorBoundary';
 import { BalanceVisibilityProvider } from './src/context/BalanceVisibilityContext';
+import { PageLoaderProvider } from './src/context/PageLoaderContext';
 import {
   requestPermission,
   rescheduleAll,
@@ -115,8 +116,9 @@ export default function App() {
           style="light"
           backgroundColor="#0B1F3A"
         />
-        <BalanceVisibilityProvider>
-          <NavigationContainer ref={navigationRef}>
+        <PageLoaderProvider>
+          <BalanceVisibilityProvider>
+            <NavigationContainer ref={navigationRef}>
             <Stack.Navigator>
               <Stack.Screen
                 name="Drawer"
@@ -145,7 +147,8 @@ export default function App() {
               <Stack.Screen name="NotificationSettings" component={require('./src/screens/NotificationSettingsScreen').default} options={{ title: 'Notifications' }} />
             </Stack.Navigator>
           </NavigationContainer>
-        </BalanceVisibilityProvider>
+          </BalanceVisibilityProvider>
+        </PageLoaderProvider>
         <ExitConfirmationModal
           visible={visible}
           onCancel={hideDialog}
