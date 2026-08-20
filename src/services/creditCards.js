@@ -473,6 +473,67 @@ export async function getAllCreditCardStatements() {
     return rows;
 }
 
+export async function deleteCreditCardStatement(statementId) {
+    if (!statementId) {
+        throw new Error('Statement ID is required');
+    }
+
+    // ---------------------------------------------------------
+    // Find statement
+    // ---------------------------------------------------------
+
+    const statementsRes = await executeSql(
+        `SELECT * FROM credit_card_statements`,
+        []
+    );
+
+    let statement = null;
+
+    for (
+        let i = 0;
+        i < statementsRes.rows.length;
+        i++
+    ) {
+        const row = statementsRes.rows.item(i);
+
+        if (Number(row.id) === Number(statementId)) {
+            statement = row;
+            break;
+        }
+    }
+
+    if (!statement) {
+        throw new Error('Credit card statement not found');
+    }
+
+    // ---------------------------------------------------------
+    // Delete generated bill
+    // ---------------------------------------------------------
+
+    if (statement.bill_id) {
+        await executeSql(
+            `DELETE FROM bills WHERE id = ?`,
+            [statement.bill_id]
+        );
+
+        // Remove bill ↔ transaction links if any
+        await executeSql(
+            `DELETE FROM bill_linked_transactions WHERE bill_id = ?`,
+            [statement.bill_id]
+        );
+    }
+
+    // ---------------------------------------------------------
+    // Delete statement
+    // ---------------------------------------------------------
+
+    await executeSql(
+        `DELETE FROM credit_card_statements WHERE id = ?`,
+        [statementId]
+    );
+    return true;
+}
+
 export async function getCreditCardPayments(cardId) {
     const res = await executeSql(
         `SELECT * FROM credit_card_payments WHERE card_id = ? ORDER BY payment_date DESC`,
@@ -539,7 +600,6 @@ export async function syncCreditCardBillAmount(cardId) {
                     [b.id, cardId]
                 );
                 card = { ...card, payment_bill_id: b.id };
-                console.log('[syncCC] self-healed payment_bill_id:', b.id);
                 break;
             }
         }
