@@ -363,9 +363,11 @@ export async function clearAllTables() {
     'loans',
     'notifications'
   ];
+  console.log('Prabu tables', tables);
 
   try {
     for (const table of tables) {
+      console.log('Prabu table', table);
       await executeSql(`DELETE FROM ${table}`);
 
       if (Platform.OS !== 'web') {

@@ -207,6 +207,18 @@ export async function pickBackupFile() {
 
     const backupData = JSON.parse(fileContent);
 
+    const normalizedData = backupData.data || {};
+    const legacyCategoryBudgets = Array.isArray(normalizedData.categoryBudgets)
+      ? normalizedData.categoryBudgets
+      : [];
+    const categoryBudgets = Array.isArray(normalizedData.category_budgets)
+      ? normalizedData.category_budgets
+      : legacyCategoryBudgets;
+
+    if (backupData.data) {
+      backupData.data.category_budgets = categoryBudgets;
+      backupData.data.categoryBudgets = categoryBudgets;
+    }
 
     // Validation
     // Validation (Backward Compatible)
@@ -242,6 +254,7 @@ export async function pickBackupFile() {
       // Populate new tables with empty arrays so restore logic
       // never needs version-specific checks.
       backupData.data.category_budgets ??= [];
+      backupData.data.categoryBudgets ??= backupData.data.category_budgets;
       backupData.data.bill_linked_transactions ??= [];
       backupData.data.credit_cards ??= [];
       backupData.data.credit_card_statements ??= [];
@@ -269,7 +282,8 @@ export async function pickBackupFile() {
       ];
 
       for (const key of requiredKeys) {
-        if (!Array.isArray(backupData.data[key])) {
+        const legacyKey = key === 'category_budgets' ? 'categoryBudgets' : key;
+        if (!Array.isArray(backupData.data[key]) && !Array.isArray(backupData.data[legacyKey])) {
           throw new Error(`Missing required data: ${key}`);
         }
       }
@@ -293,6 +307,8 @@ export async function pickBackupFile() {
 
       // notifications is optional — older exports may not include it
       backupData.data.notifications ??= backupData.data.notification_settings ?? [];
+      backupData.data.category_budgets ??= backupData.data.categoryBudgets ?? [];
+      backupData.data.categoryBudgets ??= backupData.data.category_budgets ?? [];
 
       return backupData;
     }
@@ -318,13 +334,32 @@ function getBatchSize() {
 }
 
 async function yieldToUI() {
-  await new Promise(resolve => {
-    requestAnimationFrame(() => {
-      InteractionManager.runAfterInteractions(resolve);
+  // Web:
+  // Do NOT use InteractionManager here.
+  // React Native Web can leave runAfterInteractions unresolved,
+  // which blocks the restore at "Initializing restore...".
+  if (Platform.OS === 'web') {
+    await new Promise(resolve => {
+      setTimeout(resolve, 0);
     });
+    return;
+  }
+
+  // Native:
+  // Give React Native one frame, then wait until current
+  // interactions/animations are completed.
+  await new Promise(resolve => {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => {
+        InteractionManager.runAfterInteractions(() => {
+          resolve();
+        });
+      });
+    } else {
+      setTimeout(resolve, 0);
+    }
   });
 }
-
 async function beginDbTransaction() {
   try {
     await executeSql('BEGIN TRANSACTION');
@@ -528,14 +563,14 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       for (const loan of originalData.loans) {
         try {
           await executeSql(
-            `INSERT INTO loans (id, loan_name, loan_type, lender, principal_amount, interest_rate, loan_start_date, loan_end_date, tenure_months, emi_amount, emi_day, outstanding_amount, principal_paid, interest_paid, total_paid, total_prepayment, remaining_months, status, notes, transaction_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+            `INSERT INTO loans (id, loan_name, loan_type, lender, principal_amount, interest_rate, loan_start_date, loan_end_date, tenure_months, emi_amount, emi_day, outstanding_amount, principal_paid, interest_paid, total_paid, total_prepayment, remaining_months, status, notes, transaction_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
             [
-            loan.id, loan.loan_name, loan.loan_type, loan.lender, loan.principal_amount,
-            loan.interest_rate, loan.loan_start_date, loan.loan_end_date, loan.tenure_months,
-            loan.emi_amount, loan.emi_day, loan.outstanding_amount, loan.principal_paid,
-            loan.interest_paid, loan.total_paid, loan.total_prepayment, loan.remaining_months,
-            loan.status, loan.notes, loan.transaction_id || null,
-            loan.created_at, loan.updated_at
+              loan.id, loan.loan_name, loan.loan_type, loan.lender, loan.principal_amount,
+              loan.interest_rate, loan.loan_start_date, loan.loan_end_date, loan.tenure_months,
+              loan.emi_amount, loan.emi_day, loan.outstanding_amount, loan.principal_paid,
+              loan.interest_paid, loan.total_paid, loan.total_prepayment, loan.remaining_months,
+              loan.status, loan.notes, loan.transaction_id || null,
+              loan.created_at, loan.updated_at
             ]
           );
         } catch (e) {
@@ -657,12 +692,15 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
 
   try {
     safeOnProgress(0, 'Initializing restore...');
+    console.log('Prabu mode', mode);
     await yieldToUI();
+    console.log('Prabu yieldToUI Done');
 
     if (mode === 'replace') {
       safeOnProgress(0, 'Clearing database...');
       await clearAllTables();
       await yieldToUI();
+      console.log('Prabu replace done');
     }
 
     const {
@@ -670,6 +708,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       sources = [],
       budgets = [],
       category_budgets = [],
+      categoryBudgets = [],
       bills = [],
       bill_linked_transactions = [],
       transactions = [],
@@ -681,6 +720,11 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       notifications = [],
       notification_settings = [], // Backward compatibility
     } = backupData.data || {};
+
+    const restoredCategoryBudgets =
+      Array.isArray(category_budgets) && category_budgets.length > 0
+        ? category_budgets
+        : categoryBudgets;
 
     // Support old backups
     const restoredNotifications =
@@ -766,7 +810,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       billsWithLinkedTx.length +
       loans.length +
       loan_payments.length +
-      category_budgets.length +
+      restoredCategoryBudgets.length +
       cleanBillLinkedTxs.length +
       credit_cards.length +
       credit_card_statements.length +
@@ -1389,7 +1433,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
 
     // 8b. Category Budgets
     await processBatch(
-      category_budgets || [],
+      restoredCategoryBudgets || [],
       async (item) => {
         await executeSql(
           `INSERT INTO category_budgets
