@@ -417,14 +417,6 @@ export default function BillDetailScreen({ route, navigation }) {
   const [selectedCreditCard, setSelectedCreditCard] = useState(null);
   const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
 
-  // TEMP: Adds a small delay on web so the PageLoader
-  // can be visually verified during testing.
-  const waitForWebLoader = async () => {
-    if (Platform.OS === 'web') {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-    }
-  };
-
   // ── hook 15 ───────────────────────────────────────────────────────────────
   useFocusEffect(useCallback(() => { load(); }, [rawId]));
 
@@ -596,7 +588,6 @@ export default function BillDetailScreen({ route, navigation }) {
         await markBillPaid(targetBill.id, {
           source_id: targetBill.source_id,
         });
-        await waitForWebLoader();
         await load();
         hidePageLoader();
         return;
@@ -628,7 +619,6 @@ export default function BillDetailScreen({ route, navigation }) {
     try {
       showPageLoader();
       await unskipBill(selectedOcc.id);
-      await waitForWebLoader();
       await refreshSelectedOccurrence();
       await load();
     } catch (e) {
@@ -647,7 +637,6 @@ export default function BillDetailScreen({ route, navigation }) {
         tx.id
       );
       setShowLinkModal(false);
-      await waitForWebLoader();
       await refreshSelectedOccurrence();
       await load();
     } catch (e) {
@@ -668,7 +657,6 @@ export default function BillDetailScreen({ route, navigation }) {
         selectedOcc.id,
         tx.id
       );
-      await waitForWebLoader();
       await refreshSelectedOccurrence();
       await load();
     } catch (e) {
@@ -729,7 +717,6 @@ export default function BillDetailScreen({ route, navigation }) {
         );
       }
       setShowEditOcc(false);
-      await waitForWebLoader();
       await load();
     } catch (e) {
       console.error(
@@ -1020,11 +1007,9 @@ export default function BillDetailScreen({ route, navigation }) {
                   await deleteBill(activeBill.id);
                 }
                 // Wait for everything to finish.
-                await waitForWebLoader();
                 await load();
               } else if (confirmAction === 'skip') {
                 await skipBill(activeBill.id);
-                await waitForWebLoader();
                 await refreshSelectedOccurrence();
                 await load();
               }
@@ -1177,7 +1162,6 @@ export default function BillDetailScreen({ route, navigation }) {
                          * Close payment picker only after the DB operations
                          * are successfully completed.
                          */
-                        await waitForWebLoader();
                         setShowPaymentSourcePicker(false);
                         setSelectedCreditCard(null);
                         setPaymentSourceSearch('');

@@ -5,13 +5,20 @@ import {
   Animated,
   Easing,
   Platform,
+  Modal,
 } from 'react-native';
 import { Colors } from './Theme';
 
 const DEFAULT_GIF = require('../../assets/loading-waiting.gif');
 
-export default function PageLoader({ visible = true, source = DEFAULT_GIF, size = 130 }) {
-  const pulse = React.useRef(new Animated.Value(0)).current;
+export default function PageLoader({
+  visible = true,
+  source = DEFAULT_GIF,
+  size = 130,
+}) {
+  const pulse = React.useRef(
+    new Animated.Value(0)
+  ).current;
 
   React.useEffect(() => {
     const pulseAnimation = Animated.loop(
@@ -31,52 +38,82 @@ export default function PageLoader({ visible = true, source = DEFAULT_GIF, size 
       ])
     );
 
-    pulseAnimation.start();
-    return () => pulseAnimation.stop();
-  }, [pulse]);
+    if (visible) {
+      pulseAnimation.start();
+    }
+    return () => {
+      pulseAnimation.stop();
+    };
+  }, [pulse, visible]);
 
-  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1.06] });
-
-  if (!visible) return null;
-
-  const webBlur = Platform.OS === 'web' ? { backdropFilter: 'blur(6px)' } : {};
+  const scale = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.96, 1.06],
+  });
 
   return (
-    <Animated.View pointerEvents="auto" style={[styles.overlay, webBlur]}>
-      <View style={styles.card}>
-        <Animated.Image source={source} style={{ width: size, height: size, transform: [{ scale }] }} resizeMode="contain" />
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      hardwareAccelerated
+      onRequestClose={() => {
+        // Intentionally empty.
+        // Loader visibility is controlled by PageLoaderContext.
+      }}
+    >
+      <View
+        style={styles.overlay}
+        pointerEvents="auto"
+      >
+        <View style={styles.card}>
+          <Animated.Image
+            source={source}
+            style={{
+              width: size,
+              height: size,
+              transform: [{ scale }],
+            }}
+            resizeMode="contain"
+          />
+        </View>
       </View>
-    </Animated.View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: Platform.OS === 'web' ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.36)',
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 9999,
-    elevation: 9999,
+    backgroundColor:
+      Platform.OS === 'web'
+        ? 'rgba(255,255,255,0.30)'
+        : 'rgba(255,255,255,0.42)',
+    // Web
+    zIndex: 999999,
+    // Android
+    elevation: 999999,
   },
   card: {
     width: 170,
     height: 170,
     borderRadius: 36,
-    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    backgroundColor: 'rgba(255,255,255,0.94)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.75)',
+    borderColor: 'rgba(255,255,255,0.95)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#4B7CF3',
-    shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 18,
+    },
+    shadowOpacity: 0.14,
     shadowRadius: 28,
-    elevation: 10,
+    elevation: 20,
     overflow: 'hidden',
   },
 });
