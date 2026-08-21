@@ -191,32 +191,244 @@ export async function getBillsForTransaction(transactionId) {
  * Low-level insert — used internally by backfillBillOccurrences.
  * Never triggers another backfill (_skipBackfill is always true here).
  */
+// ─── core createBill (internal, no backfill) ──────────────────────────────────
+
+/**
+ * Low-level insert.
+ *
+ * recurrence_occurrence_key is the stable identity of a recurring occurrence.
+ *
+ * Examples:
+ *   YEARLY  -> 2026
+ *   MONTHLY -> 2026-09
+ *   DAILY   -> 2026-09-20
+ *
+ * IMPORTANT:
+ * The key does NOT change when the user edits due_date.
+ */
 async function _insertBill({
-  name, amount = 0, due_date = null,
+  name,
+  amount = 0,
+  due_date = null,
   status = BILL_STATUS.PENDING,
-  is_recurring = 0, recurrence_type = null, recurrence_interval = 1,
-  recurrence_end_date = null, category_id = null, source_id = null,
-  reminder_days_before = 2, auto_pay = 0, notes = null, attachment_url = null,
-  paid_at = null, is_paid = 0, linked_transaction_id = null, parent_bill_id = null,
+  is_recurring = 0,
+  recurrence_type = null,
+  recurrence_interval = 1,
+  recurrence_end_date = null,
+  category_id = null,
+  source_id = null,
+  reminder_days_before = 2,
+  auto_pay = 0,
+  notes = null,
+  attachment_url = null,
+  paid_at = null,
+  is_paid = 0,
+  linked_transaction_id = null,
+  parent_bill_id = null,
+  recurrence_occurrence_key = null,
+  recurrence_effective_date = null,
 }) {
   const ts = nowIso();
   const res = await executeSql(
     `INSERT INTO bills (
-      name, amount, due_date, status, is_recurring, recurrence_type,
-      recurrence_interval, recurrence_end_date, category_id, source_id,
-      reminder_days_before, auto_pay, notes, attachment_url,
-      paid_at, is_paid, linked_transaction_id, parent_bill_id, created_at, updated_at
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      name,
+      amount,
+      due_date,
+      status,
+      is_recurring,
+      recurrence_type,
+      recurrence_interval,
+      recurrence_end_date,
+      category_id,
+      source_id,
+      reminder_days_before,
+      auto_pay,
+      notes,
+      attachment_url,
+      paid_at,
+      is_paid,
+      linked_transaction_id,
+      parent_bill_id,
+      recurrence_occurrence_key,
+      recurrence_effective_date,
+      created_at,
+      updated_at
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
-      name, amount, due_date, status,
-      is_recurring ? 1 : 0, recurrence_type, recurrence_interval || 1,
-      recurrence_end_date, category_id, source_id,
-      reminder_days_before ?? 2, auto_pay ? 1 : 0,
-      notes, attachment_url, paid_at, is_paid ? 1 : 0,
-      linked_transaction_id, parent_bill_id, ts, ts,
+      name,
+      amount,
+      due_date,
+      status,
+      is_recurring ? 1 : 0,
+      recurrence_type,
+      recurrence_interval || 1,
+      recurrence_end_date,
+      category_id,
+      source_id,
+      reminder_days_before ?? 2,
+      auto_pay ? 1 : 0,
+      notes,
+      attachment_url,
+      paid_at,
+      is_paid ? 1 : 0,
+      linked_transaction_id,
+      parent_bill_id,
+      recurrence_occurrence_key,
+      recurrence_effective_date,
+      ts,
+      ts,
     ]
   );
   return res.insertId;
+}
+
+// ─── recurring occurrence migration ───────────────────────────────────────────
+
+let recurrenceColumnReady = false;
+
+async function ensureRecurringOccurrenceColumn() {
+  if (recurrenceColumnReady) return;
+  try {
+    await executeSql(
+      `ALTER TABLE bills
+       ADD COLUMN recurrence_occurrence_key TEXT`,
+      []
+    );
+  } catch (e) {
+    // Column already exists.
+  }
+
+  // New column:
+  // Defines when the CURRENT recurrence rule became effective.
+  //
+  // Example:
+  // Monthly: 2024-01-01
+  // Changed to yearly: 2026-01-01
+  //
+  // Existing monthly occurrences before this date remain untouched.
+  try {
+    await executeSql(
+      `ALTER TABLE bills
+       ADD COLUMN recurrence_effective_date TEXT`,
+      []
+    );
+  } catch (e) {
+    // Column already exists.
+  }
+
+  recurrenceColumnReady = true;
+}
+
+/**
+ * Returns the stable identity for a recurring occurrence.
+ *
+ * YEARLY:
+ *   2026
+ *
+ * MONTHLY:
+ *   2026-09
+ *
+ * WEEKLY:
+ *   Uses the generated occurrence date.
+ *
+ * DAILY:
+ *   2026-09-20
+ *
+ * The key represents the recurrence occurrence,
+ * NOT the editable bill due date.
+ */
+function getRecurrenceOccurrenceKey(
+  recurrenceType,
+  occurrenceDate,
+  recurrenceInterval = 1
+) {
+  if (!occurrenceDate) return null;
+
+  const date = String(occurrenceDate).slice(0, 10);
+
+  if (!date || date.length < 10) return null;
+
+  const type = String(recurrenceType || '').toLowerCase();
+
+  const year = date.slice(0, 4);
+  const month = date.slice(0, 7);
+
+  if (
+    type === 'yearly' ||
+    type === 'year' ||
+    type === 'annual'
+  ) {
+    return year;
+  }
+
+  if (
+    type === 'monthly' ||
+    type === 'month'
+  ) {
+    return month;
+  }
+
+  if (
+    type === 'weekly' ||
+    type === 'week'
+  ) {
+    // Generated date is the occurrence identity.
+    return `W:${date}`;
+  }
+
+  if (
+    type === 'daily' ||
+    type === 'day'
+  ) {
+    return date;
+  }
+
+  // Fallback for custom recurrence types.
+  return `${type || 'custom'}:${date}:${recurrenceInterval || 1}`;
+}
+
+/**
+ * Backward compatibility:
+ *
+ * Existing child bills created before recurrence_occurrence_key existed
+ * don't have a key.
+ *
+ * We infer the key from their original due_date.
+ *
+ * IMPORTANT:
+ * This only happens once and stores the inferred key permanently.
+ */
+async function backfillMissingOccurrenceKeys(template) {
+  if (!template || !template.is_recurring) return;
+
+  await ensureRecurringOccurrenceColumn();
+
+  const childrenRes = await executeSql(
+    `SELECT id, due_date, recurrence_occurrence_key
+     FROM bills
+     WHERE parent_bill_id = ?
+       AND deleted_at IS NULL`,
+    [template.id]
+  );
+
+  const children = rowsToArray(childrenRes);
+  for (const child of children) {
+    if (child.recurrence_occurrence_key) continue;
+    if (!child.due_date) continue;
+    const key = getRecurrenceOccurrenceKey(
+      template.recurrence_type,
+      child.due_date,
+      template.recurrence_interval
+    );
+    if (!key) continue;
+    await executeSql(
+      `UPDATE bills
+       SET recurrence_occurrence_key = ?,
+           updated_at = ?
+       WHERE id = ?`,
+      [key, nowIso(), child.id]
+    );
+  }
 }
 
 // ─── backfill ─────────────────────────────────────────────────────────────────
@@ -245,48 +457,166 @@ async function _insertBill({
  * and skipped.
  */
 export async function backfillBillOccurrences(templateId) {
+  await ensureRecurringOccurrenceColumn();
+  await ensureRecurringOccurrenceUniqueIndex();
+
   const template = await getBillById(templateId);
-  if (!template || !template.is_recurring || !template.recurrence_type) {
+
+  if (
+    !template ||
+    !template.is_recurring ||
+    !template.recurrence_type
+  ) {
     return;
   }
 
-  // FIX: Use recurrence_end_date directly when available, so ALL occurrences
-  // (including historical ones) are generated. Fall back to today only for
-  // open-ended series, to avoid creating unbounded future rows.
+  // Make sure old occurrences have their permanent keys.
+  await backfillMissingOccurrenceKeys(template);
+
   const today = todayStr();
+
+  /*
+   * IMPORTANT:
+   *
+   * recurrence_effective_date tells us when the CURRENT
+   * recurrence rule started.
+   *
+   * Example:
+   *
+   * 2024-01 -> Monthly
+   * 2025-01 -> Monthly
+   * 2025-12 -> Monthly
+   *
+   * Changed to Yearly on:
+   *
+   * 2026-01-01
+   *
+   * Therefore we MUST NOT generate yearly occurrences
+   * for 2024 or 2025.
+   */
+  const effectiveDate =
+    template.recurrence_effective_date ||
+    template.due_date ||
+    today;
+
+  const effectiveDateOnly =
+    String(effectiveDate).slice(0, 10);
+
   const upTo = template.recurrence_end_date
     ? template.recurrence_end_date.slice(0, 10)
     : today;
 
-  const expectedDates = generateOccurrenceDates(template, upTo);
+  const expectedDates = generateOccurrenceDates(
+    template,
+    upTo
+  );
 
   const existingRes = await executeSql(
-    `SELECT id, parent_bill_id, due_date
+    `SELECT
+       id,
+       parent_bill_id,
+       due_date,
+       recurrence_occurrence_key,
+       deleted_at
      FROM bills
-     WHERE id = ? OR parent_bill_id = ?
-     ORDER BY due_date`,
+     WHERE id = ?
+        OR parent_bill_id = ?`,
     [templateId, templateId]
   );
 
   const existingRows = rowsToArray(existingRes);
-  const existingDates = new Set(
-    existingRows
-      .map(r => r.due_date?.slice(0, 10))
-      .filter(Boolean)
-  );
 
-  for (const dueDate of expectedDates) {
-    if (dueDate === template.due_date?.slice(0, 10)) {
+  const existingOccurrenceKeys = new Set();
+
+  for (const row of existingRows) {
+    if (row.deleted_at) continue;
+
+    if (Number(row.id) === Number(templateId)) {
+      if (row.due_date) {
+        const key = getRecurrenceOccurrenceKey(
+          template.recurrence_type,
+          row.due_date,
+          template.recurrence_interval
+        );
+        if (key) {
+          existingOccurrenceKeys.add(String(key));
+        }
+      }
       continue;
     }
-    if (existingDates.has(dueDate)) {
+
+    if (row.recurrence_occurrence_key) {
+      existingOccurrenceKeys.add(
+        String(row.recurrence_occurrence_key)
+      );
+      continue;
+    }
+
+    // Old occurrence without a key.
+    if (row.due_date) {
+      const key = getRecurrenceOccurrenceKey(
+        template.recurrence_type,
+        row.due_date,
+        template.recurrence_interval
+      );
+      if (key) {
+        existingOccurrenceKeys.add(String(key));
+      }
+    }
+  }
+
+  for (const dueDate of expectedDates) {
+    if (!dueDate) continue;
+
+    const dueDateOnly =
+      String(dueDate).slice(0, 10);
+    /*
+     * IMPORTANT:
+     *
+     * Never generate the NEW recurrence before
+     * recurrence_effective_date.
+     *
+     * This protects historical monthly bills.
+     */
+    if (dueDateOnly < effectiveDateOnly) {
+      continue;
+    }
+
+    /*
+     * The template itself already represents its
+     * original occurrence.
+     */
+    if (
+      template.due_date &&
+      template.due_date.slice(0, 10) === dueDateOnly
+    ) {
+      continue;
+    }
+
+    const occurrenceKey =
+      getRecurrenceOccurrenceKey(
+        template.recurrence_type,
+        dueDateOnly,
+        template.recurrence_interval
+      );
+
+    if (!occurrenceKey) continue;
+
+    /*
+     * Already exists.
+     */
+    if (
+      existingOccurrenceKeys.has(
+        String(occurrenceKey)
+      )
+    ) {
       continue;
     }
 
     await _insertBill({
       name: template.name,
       amount: template.amount,
-      due_date: dueDate,
+      due_date: dueDateOnly,
       is_recurring: 0,
       recurrence_type: null,
       recurrence_interval: 1,
@@ -298,20 +628,33 @@ export async function backfillBillOccurrences(templateId) {
       notes: template.notes,
       attachment_url: template.attachment_url,
       parent_bill_id: templateId,
+      recurrence_occurrence_key: occurrenceKey,
+      /*
+       * Child keeps the recurrence version
+       * that created it.
+       */
+      recurrence_effective_date: effectiveDateOnly,
     });
 
-    existingDates.add(dueDate);
+    existingOccurrenceKeys.add(
+      String(occurrenceKey)
+    );
   }
 }
 
 // ─── public createBill ────────────────────────────────────────────────────────
 
 export async function createBill(fields) {
+  await ensureRecurringOccurrenceColumn();
+  await ensureRecurringOccurrenceUniqueIndex();
   const newId = await _insertBill(fields);
 
-  // Trigger backfill ONCE at creation time for recurring bills
-  if (fields.is_recurring && fields.recurrence_type && fields.due_date
-    && !fields.parent_bill_id) {         // never backfill child rows
+  if (
+    fields.is_recurring &&
+    fields.recurrence_type &&
+    fields.due_date &&
+    !fields.parent_bill_id
+  ) {
     await backfillBillOccurrences(newId);
   }
 
@@ -525,26 +868,62 @@ export async function getBillsForCurrentMonth(options = {}) {
 
     // Always check latest DB state (avoids duplicate occurrence creation)
     const allBills = await fetchAllBillsRaw();
+    // ============================================================
+    // FIND CURRENT RECURRING OCCURRENCE
+    // ============================================================
+    //
+    // IMPORTANT:
+    // Always check recurrence_occurrence_key FIRST.
+    //
+    // Example:
+    // Expected recurring bill = September 2026
+    // User moved bill to = August 2026
+    //
+    // occurrence_key is still:
+    // 2026
+    //
+    // Therefore August bill is already the September occurrence.
+    // DO NOT create another September bill.
+    //
+
+    const occurrenceKey = getRecurrenceOccurrenceKey(
+      template.recurrence_type,
+      thisMonthDate,
+      template.recurrence_interval
+    );
+
     let occurrenceRow = allBills.find(
       b =>
         Number(b.parent_bill_id) === Number(template.id) &&
-        (b.due_date?.slice(0, 10) === thisMonthDate) &&
-        !b.deleted_at
+        !b.deleted_at &&
+        String(b.recurrence_occurrence_key || '') ===
+        String(occurrenceKey)
     );
 
     if (occurrenceRow) {
+      // Existing occurrence found by stable recurrence key.
       occurrenceRow = normalizeBill(occurrenceRow);
-    } else if (template.due_date === thisMonthDate) {
+    } else if (
+      template.due_date &&
+      template.due_date.slice(0, 10) === thisMonthDate
+    ) {
+      // Template itself represents this occurrence.
       occurrenceRow = normalizeBill(template);
+
     } else {
-      const deleted = allBills.find(
+      // Backward compatibility for old bills created
+      // before recurrence_occurrence_key was added.
+      occurrenceRow = allBills.find(
         b =>
           Number(b.parent_bill_id) === Number(template.id) &&
-          (b.due_date?.slice(0, 10) === thisMonthDate) &&
-          b.deleted_at
+          !b.deleted_at &&
+          b.due_date?.slice(0, 10) === thisMonthDate
       );
 
-      if (!deleted) {
+      if (occurrenceRow) {
+        occurrenceRow = normalizeBill(occurrenceRow);
+      } else {
+        // No existing occurrence -> create exactly ONE.
         const newId = await _insertBill({
           name: template.name,
           amount: template.amount,
@@ -560,9 +939,12 @@ export async function getBillsForCurrentMonth(options = {}) {
           notes: template.notes,
           attachment_url: template.attachment_url,
           parent_bill_id: template.id,
+          recurrence_occurrence_key: occurrenceKey,
         });
 
-        occurrenceRow = normalizeBill(await getBillById(newId));
+        occurrenceRow = normalizeBill(
+          await getBillById(newId)
+        );
       }
     }
 
@@ -869,54 +1251,194 @@ export async function markBillPaid(
  * When a bill is paid, ensure exactly one future occurrence exists (next month).
  * This is the only place future bills are created — never in bulk.
  */
+/**
+ * Ensure the next recurring occurrence exists.
+ *
+ * IMPORTANT:
+ * This works for:
+ *
+ *   Daily
+ *   Weekly
+ *   Monthly
+ *   Yearly
+ *
+ * It does NOT assume "next month".
+ */
 async function _ensureNextOccurrence(templateId) {
+  await ensureRecurringOccurrenceColumn();
+  await ensureRecurringOccurrenceUniqueIndex();
   const template = await getBillById(templateId);
-  if (!template || !template.is_recurring || !template.recurrence_type) return;
+  if (
+    !template ||
+    !template.is_recurring ||
+    !template.recurrence_type
+  ) {
+    return;
+  }
 
-  const now = new Date();
-  const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const nextMonthEnd = new Date(now.getFullYear(), now.getMonth() + 2, 0);
-  const nextMonthUpTo = nextMonthEnd.toISOString().slice(0, 10);
+  await backfillMissingOccurrenceKeys(template);
+  const type = String(
+    template.recurrence_type || ''
+  ).toLowerCase();
 
-  // Check end date
+  /*
+   * Current recurrence becomes valid from this date.
+   */
+  const effectiveDate =
+    template.recurrence_effective_date ||
+    template.due_date ||
+    todayStr();
+
+  const effectiveDateOnly =
+    String(effectiveDate).slice(0, 10);
+
+  /*
+   * Generate enough future dates.
+   */
+  const future = new Date();
+
+  if (
+    type === 'yearly' ||
+    type === 'year' ||
+    type === 'annual'
+  ) {
+    future.setFullYear(
+      future.getFullYear() + 10
+    );
+  } else if (
+    type === 'monthly' ||
+    type === 'month'
+  ) {
+    future.setFullYear(
+      future.getFullYear() + 2
+    );
+  } else {
+    future.setFullYear(
+      future.getFullYear() + 1
+    );
+  }
+  let upTo = formatDate(future);
   if (
     template.recurrence_end_date &&
-    nextMonthStart.toISOString().slice(0, 10) > template.recurrence_end_date.slice(0, 10)
-  ) return;
-
-  // Find what the next date should be
-  const allDates = generateOccurrenceDates(template, nextMonthUpTo);
-  const nextDate = allDates.find(d => {
-    const dt = new Date(d);
-    return dt.getFullYear() === nextMonthStart.getFullYear() &&
-      dt.getMonth() === nextMonthStart.getMonth();
-  });
-
-  if (!nextDate) return;
-
-  // Check if it already exists
-  const existing = await executeSql(
-    `SELECT id FROM bills
-     WHERE parent_bill_id = ? AND due_date >= ? AND due_date <= ? AND deleted_at IS NULL
-     LIMIT 1`,
-    [templateId, `${nextDate.slice(0, 7)}-01`, `${nextDate.slice(0, 7)}-31`]
+    template.recurrence_end_date.slice(0, 10) < upTo
+  ) {
+    upTo =
+      template.recurrence_end_date.slice(0, 10);
+  }
+  const allDates =
+    generateOccurrenceDates(
+      template,
+      upTo
+    );
+  if (!allDates || !allDates.length) {
+    return;
+  }
+  const existingRes = await executeSql(
+    `SELECT
+       id,
+       due_date,
+       recurrence_occurrence_key,
+       deleted_at
+     FROM bills
+     WHERE parent_bill_id = ?`,
+    [templateId]
   );
-  if (existing.rows.length) return;
 
-  await _insertBill({
-    name: template.name,
-    amount: template.amount,
-    due_date: nextDate,
-    is_recurring: 0,
-    recurrence_type: null,
-    category_id: template.category_id,
-    source_id: template.source_id,
-    reminder_days_before: template.reminder_days_before,
-    auto_pay: template.auto_pay,
-    notes: template.notes,
-    attachment_url: template.attachment_url,
-    parent_bill_id: templateId,
-  });
+  const existingRows = rowsToArray(existingRes);
+  const existingKeys = new Set();
+  for (const row of existingRows) {
+    if (row.deleted_at) continue;
+    if (row.recurrence_occurrence_key) {
+      existingKeys.add(
+        String(
+          row.recurrence_occurrence_key
+        )
+      );
+    } else if (row.due_date) {
+      const key =
+        getRecurrenceOccurrenceKey(
+          template.recurrence_type,
+          row.due_date,
+          template.recurrence_interval
+        );
+      if (key) {
+        existingKeys.add(String(key));
+      }
+    }
+  }
+
+  const sortedDates = [...allDates]
+    .map(d => String(d).slice(0, 10))
+    .sort();
+  for (const occurrenceDate of sortedDates) {
+    if (!occurrenceDate) continue;
+
+    /*
+     * NEVER create an occurrence belonging to the
+     * previous recurrence rule.
+     */
+    if (
+      occurrenceDate < effectiveDateOnly
+    ) {
+      continue;
+    }
+    const occurrenceKey =
+      getRecurrenceOccurrenceKey(
+        template.recurrence_type,
+        occurrenceDate,
+        template.recurrence_interval
+      );
+
+    if (!occurrenceKey) continue;
+    /*
+     * Already exists.
+     */
+    if (
+      existingKeys.has(
+        String(occurrenceKey)
+      )
+    ) {
+      continue;
+    }
+    const newId = await _insertBill({
+      name: template.name,
+      amount: template.amount,
+      due_date: occurrenceDate,
+      is_recurring: 0,
+      recurrence_type: null,
+      recurrence_interval: 1,
+      recurrence_end_date: null,
+      category_id: template.category_id,
+      source_id: template.source_id,
+      reminder_days_before: template.reminder_days_before,
+      auto_pay: template.auto_pay,
+      notes: template.notes,
+      attachment_url: template.attachment_url,
+      parent_bill_id: template.id,
+      recurrence_occurrence_key: occurrenceKey,
+      recurrence_effective_date: effectiveDateOnly,
+    });
+    return newId;
+  }
+  return null;
+}
+
+async function ensureRecurringOccurrenceUniqueIndex() {
+  try {
+    await executeSql(`
+      CREATE UNIQUE INDEX IF NOT EXISTS
+      idx_bills_recurring_occurrence
+      ON bills(parent_bill_id, recurrence_occurrence_key)
+      WHERE parent_bill_id IS NOT NULL
+        AND recurrence_occurrence_key IS NOT NULL
+        AND deleted_at IS NULL
+    `, []);
+  } catch (e) {
+    console.warn(
+      '[Bills] Could not create recurring occurrence unique index:',
+      e
+    );
+  }
 }
 
 // ─── linkAdditionalTransaction ────────────────────────────────────────────────
@@ -1057,7 +1579,48 @@ export async function unskipBill(billId) {
 
 export async function updateBill(id, fields) {
   const existing = await getBillById(id);
-  if (!existing) throw new Error('Bill not found');
+  if (!existing) {
+    throw new Error('Bill not found');
+  }
+
+  /*
+   * Detect recurrence-rule changes BEFORE updating.
+   */
+  const recurrenceChanged =
+    (fields.recurrence_type !== undefined &&
+      fields.recurrence_type !==
+      existing.recurrence_type) ||
+
+    (fields.recurrence_interval !== undefined &&
+      fields.recurrence_interval !==
+      existing.recurrence_interval) ||
+
+    (fields.recurrence_end_date !== undefined &&
+      fields.recurrence_end_date !==
+      existing.recurrence_end_date);
+
+  /*
+   * If the recurrence rule changes on the MAIN TEMPLATE,
+   * the new rule becomes effective from today.
+   *
+   * Existing child occurrences are NOT modified.
+   *
+   * Example:
+   *
+   * 2024 monthly  -> KEEP
+   * 2025 monthly  -> KEEP
+   * 2026 onward   -> NEW yearly rule
+   */
+  let recurrenceEffectiveDate =
+    existing.recurrence_effective_date || null;
+
+  if (
+    recurrenceChanged &&
+    existing.is_recurring &&
+    !existing.parent_bill_id
+  ) {
+    recurrenceEffectiveDate = todayStr();
+  }
 
   const merged = {
     name: fields.name ?? existing.name,
@@ -1079,30 +1642,65 @@ export async function updateBill(id, fields) {
     last_reminded_at: fields.last_reminded_at !== undefined ? fields.last_reminded_at : existing.last_reminded_at,
     linked_transaction_id: fields.linked_transaction_id !== undefined ? fields.linked_transaction_id : existing.linked_transaction_id,
   };
+  await ensureRecurringOccurrenceColumn();
 
   await executeSql(
     `UPDATE bills SET
-       name=?, amount=?, due_date=?, status=?, is_recurring=?, recurrence_type=?,
-       recurrence_interval=?, recurrence_end_date=?, category_id=?, source_id=?,
-       reminder_days_before=?, auto_pay=?, notes=?, attachment_url=?,
-       is_paid=?, paid_at=?, last_reminded_at=?, linked_transaction_id=?, updated_at=?
+       name=?,
+       amount=?,
+       due_date=?,
+       status=?,
+       is_recurring=?,
+       recurrence_type=?,
+       recurrence_interval=?,
+       recurrence_end_date=?,
+       category_id=?,
+       source_id=?,
+       reminder_days_before=?,
+       auto_pay=?,
+       notes=?,
+       attachment_url=?,
+       is_paid=?,
+       paid_at=?,
+       last_reminded_at=?,
+       linked_transaction_id=?,
+       recurrence_effective_date=?,
+       updated_at=?
      WHERE id=?`,
     [
-      merged.name, merged.amount, merged.due_date, merged.status,
-      merged.is_recurring, merged.recurrence_type, merged.recurrence_interval, merged.recurrence_end_date,
-      merged.category_id, merged.source_id, merged.reminder_days_before, merged.auto_pay,
-      merged.notes, merged.attachment_url, merged.is_paid, merged.paid_at,
-      merged.last_reminded_at, merged.linked_transaction_id, nowIso(), id,
+      merged.name,
+      merged.amount,
+      merged.due_date,
+      merged.status,
+      merged.is_recurring,
+      merged.recurrence_type,
+      merged.recurrence_interval,
+      merged.recurrence_end_date,
+      merged.category_id,
+      merged.source_id,
+      merged.reminder_days_before,
+      merged.auto_pay,
+      merged.notes,
+      merged.attachment_url,
+      merged.is_paid,
+      merged.paid_at,
+      merged.last_reminded_at,
+      merged.linked_transaction_id,
+      recurrenceEffectiveDate,
+      nowIso(),
+      id,
     ]
   );
-
-  // If recurrence settings changed on a template, re-run backfill
-  const recurrenceChanged =
-    (fields.recurrence_type !== undefined && fields.recurrence_type !== existing.recurrence_type) ||
-    (fields.recurrence_interval !== undefined && fields.recurrence_interval !== existing.recurrence_interval) ||
-    (fields.recurrence_end_date !== undefined && fields.recurrence_end_date !== existing.recurrence_end_date);
-
-  if (existing.is_recurring && !existing.parent_bill_id && recurrenceChanged) {
+  /*
+   * Generate occurrences for the NEW recurrence only.
+   *
+   * Historical occurrences remain untouched.
+   */
+  if (
+    existing.is_recurring &&
+    !existing.parent_bill_id &&
+    recurrenceChanged
+  ) {
     await backfillBillOccurrences(id);
   }
 
