@@ -36,8 +36,8 @@ function BudgetDonut({ limit = 0, spent = 0, remaining = 0, daysLeft = 0, balanc
   const percentRaw = limit > 0 ? (spent / limit) : 0;
   const percent = Math.max(0, percentRaw);
   const pct = limit > 0 ? Math.min(100, Math.round(percent * 100)) : 0;
-  const color = percent <= 1 ? (percent < 0.7 ? '#36B37E' : '#FFB020') : '#E46A6A';
-  const innerColor = remaining >= 0 ? '#36B37E' : '#E46A6A';
+  const color = percent <= 1 ? (percent < 0.7 ? '#14B8A6' : '#FFB020') : '#E46A6A';
+  const innerColor = remaining >= 0 ? '#14B8A6' : '#E46A6A';
 
   const size = 180;
   const strokeWidth = 18;
@@ -84,7 +84,7 @@ function BudgetDonut({ limit = 0, spent = 0, remaining = 0, daysLeft = 0, balanc
             ? `Safe to Spend: ${balanceVisible ? fmt(remaining) : '••••••'}`
             : `Overspent: ${balanceVisible ? fmt(Math.abs(remaining)) : '••••••'}`}
         </Text>
-        <Text style={{ fontSize: 13, color: '#666', marginTop: 6, textAlign: 'center' }}>{daysLeft} day(s) left</Text>
+        <Text style={{ fontSize: 13, color: '#667085', marginTop: 6, textAlign: 'center' }}>{daysLeft} day(s) left</Text>
         {limit > 0 ? <Text style={{ fontSize: 11, color: '#999', marginTop: 6 }}>Used: {pct}%</Text> : null}
       </View>
     </View>
@@ -627,72 +627,176 @@ export default function HomeScreen({ navigation }) {
 
         {categoryBudgets.length > 0 && (
           <Card>
-            <Text style={{ fontWeight: '700', marginBottom: 12 }}>Category Budgets</Text>
-            {[...categoryBudgets].sort((a, b) => b.percentage - a.percentage).map(budget => {
-              let barColor = '#36B37E'; // Green <80%
-              if (budget.percentage >= 80 && budget.percentage <= 100) {
-                barColor = '#FFB020'; // Orange 80-100%
-              } else if (budget.percentage > 100) {
-                barColor = '#E46A6A'; // Red >100%
-              }
+            <Text
+              style={{
+                fontWeight: '700',
+                marginBottom: 12,
+              }}
+            >
+              Category Budgets
+            </Text>
 
-              return (
-                <TouchableOpacity
-                  key={budget.id}
-                  onPress={() =>
-                    navigation.navigate('CategoriesDetails', {
-                      categoryId: budget.categoryId,
-                      categoryName: budget.categoryName,
-                    })
-                  }
-                  style={{ marginBottom: 16 }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                      <Avatar.Icon
-                        size={36}
-                        icon={budget.icon}
-                        style={{ backgroundColor: budget.color, marginRight: 10 }}
-                      />
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontWeight: '600', fontSize: 14 }}>{budget.categoryName}</Text>
-                        <Text style={{ fontSize: 12, color: Colors.muted }}>
+            {[...categoryBudgets]
+              .sort((a, b) => b.percentage - a.percentage)
+              .map(budget => {
+                // Use the category's own color everywhere.
+                const categoryColor =
+                  budget.color || '#4B7CF3';
+
+                return (
+                  <TouchableOpacity
+                    key={budget.id}
+                    onPress={() =>
+                      navigation.navigate(
+                        'CategoriesDetails',
+                        {
+                          categoryId: budget.categoryId,
+                          categoryName: budget.categoryName,
+                        }
+                      )
+                    }
+                    style={{
+                      marginBottom: 16,
+                    }}
+                  >
+                    {/* ==========================================
+                CATEGORY HEADER
+               ========================================== */}
+
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: 6,
+                      }}
+                    >
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          flex: 1,
+                        }}
+                      >
+                        <Avatar.Icon
+                          size={36}
+                          icon={budget.icon}
+                          style={{
+                            backgroundColor: categoryColor,
+                            marginRight: 10,
+                          }}
+                        />
+
+                        <View
+                          style={{
+                            flex: 1,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontWeight: '600',
+                              fontSize: 14,
+                            }}
+                          >
+                            {budget.categoryName}
+                          </Text>
+
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              color: Colors.muted,
+                            }}
+                          >
+                            {balanceVisible
+                              ? `₹${Number(
+                                budget.spent || 0
+                              ).toLocaleString('en-IN')} / ₹${Number(
+                                budget.budget || 0
+                              ).toLocaleString('en-IN')}`
+                              : '•••••• / ••••••'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* ========================================
+                  PERCENTAGE + REMAINING
+                 ======================================== */}
+
+                      <View
+                        style={{
+                          alignItems: 'flex-end',
+                          marginLeft: 8,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontWeight: '700',
+                            color: categoryColor,
+                            fontSize: 16,
+                          }}
+                        >
+                          {Math.round(
+                            Number(budget.percentage || 0)
+                          )}
+                          %
+                        </Text>
+
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: '600',
+                            color: budget.exceeded
+                              ? '#E46A6A'
+                              : categoryColor,
+                          }}
+                        >
                           {balanceVisible
-                            ? `₹${budget.spent.toLocaleString('en-IN')} / ₹${budget.budget.toLocaleString('en-IN')}`
-                            : '•••••• / ••••••'}
+                            ? budget.exceeded
+                              ? `+₹${Math.abs(
+                                Number(
+                                  budget.remaining || 0
+                                )
+                              ).toLocaleString('en-IN')}`
+                              : `₹${Number(
+                                budget.remaining || 0
+                              ).toLocaleString('en-IN')}`
+                            : '••••••'}
                         </Text>
                       </View>
                     </View>
-                    <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
-                      <Text style={{ fontWeight: '700', color: barColor, fontSize: 16 }}>
-                        {Math.round(budget.percentage)}%
-                      </Text>
-                      <Text style={{ fontSize: 11, color: budget.exceeded ? '#E46A6A' : '#36B37E' }}>
-                        {balanceVisible
-                          ? (budget.exceeded ? `+₹${Math.abs(budget.remaining).toLocaleString('en-IN')}` : `₹${budget.remaining.toLocaleString('en-IN')}`)
-                          : '••••••'}
-                      </Text>
-                    </View>
-                  </View>
-                  <View
-                    style={{
-                      height: 8,
-                      backgroundColor: '#eee',
-                      borderRadius: 4,
-                      overflow: 'hidden'
-                    }}
-                  >
+
+                    {/* ==========================================
+                CATEGORY PROGRESS BAR
+               ========================================== */}
+
                     <View
                       style={{
-                        width: `${Math.min(100, budget.percentage)}%`,
-                        height: '100%',
-                        backgroundColor: barColor
+                        height: 8,
+                        backgroundColor: '#E8EDF3',
+                        borderRadius: 4,
+                        overflow: 'hidden',
                       }}
-                    />
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+                    >
+                      <View
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            Math.max(
+                              0,
+                              Number(
+                                budget.percentage || 0
+                              )
+                            )
+                          )}%`,
+                          height: '100%',
+                          backgroundColor: categoryColor,
+                          borderRadius: 4,
+                        }}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
           </Card>
         )}
 
