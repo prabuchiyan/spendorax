@@ -513,53 +513,68 @@ export default function BillDetailScreen({ route, navigation }) {
   // ── helpers / actions ─────────────────────────────────────────────────────
 
   async function load() {
-    if (!rawId) return;
-
-    // Resolve: if rawId is a child bill, walk up to the template
-    const rawBill = await getBillById(rawId);
-    const templateId = rawBill?.parent_bill_id || rawId;
-    setResolvedTemplateId(templateId);
-
-    const [b, s, cats, srcs] = await Promise.all([
-      getBillById(templateId),
-      getBillSeries(templateId),
-      getCategories(true),
-      getSources(true),
-    ]);
-
-    setBill(b);
-    setSeries(s);
-    if (b?.category_id) setCategory(cats.find(c => c.id === b.category_id) || null);
-    if (b?.source_id) setSource(srcs.find(ss => ss.id === b.source_id) || null);
-
-    // Select the right occurrence
-    let occ = null;
-    if (occurrenceId) {
-      occ = s.find(o => o.id === occurrenceId) || null;
+    if (!rawId) {
+      hidePageLoader();
+      return;
     }
-    if (!occ && rawBill?.parent_bill_id) {
-      // came from statements screen with child bill id directly
-      occ = s.find(o => o.id === rawId) || null;
-    }
-    if (!occ) {
-      const now = new Date();
-      occ = s.find(o => {
-        if (!o.due_date) return false;
-        const d = new Date(o.due_date);
-        return d.getFullYear() === now.getFullYear() &&
-          d.getMonth() === now.getMonth() &&
-          o.status !== BILL_STATUS.PAID &&
-          o.status !== BILL_STATUS.SKIPPED;
-      }) || s[s.length - 1] || null;
-    }
-    setSelectedOcc(occ);
-    if (occ) {
-      setLinkedTxs(await getBillLinkedTransactions(occ.id));
-      if (occ.due_date) {
-        setSelectedLabel(
-          new Date(occ.due_date).toLocaleDateString('en', { month: 'short', year: '2-digit' })
-        );
+
+    showPageLoader();
+
+    try {
+      // Resolve: if rawId is a child bill, walk up to the template
+      const rawBill = await getBillById(rawId);
+      const templateId = rawBill?.parent_bill_id || rawId;
+      setResolvedTemplateId(templateId);
+
+      const [b, s, cats, srcs] = await Promise.all([
+        getBillById(templateId),
+        getBillSeries(templateId),
+        getCategories(true),
+        getSources(true),
+      ]);
+
+      setBill(b);
+      setSeries(s);
+      if (b?.category_id) setCategory(cats.find(c => c.id === b.category_id) || null);
+      if (b?.source_id) setSource(srcs.find(ss => ss.id === b.source_id) || null);
+
+      // Select the right occurrence
+      let occ = null;
+      if (occurrenceId) {
+        occ = s.find(o => o.id === occurrenceId) || null;
       }
+      if (!occ && rawBill?.parent_bill_id) {
+        // came from statements screen with child bill id directly
+        occ = s.find(o => o.id === rawId) || null;
+      }
+      if (!occ) {
+        const now = new Date();
+        occ = s.find(o => {
+          if (!o.due_date) return false;
+          const d = new Date(o.due_date);
+          return d.getFullYear() === now.getFullYear() &&
+            d.getMonth() === now.getMonth() &&
+            o.status !== BILL_STATUS.PAID &&
+            o.status !== BILL_STATUS.SKIPPED;
+        }) || s[s.length - 1] || null;
+      }
+      setSelectedOcc(occ);
+      if (occ) {
+        setLinkedTxs(await getBillLinkedTransactions(occ.id));
+        if (occ.due_date) {
+          setSelectedLabel(
+            new Date(occ.due_date).toLocaleDateString('en', { month: 'short', year: '2-digit' })
+          );
+        }
+      }
+    } catch (e) {
+      console.error('[BillDetail] load failed:', e);
+      setBill(null);
+      setSeries([]);
+      setSelectedOcc(null);
+      setLinkedTxs([]);
+    } finally {
+      hidePageLoader();
     }
   }
 

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import PageLoader from '../components/PageLoader';
 
 const PageLoaderContext = createContext(null);
@@ -6,15 +6,24 @@ const PageLoaderContext = createContext(null);
 export function PageLoaderProvider({ children }) {
   const [visible, setVisible] = useState(false);
   const [options, setOptions] = useState({});
+  const countRef = useRef(0);
 
   const show = useCallback((opts = {}) => {
+    countRef.current += 1;
     setOptions(opts);
     setVisible(true);
   }, []);
 
   const hide = useCallback(() => {
-    setVisible(false);
-    setOptions({});
+    if (countRef.current > 0) {
+      countRef.current -= 1;
+    }
+
+    if (countRef.current <= 0) {
+      countRef.current = 0;
+      setVisible(false);
+      setOptions({});
+    }
   }, []);
 
   return (

@@ -80,7 +80,6 @@ export default function TransactionsScreen({ navigation }) {
   const filteredItems = useMemo(() => {
     let result = items;
 
-      hideLoader();
     if (activeFilter !== 'all') {
       result = result.filter(item => {
         const type = String(item.type || '').toLowerCase();
@@ -118,21 +117,15 @@ export default function TransactionsScreen({ navigation }) {
 
         return (
           (item.notes || '').toLowerCase().includes(q) ||
-          String(item.amount || '').includes(q) ||
           category.toLowerCase().includes(q) ||
-          source.toLowerCase().includes(q)
+          source.toLowerCase().includes(q) ||
+          (item.amount || '').toString().toLowerCase().includes(q)
         );
       });
     }
 
     return result;
-  }, [
-    items,
-    searchQuery,
-    activeFilter,
-    categories,
-    sources,
-  ]);
+  }, [items, activeFilter, searchQuery, categories, sources]);
 
   // ---------------------------------------------------------
   // GROUP BY DATE
