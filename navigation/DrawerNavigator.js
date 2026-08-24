@@ -20,23 +20,23 @@ import { useBalanceVisibility } from '../src/context/BalanceVisibilityContext';
 
 const Drawer = createDrawerNavigator();
 
-function CustomDrawerContent(props) {
+const menuItems = [
+  { name: 'Dashboard', label: 'Dashboard', icon: 'view-dashboard-outline', activeIcon: 'view-dashboard' },
+  { name: 'Transactions', label: 'Transactions', icon: 'format-list-bulleted', activeIcon: 'format-list-bulleted' },
+  { name: 'Bills', label: 'Bills', icon: 'file-document-outline', activeIcon: 'file-document' },
+  { name: 'Loans', label: 'Loans', icon: 'bank-outline', activeIcon: 'bank' },
+  { name: 'CreditCards', label: 'Credit Cards', icon: 'credit-card-outline', activeIcon: 'credit-card' },
+  { name: 'CreditCardStatements', label: 'Statements', icon: 'file-document-outline', activeIcon: 'file-document' },
+  { name: 'Sources', label: 'Sources', icon: 'wallet-outline', activeIcon: 'wallet' },
+  { name: 'Reports', label: 'Reports', icon: 'chart-bar', activeIcon: 'chart-bar' },
+  { name: 'Categories', label: 'Categories', icon: 'tag-multiple-outline', activeIcon: 'tag-multiple' },
+];
+
+const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
   const insets = useSafeAreaInsets();
   const { state, navigation } = props;
   const activeRouteName = state.routeNames[state.index];
   const { balanceVisible, toggleBalance } = useBalanceVisibility();
-
-  const menuItems = [
-    { name: 'Dashboard', label: 'Dashboard', icon: 'view-dashboard-outline', activeIcon: 'view-dashboard' },
-    { name: 'Transactions', label: 'Transactions', icon: 'format-list-bulleted', activeIcon: 'format-list-bulleted' },
-    { name: 'Bills', label: 'Bills', icon: 'file-document-outline', activeIcon: 'file-document' },
-    { name: 'Loans', label: 'Loans', icon: 'bank-outline', activeIcon: 'bank' },
-    { name: 'CreditCards', label: 'Credit Cards', icon: 'credit-card-outline', activeIcon: 'credit-card' },
-    { name: 'CreditCardStatements', label: 'Statements', icon: 'file-document-outline', activeIcon: 'file-document' },
-    { name: 'Sources', label: 'Sources', icon: 'wallet-outline', activeIcon: 'wallet' },
-    { name: 'Reports', label: 'Reports', icon: 'chart-bar', activeIcon: 'chart-bar' },
-    { name: 'Categories', label: 'Categories', icon: 'tag-multiple-outline', activeIcon: 'tag-multiple' },
-  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
@@ -112,7 +112,7 @@ function CustomDrawerContent(props) {
       </View>
     </View>
   );
-}
+});
 
 export default function DrawerNavigator() {
   return (
@@ -125,7 +125,9 @@ export default function DrawerNavigator() {
           borderBottomRightRadius: 20,
           overflow: 'hidden',
         },
-        drawerType: 'slide',
+        drawerType: 'front',
+        animationDuration: 180,
+        freezeOnBlur: true,
         overlayColor: 'rgba(0,0,0,0.5)',
         headerTintColor: '#333',
         headerTitleStyle: {
