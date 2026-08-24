@@ -20,6 +20,7 @@ import FAB from '../components/FAB';
 import { Colors, Spacing } from '../components/Theme';
 import BottomStatsBar from '../components/BottomStatsBar';
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
+import { usePageLoader } from '../context/PageLoaderContext';
 
 function daysRemainingInMonth() {
   const now = new Date();
@@ -140,6 +141,7 @@ function CategoryDonut({ data = [], categoriesMap = {} }) {
 
 export default function HomeScreen({ navigation }) {
   const { balanceVisible } = useBalanceVisibility();
+  const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
   const [topCategories, setTopCategories] = useState([]);
   const [sources, setSources] = useState([]);
   const [sourceBalances, setSourceBalances] = useState([]);
@@ -152,6 +154,7 @@ export default function HomeScreen({ navigation }) {
   const [categoryBudgets, setCategoryBudgets] = useState([]);
 
   async function load() {
+    showPageLoader();
     try {
       // CATEGORIES
       try {
@@ -185,18 +188,15 @@ export default function HomeScreen({ navigation }) {
         setBillsSummary(null);
       }
 
-      // =========================================================
       // SOURCES
       // Same calculation as SourcesDashboard:
-      //
+
       // Initial Balance
       // + Income
       // - Expense
-      //
+
       // Credit cards are NOT removed here because the
       // source list itself is needed by the dashboard.
-      // =========================================================
-
       let availableSources = [];
 
       try {
@@ -280,13 +280,10 @@ export default function HomeScreen({ navigation }) {
         setCategoryBudgets([]);
       }
 
-      // =========================================================
       // RECENT TRANSACTIONS
-      // IMPORTANT:
       // This now executes because there is NO leftover
       // getSourceBalances() call crashing load().
-      // =========================================================
-
+ 
       try {
         const tx = await getTransactions(3, 'Yes');
         setRecentTx(Array.isArray(tx) ? tx : []);
@@ -298,6 +295,8 @@ export default function HomeScreen({ navigation }) {
     } catch (e) {
       console.error('Home.load failed:', e);
       return [];
+    } finally {
+      hidePageLoader();
     }
   }
 
@@ -476,10 +475,7 @@ export default function HomeScreen({ navigation }) {
                       marginBottom: 16,
                     }}
                   >
-                    {/* ==========================================
-                CATEGORY HEADER
-               ========================================== */}
-
+                    {/* CATEGORY HEADER */}
                     <View
                       style={{
                         flexDirection: 'row',
@@ -535,10 +531,7 @@ export default function HomeScreen({ navigation }) {
                         </View>
                       </View>
 
-                      {/* ========================================
-                  PERCENTAGE + REMAINING
-                 ======================================== */}
-
+                      {/* PERCENTAGE + REMAINING */}
                       <View
                         style={{
                           alignItems: 'flex-end',
@@ -582,10 +575,7 @@ export default function HomeScreen({ navigation }) {
                       </View>
                     </View>
 
-                    {/* ==========================================
-                CATEGORY PROGRESS BAR
-               ========================================== */}
-
+                    {/* CATEGORY PROGRESS BAR */}
                     <View
                       style={{
                         height: 8,
@@ -756,7 +746,6 @@ export default function HomeScreen({ navigation }) {
                   >
 
                     {/* LEFT ACCENT */}
-
                     <View
                       style={{
                         position: 'absolute',
@@ -782,10 +771,7 @@ export default function HomeScreen({ navigation }) {
                       }}
                     >
 
-                      {/* ============================================ */}
                       {/* CATEGORY ICON */}
-                      {/* ============================================ */}
-
                       <View
                         style={{
                           width: 50,
@@ -831,9 +817,7 @@ export default function HomeScreen({ navigation }) {
                         />
                       </View>
 
-                      {/* ============================================ */}
                       {/* TRANSACTION DETAILS */}
-                      {/* ============================================ */}
 
                       <View
                         style={{
@@ -940,11 +924,8 @@ export default function HomeScreen({ navigation }) {
                         </View>
                       </View>
 
-                      {/* ============================================ */}
                       {/* RIGHT COLUMN */}
                       {/* AMOUNT + DATE */}
-                      {/* ============================================ */}
-
                       <View
                         style={{
                           width: 96,
@@ -1005,7 +986,6 @@ export default function HomeScreen({ navigation }) {
                         </View>
 
                         {/* TIME / TRANSFER */}
-
                         <View
                           style={{
                             flexDirection: 'row',

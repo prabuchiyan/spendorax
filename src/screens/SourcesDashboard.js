@@ -5,6 +5,7 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 
 import { getSources } from '../services/sources';
@@ -16,18 +17,21 @@ import { Colors, Spacing } from '../components/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
+import { usePageLoader } from '../context/PageLoaderContext';
 
 export default function SourcesDashboard({ navigation }) {
   const [sources, setSources] = useState([]);
   const [tab, setTab] = useState('banks');
+  const [loading, setLoading] = useState(true);
+  const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
 
   const { balanceVisible } = useBalanceVisibility();
 
-  // =========================================================
   // LOAD
-  // =========================================================
-
   async function load() {
+    setLoading(true);
+    showPageLoader();
+
     try {
       const availableSources = await getSources(true);
 
@@ -36,10 +40,7 @@ export default function SourcesDashboard({ navigation }) {
         'Yes'
       );
 
-      // -----------------------------------------------------
       // Calculate transaction balance per source
-      // -----------------------------------------------------
-
       const balanceMap = transactions.reduce(
         (acc, txn) => {
           const amount = Number(txn.amount || 0);
@@ -64,10 +65,7 @@ export default function SourcesDashboard({ navigation }) {
         {}
       );
 
-      // -----------------------------------------------------
       // Add initial balance
-      // -----------------------------------------------------
-
       const updatedSources = availableSources.map(
         source => {
           const initial =
@@ -92,13 +90,13 @@ export default function SourcesDashboard({ navigation }) {
       );
 
       setSources([]);
+    } finally {
+      setLoading(false);
+      hidePageLoader();
     }
   }
 
-  // =========================================================
   // LOAD ON FOCUS
-  // =========================================================
-
   useEffect(() => {
     load();
 
@@ -113,10 +111,7 @@ export default function SourcesDashboard({ navigation }) {
     return unsub;
   }, [navigation]);
 
-  // =========================================================
   // FILTER SOURCES BY TAB
-  // =========================================================
-
   const filteredSources = useMemo(() => {
     if (tab === 'creditCards') {
       return sources.filter(
@@ -133,10 +128,7 @@ export default function SourcesDashboard({ navigation }) {
     );
   }, [sources, tab]);
 
-  // =========================================================
   // TAB TOTAL
-  // =========================================================
-
   const tabTotal = useMemo(() => {
     return filteredSources.reduce(
       (sum, source) =>
@@ -145,9 +137,15 @@ export default function SourcesDashboard({ navigation }) {
     );
   }, [filteredSources]);
 
-  // =========================================================
   // UI
-  // =========================================================
+  if (loading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={styles.loaderText}>Loading source balances...</Text>
+      </View>
+    );
+  }
 
   return (
     <View
@@ -157,10 +155,7 @@ export default function SourcesDashboard({ navigation }) {
       }}
     >
 
-      {/* =====================================================
-          TAB NAVIGATION
-         ===================================================== */}
-
+      {/* TAB NAVIGATION */}
       <View
         style={styles.tabContainer}
       >
@@ -218,7 +213,6 @@ export default function SourcesDashboard({ navigation }) {
         </TouchableOpacity>
 
         {/* CREDIT CARDS */}
-
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() =>
@@ -271,611 +265,167 @@ export default function SourcesDashboard({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* =====================================================
-          CONTENT
-         ===================================================== */}
-
       <ScrollView
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={
-          styles.container
-        }
       >
-
-        {/* ===================================================
-            TOTAL
-           =================================================== */}
-
-        <View
-          style={[
-            styles.heroSection,
-            {
-              backgroundColor:
-                tab === 'creditCards'
-                  ? '#5965D8'
-                  : Colors.primary,
-            },
-          ]}
-        >
-          <Text
-            style={styles.heroLabel}
-          >
-            {tab === 'creditCards'
-              ? 'Credit Card Outstanding'
-              : 'Total Balance'}
+        <Card style={styles.summaryCard}>
+          <Text style={styles.summaryLabel}>Total</Text>
+          <Text style={styles.summaryAmount}>
+            {balanceVisible ? `₹ ${tabTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : '••••••'}
           </Text>
+        </Card>
 
-          <Text
-            style={styles.heroAmount}
-          >
-            {balanceVisible
-              ? `₹ ${tabTotal.toLocaleString(
-                'en-IN',
-                {
-                  minimumFractionDigits: 2,
-                }
-              )}`
-              : '••••••'}
-          </Text>
-
-          <Text
-            style={styles.heroSubtext}
-          >
-            {filteredSources.length}{' '}
-            {filteredSources.length === 1
-              ? 'account'
-              : 'accounts'}
-          </Text>
-        </View>
-
-        {/* ===================================================
-            HEADER
-           =================================================== */}
-
-        <View
-          style={styles.headerRow}
-        >
-          <Text
-            style={styles.sectionTitle}
-          >
-            {tab === 'creditCards'
-              ? 'Your Credit Cards'
-              : 'Your Accounts'}
-          </Text>
-
-          <TouchableOpacity
-            onPress={() =>
-              navigation.navigate(
-                'Sources'
-              )
-            }
-            style={
-              styles.manageButton
-            }
-          >
-            <Text
-              style={
-                styles.manageButtonText
-              }
+        {filteredSources.length === 0 ? (
+          <View style={styles.emptyState}>
+            <MaterialCommunityIcons name="wallet-outline" size={42} color="#B6BEC8" />
+            <Text style={styles.emptyTitle}>No sources found</Text>
+            <Text style={styles.emptyText}>Add a source to start tracking balances.</Text>
+          </View>
+        ) : (
+          filteredSources.map((sourceItem) => (
+            <TouchableOpacity
+              key={sourceItem.id}
+              activeOpacity={0.9}
+              onPress={() => navigation.navigate('SourcesDetails', {
+                sourceId: sourceItem.id,
+                sourceName: sourceItem.name,
+              })}
+              style={styles.sourceCard}
             >
-              Manage
-            </Text>
-          </TouchableOpacity>
-        </View>
+              <View style={styles.sourceHeader}>
+                <View style={styles.iconWrap}>
+                  <MaterialCommunityIcons
+                    name={sourceItem.icon || 'wallet-outline'}
+                    size={22}
+                    color={sourceItem.color || Colors.primary}
+                  />
+                </View>
 
-        {/* ===================================================
-            SOURCE LIST
-           =================================================== */}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sourceName}>{sourceItem.name}</Text>
+                  <Text style={styles.sourceType}>{sourceItem.type || 'Bank'}</Text>
+                </View>
 
-        <View
-          style={styles.listContainer}
-        >
-          {filteredSources.length > 0 ? (
-            filteredSources.map(
-              item => (
-                <TouchableOpacity
-                  key={item.id}
-                  activeOpacity={0.85}
-                  onPress={() =>
-                    navigation.navigate(
-                      'SourcesDetails',
-                      {
-                        sourceId:
-                          item.id,
-
-                        sourceName:
-                          item.name,
-                      }
-                    )
-                  }
-                >
-                  <Card
-                    style={
-                      styles.sourceCard
-                    }
-                  >
-                    <View
-                      style={
-                        styles.sourceContent
-                      }
-                    >
-
-                      {/* ICON */}
-
-                      <View
-                        style={[
-                          styles.iconWrapper,
-                          {
-                            backgroundColor:
-                              (
-                                item.color ||
-                                Colors.primary
-                              ) + '15',
-                          },
-                        ]}
-                      >
-                        <MaterialCommunityIcons
-                          name={
-                            item.icon ||
-                            (
-                              tab ===
-                                'creditCards'
-                                ? 'credit-card-outline'
-                                : 'bank'
-                            )
-                          }
-                          size={24}
-                          color={
-                            item.color ||
-                            Colors.primary
-                          }
-                        />
-                      </View>
-
-                      {/* NAME */}
-
-                      <View
-                        style={
-                          styles.infoWrapper
-                        }
-                      >
-                        <Text
-                          numberOfLines={1}
-                          style={
-                            styles.sourceName
-                          }
-                        >
-                          {item.name}
-                        </Text>
-
-                        <Text
-                          style={
-                            styles.sourceType
-                          }
-                        >
-                          {tab ===
-                            'creditCards'
-                            ? 'Credit Card'
-                            : 'Account'}
-                        </Text>
-                      </View>
-
-                      {/* BALANCE */}
-
-                      <View
-                        style={
-                          styles.amountWrapper
-                        }
-                      >
-                        <Text
-                          numberOfLines={1}
-                          adjustsFontSizeToFit
-                          minimumFontScale={0.75}
-                          style={[
-                            styles.sourceAmount,
-                            {
-                              color:
-                                tab ===
-                                  'creditCards'
-                                  ? '#D95D6A'
-                                  : Colors.text,
-                            },
-                          ]}
-                        >
-                          {balanceVisible
-                            ? `₹${Number(
-                              item.balance ||
-                              0
-                            ).toLocaleString(
-                              'en-IN',
-                              {
-                                minimumFractionDigits: 2,
-                              }
-                            )}`
-                            : '••••••'}
-                        </Text>
-
-                        <MaterialCommunityIcons
-                          name="chevron-right"
-                          size={20}
-                          color={
-                            Colors.muted
-                          }
-                        />
-                      </View>
-                    </View>
-                  </Card>
-                </TouchableOpacity>
-              )
-            )
-          ) : (
-            <View
-              style={
-                styles.emptyState
-              }
-            >
-              <MaterialCommunityIcons
-                name={
-                  tab ===
-                    'creditCards'
-                    ? 'credit-card-off-outline'
-                    : 'wallet-outline'
-                }
-                size={48}
-                color={
-                  Colors.muted
-                }
-              />
-
-              <Text
-                style={
-                  styles.emptyText
-                }
-              >
-                {tab ===
-                  'creditCards'
-                  ? 'No credit cards found'
-                  : 'No banks or cash accounts found'}
-              </Text>
-
-              <Text
-                style={
-                  styles.emptySubtext
-                }
-              >
-                Add an account from
-                Manage
-              </Text>
-            </View>
-          )}
-        </View>
+                <Text style={styles.balanceText}>
+                  {balanceVisible ? `₹ ${Number(sourceItem.balance || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : '••••••'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </View>
   );
 }
 
-// ============================================================
-// STYLES
-// ============================================================
-
-const styles =
-  StyleSheet.create({
-
-    container: {
-      padding:
-        Spacing.s,
-
-      paddingBottom:
-        30,
-    },
-
-    // --------------------------------------------------------
-    // TABS
-    // --------------------------------------------------------
-
-    tabContainer: {
-      flexDirection:
-        'row',
-
-      backgroundColor:
-        '#F5F5F5',
-
-      borderBottomWidth:
-        1,
-
-      borderBottomColor:
-        '#E5E5E5',
-    },
-
-    tab: {
-      flex: 1,
-
-      paddingVertical:
-        12,
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-
-      flexDirection:
-        'row',
-    },
-
-    tabText: {
-      fontSize:
-        14,
-    },
-
-    // --------------------------------------------------------
-    // HERO
-    // --------------------------------------------------------
-
-    heroSection: {
-      borderRadius:
-        20,
-
-      padding:
-        14,
-
-      marginBottom:
-        14,
-
-      alignItems:
-        'center',
-
-      elevation:
-        4,
-
-      shadowOffset: {
-        width: 0,
-        height: 4,
-      },
-
-      shadowOpacity:
-        0.25,
-
-      shadowRadius:
-        8,
-    },
-
-    heroLabel: {
-      color:
-        'rgba(255,255,255,0.82)',
-
-      fontSize:
-        14,
-
-      fontWeight:
-        '600',
-
-      textTransform:
-        'uppercase',
-
-      letterSpacing:
-        1,
-    },
-
-    heroAmount: {
-      color:
-        '#fff',
-
-      fontSize:
-        24,
-
-      fontWeight:
-        '800',
-
-      marginTop:
-        8,
-    },
-
-    heroSubtext: {
-      color:
-        'rgba(255,255,255,0.7)',
-
-      fontSize:
-        12,
-
-      marginTop:
-        5,
-
-      fontWeight:
-        '600',
-    },
-
-    // --------------------------------------------------------
-    // HEADER
-    // --------------------------------------------------------
-
-    headerRow: {
-      flexDirection:
-        'row',
-
-      justifyContent:
-        'space-between',
-
-      alignItems:
-        'center',
-
-      marginBottom:
-        16,
-
-      paddingHorizontal:
-        4,
-    },
-
-    sectionTitle: {
-      fontSize:
-        18,
-
-      fontWeight:
-        '700',
-
-      color:
-        Colors.text,
-    },
-
-    manageButton: {
-      padding:
-        4,
-    },
-
-    manageButtonText: {
-      color:
-        Colors.primary,
-
-      fontWeight:
-        '600',
-    },
-
-    // --------------------------------------------------------
-    // LIST
-    // --------------------------------------------------------
-
-    listContainer: {
-      marginBottom:
-        24,
-    },
-
-    sourceCard: {
-      marginBottom:
-        12,
-
-      padding:
-        0,
-
-      borderRadius:
-        16,
-    },
-
-    sourceContent: {
-      flexDirection:
-        'row',
-
-      alignItems:
-        'center',
-    },
-
-    iconWrapper: {
-      width:
-        48,
-
-      height:
-        48,
-
-      borderRadius:
-        12,
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-
-      marginRight:
-        16,
-    },
-
-    infoWrapper: {
-      flex:
-        1,
-
-      minWidth:
-        0,
-    },
-
-    sourceName: {
-      fontSize:
-        16,
-
-      fontWeight:
-        '700',
-
-      color:
-        Colors.text,
-    },
-
-    sourceType: {
-      fontSize:
-        12,
-
-      color:
-        Colors.muted,
-
-      marginTop:
-        2,
-    },
-
-    amountWrapper: {
-      flexDirection:
-        'row',
-
-      alignItems:
-        'center',
-
-      maxWidth:
-        '45%',
-    },
-
-    sourceAmount: {
-      fontSize:
-        16,
-
-      fontWeight:
-        '700',
-
-      marginRight:
-        8,
-
-      flexShrink:
-        1,
-    },
-
-    // --------------------------------------------------------
-    // EMPTY
-    // --------------------------------------------------------
-
-    emptyState: {
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-
-      paddingVertical:
-        50,
-    },
-
-    emptyText: {
-      color:
-        Colors.muted,
-
-      marginTop:
-        12,
-
-      fontSize:
-        16,
-
-      fontWeight:
-        '600',
-
-      textAlign:
-        'center',
-    },
-
-    emptySubtext: {
-      color:
-        '#AAA',
-
-      marginTop:
-        5,
-
-      fontSize:
-        12,
-
-      textAlign:
-        'center',
-    },
-  });
+const styles = StyleSheet.create({
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    padding: Spacing.md,
+  },
+  loaderText: {
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.muted,
+  },
+  content: {
+    padding: Spacing.xs,
+    paddingBottom: 32,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E6EAF0',
+    paddingHorizontal: 12,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  tabText: {
+    fontSize: 14,
+  },
+  summaryCard: {
+    marginTop: 12,
+    marginBottom: 12,
+    padding: 16,
+  },
+  summaryLabel: {
+    color: Colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  summaryAmount: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: Colors.text,
+    marginTop: 6,
+  },
+  sourceCard: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  sourceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#EEF3FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  sourceName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  sourceType: {
+    marginTop: 3,
+    fontSize: 12,
+    color: Colors.muted,
+    textTransform: 'capitalize',
+  },
+  balanceText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: Colors.primary,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    marginTop: 12,
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  emptyText: {
+    marginTop: 8,
+    fontSize: 13,
+    color: Colors.muted,
+  },
+});
