@@ -486,14 +486,14 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
   const accent = type === 'expense' ? '#E46A6A' : type === 'income' ? '#36B37E' : '#000';
 
-  const filteredLoans = [...loansList]
-    .sort((a, b) => {
-      if (a.status === 'Active' && b.status !== 'Active') return -1;
-      if (a.status !== 'Active' && b.status === 'Active') return 1;
-      return b.id - a.id;
-    })
+  const activeLoans = loansList.filter(
+    loan => String(loan.status || '').toLowerCase() === 'active'
+  );
+
+  const filteredLoans = [...activeLoans]
+    .sort((a, b) => b.id - a.id)
     .filter(l =>
-      l.loan_name.toLowerCase().includes(loanSearch.toLowerCase()) ||
+      (l.loan_name || '').toLowerCase().includes(loanSearch.toLowerCase()) ||
       (l.lender || '').toLowerCase().includes(loanSearch.toLowerCase()) ||
       (l.loan_type || '').toLowerCase().includes(loanSearch.toLowerCase())
     );
@@ -1165,7 +1165,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       </View>
 
       {/* Loan Payment */}
-      {type === 'expense' && (
+      {type === 'expense' && activeLoans.length > 0 && (
         <View style={{ marginBottom: 18 }}>
           <Text
             style={{
@@ -1180,7 +1180,10 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             <TouchableOpacity
               disabled={submitting}
               activeOpacity={0.85}
-              onPress={() => setShowLoanModal(true)}
+              onPress={() => {
+                setLoanSearch('');
+                setShowLoanModal(true);
+              }}
               style={{
                 backgroundColor: '#EEF4FF',
                 borderRadius: 16,
@@ -1244,7 +1247,16 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             </TouchableOpacity>
           ) : (
             (() => {
-              const loan = loansList.find(l => l.id === selectedLoanId);
+              const loan = activeLoans.find(
+                l => l.id === selectedLoanId
+              );
+
+              // Safety check:
+              // If the selected loan is no longer active,
+              // don't display the linked loan card.
+              if (!loan) {
+                return null;
+              }
 
               return (
                 <TouchableOpacity
@@ -1325,7 +1337,11 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   >
                     <PaperButton
                       compact
-                      onPress={() => setShowLoanModal(true)}
+                      onPress={() => {
+                        setLoanSearch('');
+                        setShowLoanModal(true);
+                      }}
+                      disabled={submitting}
                     >
                       Change
                     </PaperButton>
@@ -1382,7 +1398,11 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                       <PaperButton
                         compact
                         textColor="#E46A6A"
-                        onPress={() => setSelectedLoanId(null)}
+                        disabled={submitting}
+                        onPress={() => {
+                          setSelectedLoanId(null);
+                          markDirty();
+                        }}
                       >
                         Clear
                       </PaperButton>
