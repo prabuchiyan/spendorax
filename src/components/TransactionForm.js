@@ -44,7 +44,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [notesError, setNotesError] = useState(false);
   const [toAccount, setToAccount] = useState(null);
   const [selectingFor, setSelectingFor] = useState('from');
-  const [openTimePicker, setOpenTimePicker] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [noteSuggestions, setNoteSuggestions] = useState([]);
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
@@ -2083,113 +2082,312 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         <View style={{ width: 12 }} />
       </View>
 
-      {/* Native DateTimePicker usage with fallback modal for platforms without library */}
+      {/* Date & Time Picker */}
       {showDateTimePicker && (
         (() => {
-          // Prefer native datetimepicker only on native platforms; on web use the ManualDateTimePicker fallback
+          // Native picker for Android / iOS
           if (Platform.OS !== 'web') {
             try {
-              // Try to use community datetimepicker if available
               // eslint-disable-next-line global-require
               const DateTimePicker = require('@react-native-community/datetimepicker').default;
+              const currentDate = new Date(date);
               return (
-                <DateTimePicker
-                  value={new Date(date)}
-                  mode={pickerMode}
-                  is24Hour={true}
-                  display={
-                    Platform.OS === 'android'
-                      ? (pickerMode === 'date' ? 'calendar' : 'clock')
-                      : 'spinner'
-                  }
-                  onChange={(event, selected) => {
-                    if (Platform.OS === 'android') {
-                      if (event.type === 'dismissed') {
-                        setShowDateTimePicker(false);
-                        setPickerMode('date');
-                        setOpenTimePicker(false);
-                        return;
-                      }
-
-                      if (!selected) return;
-
-                      if (pickerMode === 'date') {
-                        // Preserve existing time
-                        const current = new Date(date);
-                        const newDate = new Date(selected);
-
-                        newDate.setHours(
-                          current.getHours(),
-                          current.getMinutes(),
-                          current.getSeconds(),
-                          0
-                        );
-
-                        setDate(newDate.toISOString());
-
-                        // Close date picker first
-                        setShowDateTimePicker(false);
-
-                        // Open time picker after animation finishes
-                        requestAnimationFrame(() => {
-                          setTimeout(() => {
-                            setPickerMode('time');
-                            setShowDateTimePicker(true);
-                          }, 500);
-                        });
-
-                        return;
-                      }
-
-                      // TIME PICKER
-                      const current = new Date(date);
-
-                      current.setHours(
-                        selected.getHours(),
-                        selected.getMinutes(),
-                        0,
-                        0
-                      );
-
-                      setDate(current.toISOString());
-
-                      setShowDateTimePicker(false);
-                      setPickerMode('date');
-                      setOpenTimePicker(false);
-                    } else {
-                      if (selected) {
-                        setDate(selected.toISOString());
-                      }
-
-                      setShowDateTimePicker(false);
-                      setPickerMode('date');
-                    }
+                <Modal
+                  visible={showDateTimePicker}
+                  transparent
+                  animationType="slide"
+                  onRequestClose={() => {
+                    setShowDateTimePicker(false);
+                    setPickerMode('date');
                   }}
-                />
+                >
+                  <View
+                    style={{
+                      flex: 1,
+                      justifyContent: 'flex-end',
+                      backgroundColor: 'rgba(15,23,42,0.45)',
+                    }}
+                  >
+                    <View
+                      style={{
+                        backgroundColor: '#FFF',
+                        borderTopLeftRadius: 28,
+                        borderTopRightRadius: 28,
+                        padding: 24,
+                        paddingBottom: 40,
+                      }}
+                    >
+                      {/* Handle */}
+                      <View
+                        style={{
+                          width: 42,
+                          height: 5,
+                          borderRadius: 3,
+                          backgroundColor: '#D6D6D6',
+                          alignSelf: 'center',
+                          marginBottom: 16,
+                        }}
+                      />
+
+                      {/* Title */}
+                      <Text
+                        style={{
+                          fontSize: 20,
+                          fontWeight: '800',
+                          color: '#111827',
+                          marginBottom: 20,
+                          textAlign: 'center',
+                        }}
+                      >
+                        {pickerMode === 'date'
+                          ? 'Select Date'
+                          : 'Select Time'}
+                      </Text>
+
+                      {/* Picker */}
+                      <View
+                        style={{
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minHeight: 100,
+                        }}
+                      >
+                        <DateTimePicker
+                          value={currentDate}
+                          mode={pickerMode}
+                          display={
+                            Platform.OS === 'ios'
+                              ? 'spinner'
+                              : pickerMode === 'date'
+                                ? 'calendar'
+                                : 'default'
+                          }
+                          is24Hour={false}
+                          onChange={(event, selected) => {
+                            // ANDROID
+                            if (Platform.OS === 'android') {
+                              if (event.type === 'dismissed') {
+                                setShowDateTimePicker(false);
+                                setPickerMode('date');
+                                return;
+                              }
+
+                              if (!selected) return;
+
+                              // DATE PICKER
+                              if (pickerMode === 'date') {
+                                const existingDate = new Date(date);
+
+                                const newDate = new Date(selected);
+
+                                // Preserve existing time
+                                newDate.setHours(
+                                  existingDate.getHours(),
+                                  existingDate.getMinutes(),
+                                  existingDate.getSeconds(),
+                                  0
+                                );
+
+                                setDate(newDate.toISOString());
+
+                                // Close date picker first
+                                setShowDateTimePicker(false);
+
+                                // Open TIME picker after modal animation
+                                setTimeout(() => {
+                                  setPickerMode('time');
+                                  setShowDateTimePicker(true);
+                                }, 350);
+
+                                return;
+                              }
+
+                              // TIME PICKER
+                              if (pickerMode === 'time') {
+                                const newDate = new Date(date);
+
+                                newDate.setHours(
+                                  selected.getHours(),
+                                  selected.getMinutes(),
+                                  0,
+                                  0
+                                );
+
+                                setDate(newDate.toISOString());
+
+                                setShowDateTimePicker(false);
+                                setPickerMode('date');
+
+                                markDirty();
+                              }
+                              return;
+                            }
+                            // IOS
+                            if (selected) {
+                              if (pickerMode === 'date') {
+                                const existingDate = new Date(date);
+                                const newDate = new Date(selected);
+                                // Preserve existing time
+                                newDate.setHours(
+                                  existingDate.getHours(),
+                                  existingDate.getMinutes(),
+                                  existingDate.getSeconds(),
+                                  0
+                                );
+                                setDate(newDate.toISOString());
+                              } else {
+                                const newDate = new Date(date);
+                                newDate.setHours(
+                                  selected.getHours(),
+                                  selected.getMinutes(),
+                                  0,
+                                  0
+                                );
+                                setDate(newDate.toISOString());
+                              }
+                            }
+                          }}
+                        />
+                      </View>
+
+                      {/* IOS Buttons */}
+                      {Platform.OS === 'ios' && (
+                        <View
+                          style={{
+                            flexDirection: 'row',
+                            marginTop: 24,
+                          }}
+                        >
+                          <PaperButton
+                            mode="outlined"
+                            onPress={() => {
+                              setShowDateTimePicker(false);
+                              setPickerMode('date');
+                            }}
+                            style={{
+                              flex: 1,
+                              marginRight: 10,
+                            }}
+                          >
+                            Cancel
+                          </PaperButton>
+
+                          <PaperButton
+                            mode="contained"
+                            onPress={() => {
+                              if (pickerMode === 'date') {
+                                setPickerMode('time');
+                              } else {
+                                setShowDateTimePicker(false);
+                                setPickerMode('date');
+                                markDirty();
+                              }
+                            }}
+                            style={{
+                              flex: 1,
+                            }}
+                          >
+                            {pickerMode === 'date'
+                              ? 'Next'
+                              : 'Done'}
+                          </PaperButton>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </Modal>
               );
             } catch (e) {
-              // fall through to manual picker
+              // Fall through to web/manual picker
             }
           }
 
-          // Fallback manual picker for web or if native picker not available
+          // WEB FALLBACK
           return (
-            <Modal visible={showDateTimePicker} transparent animationType="slide" onRequestClose={() => setShowDateTimePicker(false)}>
-              <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 20 }}>
-                <View style={{ backgroundColor: '#fff', padding: 12, borderRadius: 8 }}>
-                  <Text style={{ fontWeight: '600', marginBottom: 8 }}>Pick Date / Time</Text>
+            <Modal
+              visible={showDateTimePicker}
+              transparent
+              animationType="slide"
+              onRequestClose={() => {
+                setShowDateTimePicker(false);
+                setPickerMode('date');
+              }}
+            >
+              <View
+                style={{
+                  flex: 1,
+                  backgroundColor: 'rgba(0,0,0,0.4)',
+                  justifyContent: 'center',
+                  padding: 20,
+                }}
+              >
+                <View
+                  style={{
+                    backgroundColor: '#fff',
+                    padding: 12,
+                    borderRadius: 8,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontWeight: '600',
+                      marginBottom: 8,
+                    }}
+                  >
+                    Pick Date / Time
+                  </Text>
+
                   {(() => {
-                    const dt = new Date(date || new Date().toISOString());
-                    const [y, m, d, h, min] = [dt.getFullYear(), dt.getMonth() + 1, dt.getDate(), dt.getHours(), dt.getMinutes()];
-                    const Manual = require('../components/ManualDateTimePicker').default;
+                    const dt = new Date(
+                      date || new Date().toISOString()
+                    );
+
+                    const [
+                      y,
+                      m,
+                      d,
+                      h,
+                      min,
+                    ] = [
+                        dt.getFullYear(),
+                        dt.getMonth() + 1,
+                        dt.getDate(),
+                        dt.getHours(),
+                        dt.getMinutes(),
+                      ];
+
+                    const Manual =
+                      require('../components/ManualDateTimePicker').default;
+
                     return (
                       <Manual
-                        year={y} month={m} day={d} hour={h} minute={min}
-                        onChange={(ny, nm, nd, nh, nmin) => {
-                          const ndt = new Date(ny, nm - 1, nd, nh, nmin);
+                        year={y}
+                        month={m}
+                        day={d}
+                        hour={h}
+                        minute={min}
+                        onChange={(
+                          ny,
+                          nm,
+                          nd,
+                          nh,
+                          nmin
+                        ) => {
+                          const ndt = new Date(
+                            ny,
+                            nm - 1,
+                            nd,
+                            nh,
+                            nmin
+                          );
+
                           setDate(ndt.toISOString());
+                          markDirty();
                         }}
-                        onClose={() => setShowDateTimePicker(false)}
+                        onClose={() => {
+                          setShowDateTimePicker(false);
+                          setPickerMode('date');
+                        }}
                       />
                     );
                   })()}
