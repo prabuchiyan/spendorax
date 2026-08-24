@@ -64,6 +64,9 @@ function CategoryDonut({ data = [], categoriesMap = {} }) {
 
 export default function SpendAreasDashboard({ route, navigation }) {
   const params = route?.params || {};
+  const periodScrollRef = useRef(null);
+  const periodChipPositions = useRef({});
+  const periodScrollWidth = useRef(0);
   const [transactions, setTransactions] = useState([]);
   const [categoriesMap, setCategoriesMap] = useState({});
   const [filterMode, setFilterMode] = useState(params.mode || 'monthly');
@@ -113,26 +116,41 @@ export default function SpendAreasDashboard({ route, navigation }) {
       } else if (filterMode === 'weekly') {
         const day = dateObj.getDay();
         const diff = dateObj.getDate() - day;
-        const weekStart = new Date(dateObj.setDate(diff));
+        const weekStart = new Date(dateObj);
+        weekStart.setDate(diff);
         key = weekStart.toISOString().split('T')[0];
       } else if (filterMode === 'monthly') {
         key = dateStr.substring(0, 7);
       } else if (filterMode === 'yearly') {
         key = dateStr.substring(0, 4);
       }
-      if (key) periods.add(key);
+      if (key) {
+        periods.add(key);
+      }
     });
 
-    return Array.from(periods).sort((a, b) => b.localeCompare(a));
+    // Oldest → newest
+    return Array.from(periods).sort((a, b) =>
+      a.localeCompare(b)
+    );
   }, [transactions, filterMode]);
 
   // Fallback selectedPeriod to the latest period if none is selected or matches the mode
   useEffect(() => {
-    if (allPeriods.length > 0) {
-      if (!selectedPeriod || !allPeriods.includes(selectedPeriod)) {
-        setSelectedPeriod(allPeriods[0]);
-      }
+    if (allPeriods.length === 0) return;
+
+    // Keep the selected period if it is still valid.
+    if (
+      selectedPeriod &&
+      allPeriods.includes(selectedPeriod)
+    ) {
+      return;
     }
+
+    // Default to the MOST RECENT period.
+    setSelectedPeriod(
+      allPeriods[allPeriods.length - 1]
+    );
   }, [allPeriods, selectedPeriod]);
 
   // Format period label for presentation
@@ -192,6 +210,27 @@ export default function SpendAreasDashboard({ route, navigation }) {
     return topCategories.reduce((sum, c) => sum + Number(c.amount || 0), 0);
   }, [topCategories]);
 
+  const focusSelectedPeriod = useCallback((period) => {
+    if (!period) return;
+
+    const position =
+      periodChipPositions.current[period];
+
+    if (!position) return;
+
+    const chipCenter =
+      position.x + position.width / 2;
+
+    const targetX =
+      chipCenter -
+      periodScrollWidth.current / 2;
+
+    periodScrollRef.current?.scrollTo({
+      x: Math.max(0, targetX),
+      animated: true,
+    });
+  }, []);
+
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <ScrollView contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 120 }}>
@@ -233,26 +272,70 @@ export default function SpendAreasDashboard({ route, navigation }) {
         {allPeriods.length > 0 && (
           <View style={styles.periodSelectorWrapper}>
             <ScrollView
+              ref={periodScrollRef}
               horizontal
               showsHorizontalScrollIndicator={false}
+              style={styles.periodSelectorContainer}
               contentContainerStyle={styles.periodSelectorContent}
+              onLayout={(event) => {
+                periodScrollWidth.current =
+                  event.nativeEvent.layout.width;
+
+                // Focus selected month after the ScrollView
+                // has received its actual width.
+                if (selectedPeriod) {
+                  requestAnimationFrame(() => {
+                    focusSelectedPeriod(selectedPeriod);
+                  });
+                }
+              }}
             >
-              {allPeriods.map(p => {
-                const isSelected = selectedPeriod === p;
+              {allPeriods.map((p) => {
+                const isSelected =
+                  selectedPeriod === p;
+
                 return (
                   <TouchableOpacity
                     key={p}
                     activeOpacity={0.75}
-                    onPress={() => setSelectedPeriod(p)}
+                    onLayout={(event) => {
+                      const {
+                        x,
+                        width,
+                      } = event.nativeEvent.layout;
+
+                      periodChipPositions.current[p] = {
+                        x,
+                        width,
+                      };
+
+                      // If this is the selected month,
+                      // focus it after its position is known.
+                      if (isSelected) {
+                        requestAnimationFrame(() => {
+                          focusSelectedPeriod(p);
+                        });
+                      }
+                    }}
+                    onPress={() => {
+                      setSelectedPeriod(p);
+
+                      // Immediately focus the tapped month.
+                      requestAnimationFrame(() => {
+                        focusSelectedPeriod(p);
+                      });
+                    }}
                     style={[
                       styles.periodChip,
-                      isSelected && styles.periodChipSelected,
+                      isSelected &&
+                      styles.periodChipSelected,
                     ]}
                   >
                     <Text
                       style={[
                         styles.periodChipText,
-                        isSelected && styles.periodChipTextSelected,
+                        isSelected &&
+                        styles.periodChipTextSelected,
                       ]}
                     >
                       {formatPeriodLabel(p)}
@@ -375,49 +458,74 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   periodSelectorWrapper: {
-    marginTop: 12,
-    marginBottom: 16,
+    marginTop: 10,
+    marginBottom: 14,
   },
   periodSelectorContainer: {
-    marginBottom: 16,
-    maxHeight: 48,
+    width: '100%',
   },
   periodSelectorContent: {
-    paddingHorizontal: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
     paddingVertical: 4,
     gap: 8,
-    alignItems: 'center',
   },
   periodChip: {
-    minWidth: 72,
-    height: 38,
-    paddingHorizontal: 14,
-    borderRadius: 20,
+    height: 36,
+    minWidth: 64,
+    paddingHorizontal: 12,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: '#D9E1EA',
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    // subtle elevation
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.06,
-    shadowRadius: 2,
   },
   periodChipSelected: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
-    elevation: 2,
-    shadowOpacity: 0.12,
   },
   periodChipText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: Colors.text,
+    textAlign: 'center',
+  },
+  periodChipTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  periodSelectorContainer: {
+    width: '100%',
+  },
+  periodSelectorContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    gap: 8,
+  },
+  periodChip: {
+    height: 36,
+    minWidth: 64,
+    paddingHorizontal: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#D9E1EA',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  periodChipSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  periodChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.text,
+    textAlign: 'center',
   },
   periodChipTextSelected: {
     color: '#FFFFFF',
