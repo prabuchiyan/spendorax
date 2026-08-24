@@ -137,7 +137,6 @@ function PageLoader({
       }}
     >
       {/* OUTER LOADER */}
-
       <View
         style={{
           width: 76,
@@ -168,7 +167,6 @@ function PageLoader({
         }}
       >
         {/* ROTATING RING */}
-
         <Animated.View
           style={{
             position: 'absolute',
@@ -195,7 +193,6 @@ function PageLoader({
         />
 
         {/* CENTER ICON */}
-
         <Animated.View
           style={{
             transform: [
@@ -216,7 +213,6 @@ function PageLoader({
       </View>
 
       {/* TEXT */}
-
       <Text
         style={{
           marginTop: 18,
@@ -286,10 +282,18 @@ export default function SourcesDetails({
     setLoading,
   ] = useState(true);
 
-  // =========================================================
-  // HEADER
-  // =========================================================
+  const [
+    groupMode,
+    setGroupMode,
+  ] = useState('daily');
 
+  const groupOptions = [
+    { key: 'daily', label: 'Daily' },
+    { key: 'weekly', label: 'Weekly' },
+    { key: 'monthly', label: 'Monthly' },
+  ];
+
+  // HEADER
   useLayoutEffect(() => {
     navigation.setOptions({
       title:
@@ -300,10 +304,7 @@ export default function SourcesDetails({
     sourceName,
   ]);
 
-  // =========================================================
   // SAFE DATE
-  // =========================================================
-
   const parseDate = useCallback(
     (value) => {
       if (!value) {
@@ -326,10 +327,7 @@ export default function SourcesDetails({
     []
   );
 
-  // =========================================================
   // LOAD DATA
-  // =========================================================
-
   const loadData = useCallback(
     async () => {
       if (
@@ -345,10 +343,7 @@ export default function SourcesDetails({
       try {
         setLoading(true);
 
-        // -----------------------------------------------------
         // Load all required data
-        // -----------------------------------------------------
-
         const [
           txData,
           catData,
@@ -364,10 +359,7 @@ export default function SourcesDetails({
           getSources(true),
         ]);
 
-        // -----------------------------------------------------
         // CATEGORY MAP
-        // -----------------------------------------------------
-
         const categoryMap = {};
 
         if (
@@ -382,10 +374,7 @@ export default function SourcesDetails({
           );
         }
 
-        // -----------------------------------------------------
         // SOURCE MAP
-        // -----------------------------------------------------
-
         const sourceMap = {};
 
         if (
@@ -400,17 +389,11 @@ export default function SourcesDetails({
           );
         }
 
-        // -----------------------------------------------------
         // SOURCE ID
-        // -----------------------------------------------------
-
         const selectedSourceId =
           Number(sourceId);
 
-        // -----------------------------------------------------
         // FILTER TRANSACTIONS
-        // -----------------------------------------------------
-
         const filteredTransactions =
           (
             Array.isArray(txData)
@@ -424,10 +407,7 @@ export default function SourcesDetails({
               selectedSourceId
           );
 
-        // -----------------------------------------------------
         // CURRENT SOURCE
-        // -----------------------------------------------------
-
         const currentSource =
           (
             Array.isArray(
@@ -441,10 +421,7 @@ export default function SourcesDetails({
               selectedSourceId
           ) || null;
 
-        // -----------------------------------------------------
         // UPDATE STATE
-        // -----------------------------------------------------
-
         setCategoriesMap(
           categoryMap
         );
@@ -474,28 +451,19 @@ export default function SourcesDetails({
     [sourceId]
   );
 
-  // =========================================================
   // INITIAL LOAD
-  // =========================================================
-
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // =========================================================
   // REFRESH WHEN SCREEN FOCUSED
-  // =========================================================
-
   useFocusEffect(
     useCallback(() => {
       loadData();
     }, [loadData])
   );
 
-  // =========================================================
   // EDIT TRANSACTION
-  // =========================================================
-
   const handleEdit =
     useCallback(
       (item) => {
@@ -510,10 +478,7 @@ export default function SourcesDetails({
       [navigation]
     );
 
-  // =========================================================
   // BALANCE
-  // =========================================================
-
   const totalBalance =
     useMemo(() => {
       const initialBalance =
@@ -560,225 +525,133 @@ export default function SourcesDetails({
       transactions,
     ]);
 
-  // =========================================================
   // GROUP TRANSACTIONS
-  // =========================================================
-
   const groupedTransactions =
     useMemo(() => {
       const groups = {};
 
-      transactions.forEach(
-        (item) => {
-          const date =
-            parseDate(
-              item.date
-            );
-
-          if (!date) {
-            return;
-          }
-
-          const year =
-            date.getFullYear();
-
-          const month =
-            String(
-              date.getMonth() + 1
-            ).padStart(2, '0');
-
-          const day =
-            String(
-              date.getDate()
-            ).padStart(2, '0');
-
-          const key =
-            `${year}-${month}-${day}`;
-
-          if (!groups[key]) {
-            groups[key] = [];
-          }
-
-          groups[key].push(item);
+      const getGroupDate = (date) => {
+        if (groupMode === 'weekly') {
+          const startOfWeek = new Date(date);
+          const day = startOfWeek.getDay();
+          const diff = (day + 6) % 7;
+          startOfWeek.setDate(startOfWeek.getDate() - diff);
+          startOfWeek.setHours(0, 0, 0, 0);
+          return startOfWeek;
         }
-      );
 
-      // -----------------------------------------------------
-      // TODAY
-      // -----------------------------------------------------
+        if (groupMode === 'monthly') {
+          const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+          monthStart.setHours(0, 0, 0, 0);
+          return monthStart;
+        }
 
-      const today =
-        new Date();
+        const dayOnly = new Date(date);
+        dayOnly.setHours(0, 0, 0, 0);
+        return dayOnly;
+      };
 
-      today.setHours(
-        0,
-        0,
-        0,
-        0
-      );
+      const getGroupKey = (date) => {
+        const groupDate = getGroupDate(date);
 
-      // -----------------------------------------------------
-      // YESTERDAY
-      // -----------------------------------------------------
+        if (groupMode === 'weekly') {
+          return `${groupDate.getFullYear()}-${String(groupDate.getMonth() + 1).padStart(2, '0')}-${String(groupDate.getDate()).padStart(2, '0')}`;
+        }
 
-      const yesterday =
-        new Date(today);
+        if (groupMode === 'monthly') {
+          return `${groupDate.getFullYear()}-${String(groupDate.getMonth() + 1).padStart(2, '0')}`;
+        }
 
-      yesterday.setDate(
-        yesterday.getDate() - 1
-      );
+        return `${groupDate.getFullYear()}-${String(groupDate.getMonth() + 1).padStart(2, '0')}-${String(groupDate.getDate()).padStart(2, '0')}`;
+      };
 
-      // -----------------------------------------------------
-      // CREATE SECTIONS
-      // -----------------------------------------------------
+      transactions.forEach((item) => {
+        const date = parseDate(item.date);
+
+        if (!date) {
+          return;
+        }
+
+        const key = getGroupKey(date);
+
+        if (!groups[key]) {
+          groups[key] = {
+            date: getGroupDate(date),
+            items: [],
+          };
+        }
+
+        groups[key].items.push(item);
+      });
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
 
       return Object.keys(groups)
-        .sort(
-          (a, b) =>
-            b.localeCompare(a)
-        )
-        .map(
-          (dateKey) => {
-            const [
-              year,
-              month,
-              day,
-            ] =
-              dateKey
-                .split('-')
-                .map(Number);
+        .sort((a, b) => b.localeCompare(a))
+        .map((groupKey) => {
+          const groupDate = groups[groupKey].date;
+          const items = groups[groupKey].items;
 
-            const date =
-              new Date(
-                year,
-                month - 1,
-                day
-              );
+          let title;
 
-            date.setHours(
-              0,
-              0,
-              0,
-              0
-            );
-
-            let title;
-
-            if (
-              date.getTime() ===
-              today.getTime()
-            ) {
-              title =
-                'Today';
-            } else if (
-              date.getTime() ===
-              yesterday.getTime()
-            ) {
-              title =
-                'Yesterday';
+          if (groupMode === 'daily') {
+            if (groupDate.getTime() === today.getTime()) {
+              title = 'Today';
+            } else if (groupDate.getTime() === yesterday.getTime()) {
+              title = 'Yesterday';
             } else {
-              title =
-                date.toLocaleDateString(
-                  'en-IN',
-                  {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric',
-                  }
-                );
+              title = groupDate.toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              });
             }
-
-            // -------------------------------------------------
-            // DAILY INCOME
-            // -------------------------------------------------
-
-            const dailyIncome =
-              groups[
-                dateKey
-              ].reduce(
-                (sum, item) => {
-                  const type =
-                    String(
-                      item.type ||
-                      ''
-                    ).toLowerCase();
-
-                  if (
-                    type ===
-                    'income' ||
-                    type ===
-                    'credit'
-                  ) {
-                    return (
-                      sum +
-                      Number(
-                        item.amount ||
-                        0
-                      )
-                    );
-                  }
-
-                  return sum;
-                },
-                0
-              );
-
-            // -------------------------------------------------
-            // DAILY EXPENSE
-            // -------------------------------------------------
-
-            const dailyExpense =
-              groups[
-                dateKey
-              ].reduce(
-                (sum, item) => {
-                  const type =
-                    String(
-                      item.type ||
-                      ''
-                    ).toLowerCase();
-
-                  if (
-                    type ===
-                    'expense' ||
-                    type ===
-                    'debit'
-                  ) {
-                    return (
-                      sum +
-                      Number(
-                        item.amount ||
-                        0
-                      )
-                    );
-                  }
-
-                  return sum;
-                },
-                0
-              );
-
-            return {
-              title,
-              dateKey,
-              data:
-                groups[
-                dateKey
-                ],
-              dailyIncome,
-              dailyExpense,
-            };
+          } else if (groupMode === 'weekly') {
+            const weekEnd = new Date(groupDate);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            title = `Week of ${groupDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} - ${weekEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+          } else {
+            title = groupDate.toLocaleDateString('en-IN', {
+              month: 'short',
+              year: 'numeric',
+            });
           }
-        );
+
+          const income = items.reduce((sum, item) => {
+            const type = String(item.type || '').toLowerCase();
+            if (type === 'income' || type === 'credit') {
+              return sum + Number(item.amount || 0);
+            }
+            return sum;
+          }, 0);
+
+          const expense = items.reduce((sum, item) => {
+            const type = String(item.type || '').toLowerCase();
+            if (type === 'expense' || type === 'debit') {
+              return sum + Number(item.amount || 0);
+            }
+            return sum;
+          }, 0);
+
+          return {
+            title,
+            dateKey: groupKey,
+            data: items,
+            dailyIncome: income,
+            dailyExpense: expense,
+          };
+        });
     }, [
       transactions,
       parseDate,
+      groupMode,
     ]);
 
-  // =========================================================
   // TRANSACTION CARD
-  // =========================================================
-
   const renderItem =
     useCallback(
       ({
@@ -818,10 +691,7 @@ export default function SourcesDetails({
               ? 'income'
               : 'expense';
 
-        // -----------------------------------------------------
         // COLORS
-        // -----------------------------------------------------
-
         const accentColor =
           type === 'income'
             ? '#20A56A'
@@ -849,10 +719,7 @@ export default function SourcesDetails({
             ? category.color
             : accentColor;
 
-        // -----------------------------------------------------
         // DATE
-        // -----------------------------------------------------
-
         const date =
           parseDate(
             item.date
@@ -886,10 +753,7 @@ export default function SourcesDetails({
           section.data.length -
           1;
 
-        // -----------------------------------------------------
         // CARD
-        // -----------------------------------------------------
-
         return (
           <TouchableOpacity
             activeOpacity={0.88}
@@ -933,7 +797,6 @@ export default function SourcesDetails({
             >
 
               {/* LEFT ACCENT */}
-
               <View
                 style={{
                   position:
@@ -973,7 +836,6 @@ export default function SourcesDetails({
               >
 
                 {/* CATEGORY ICON */}
-
                 <View
                   style={{
                     width: 50,
@@ -1073,7 +935,6 @@ export default function SourcesDetails({
                   </Text>
 
                   {/* CATEGORY */}
-
                   <View
                     style={{
                       alignSelf: 'flex-start',
@@ -1113,7 +974,6 @@ export default function SourcesDetails({
                 </View>
 
                 {/* RIGHT */}
-
                 <View
                   style={{
                     width: 96,
@@ -1129,7 +989,6 @@ export default function SourcesDetails({
                 >
 
                   {/* AMOUNT */}
-
                   <Text
                     numberOfLines={1}
                     adjustsFontSizeToFit
@@ -1174,7 +1033,6 @@ export default function SourcesDetails({
                   </Text>
 
                   {/* DATE */}
-
                   <View
                     style={{
                       flexDirection:
@@ -1213,7 +1071,6 @@ export default function SourcesDetails({
                   </View>
 
                   {/* TIME */}
-
                   <View
                     style={{
                       flexDirection:
@@ -1331,10 +1188,7 @@ export default function SourcesDetails({
       ]
     );
 
-  // =========================================================
   // SCREEN
-  // =========================================================
-
   return (
     <View
       style={
@@ -1343,7 +1197,6 @@ export default function SourcesDetails({
     >
 
       {/* BALANCE */}
-
       <View
         style={styles.hero}
       >
@@ -1376,7 +1229,6 @@ export default function SourcesDetails({
       </View>
 
       {/* HEADER */}
-
       <View
         style={
           styles.headerRow
@@ -1413,6 +1265,47 @@ export default function SourcesDetails({
             {transactions.length}
           </Text>
         </View>
+      </View>
+
+      {/* GROUPING MODE CHIPS */}
+      <View
+        style={
+          styles.chipContainer
+        }
+      >
+        {groupOptions.map((option) => (
+          <TouchableOpacity
+            key={
+              option.key
+            }
+            onPress={() =>
+              setGroupMode(option.key)
+            }
+            style={{
+              ...styles.chip,
+
+              backgroundColor:
+                groupMode ===
+                  option.key
+                  ? '#5B67F1'
+                  : '#F0F1F3',
+            }}
+          >
+            <Text
+              style={{
+                ...styles.chipText,
+
+                color:
+                  groupMode ===
+                    option.key
+                    ? '#FFFFFF'
+                    : '#6B7280',
+              }}
+            >
+              {option.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* CONTENT */}
@@ -1569,7 +1462,6 @@ export default function SourcesDetails({
                 </View>
 
                 {/* DAILY TOTAL */}
-
                 <View
                   style={{
                     flexDirection:
@@ -1641,202 +1533,125 @@ export default function SourcesDetails({
   );
 }
 
-// ============================================================
 // STYLES
-// ============================================================
-
 const styles =
   StyleSheet.create({
     container: {
       flex: 1,
-
-      backgroundColor:
-        Colors.background,
-
-      padding:
-        Spacing.xs,
+      backgroundColor: Colors.background,
+      padding: Spacing.xs,
     },
-
     hero: {
-      backgroundColor:
-        '#FFFFFF',
-
+      backgroundColor: '#FFFFFF',
       borderRadius: 20,
-
-      paddingVertical:
-        15,
-
-      paddingHorizontal:
-        14,
-
-      alignItems:
-        'center',
-
-      marginBottom:
-        13,
-
+      paddingVertical: 15,
+      paddingHorizontal: 14,
+      alignItems: 'center',
+      marginBottom: 13,
       borderWidth: 1,
-
-      borderColor:
-        '#F0F1F3',
-
-      shadowColor:
-        '#000',
-
+      borderColor: '#F0F1F3',
+      shadowColor: '#000',
       shadowOffset: {
         width: 0,
         height: 3,
       },
-
-      shadowOpacity:
-        0.05,
-
+      shadowOpacity: 0.05,
       shadowRadius: 8,
-
       elevation: 2,
     },
-
     heroLabel: {
       fontSize: 12,
-
       fontWeight: '800',
-
-      color:
-        Colors.muted,
-
-      textTransform:
-        'uppercase',
-
-      letterSpacing:
-        0.5,
+      color: Colors.muted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
     },
-
     heroAmount: {
       fontSize: 25,
-
       fontWeight: '900',
-
-      color:
-        Colors.text,
-
+      color: Colors.text,
       marginTop: 7,
-
-      letterSpacing:
-        -0.5,
+      letterSpacing: -0.5,
     },
-
     headerRow: {
-      flexDirection:
-        'row',
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'space-between',
-
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
       marginBottom: 10,
-
       paddingHorizontal: 2,
     },
-
     headerTitle: {
       fontSize: 17,
-
       fontWeight: '800',
-
-      color:
-        Colors.text,
+      color: Colors.text,
     },
-
     headerSubtitle: {
       fontSize: 11,
-
-      color:
-        Colors.muted,
-
+      color: Colors.muted,
       marginTop: 2,
     },
-
     countBadge: {
       minWidth: 30,
-
       height: 28,
-
       borderRadius: 14,
-
-      backgroundColor:
-        '#EEF0F3',
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-
+      backgroundColor: '#EEF0F3',
+      alignItems: 'center',
+      justifyContent: 'center',
       paddingHorizontal: 8,
     },
-
     countText: {
       fontSize: 11,
-
       fontWeight: '800',
-
-      color:
-        '#6B7280',
+      color: '#6B7280',
     },
-
     emptyIcon: {
       width: 76,
-
       height: 76,
-
       borderRadius: 38,
-
-      backgroundColor:
-        '#EEF0F3',
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
+      backgroundColor: '#EEF0F3',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
-
     emptyTitle: {
-      color:
-        Colors.text,
-
+      color: Colors.text,
       fontSize: 15,
-
       fontWeight: '700',
-
       marginTop: 14,
     },
-
     emptySubtitle: {
-      color:
-        Colors.muted,
-
+      color: Colors.muted,
       fontSize: 12,
-
       marginTop: 5,
-
-      textAlign:
-        'center',
-
+      textAlign: 'center',
       maxWidth: 260,
     },
-
     center: {
       flex: 1,
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-
+      alignItems: 'center',
+      justifyContent: 'center',
       paddingVertical: 60,
+    },
+    chipContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+      paddingHorizontal: 2,
+    },
+    chip: {
+      flex: 1,
+      borderRadius: 16,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 8,
+      borderWidth: 1,
+      borderColor: '#D1D5DB',
+    },
+    chipText: {
+      fontSize: 14,
+      fontWeight: '600',
+      lineHeight: 18,
     },
   });
