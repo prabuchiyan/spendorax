@@ -2,17 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { getTotalBalance, getCategorySpending, getMonthlyTrends } from '../services/reports';
+import { getCategorySpending, getMonthlyTrends } from '../services/reports';
 import { getBudgetsWithRemaining } from '../services/budgets';
 import { getCategoryBudgetSummary } from '../services/categoryBudgets';
-import { getTransactions, deleteTransaction } from '../services/transactions';
+import { getTransactions } from '../services/transactions';
 import {
   getBillsForCurrentMonth,
   getBillsSummary,
 } from '../services/bills';
 import { getBillDisplayStatus, formatCurrency } from '../services/billUtils';
 import { getSources } from '../services/sources';
-import ConfirmDialog from '../components/ConfirmDialog';
 import { getCategories } from '../services/categories';
 import { Avatar, Button as PaperButton } from 'react-native-paper';
 import events from '../services/events';
@@ -38,12 +37,10 @@ function BudgetDonut({ limit = 0, spent = 0, remaining = 0, daysLeft = 0, balanc
   const pct = limit > 0 ? Math.min(100, Math.round(percent * 100)) : 0;
   const color = percent <= 1 ? (percent < 0.7 ? '#14B8A6' : '#FFB020') : '#E46A6A';
   const innerColor = remaining >= 0 ? '#14B8A6' : '#E46A6A';
-
   const size = 180;
   const strokeWidth = 18;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const dashOffset = circumference * (1 - Math.min(1, percent));
 
   // Animated progress
   const safePercent = isNaN(percent) ? 0 : percent;
@@ -96,9 +93,7 @@ function CategoryDonut({ data = [], categoriesMap = {} }) {
   const strokeWidth = 18;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-
   const total = data.reduce((sum, d) => sum + Number(d.amount || 0), 0);
-
   let cumulative = 0;
 
   return (
@@ -109,10 +104,8 @@ function CategoryDonut({ data = [], categoriesMap = {} }) {
           const percent = total > 0 ? value / total : 0;
           const cat = categoriesMap[d.category_id] || {};
           const color = cat.color || '#eee';
-
           const strokeDasharray = `${circumference * percent} ${circumference}`;
           const rotation = (cumulative / total) * 360;
-
           cumulative += value;
 
           return (
@@ -147,40 +140,27 @@ function CategoryDonut({ data = [], categoriesMap = {} }) {
 
 export default function HomeScreen({ navigation }) {
   const { balanceVisible } = useBalanceVisibility();
-  const [balance, setBalance] = useState(null);
   const [topCategories, setTopCategories] = useState([]);
-  const [trends, setTrends] = useState([]);
   const [sources, setSources] = useState([]);
   const [sourceBalances, setSourceBalances] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [selectedBudgetId, setSelectedBudgetId] = useState('');
   const [recentTx, setRecentTx] = useState([]);
   const [categoriesMap, setCategoriesMap] = useState({});
-  const [categories, setCategories] = useState([]);
-  const [confirmVisibleTx, setConfirmVisibleTx] = useState(false);
-  const [confirmTxId, setConfirmTxId] = useState(null);
-  const [confirmTxMessage, setConfirmTxMessage] = useState('Are you sure you want to delete this transaction?');
   const [bills, setBills] = useState([]);
   const [billsSummary, setBillsSummary] = useState(null);
   const [categoryBudgets, setCategoryBudgets] = useState([]);
 
   async function load() {
     try {
-      // =========================================================
       // CATEGORIES
-      // =========================================================
-
       try {
         const catsAll = await getCategories(true);
-
         const cmap = {};
-
         catsAll.forEach(c => {
           cmap[c.id] = c;
         });
-
         setCategoriesMap(cmap);
-        setCategories(catsAll);
       } catch (e) {
         console.error(
           'Error loading categories:',
@@ -188,51 +168,19 @@ export default function HomeScreen({ navigation }) {
         );
       }
 
-      // =========================================================
-      // TOTAL BALANCE / REPORT DATA
-      // =========================================================
-
-      try {
-        const b = await getTotalBalance();
-        setBalance(b);
-      } catch (e) {
-        console.error(
-          'Error loading total balance:',
-          e
-        );
-      }
-
-      try {
-        const t = await getMonthlyTrends(6);
-        setTrends(t);
-      } catch (e) {
-        console.error(
-          'Error loading monthly trends:',
-          e
-        );
-      }
-
-      // =========================================================
       // BILLS
-      // =========================================================
-
       try {
         const bl = await getBillsForCurrentMonth({
           sortBy: 'due_date',
         });
-
         setBills(bl);
-
-        const bsum =
-          await getBillsSummary();
-
+        const bsum = await getBillsSummary();
         setBillsSummary(bsum);
       } catch (e) {
         console.error(
           'Error loading bills:',
           e
         );
-
         setBills([]);
         setBillsSummary(null);
       }
@@ -252,9 +200,7 @@ export default function HomeScreen({ navigation }) {
       let availableSources = [];
 
       try {
-        availableSources =
-          await getSources(true);
-
+        availableSources = await getSources(true);
         setSources(
           availableSources
         );
@@ -263,181 +209,74 @@ export default function HomeScreen({ navigation }) {
           'Error loading sources:',
           e
         );
-
         setSources([]);
       }
 
-      // =========================================================
       // SOURCE TRANSACTIONS / BALANCES
-      // =========================================================
-
       try {
-        const allTransactions =
-          await getTransactions(
-            1000000,
-            'Yes'
-          );
-
-        const balanceMap =
-          allTransactions.reduce(
-            (acc, txn) => {
-              const amount =
-                Number(
-                  txn.amount || 0
-                );
-
-              const sourceId =
-                txn.source_id;
-
-              if (!sourceId) {
-                return acc;
-              }
-
-              if (!acc[sourceId]) {
-                acc[sourceId] = 0;
-              }
-
-              if (
-                txn.type === 'income'
-              ) {
-                acc[sourceId] += amount;
-              } else if (
-                txn.type === 'expense'
-              ) {
-                acc[sourceId] -= amount;
-              }
-
-              return acc;
-            },
-            {}
-          );
-
-        const calculatedSourceBalances =
-          availableSources.map(
-            source => ({
-              ...source,
-
-              balance:
-                Number(
-                  source.initial_balance ||
-                  0
-                ) +
-                Number(
-                  balanceMap[
-                  source.id
-                  ] || 0
-                ),
-            })
-          );
-
-        setSourceBalances(
-          calculatedSourceBalances
+        const allTransactions = await getTransactions(1000000, 'Yes');
+        const balanceMap = allTransactions.reduce(
+          (acc, txn) => {
+            const amount = Number(txn.amount || 0);
+            const sourceId = txn.source_id;
+            if (!sourceId) { return acc; }
+            if (!acc[sourceId]) { acc[sourceId] = 0; }
+            if (txn.type === 'income') { acc[sourceId] += amount; }
+            else if (txn.type === 'expense') { acc[sourceId] -= amount; }
+            return acc;
+          },
+          {}
         );
+
+        const calculatedSourceBalances = availableSources.map(
+          source => ({
+            ...source,
+            balance: Number(source.initial_balance || 0) + Number(balanceMap[source.id] || 0),
+          })
+        );
+        setSourceBalances(calculatedSourceBalances);
       } catch (e) {
         console.error(
           'Error calculating source balances:',
           e
         );
-
         setSourceBalances([]);
       }
 
-      // =========================================================
       // BUDGETS
-      // =========================================================
-
       let bs = [];
-
       try {
-        bs =
-          await getBudgetsWithRemaining();
-
-        console.debug &&
-          console.debug(
-            'Home.load budgets:',
-            bs
-          );
-
+        bs = await getBudgetsWithRemaining();
+        console.debug && console.debug('Home.load budgets:', bs);
         setBudgets(bs);
-
-        if (
-          bs &&
-          bs.length &&
-          !selectedBudgetId
-        ) {
-          const firstId =
-            String(
-              bs[0].budget.id
-            );
-
-          console.debug &&
-            console.debug(
-              'Home.load setSelectedBudgetId ->',
-              firstId
-            );
-
-          setSelectedBudgetId(
-            firstId
-          );
+        if (bs && bs.length && !selectedBudgetId) {
+          const firstId = String(bs[0].budget.id);
+          console.debug && console.debug('Home.load setSelectedBudgetId ->', firstId);
+          setSelectedBudgetId(firstId);
         }
       } catch (e) {
-        console.error(
-          'Error loading budgets:',
-          e
-        );
-
+        console.error('Error loading budgets:', e);
         setBudgets([]);
       }
 
-      // =========================================================
       // TOP CATEGORY SPENDING
-      // =========================================================
-
       try {
-        const cats =
-          await getCategorySpending();
-
-        setTopCategories(
-          cats
-        );
+        const cats = await getCategorySpending();
+        setTopCategories(cats);
       } catch (e) {
-        console.error(
-          'Error loading category spending:',
-          e
-        );
-
+        console.error('Error loading category spending:', e);
         setTopCategories([]);
       }
 
-      // =========================================================
       // CATEGORY BUDGETS
-      // =========================================================
-
       try {
-        const now =
-          new Date();
-
-        const month =
-          now.getMonth() + 1;
-
-        const year =
-          now.getFullYear();
-
-        const catBudgets =
-          await getCategoryBudgetSummary(
-            month,
-            year
-          );
-
-        setCategoryBudgets(
-          catBudgets
-        );
+        const now = new Date();
+        const month = now.getMonth() + 1;
+        const year = now.getFullYear();
+        const catBudgets = await getCategoryBudgetSummary(month, year);
+        setCategoryBudgets(catBudgets);
       } catch (e) {
-        console.error(
-          'Error loading category budgets:',
-          e
-        );
-
+        console.error('Error loading category budgets:', e);
         setCategoryBudgets([]);
       }
 
@@ -449,37 +288,15 @@ export default function HomeScreen({ navigation }) {
       // =========================================================
 
       try {
-        const tx =
-          await getTransactions(
-            3,
-            'Yes'
-          );
-
-        setRecentTx(
-          Array.isArray(tx)
-            ? tx
-            : []
-        );
+        const tx = await getTransactions(3, 'Yes');
+        setRecentTx(Array.isArray(tx) ? tx : []);
       } catch (e) {
-        console.error(
-          'Error loading recent transactions:',
-          e
-        );
-
+        console.error('Error loading recent transactions:', e);
         setRecentTx([]);
       }
-
       return bs;
     } catch (e) {
-      // =========================================================
-      // FINAL SAFETY NET
-      // =========================================================
-
-      console.error(
-        'Home.load failed:',
-        e
-      );
-
+      console.error('Home.load failed:', e);
       return [];
     }
   }
@@ -1461,26 +1278,6 @@ export default function HomeScreen({ navigation }) {
             </Text>
           )}
         </Card>
-
-        <Card>
-          <Text style={{ fontWeight: '600', marginBottom: 8 }}>Top spends (this month)</Text>
-          {topCategories.length ? topCategories.map(c => (
-            <View key={c.category_id} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
-              <Text style={{ color: Colors.text }}>{c.category_name}</Text>
-              <Text style={{ color: '#E46A6A' }}>{balanceVisible ? `-${Number(c.amount).toFixed(2)}` : '••••••'}</Text>
-            </View>
-          )) : <Text style={{ color: Colors.muted }}>No data</Text>}
-        </Card>
-
-        <Card>
-          <Text style={{ fontWeight: '600', marginBottom: 8 }}>Monthly trends</Text>
-          {trends.length ? trends.map(ti => (
-            <View key={ti.month} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
-              <Text style={{ color: Colors.text }}>{ti.month}</Text>
-              <Text style={{ color: Colors.muted }}>+{ti.income.toFixed(0)} / -{ti.expense.toFixed(0)}</Text>
-            </View>
-          )) : <Text style={{ color: Colors.muted }}>No trend data</Text>}
-        </Card>
       </ScrollView>
       <BottomStatsBar
         navigation={navigation}
@@ -1499,7 +1296,6 @@ export default function HomeScreen({ navigation }) {
           elevation: 20
         }}
       />
-      <ConfirmDialog visible={confirmVisibleTx} title="Delete Transaction" message={confirmTxMessage} onCancel={() => { setConfirmVisibleTx(false); setConfirmTxId(null); }} onConfirm={async () => { if (confirmTxId) { await deleteTransaction(confirmTxId); } setConfirmVisibleTx(false); setConfirmTxId(null); load(); }} />
     </View>
   );
 }
