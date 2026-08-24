@@ -2,14 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { getCategorySpending, getMonthlyTrends } from '../services/reports';
+import { getCategorySpending } from '../services/reports';
 import { getBudgetsWithRemaining } from '../services/budgets';
 import { getCategoryBudgetSummary } from '../services/categoryBudgets';
 import { getTransactions } from '../services/transactions';
-import {
-  getBillsForCurrentMonth,
-  getBillsSummary,
-} from '../services/bills';
+import { getBillsForCurrentMonth } from '../services/bills';
 import { getBillDisplayStatus, formatCurrency } from '../services/billUtils';
 import { getSources } from '../services/sources';
 import { getCategories } from '../services/categories';
@@ -173,12 +170,104 @@ export default function HomeScreen({ navigation }) {
 
       // BILLS
       try {
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
         const bl = await getBillsForCurrentMonth({
           sortBy: 'due_date',
         });
-        setBills(bl);
-        const bsum = await getBillsSummary();
-        setBillsSummary(bsum);
+        // Only bills belonging to the CURRENT month.
+        const currentMonthBills = (
+          Array.isArray(bl) ? bl : []
+        ).filter(bill => {
+          if (!bill?.due_date) return false;
+          const dueDate = new Date(bill.due_date);
+          if (isNaN(dueDate.getTime())) return false;
+          return (
+            dueDate.getFullYear() === currentYear &&
+            dueDate.getMonth() === currentMonth
+          );
+        });
+
+        // Current month bills sorted by due date.
+        currentMonthBills.sort(
+          (a, b) =>
+            new Date(a.due_date).getTime() -
+            new Date(b.due_date).getTime()
+        );
+
+        setBills(currentMonthBills);
+        /*
+         * Calculate summary ONLY from current-month bills.
+         */
+        const currentMonthSummary = currentMonthBills.reduce(
+          (summary, bill) => {
+            const amount = Number(bill.amount || 0);
+            const dueDate = new Date(bill.due_date);
+            if (isNaN(dueDate.getTime())) {
+              return summary;
+            }
+            const isPaid =
+              String(
+                bill.status ||
+                bill.payment_status ||
+                ''
+              ).toLowerCase() === 'paid';
+
+            /*
+             * Total current-month bills
+             */
+            summary.totalThisMonth += amount;
+            /*
+             * Paid current-month bills
+             */
+            if (isPaid) {
+              summary.totalPaid += amount;
+              return summary;
+            }
+            /*
+             * Unpaid bill:
+             *
+             * Due date before today = OVERDUE
+             * Due date today/future = upcoming
+             */
+            const dueStart = new Date(
+              dueDate.getFullYear(),
+              dueDate.getMonth(),
+              dueDate.getDate()
+            );
+            const todayStart = new Date(
+              currentYear,
+              currentMonth,
+              now.getDate()
+            );
+            if (dueStart < todayStart) {
+              summary.overdueAmount += amount;
+            }
+            /*
+             * Next 7 days
+             */
+            const sevenDaysFromNow = new Date(now);
+            sevenDaysFromNow.setHours(23, 59, 59, 999);
+            sevenDaysFromNow.setDate(
+              sevenDaysFromNow.getDate() + 7
+            );
+            if (
+              dueDate >= now &&
+              dueDate <= sevenDaysFromNow
+            ) {
+              summary.upcoming7 += amount;
+            }
+            return summary;
+          },
+          {
+            totalThisMonth: 0,
+            totalPaid: 0,
+            overdueAmount: 0,
+            upcoming7: 0,
+          }
+        );
+        setBillsSummary(currentMonthSummary);
       } catch (e) {
         console.error(
           'Error loading bills:',
@@ -190,11 +279,9 @@ export default function HomeScreen({ navigation }) {
 
       // SOURCES
       // Same calculation as SourcesDashboard:
-
       // Initial Balance
       // + Income
       // - Expense
-
       // Credit cards are NOT removed here because the
       // source list itself is needed by the dashboard.
       let availableSources = [];
@@ -283,7 +370,6 @@ export default function HomeScreen({ navigation }) {
       // RECENT TRANSACTIONS
       // This now executes because there is NO leftover
       // getSourceBalances() call crashing load().
- 
       try {
         const tx = await getTransactions(3, 'Yes');
         setRecentTx(Array.isArray(tx) ? tx : []);
@@ -344,7 +430,9 @@ export default function HomeScreen({ navigation }) {
   );
 
   const sortedBills = [...bills].sort(
-    (a, b) => new Date(b.due_date || 0) - new Date(a.due_date || 0)
+    (a, b) =>
+      new Date(a.due_date || 0).getTime() -
+      new Date(b.due_date || 0).getTime()
   );
 
   const totalBalance = sourceBalances
