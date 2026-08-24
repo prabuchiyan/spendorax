@@ -2106,11 +2106,97 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       {showDateTimePicker && (
         (() => {
           // Native picker for Android / iOS
-          if (Platform.OS !== 'web') {
+          if (Platform.OS === 'android') {
             try {
               // eslint-disable-next-line global-require
               const DateTimePicker = require('@react-native-community/datetimepicker').default;
-              const currentDate = new Date(date);
+              return (
+                <DateTimePicker
+                  value={new Date(date)}
+                  mode={pickerMode}
+                  display={
+                    pickerMode === 'date'
+                      ? 'calendar'
+                      : 'clock'
+                  }
+                  is24Hour={false}
+                  onChange={(event, selected) => {
+                    // User pressed Android Cancel
+                    if (event.type === 'dismissed') {
+                      setShowDateTimePicker(false);
+                      setPickerMode('date');
+                      return;
+                    }
+                    if (!selected) {
+                      return;
+                    }
+
+                    /*
+                     * DATE
+                     */
+                    if (pickerMode === 'date') {
+                      const existingDate = new Date(date);
+                      const newDate = new Date(selected);
+                      // Preserve existing time
+                      newDate.setHours(
+                        existingDate.getHours(),
+                        existingDate.getMinutes(),
+                        existingDate.getSeconds(),
+                        0
+                      );
+                      setDate(newDate.toISOString());
+                      /*
+                       * Close date picker.
+                       *
+                       * Then open Android's native time picker.
+                       * No React Native Modal is involved.
+                       */
+                      setShowDateTimePicker(false);
+                      setTimeout(() => {
+                        setPickerMode('time');
+                        setShowDateTimePicker(true);
+                      }, 250);
+                      return;
+                    }
+
+                    /*
+                     * TIME
+                     */
+                    if (pickerMode === 'time') {
+                      const newDate = new Date(date);
+                      newDate.setHours(
+                        selected.getHours(),
+                        selected.getMinutes(),
+                        0,
+                        0
+                      );
+                      setDate(newDate.toISOString());
+                      setShowDateTimePicker(false);
+                      setPickerMode('date');
+                      markDirty();
+                    }
+                  }}
+                />
+              );
+            } catch (e) {
+              console.warn(
+                '[TransactionForm] Android DateTimePicker unavailable:',
+                e
+              );
+              setShowDateTimePicker(false);
+              return null;
+            }
+          }
+
+          /*
+           * IOS
+           *
+           * Keep the custom bottom-sheet design for iOS.
+           */
+          if (Platform.OS === 'ios') {
+            try {
+              // eslint-disable-next-line global-require
+              const DateTimePicker = require('@react-native-community/datetimepicker').default;
               return (
                 <Modal
                   visible={showDateTimePicker}
@@ -2164,7 +2250,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                           : 'Select Time'}
                       </Text>
 
-                      {/* Picker */}
                       <View
                         style={{
                           alignItems: 'center',
@@ -2173,152 +2258,91 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                         }}
                       >
                         <DateTimePicker
-                          value={currentDate}
+                          value={new Date(date)}
                           mode={pickerMode}
-                          display={
-                            Platform.OS === 'ios'
-                              ? 'spinner'
-                              : pickerMode === 'date'
-                                ? 'calendar'
-                                : 'default'
-                          }
+                          display="spinner"
                           is24Hour={false}
                           onChange={(event, selected) => {
-                            // ANDROID
-                            if (Platform.OS === 'android') {
-                              if (event.type === 'dismissed') {
-                                setShowDateTimePicker(false);
-                                setPickerMode('date');
-                                return;
-                              }
+                            if (!selected) return;
 
-                              if (!selected) return;
+                            if (pickerMode === 'date') {
+                              const existingDate = new Date(date);
+                              const newDate = new Date(selected);
 
-                              // DATE PICKER
-                              if (pickerMode === 'date') {
-                                const existingDate = new Date(date);
+                              newDate.setHours(
+                                existingDate.getHours(),
+                                existingDate.getMinutes(),
+                                existingDate.getSeconds(),
+                                0
+                              );
+                              setDate(newDate.toISOString());
+                            } else {
+                              const newDate = new Date(date);
 
-                                const newDate = new Date(selected);
+                              newDate.setHours(
+                                selected.getHours(),
+                                selected.getMinutes(),
+                                0,
+                                0
+                              );
 
-                                // Preserve existing time
-                                newDate.setHours(
-                                  existingDate.getHours(),
-                                  existingDate.getMinutes(),
-                                  existingDate.getSeconds(),
-                                  0
-                                );
-
-                                setDate(newDate.toISOString());
-
-                                // Close date picker first
-                                setShowDateTimePicker(false);
-
-                                // Open TIME picker after modal animation
-                                setTimeout(() => {
-                                  setPickerMode('time');
-                                  setShowDateTimePicker(true);
-                                }, 350);
-
-                                return;
-                              }
-
-                              // TIME PICKER
-                              if (pickerMode === 'time') {
-                                const newDate = new Date(date);
-
-                                newDate.setHours(
-                                  selected.getHours(),
-                                  selected.getMinutes(),
-                                  0,
-                                  0
-                                );
-
-                                setDate(newDate.toISOString());
-
-                                setShowDateTimePicker(false);
-                                setPickerMode('date');
-
-                                markDirty();
-                              }
-                              return;
-                            }
-                            // IOS
-                            if (selected) {
-                              if (pickerMode === 'date') {
-                                const existingDate = new Date(date);
-                                const newDate = new Date(selected);
-                                // Preserve existing time
-                                newDate.setHours(
-                                  existingDate.getHours(),
-                                  existingDate.getMinutes(),
-                                  existingDate.getSeconds(),
-                                  0
-                                );
-                                setDate(newDate.toISOString());
-                              } else {
-                                const newDate = new Date(date);
-                                newDate.setHours(
-                                  selected.getHours(),
-                                  selected.getMinutes(),
-                                  0,
-                                  0
-                                );
-                                setDate(newDate.toISOString());
-                              }
+                              setDate(newDate.toISOString());
                             }
                           }}
                         />
                       </View>
 
-                      {/* IOS Buttons */}
-                      {Platform.OS === 'ios' && (
-                        <View
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          marginTop: 24,
+                        }}
+                      >
+                        <PaperButton
+                          mode="outlined"
+                          onPress={() => {
+                            setShowDateTimePicker(false);
+                            setPickerMode('date');
+                          }}
                           style={{
-                            flexDirection: 'row',
-                            marginTop: 24,
+                            flex: 1,
+                            marginRight: 10,
                           }}
                         >
-                          <PaperButton
-                            mode="outlined"
-                            onPress={() => {
+                          Cancel
+                        </PaperButton>
+
+                        <PaperButton
+                          mode="contained"
+                          onPress={() => {
+                            if (pickerMode === 'date') {
+                              setPickerMode('time');
+                            } else {
                               setShowDateTimePicker(false);
                               setPickerMode('date');
-                            }}
-                            style={{
-                              flex: 1,
-                              marginRight: 10,
-                            }}
-                          >
-                            Cancel
-                          </PaperButton>
-
-                          <PaperButton
-                            mode="contained"
-                            onPress={() => {
-                              if (pickerMode === 'date') {
-                                setPickerMode('time');
-                              } else {
-                                setShowDateTimePicker(false);
-                                setPickerMode('date');
-                                markDirty();
-                              }
-                            }}
-                            style={{
-                              flex: 1,
-                            }}
-                          >
-                            {pickerMode === 'date'
-                              ? 'Next'
-                              : 'Done'}
-                          </PaperButton>
-                        </View>
-                      )}
+                              markDirty();
+                            }
+                          }}
+                          style={{
+                            flex: 1,
+                          }}
+                        >
+                          {pickerMode === 'date'
+                            ? 'Next'
+                            : 'Done'}
+                        </PaperButton>
+                      </View>
                     </View>
                   </View>
                 </Modal>
               );
             } catch (e) {
-              // Fall through to web/manual picker
+              console.warn(
+                '[TransactionForm] iOS DateTimePicker unavailable:',
+                e
+              );
+              setShowDateTimePicker(false);
+              return null;
             }
           }
 
