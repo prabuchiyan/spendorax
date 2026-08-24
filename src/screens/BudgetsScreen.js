@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, FlatList } from 'react-native';
 import { TextInput as PaperInput, Button, Avatar, IconButton } from 'react-native-paper';
 import { createBudget, getBudgetsForMonth, updateBudget } from '../services/budgets';
-import { saveCategoryBudget, deleteCategoryBudget, getCategoryBudgetSummary } from '../services/categoryBudgets';
+import { saveCategoryBudget, deleteCategoryBudget, getCategoryBudgetSummary, copyCategoryBudgets } from '../services/categoryBudgets';
 import { getCategories } from '../services/categories';
 import events from '../services/events';
 import Card from '../components/Card';
@@ -10,6 +10,10 @@ import { Spacing } from '../components/Theme';
 import ConfirmDialog from '../components/ConfirmDialog';
 import BudgetCreateModal from '../components/BudgetCreateModal';
 import FAB from '../components/FAB';
+
+function getMonthLabel(date) {
+  return date.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+}
 
 export default function BudgetsScreen({ route, navigation }) {
   const [tab, setTab] = useState('overall');
@@ -28,10 +32,48 @@ export default function BudgetsScreen({ route, navigation }) {
   const [deletingBudgetId, setDeletingBudgetId] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editBudget, setEditBudget] = useState(null);
+  const [selectedMonthDate, setSelectedMonthDate] = useState(new Date());
 
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
+  const currentMonthDate = new Date(currentYear, currentMonth - 1, 1);
+  const selectedMonth = selectedMonthDate.getMonth() + 1;
+  const selectedYear = selectedMonthDate.getFullYear();
+  const isCurrentMonthSelected =
+    selectedMonth === currentMonth &&
+    selectedYear === currentYear;
+  const hasCurrentMonthCategoryBudgets =
+    isCurrentMonthSelected &&
+    categoryBudgets.length > 0;
+
+  /*
+   * Copy is available ONLY when:
+   *
+   * 1. Current month is selected
+   * 2. Current month has NO category budgets
+   */
+  const shouldShowCopyOption =
+    isCurrentMonthSelected &&
+    categoryBudgets.length === 0;
+  const monthCarousel = useMemo(() => {
+    const current = new Date(
+      currentYear,
+      currentMonth - 1,
+      1
+    );
+    const previous = new Date(
+      currentYear,
+      currentMonth - 2,
+      1
+    );
+    return [previous, current];
+  }, [currentYear, currentMonth]);
+
+  async function loadCategoryBudgetsForMonth(month = selectedMonth, year = selectedYear) {
+    const budgets = await getCategoryBudgetSummary(month, year);
+    setCategoryBudgets(budgets);
+  }
 
   async function load() {
     // Load overall budget
@@ -49,9 +91,7 @@ export default function BudgetsScreen({ route, navigation }) {
     const cats = await getCategories(true);
     setCategories(cats);
 
-    // Load category budgets
-    const budgets = await getCategoryBudgetSummary(currentMonth, currentYear);
-    setCategoryBudgets(budgets);
+    await loadCategoryBudgetsForMonth(selectedMonth, selectedYear);
   }
 
   useEffect(() => {
@@ -59,6 +99,10 @@ export default function BudgetsScreen({ route, navigation }) {
     const unsub = navigation.addListener('focus', () => { load(); });
     return unsub;
   }, [navigation]);
+
+  useEffect(() => {
+    loadCategoryBudgetsForMonth(selectedMonth, selectedYear);
+  }, [selectedMonthDate]);
 
   async function setNow() {
     const value = parseFloat(limit) || 0;
@@ -119,12 +163,12 @@ export default function BudgetsScreen({ route, navigation }) {
     await saveCategoryBudget(
       selectedCategory.id,
       amount,
-      currentMonth,
-      currentYear
+      selectedMonth,
+      selectedYear
     );
     await syncOverallBudget();
     events.emit('budgetsChanged');
-    await load();
+    await loadCategoryBudgetsForMonth(selectedMonth, selectedYear);
     setSelectedCategory(null);
     setCategoryBudgetAmount('');
     return true;
@@ -146,10 +190,90 @@ export default function BudgetsScreen({ route, navigation }) {
       await deleteCategoryBudget(deletingBudgetId);
       await syncOverallBudget();
       events.emit('budgetsChanged', null);
-      await load();
+      await loadCategoryBudgetsForMonth(selectedMonth, selectedYear);
       setConfirmVisible(false);
       setDeletingBudgetId(null);
     }
+  }
+
+  async function handleCopyPreviousMonth() {
+    /*
+     * Safety check:
+     * Copying is ONLY allowed into the current month.
+     */
+    if (!isCurrentMonthSelected) {
+      alert(
+        'Copying category budgets is only available for the current month.'
+      );
+      return;
+    }
+    /*
+     * Extra safety:
+     * Never show/use copy if current month already
+     * has category budgets.
+     */
+    if (categoryBudgets.length > 0) {
+      alert(
+        'Category budgets are already set for this month.'
+      );
+      return;
+    }
+    const previousDate = new Date(
+      currentYear,
+      currentMonth - 2,
+      1
+    );
+    const fromMonth =
+      previousDate.getMonth() + 1;
+    const fromYear =
+      previousDate.getFullYear();
+    try {
+      const copied =
+        await copyCategoryBudgets({
+          fromMonth,
+          fromYear,
+          toMonth: currentMonth,
+          toYear: currentYear,
+          overwrite: false,
+        });
+      if (copied.length === 0) {
+        alert(
+          `No category budgets were found in ${getMonthLabel(previousDate)} to copy.`
+        );
+        return;
+      }
+      await syncOverallBudget();
+      events.emit('budgetsChanged');
+      await loadCategoryBudgetsForMonth(
+        currentMonth,
+        currentYear
+      );
+      alert(
+        `Copied ${copied.length} category ${copied.length === 1
+          ? 'budget'
+          : 'budgets'
+        } from ${getMonthLabel(previousDate)} to ${getMonthLabel(currentMonthDate)}.`
+      );
+    } catch (error) {
+      console.error(
+        'Copy category budgets failed:',
+        error
+      );
+
+      alert(
+        error?.message ||
+        'Unable to copy category budgets.'
+      );
+    }
+  }
+
+  function moveMonthBy(offset) {
+    const next = new Date(selectedMonthDate.getFullYear(), selectedMonthDate.getMonth() + offset, 1);
+    const limit = new Date(currentYear, currentMonth - 1, 1);
+    if (next > limit) {
+      return;
+    }
+    setSelectedMonthDate(next);
   }
 
   return (
@@ -222,10 +346,166 @@ export default function BudgetsScreen({ route, navigation }) {
           </Card>
         ) : (
           <>
+            <Card style={{ marginBottom: 12 }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: 12,
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => moveMonthBy(-1)}
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 21,
+                    backgroundColor: '#F3F9F6',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 22,
+                      fontWeight: '700',
+                      color: '#36B37E',
+                    }}
+                  >
+                    ‹
+                  </Text>
+                </TouchableOpacity>
+
+                <View
+                  style={{
+                    alignItems: 'center',
+                    flex: 1,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 18,
+                      fontWeight: '800',
+                      color: '#1F2937',
+                    }}
+                  >
+                    {getMonthLabel(selectedMonthDate)}
+                  </Text>
+
+                  {isCurrentMonthSelected && (
+                    <View
+                      style={{
+                        marginTop: 4,
+                        paddingHorizontal: 9,
+                        paddingVertical: 3,
+                        borderRadius: 10,
+                        backgroundColor: '#E8F7EF',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: '800',
+                          color: '#1B5E20',
+                        }}
+                      >
+                        CURRENT MONTH
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => moveMonthBy(1)}
+                  disabled={
+                    selectedMonthDate.getTime() >=
+                    currentMonthDate.getTime()
+                  }
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 21,
+                    backgroundColor:
+                      selectedMonthDate.getTime() >=
+                        currentMonthDate.getTime()
+                        ? '#F3F4F6'
+                        : '#F3F9F6',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 22,
+                      fontWeight: '700',
+                      color:
+                        selectedMonthDate.getTime() >=
+                          currentMonthDate.getTime()
+                          ? '#B8BEC6'
+                          : '#36B37E',
+                    }}
+                  >
+                    ›
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 6 }}>
+                {monthCarousel.map((monthDate) => {
+                  const isActive = monthDate.getMonth() === selectedMonthDate.getMonth() && monthDate.getFullYear() === selectedMonthDate.getFullYear();
+                  return (
+                    <TouchableOpacity
+                      key={`${monthDate.getFullYear()}-${monthDate.getMonth()}`}
+                      onPress={() => setSelectedMonthDate(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1))}
+                      style={{
+                        width: 140,
+                        marginRight: 12,
+                        paddingVertical: 12,
+                        paddingHorizontal: 14,
+                        borderRadius: 16,
+                        borderWidth: 1,
+                        borderColor: isActive ? '#36B37E' : '#E5E7EB',
+                        backgroundColor: isActive ? '#E8F7EF' : '#F9FAFB',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, color: isActive ? '#1B5E20' : '#6B7280', fontWeight: '700' }}>
+                        {monthDate.toLocaleDateString('en-IN', { month: 'short' })}
+                      </Text>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: isActive ? '#1B5E20' : '#111827', marginTop: 4 }}>
+                        {monthDate.getFullYear()}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {shouldShowCopyOption ? (
+                <View style={{ marginTop: 14, borderRadius: 14, backgroundColor: '#F3F9FF', borderWidth: 1, borderColor: '#D9EAFF', padding: 14 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#1F2937' }}>No category budget set for this month</Text>
+                  <Text style={{ marginTop: 6, color: '#475467', fontSize: 12 }}>Copy your previous month’s category limits to save time.</Text>
+                  <Button mode="contained" onPress={handleCopyPreviousMonth} style={{ marginTop: 12 }}>
+                    Copy from Previous Month
+                  </Button>
+                </View>
+              ) : isCurrentMonthSelected ? (
+                <View style={{ marginTop: 14, borderRadius: 14, backgroundColor: '#F5FBF7', borderWidth: 1, borderColor: '#D7F1DD', padding: 12 }}>
+                  <Text style={{ color: '#166534', fontWeight: '700' }}>Current month is ready</Text>
+                  <Text style={{ marginTop: 4, color: '#4B5563', fontSize: 12 }}>Category budgets are already created for this month.</Text>
+                </View>
+              ) : (
+                <View style={{ marginTop: 14, borderRadius: 14, backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', padding: 12 }}>
+                  <Text style={{ color: '#374151', fontWeight: '700' }}>Previous month view</Text>
+                  <Text style={{ marginTop: 4, color: '#4B5563', fontSize: 12 }}>Copying is only available for the current month.</Text>
+                </View>
+              )}
+            </Card>
+
             {/* Existing Category Budgets */}
             {categoryBudgets.length > 0 ? (
               <Card>
-                <Text style={{ fontSize: 16, fontWeight: '700', marginBottom: 12 }}>Category Budgets for {currentMonth}/{currentYear}</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', marginBottom: 12 }}>Category Budgets for {getMonthLabel(selectedMonthDate)}</Text>
                 {categoryBudgets.map(budget => {
                   let barColor = '#36B37E';
 
@@ -372,7 +652,7 @@ export default function BudgetsScreen({ route, navigation }) {
               </Card>
             ) : (
               <Card>
-                <Text style={{ color: '#999', textAlign: 'center', paddingVertical: 20 }}>No category budgets yet. Add one above!</Text>
+                <Text style={{ color: '#999', textAlign: 'center', paddingVertical: 20 }}>No category budgets for {getMonthLabel(selectedMonthDate)} yet. Add one above or copy from the previous month.</Text>
               </Card>
             )}
           </>
