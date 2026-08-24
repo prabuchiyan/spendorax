@@ -64,7 +64,6 @@ function CategoryDonut({ data = [], categoriesMap = {} }) {
 
 export default function SpendAreasDashboard({ route, navigation }) {
   const params = route?.params || {};
-  
   const [transactions, setTransactions] = useState([]);
   const [categoriesMap, setCategoriesMap] = useState({});
   const [filterMode, setFilterMode] = useState(params.mode || 'monthly');
@@ -198,47 +197,71 @@ export default function SpendAreasDashboard({ route, navigation }) {
       <ScrollView contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 120 }}>
         {/* MODE SELECTOR */}
         <View style={styles.tabContainer}>
-          {['daily', 'weekly', 'monthly', 'yearly'].map((m) => (
-            <Chip
-              key={m}
-              mode="outlined"
-              selected={filterMode === m}
-              onPress={() => {
-                setFilterMode(m);
-                setSelectedPeriod(null);
-              }}
-              style={[styles.chip, filterMode === m && { borderColor: Colors.primary, backgroundColor: '#e6f7ff' }]}
-              selectedColor={Colors.primary}
-            >
-              {m.charAt(0).toUpperCase() + m.slice(1)}
-            </Chip>
-          ))}
+          {['daily', 'weekly', 'monthly', 'yearly'].map((m) => {
+            const isSelected = filterMode === m;
+            return (
+              <Chip
+                key={m}
+                mode="outlined"
+                selected={false}
+                onPress={() => {
+                  setFilterMode(m);
+                  setSelectedPeriod(null);
+                }}
+                style={[
+                  styles.chip,
+                  isSelected && {
+                    borderColor: Colors.primary,
+                    backgroundColor: '#e6f7ff',
+                  },
+                ]}
+                textStyle={[
+                  styles.chipText,
+                  isSelected && {
+                    color: Colors.primary,
+                    fontWeight: '600',
+                  },
+                ]}
+              >
+                {m.charAt(0).toUpperCase() + m.slice(1)}
+              </Chip>
+            );
+          })}
         </View>
 
         {/* PERIOD SELECTOR */}
         {allPeriods.length > 0 && (
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false} 
-            style={styles.periodSelectorContainer} 
-            contentContainerStyle={styles.periodSelectorContent}
-          >
-            {allPeriods.map(p => {
-              const isSelected = selectedPeriod === p;
-              return (
-                <Chip
-                  key={p}
-                  mode="flat"
-                  selected={isSelected}
-                  onPress={() => setSelectedPeriod(p)}
-                  style={[styles.periodChip, isSelected && { backgroundColor: Colors.primary }]}
-                  selectedColor={isSelected ? '#fff' : Colors.text}
-                >
-                  {formatPeriodLabel(p)}
-                </Chip>
-              );
-            })}
-          </ScrollView>
+          <View style={styles.periodSelectorWrapper}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.periodSelectorContent}
+            >
+              {allPeriods.map(p => {
+                const isSelected = selectedPeriod === p;
+                return (
+                  <TouchableOpacity
+                    key={p}
+                    activeOpacity={0.75}
+                    onPress={() => setSelectedPeriod(p)}
+                    style={[
+                      styles.periodChip,
+                      isSelected && styles.periodChipSelected,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.periodChipText,
+                        isSelected && styles.periodChipTextSelected,
+                      ]}
+                    >
+                      {formatPeriodLabel(p)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
         )}
 
         {/* SPEND SUMMARY CARD */}
@@ -274,7 +297,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
                   periodLabel: selectedPeriod
                 })}
               >
-                <View 
+                <View
                   style={[
                     styles.categoryRowContainer,
                     isTargetCategory && styles.highlightCategoryRow
@@ -336,27 +359,69 @@ export default function SpendAreasDashboard({ route, navigation }) {
 const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
+    width: '100%',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
     gap: 6,
   },
   chip: {
     flex: 1,
-    alignItems: 'center',
+    minWidth: 0,
+    marginHorizontal: 0,
     justifyContent: 'center',
-    borderRadius: 8,
+  },
+  chipText: {
+    textAlign: 'center',
+    fontSize: 13,
+  },
+  periodSelectorWrapper: {
+    marginTop: 12,
+    marginBottom: 16,
   },
   periodSelectorContainer: {
     marginBottom: 16,
     maxHeight: 48,
   },
   periodSelectorContent: {
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
+    paddingVertical: 4,
     gap: 8,
     alignItems: 'center',
   },
   periodChip: {
-    borderRadius: 16,
+    minWidth: 72,
+    height: 38,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#D9E1EA',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    // subtle elevation
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+  },
+  periodChipSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+    elevation: 2,
+    shadowOpacity: 0.12,
+  },
+  periodChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  periodChipTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   categoryRowContainer: {
     marginBottom: 12,
