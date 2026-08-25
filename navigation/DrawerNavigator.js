@@ -14,6 +14,7 @@ import CreditCardsScreen from '../src/screens/CreditCardsScreen';
 import LoanDashboardScreen from '../src/screens/LoanDashboardScreen';
 import ReportsScreen from '../src/screens/ReportsScreen';
 import CreditCardStatementsScreen from '../src/screens/CreditCardStatementsScreen';
+import AIChatScreen from '../src/screens/AIChat/AIChatScreen';
 import { Colors } from '../src/components/Theme';
 import { Switch } from 'react-native';
 import { useBalanceVisibility } from '../src/context/BalanceVisibilityContext';
@@ -22,6 +23,7 @@ const Drawer = createDrawerNavigator();
 
 const menuItems = [
   { name: 'Dashboard', label: 'Dashboard', icon: 'view-dashboard-outline', activeIcon: 'view-dashboard' },
+  { name: 'AIAssistant', label: 'AI Assistant', icon: 'robot-outline', activeIcon: 'robot' },
   { name: 'Transactions', label: 'Transactions', icon: 'format-list-bulleted', activeIcon: 'format-list-bulleted' },
   { name: 'Bills', label: 'Bills', icon: 'file-document-outline', activeIcon: 'file-document' },
   { name: 'Loans', label: 'Loans', icon: 'bank-outline', activeIcon: 'bank' },
@@ -167,6 +169,7 @@ export default function DrawerNavigator() {
           ),
         })}
       />
+      <Drawer.Screen name="AIAssistant" component={AIChatScreen} options={{ title: 'AI Assistant' }} />
       <Drawer.Screen name="Transactions" component={TransactionsScreen} />
       <Drawer.Screen name="Loans" component={LoanDashboardScreen} />
       <Drawer.Screen name="CreditCards" component={CreditCardsScreen} options={{ title: 'Credit Cards' }} />
