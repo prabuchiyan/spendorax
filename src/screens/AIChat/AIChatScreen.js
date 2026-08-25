@@ -7,6 +7,7 @@ import Agent from '../../ai/Agent';
 export default function AIChatScreen() {
   const [messages, setMessages] = useState([]);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [initProgress, setInitProgress] = useState('Starting engine...');
   const [isGenerating, setIsGenerating] = useState(false);
   const agentRef = useRef(null);
 
@@ -14,7 +15,9 @@ export default function AIChatScreen() {
     const initAgent = async () => {
       try {
         agentRef.current = new Agent();
-        await agentRef.current.initialize();
+        await agentRef.current.initialize((progressInfo) => {
+          setInitProgress(progressInfo.text);
+        });
         setMessages([{ 
           role: 'assistant', 
           content: 'Hi! I am your Offline Financial AI Assistant. How can I help you today?' 
@@ -56,6 +59,7 @@ export default function AIChatScreen() {
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
         <Text style={styles.loadingText}>Initializing AI...</Text>
+        <Text style={styles.progressText}>{initProgress}</Text>
       </View>
     );
   }
@@ -86,7 +90,15 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#666'
+    fontWeight: 'bold',
+    color: '#333'
+  },
+  progressText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    paddingHorizontal: 20
   },
   typingIndicator: {
     paddingHorizontal: 16,

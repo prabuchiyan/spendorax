@@ -24,11 +24,42 @@ export default class Agent {
   _registerTools() {
     this.toolRegistry.register(transactionTools.getCategorySpendingTool);
     this.toolRegistry.register(budgetTools.getBudgetStatusTool);
-    // Add other mocked tools here as they are created
+    this.toolRegistry.register(analyticsTools.getTopExpensesTool);
   }
 
-  async initialize() {
-    await this.llm.initialize();
+  getSystemPrompt() {
+    const tools = Array.from(this.toolRegistry.tools.values()).map(t => ({
+      name: t.name,
+      description: t.description,
+      parameters: t.parameters
+    }));
+
+    return `You are a helpful, local financial AI assistant for SpendoraX. 
+You MUST ALWAYS respond with a strict JSON object. Do not include markdown formatting like \`\`\`json. 
+
+If you want to talk to the user, respond with:
+{
+  "type": "response",
+  "message": "Your conversational response here"
+}
+
+If the user asks a question that requires data, you must call a tool. Respond with:
+{
+  "type": "tool_call",
+  "tool": "tool_name",
+  "parameters": {
+    "key": "value"
+  }
+}
+
+Available tools:
+${JSON.stringify(tools, null, 2)}
+
+Do NOT perform financial calculations yourself. Let the tools do that.`;
+  }
+
+  async initialize(initProgressCallback = null) {
+    await this.llm.initialize(initProgressCallback);
   }
 
   /**
@@ -38,7 +69,12 @@ export default class Agent {
     this.conversationHistory.push({ role: 'user', content: userText });
 
     try {
-      const llmOutput = await this.llm.generate(this.conversationHistory);
+      const messagesWithSystem = [
+        { role: 'system', content: this.getSystemPrompt() },
+        ...this.conversationHistory
+      ];
+
+      const llmOutput = await this.llm.generate(messagesWithSystem);
       const routeResult = await this.router.route(llmOutput);
 
       if (routeResult.type === 'response') {
@@ -49,19 +85,24 @@ export default class Agent {
       if (routeResult.type === 'tool_result') {
         // Feed tool result back to LLM to generate natural language response
         this.conversationHistory.push({ 
-          role: 'tool', 
-          content: JSON.stringify(routeResult.result) 
+          role: 'user', 
+          content: `Tool executed successfully. Result: ${JSON.stringify(routeResult.result)}. Please summarize this for me.` 
         });
         
-        // For Phase 1 testing, we force a json_result keyword to trigger the mock LLM response
-        this.conversationHistory.push({ role: 'system', content: 'json_result' });
-        
-        const finalOutput = await this.llm.generate(this.conversationHistory);
+        const finalMessagesWithSystem = [
+          { role: 'system', content: this.getSystemPrompt() },
+          ...this.conversationHistory
+        ];
+
+        const finalOutput = await this.llm.generate(finalMessagesWithSystem);
         const finalRoute = await this.router.route(finalOutput);
         
         if (finalRoute.type === 'response') {
           this.conversationHistory.push({ role: 'assistant', content: finalRoute.message });
           return finalRoute.message;
+        } else {
+           // Fallback in case the model keeps trying to call tools recursively inappropriately in this prototype
+           return "I retrieved the data but had trouble formatting it: " + JSON.stringify(routeResult.result);
         }
       }
 

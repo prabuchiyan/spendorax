@@ -1,61 +1,66 @@
+import { Platform } from 'react-native';
 import LocalLLM from './LocalLLM';
 
 /**
- * Mock Web Implementation for Phase 1 of the AI integration.
- * In Phase 2, this will be replaced with an actual WebGPU/WASM LLM runtime.
+ * Web Implementation using WebLLM for the AI integration.
  */
 export default class LocalLLMWeb extends LocalLLM {
   constructor() {
     super();
+    this.engine = null;
     this._isReady = false;
   }
 
-  async initialize() {
-    // Simulate initialization delay
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        this._isReady = true;
-        resolve();
-      }, 1000);
-    });
+  async initialize(initProgressCallback = null) {
+    if (Platform.OS !== 'web') {
+      throw new Error('LocalLLMWeb can only be used on the web platform.');
+    }
+
+    try {
+      // Dynamically import web-llm so it doesn't break React Native bundlers on native platforms
+      const { CreateMLCEngine } = await import('@mlc-ai/web-llm');
+
+      const initProgressCallbackWrapper = (progress) => {
+        if (initProgressCallback) {
+          initProgressCallback(progress);
+        }
+      };
+
+      // We'll use Qwen2.5-1.5B-Instruct-q4f16_1-MLC as it is small and capable
+      const selectedModel = 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';
+      
+      this.engine = await CreateMLCEngine(selectedModel, {
+        initProgressCallback: initProgressCallbackWrapper,
+      });
+
+      this._isReady = true;
+    } catch (e) {
+      console.error('Failed to initialize WebLLM:', e);
+      throw e;
+    }
   }
 
   async generate(messages, options = {}) {
-    if (!this._isReady) throw new Error('LLM is not ready');
+    if (!this._isReady || !this.engine) throw new Error('LLM is not ready');
 
-    const lastMessage = messages[messages.length - 1].content.toLowerCase();
-
-    // Mock intent routing for Phase 1 testing
-    if (lastMessage.includes('spend') || lastMessage.includes('transaction')) {
-      return JSON.stringify({
-        type: 'tool_call',
-        tool: 'get_category_spending',
-        parameters: { category: 'Food', period: 'current_month' }
+    try {
+      const response = await this.engine.chat.completions.create({
+        messages,
+        temperature: options.temperature || 0.1, // Keep it low for more deterministic JSON outputs
       });
-    }
 
-    if (lastMessage.includes('budget')) {
-      return JSON.stringify({
-        type: 'tool_call',
-        tool: 'get_budget_status',
-        parameters: {}
-      });
+      return response.choices[0].message.content;
+    } catch (e) {
+      console.error('Generation error:', e);
+      throw e;
     }
-    
-    if (lastMessage.includes('json_result')) {
-       return JSON.stringify({
-         type: 'response',
-         message: 'You spent ₹8,420 on Food this month across 23 transactions.'
-       });
-    }
-
-    return JSON.stringify({
-      type: 'response',
-      message: 'I can help you analyze your spending, check budgets, and more. Try asking "How much did I spend on food this month?"'
-    });
   }
 
   async unload() {
+    if (this.engine) {
+      await this.engine.unload();
+      this.engine = null;
+    }
     this._isReady = false;
     return Promise.resolve();
   }
