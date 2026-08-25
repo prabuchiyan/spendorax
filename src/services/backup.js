@@ -13,7 +13,7 @@ import { getLoans } from './loans';
 import { getNotifications, updateNotification, getNotificationByType } from '../database/notifications';
 import { rescheduleAll } from './notificationService';
 
-const BACKUP_VERSION = 2;
+const BACKUP_VERSION = 3;
 
 export async function exportBackup() {
   try {
@@ -55,6 +55,37 @@ export async function exportBackup() {
       }
     } catch (e) {
       billLinkedTransactions = [];
+    }
+
+    // Credit Cards
+    let creditCards = [];
+    try {
+      const res = await executeSql('SELECT * FROM credit_cards');
+      for (let i = 0; i < res.rows.length; i++) {
+        creditCards.push(res.rows.item(i));
+      }
+    } catch (e) {
+      creditCards = [];
+    }
+
+    let creditCardStatements = [];
+    try {
+      const res = await executeSql('SELECT * FROM credit_card_statements');
+      for (let i = 0; i < res.rows.length; i++) {
+        creditCardStatements.push(res.rows.item(i));
+      }
+    } catch (e) {
+      creditCardStatements = [];
+    }
+
+    let creditCardPayments = [];
+    try {
+      const res = await executeSql('SELECT * FROM credit_card_payments');
+      for (let i = 0; i < res.rows.length; i++) {
+        creditCardPayments.push(res.rows.item(i));
+      }
+    } catch (e) {
+      creditCardPayments = [];
     }
 
     // Backfill bill_id on transactions from bill_linked_transactions.
@@ -109,6 +140,9 @@ export async function exportBackup() {
         bill_linked_transactions: billLinkedTransactions,
         loans,
         loan_payments: loanPayments,
+        credit_cards: creditCards,
+        credit_card_statements: creditCardStatements,
+        credit_card_payments: creditCardPayments,
         notifications,
       },
     };
@@ -173,6 +207,18 @@ export async function pickBackupFile() {
 
     const backupData = JSON.parse(fileContent);
 
+    const normalizedData = backupData.data || {};
+    const legacyCategoryBudgets = Array.isArray(normalizedData.categoryBudgets)
+      ? normalizedData.categoryBudgets
+      : [];
+    const categoryBudgets = Array.isArray(normalizedData.category_budgets)
+      ? normalizedData.category_budgets
+      : legacyCategoryBudgets;
+
+    if (backupData.data) {
+      backupData.data.category_budgets = categoryBudgets;
+      backupData.data.categoryBudgets = categoryBudgets;
+    }
 
     // Validation
     // Validation (Backward Compatible)
@@ -208,7 +254,11 @@ export async function pickBackupFile() {
       // Populate new tables with empty arrays so restore logic
       // never needs version-specific checks.
       backupData.data.category_budgets ??= [];
+      backupData.data.categoryBudgets ??= backupData.data.category_budgets;
       backupData.data.bill_linked_transactions ??= [];
+      backupData.data.credit_cards ??= [];
+      backupData.data.credit_card_statements ??= [];
+      backupData.data.credit_card_payments ??= [];
       backupData.data.notifications ??=
         backupData.data.notification_settings ?? [];
 
@@ -216,7 +266,7 @@ export async function pickBackupFile() {
     }
 
     // -----------------------------
-    // Version 2 (Current)
+    // Version 2 (Old v2 backups) and version 3+
     // -----------------------------
     if (backupData.version >= 2) {
       const requiredKeys = [
@@ -232,13 +282,33 @@ export async function pickBackupFile() {
       ];
 
       for (const key of requiredKeys) {
-        if (!Array.isArray(backupData.data[key])) {
+        const legacyKey = key === 'category_budgets' ? 'categoryBudgets' : key;
+        if (!Array.isArray(backupData.data[key]) && !Array.isArray(backupData.data[legacyKey])) {
           throw new Error(`Missing required data: ${key}`);
         }
       }
 
-      // notifications is optional — older v2 exports may not include it
+      if (backupData.version >= 3) {
+        const newKeys = [
+          'credit_cards',
+          'credit_card_statements',
+          'credit_card_payments',
+        ];
+        for (const key of newKeys) {
+          if (!Array.isArray(backupData.data[key])) {
+            throw new Error(`Missing required data: ${key}`);
+          }
+        }
+      } else {
+        backupData.data.credit_cards ??= [];
+        backupData.data.credit_card_statements ??= [];
+        backupData.data.credit_card_payments ??= [];
+      }
+
+      // notifications is optional — older exports may not include it
       backupData.data.notifications ??= backupData.data.notification_settings ?? [];
+      backupData.data.category_budgets ??= backupData.data.categoryBudgets ?? [];
+      backupData.data.categoryBudgets ??= backupData.data.category_budgets ?? [];
 
       return backupData;
     }
@@ -264,13 +334,32 @@ function getBatchSize() {
 }
 
 async function yieldToUI() {
-  await new Promise(resolve => {
-    requestAnimationFrame(() => {
-      InteractionManager.runAfterInteractions(resolve);
+  // Web:
+  // Do NOT use InteractionManager here.
+  // React Native Web can leave runAfterInteractions unresolved,
+  // which blocks the restore at "Initializing restore...".
+  if (Platform.OS === 'web') {
+    await new Promise(resolve => {
+      setTimeout(resolve, 0);
     });
+    return;
+  }
+
+  // Native:
+  // Give React Native one frame, then wait until current
+  // interactions/animations are completed.
+  await new Promise(resolve => {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => {
+        InteractionManager.runAfterInteractions(() => {
+          resolve();
+        });
+      });
+    } else {
+      setTimeout(resolve, 0);
+    }
   });
 }
-
 async function beginDbTransaction() {
   try {
     await executeSql('BEGIN TRANSACTION');
@@ -353,7 +442,10 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
     bills: [],
     transactions: [],
     loans: [],
-    loan_payments: []
+    loan_payments: [],
+    credit_cards: [],
+    credit_card_statements: [],
+    credit_card_payments: []
   };
 
   try {
@@ -384,6 +476,30 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
     try {
       const lps = await executeSql('SELECT * FROM loan_payments');
       for (let i = 0; i < lps.rows.length; i++) originalData.loan_payments.push(lps.rows.item(i));
+    } catch (e) {
+      // ignore if table missing
+    }
+
+    // Snapshot credit cards (if table exists)
+    try {
+      const ccs = await executeSql('SELECT * FROM credit_cards');
+      for (let i = 0; i < ccs.rows.length; i++) originalData.credit_cards.push(ccs.rows.item(i));
+    } catch (e) {
+      // ignore if table missing
+    }
+
+    // Snapshot credit card statements (if table exists)
+    try {
+      const ccs = await executeSql('SELECT * FROM credit_card_statements');
+      for (let i = 0; i < ccs.rows.length; i++) originalData.credit_card_statements.push(ccs.rows.item(i));
+    } catch (e) {
+      // ignore if table missing
+    }
+
+    // Snapshot credit card payments (if table exists)
+    try {
+      const ccp = await executeSql('SELECT * FROM credit_card_payments');
+      for (let i = 0; i < ccp.rows.length; i++) originalData.credit_card_payments.push(ccp.rows.item(i));
     } catch (e) {
       // ignore if table missing
     }
@@ -447,14 +563,14 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       for (const loan of originalData.loans) {
         try {
           await executeSql(
-            `INSERT INTO loans (id, loan_name, loan_type, lender, principal_amount, interest_rate, loan_start_date, loan_end_date, tenure_months, emi_amount, emi_day, outstanding_amount, principal_paid, interest_paid, total_paid, total_prepayment, remaining_months, status, notes, transaction_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+            `INSERT INTO loans (id, loan_name, loan_type, lender, principal_amount, interest_rate, loan_start_date, loan_end_date, tenure_months, emi_amount, emi_day, outstanding_amount, principal_paid, interest_paid, total_paid, total_prepayment, remaining_months, status, notes, transaction_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
             [
-            loan.id, loan.loan_name, loan.loan_type, loan.lender, loan.principal_amount,
-            loan.interest_rate, loan.loan_start_date, loan.loan_end_date, loan.tenure_months,
-            loan.emi_amount, loan.emi_day, loan.outstanding_amount, loan.principal_paid,
-            loan.interest_paid, loan.total_paid, loan.total_prepayment, loan.remaining_months,
-            loan.status, loan.notes, loan.transaction_id || null,
-            loan.created_at, loan.updated_at
+              loan.id, loan.loan_name, loan.loan_type, loan.lender, loan.principal_amount,
+              loan.interest_rate, loan.loan_start_date, loan.loan_end_date, loan.tenure_months,
+              loan.emi_amount, loan.emi_day, loan.outstanding_amount, loan.principal_paid,
+              loan.interest_paid, loan.total_paid, loan.total_prepayment, loan.remaining_months,
+              loan.status, loan.notes, loan.transaction_id || null,
+              loan.created_at, loan.updated_at
             ]
           );
         } catch (e) {
@@ -471,6 +587,88 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           );
         } catch (e) {
           console.warn('Failed to restore loan payment', p.id, e);
+        }
+      }
+
+      // Restore credit cards
+      for (const card of originalData.credit_cards) {
+        try {
+          await executeSql(
+            `INSERT INTO credit_cards (id, name, bank, last4, network, credit_limit, outstanding, available_limit, statement_day, due_after_days, minimum_due_percent, currency, color, notes, status, source_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            [
+              card.id,
+              card.name,
+              card.bank,
+              card.last4,
+              card.network,
+              card.credit_limit,
+              card.outstanding,
+              card.available_limit,
+              card.statement_day,
+              card.due_after_days,
+              card.minimum_due_percent,
+              card.currency,
+              card.color,
+              card.notes,
+              card.status,
+              card.source_id,
+              card.created_at,
+              card.updated_at,
+            ]
+          );
+        } catch (e) {
+          console.warn('Failed to restore credit card', card.id, e);
+        }
+      }
+
+      // Restore credit card statements
+      for (const stmt of originalData.credit_card_statements) {
+        try {
+          await executeSql(
+            `INSERT INTO credit_card_statements (id, card_id, statement_start, statement_end, statement_date, due_date, opening_balance, purchases, refunds, fees, interest, payments, closing_balance, minimum_due, status, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            [
+              stmt.id,
+              stmt.card_id,
+              stmt.statement_start,
+              stmt.statement_end,
+              stmt.statement_date,
+              stmt.due_date,
+              stmt.opening_balance,
+              stmt.purchases,
+              stmt.refunds,
+              stmt.fees,
+              stmt.interest,
+              stmt.payments,
+              stmt.closing_balance,
+              stmt.minimum_due,
+              stmt.status,
+              stmt.created_at,
+            ]
+          );
+        } catch (e) {
+          console.warn('Failed to restore credit card statement', stmt.id, e);
+        }
+      }
+
+      // Restore credit card payments
+      for (const payment of originalData.credit_card_payments) {
+        try {
+          await executeSql(
+            `INSERT INTO credit_card_payments (id, card_id, statement_id, transaction_id, amount, payment_date, source_id, notes, created_at) VALUES (?,?,?,?,?,?,?,?,?)`,
+            [
+              payment.id,
+              payment.card_id,
+              payment.statement_id,
+              payment.transaction_id,
+              payment.amount,
+              payment.payment_date,
+              payment.source_id,
+              payment.notes,
+              payment.created_at,
+            ]
+          );
+        } catch (e) {
+          console.warn('Failed to restore credit card payment', payment.id, e);
         }
       }
 
@@ -494,12 +692,15 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
 
   try {
     safeOnProgress(0, 'Initializing restore...');
+    console.log('Prabu mode', mode);
     await yieldToUI();
+    console.log('Prabu yieldToUI Done');
 
     if (mode === 'replace') {
       safeOnProgress(0, 'Clearing database...');
       await clearAllTables();
       await yieldToUI();
+      console.log('Prabu replace done');
     }
 
     const {
@@ -507,14 +708,23 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       sources = [],
       budgets = [],
       category_budgets = [],
+      categoryBudgets = [],
       bills = [],
       bill_linked_transactions = [],
       transactions = [],
       loans = [],
       loan_payments = [],
+      credit_cards = [],
+      credit_card_statements = [],
+      credit_card_payments = [],
       notifications = [],
       notification_settings = [], // Backward compatibility
     } = backupData.data || {};
+
+    const restoredCategoryBudgets =
+      Array.isArray(category_budgets) && category_budgets.length > 0
+        ? category_budgets
+        : categoryBudgets;
 
     // Support old backups
     const restoredNotifications =
@@ -600,8 +810,11 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       billsWithLinkedTx.length +
       loans.length +
       loan_payments.length +
-      category_budgets.length +
+      restoredCategoryBudgets.length +
       cleanBillLinkedTxs.length +
+      credit_cards.length +
+      credit_card_statements.length +
+      credit_card_payments.length +
       restoredNotifications.length;
     let processedItems = 0;
 
@@ -667,7 +880,61 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       }
     );
 
-    // 3. Bills
+    // 3. Credit Cards
+    const cardMap = {};
+    const statementMap = {};
+    await processBatch(
+      credit_cards,
+      async (card) => {
+        const mappedSourceId = card.source_id ? (sourceMap[card.source_id] || null) : null;
+
+        if (mode === 'merge') {
+          const existing = await executeSql(
+            `SELECT id FROM credit_cards WHERE name = ? AND last4 = ? AND bank = ? LIMIT 1`,
+            [card.name, card.last4, card.bank]
+          );
+          if (existing.rows.length > 0) {
+            cardMap[card.id] = existing.rows.item(0).id;
+            return;
+          }
+        }
+
+        const now = card.created_at || new Date().toISOString();
+        const updatedAt = card.updated_at || new Date().toISOString();
+        const res = await executeSql(
+          `INSERT INTO credit_cards (
+            name, bank, last4, network, credit_limit, outstanding,
+            available_limit, statement_day, due_after_days, minimum_due_percent,
+            currency, color, notes, status, source_id, created_at, updated_at
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [
+            card.name,
+            card.bank,
+            card.last4,
+            card.network,
+            card.credit_limit,
+            card.outstanding,
+            card.available_limit,
+            card.statement_day,
+            card.due_after_days,
+            card.minimum_due_percent,
+            card.currency,
+            card.color,
+            card.notes,
+            card.status,
+            mappedSourceId,
+            now,
+            updatedAt,
+          ]
+        );
+        cardMap[card.id] = res.insertId;
+      },
+      (count) => {
+        updateProgress(count, 'Importing credit cards...');
+      }
+    );
+
+    // 4. Bills
     // CRITICAL FIX: Use direct SQL INSERT instead of createBill().
     // createBill() calls backfillBillOccurrences() for any recurring template
     // (is_recurring=1, no parent_bill_id), which auto-generates ALL child bill
@@ -939,7 +1206,94 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       }
     );
 
-    // 7. Loan payments
+    // 7. Credit card statements
+    await processBatch(
+      credit_card_statements || [],
+      async (statement) => {
+        const newCardId = cardMap[statement.card_id];
+        if (!newCardId) return;
+
+        if (mode === 'merge') {
+          const existing = await executeSql(
+            `SELECT id FROM credit_card_statements WHERE card_id = ? AND statement_date = ? LIMIT 1`,
+            [newCardId, statement.statement_date]
+          );
+          if (existing.rows.length > 0) return;
+        }
+
+        const insertRes = await executeSql(
+          `INSERT INTO credit_card_statements (
+            card_id, statement_start, statement_end, statement_date, due_date,
+            opening_balance, purchases, refunds, fees, interest, payments,
+            closing_balance, minimum_due, status, created_at
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [
+            newCardId,
+            statement.statement_start,
+            statement.statement_end,
+            statement.statement_date,
+            statement.due_date,
+            statement.opening_balance,
+            statement.purchases,
+            statement.refunds,
+            statement.fees,
+            statement.interest,
+            statement.payments,
+            statement.closing_balance,
+            statement.minimum_due,
+            statement.status,
+            statement.created_at || new Date().toISOString(),
+          ]
+        );
+        statementMap[statement.id] = insertRes.insertId;
+      },
+      (count) => {
+        updateProgress(count, 'Importing credit card statements...');
+      }
+    );
+
+    // 8. Credit card payments
+    await processBatch(
+      credit_card_payments || [],
+      async (payment) => {
+        const newCardId = cardMap[payment.card_id];
+        if (!newCardId) return;
+
+        const newTransactionId = payment.transaction_id
+          ? (transactionMap[payment.transaction_id] || null)
+          : null;
+
+        if (mode === 'merge') {
+          const existing = await executeSql(
+            `SELECT id FROM credit_card_payments WHERE card_id = ? AND payment_date = ? AND amount = ? LIMIT 1`,
+            [newCardId, payment.payment_date, payment.amount]
+          );
+          if (existing.rows.length > 0) return;
+        }
+
+        await executeSql(
+          `INSERT INTO credit_card_payments (
+            card_id, statement_id, transaction_id, amount, payment_date,
+            source_id, notes, created_at
+          ) VALUES (?,?,?,?,?,?,?,?)`,
+          [
+            newCardId,
+            payment.statement_id ? (statementMap?.[payment.statement_id] || null) : null,
+            newTransactionId,
+            payment.amount,
+            payment.payment_date,
+            payment.source_id ? (sourceMap[payment.source_id] || null) : null,
+            payment.notes,
+            payment.created_at || new Date().toISOString(),
+          ]
+        );
+      },
+      (count) => {
+        updateProgress(count, 'Importing credit card payments...');
+      }
+    );
+
+    // 9. Loan payments
     await processBatch(
       loan_payments || [],
       async (payment) => {
@@ -1079,7 +1433,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
 
     // 8b. Category Budgets
     await processBatch(
-      category_budgets || [],
+      restoredCategoryBudgets || [],
       async (item) => {
         await executeSql(
           `INSERT INTO category_budgets

@@ -10,28 +10,33 @@ import TransactionsScreen from '../src/screens/TransactionsScreen';
 import BudgetsScreen from '../src/screens/BudgetsScreen';
 import CategoriesScreen from '../src/screens/CategoriesScreen';
 import SourcesScreen from '../src/screens/SourcesScreen';
+import CreditCardsScreen from '../src/screens/CreditCardsScreen';
 import LoanDashboardScreen from '../src/screens/LoanDashboardScreen';
+import ReportsScreen from '../src/screens/ReportsScreen';
+import CreditCardStatementsScreen from '../src/screens/CreditCardStatementsScreen';
 import { Colors } from '../src/components/Theme';
 import { Switch } from 'react-native';
 import { useBalanceVisibility } from '../src/context/BalanceVisibilityContext';
 
 const Drawer = createDrawerNavigator();
 
-function CustomDrawerContent(props) {
+const menuItems = [
+  { name: 'Dashboard', label: 'Dashboard', icon: 'view-dashboard-outline', activeIcon: 'view-dashboard' },
+  { name: 'Transactions', label: 'Transactions', icon: 'format-list-bulleted', activeIcon: 'format-list-bulleted' },
+  { name: 'Bills', label: 'Bills', icon: 'file-document-outline', activeIcon: 'file-document' },
+  { name: 'Loans', label: 'Loans', icon: 'bank-outline', activeIcon: 'bank' },
+  { name: 'CreditCards', label: 'Credit Cards', icon: 'credit-card-outline', activeIcon: 'credit-card' },
+  { name: 'CreditCardStatements', label: 'Statements', icon: 'file-document-outline', activeIcon: 'file-document' },
+  { name: 'Sources', label: 'Sources', icon: 'wallet-outline', activeIcon: 'wallet' },
+  { name: 'Reports', label: 'Reports', icon: 'chart-bar', activeIcon: 'chart-bar' },
+  { name: 'Categories', label: 'Categories', icon: 'tag-multiple-outline', activeIcon: 'tag-multiple' },
+];
+
+const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
   const insets = useSafeAreaInsets();
   const { state, navigation } = props;
   const activeRouteName = state.routeNames[state.index];
   const { balanceVisible, toggleBalance } = useBalanceVisibility();
-
-  const menuItems = [
-    { name: 'Dashboard', label: 'Dashboard', icon: 'view-dashboard-outline', activeIcon: 'view-dashboard' },
-    { name: 'Budgets', label: 'Budgets', icon: 'wallet-outline', activeIcon: 'wallet' },
-    { name: 'Sources', label: 'Sources', icon: 'credit-card-outline', activeIcon: 'credit-card' },
-    { name: 'Categories', label: 'Categories', icon: 'tag-multiple-outline', activeIcon: 'tag-multiple' },
-    { name: 'Bills', label: 'Bills', icon: 'file-document-outline', activeIcon: 'file-document' },
-    { name: 'Transactions', label: 'Transactions', icon: 'format-list-bulleted', activeIcon: 'format-list-bulleted' },
-    { name: 'Loans', label: 'Loans', icon: 'bank-outline', activeIcon: 'bank' },
-  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
@@ -41,7 +46,7 @@ function CustomDrawerContent(props) {
         </View>
         <View style={styles.headerTextContainer}>
           <Text style={styles.appName}>SpendoraX</Text>
-          <Text style={styles.appVersion}>v3.8.0</Text>
+          <Text style={styles.appVersion}>v3.9.2</Text>
         </View>
       </View>
 
@@ -107,7 +112,7 @@ function CustomDrawerContent(props) {
       </View>
     </View>
   );
-}
+});
 
 export default function DrawerNavigator() {
   return (
@@ -120,7 +125,9 @@ export default function DrawerNavigator() {
           borderBottomRightRadius: 20,
           overflow: 'hidden',
         },
-        drawerType: 'slide',
+        drawerType: 'front',
+        animationDuration: 180,
+        freezeOnBlur: true,
         overlayColor: 'rgba(0,0,0,0.5)',
         headerTintColor: '#333',
         headerTitleStyle: {
@@ -162,9 +169,12 @@ export default function DrawerNavigator() {
       />
       <Drawer.Screen name="Transactions" component={TransactionsScreen} />
       <Drawer.Screen name="Loans" component={LoanDashboardScreen} />
+      <Drawer.Screen name="CreditCards" component={CreditCardsScreen} options={{ title: 'Credit Cards' }} />
+      <Drawer.Screen name="CreditCardStatements" component={CreditCardStatementsScreen} options={{ title: 'Credit Card Statements' }} />
       <Drawer.Screen name="Budgets" component={BudgetsScreen} />
-      <Drawer.Screen name="Categories" component={CategoriesScreen} />
       <Drawer.Screen name="Sources" component={SourcesScreen} />
+      <Drawer.Screen name="Reports" component={ReportsScreen} />
+      <Drawer.Screen name="Categories" component={CategoriesScreen} />
     </Drawer.Navigator>
   );
 }

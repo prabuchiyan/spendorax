@@ -5,7 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Card from '../components/Card';
-import { createLoan, getLoanById, updateLoan } from '../services/loans';
+import { createLoan, getLoanById, updateLoan, deleteLoan } from '../services/loans';
 import { getSources } from '../services/sources';
 import { getCategories } from '../services/categories';
 
@@ -147,16 +147,19 @@ export default function LoanFormScreen({ navigation, route }) {
         }
     }
 
-    // Soft-delete not supported for loans; we mark as Closed to mimic deletion safely
     async function confirmDelete() {
+        if (!editId) return;
         try {
-            if (editId) {
-                await updateLoan(editId, { status: 'Closed', outstanding_amount: 0, remaining_months: 0 });
-            }
+            await deleteLoan(editId);
             setShowConfirmDelete(false);
-            navigation.goBack();
+            // Go directly back to the All Loans screen.
+            navigation.popToTop();
         } catch (e) {
-            console.error('Delete failed', e);
+            console.error('Delete loan failed:', e);
+            setShowConfirmDelete(false);
+            setErrors({
+                form: e?.message || 'Failed to delete loan'
+            });
         }
     }
 
@@ -455,7 +458,15 @@ export default function LoanFormScreen({ navigation, route }) {
                 <PaperButton mode="contained" onPress={submit} style={{ flex: 1 }}>{editId ? 'Update Loan' : 'Save Loan'}</PaperButton>
             </View>
 
-            <ConfirmDialog visible={showConfirmDelete} title="Delete Loan?" message="This will mark the loan as Closed. This action cannot be undone." confirmLabel="Close Loan" cancelLabel="Cancel" onConfirm={confirmDelete} onCancel={() => setShowConfirmDelete(false)} />
+            <ConfirmDialog
+                visible={showConfirmDelete}
+                title="Delete Loan?"
+                message="This will permanently delete the loan, all loan payments, and all transactions linked to this loan. This action cannot be undone."
+                confirmLabel="Delete Loan"
+                cancelLabel="Cancel"
+                onConfirm={confirmDelete}
+                onCancel={() => setShowConfirmDelete(false)}
+            />
 
             {/* Type picker modal (simple inline) */}
             {showTypePicker ? (

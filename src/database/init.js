@@ -96,6 +96,66 @@ export async function initDB() {
       deleted_at TEXT
     );`);
 
+    // Credit Cards
+    await executeSql(`CREATE TABLE IF NOT EXISTS credit_cards (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      bank TEXT,
+      last4 TEXT,
+      network TEXT,
+      credit_limit REAL DEFAULT 0,
+      outstanding REAL DEFAULT 0,
+      available_limit REAL DEFAULT 0,
+      statement_day INTEGER,
+      due_after_days INTEGER,
+      minimum_due_percent REAL DEFAULT 0,
+      currency TEXT,
+      color TEXT,
+      notes TEXT,
+      status TEXT DEFAULT 'active',
+      source_id INTEGER,
+      payment_bill_id INTEGER,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY(source_id) REFERENCES sources(id),
+      FOREIGN KEY(payment_bill_id) REFERENCES bills(id)
+    );`);
+
+    await executeSql(`CREATE TABLE IF NOT EXISTS credit_card_statements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    card_id INTEGER NOT NULL,
+    bill_id INTEGER,
+    statement_start TEXT,
+    statement_end TEXT,
+    statement_date TEXT,
+    due_date TEXT,
+    opening_balance REAL DEFAULT 0,
+    purchases REAL DEFAULT 0,
+    refunds REAL DEFAULT 0,
+    fees REAL DEFAULT 0,
+    interest REAL DEFAULT 0,
+    payments REAL DEFAULT 0,
+    closing_balance REAL DEFAULT 0,
+    minimum_due REAL DEFAULT 0,
+    is_generated INTEGER DEFAULT 1,
+    generated_at TEXT,
+    status TEXT,
+    created_at TEXT DEFAULT(datetime('now'))
+);`);
+
+    await executeSql(`CREATE TABLE IF NOT EXISTS credit_card_payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    card_id INTEGER NOT NULL,
+    statement_id INTEGER,
+    bank_transaction_id INTEGER,
+    card_transaction_id INTEGER,
+    amount REAL NOT NULL,
+    payment_date TEXT NOT NULL,
+    source_id INTEGER,
+    notes TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+);`);
+
     // Migrate legacy is_paid rows to status column
     try {
       await executeSql(
@@ -161,11 +221,21 @@ export async function initDB() {
       const { backfillBillOccurrences } = require('../services/bills');
       const { executeSql: sql } = require('./db');
       const templatesRes = await sql(
-        `SELECT id FROM bills WHERE is_recurring = 1 AND parent_bill_id IS NULL AND deleted_at IS NULL`
+        `SELECT *
+         FROM bills
+         WHERE is_recurring = 1
+          AND parent_bill_id IS NULL
+          AND deleted_at IS NULL`
       );
       for (let i = 0; i < templatesRes.rows.length; i++) {
-        const { id } = templatesRes.rows.item(i);
-        try { await backfillBillOccurrences(id); } catch (e) { /* skip bad row */ }
+        const bill = templatesRes.rows.item(i);
+        if (
+          bill.notes &&
+          bill.notes.startsWith('Recurring payment template for')
+        ) {
+          continue;
+        }
+        await backfillBillOccurrences(bill.id);
       }
     } catch (e) {
       console.warn('Recurring bill backfill on init failed', e);
@@ -286,13 +356,18 @@ export async function clearAllTables() {
     'category_budgets',
     'categories',
     'sources',
+    'credit_cards',
+    'credit_card_statements',
+    'credit_card_payments',
     'loan_payments',
     'loans',
     'notifications'
   ];
+  console.log('Prabu tables', tables);
 
   try {
     for (const table of tables) {
+      console.log('Prabu table', table);
       await executeSql(`DELETE FROM ${table}`);
 
       if (Platform.OS !== 'web') {

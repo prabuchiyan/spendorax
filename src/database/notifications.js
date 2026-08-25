@@ -52,6 +52,22 @@ export async function createNotificationsTable() {
             minute: 0,
             payload: JSON.stringify({ screen: 'Loans', type: 'LOAN_EMI' }),
         },
+        {
+            type: 'CREDIT_CARD_STATEMENT',
+            title: 'Credit Card Statement Reminder',
+            body: 'Your credit card statement is ready. Tap to review.',
+            hour: 9,
+            minute: 0,
+            payload: JSON.stringify({ screen: 'CreditCards', type: 'CREDIT_CARD_STATEMENT' }),
+        },
+        {
+            type: 'CREDIT_CARD_DUE',
+            title: 'Credit Card Due Reminder',
+            body: 'Your credit card payment is due soon. Tap to review.',
+            hour: 9,
+            minute: 0,
+            payload: JSON.stringify({ screen: 'CreditCards', type: 'CREDIT_CARD_DUE' }),
+        },
     ];
 
     for (const n of defaults) {

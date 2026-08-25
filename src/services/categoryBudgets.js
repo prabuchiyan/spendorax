@@ -95,9 +95,105 @@ export async function getCategoryBudgetSummary(month, year) {
     return summary;
 }
 
+export async function copyCategoryBudgets({
+    fromMonth,
+    fromYear,
+    toMonth,
+    toYear,
+    overwrite = false,
+}) {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    /*
+     * Copying budgets is ONLY allowed into the current month.
+     *
+     * This prevents:
+     * - Copying into future months
+     * - Copying into old months
+     * - Accidental creation of future category budgets
+     */
+    if (
+        Number(toMonth) !== currentMonth ||
+        Number(toYear) !== currentYear
+    ) {
+        throw new Error(
+            'Category budgets can only be copied into the current month.'
+        );
+    }
+
+    /*
+     * Source must be the immediately previous calendar month.
+     */
+    const previousDate = new Date(
+        currentYear,
+        currentMonth - 2,
+        1
+    );
+    const expectedFromMonth =
+        previousDate.getMonth() + 1;
+    const expectedFromYear =
+        previousDate.getFullYear();
+    if (
+        Number(fromMonth) !== expectedFromMonth ||
+        Number(fromYear) !== expectedFromYear
+    ) {
+        throw new Error(
+            'Category budgets can only be copied from the previous month.'
+        );
+    }
+    const sourceBudgets = await getCategoryBudgets(
+        fromMonth,
+        fromYear
+    );
+    const targetBudgets = await getCategoryBudgets(
+        toMonth,
+        toYear
+    );
+    const targetMap = {};
+    targetBudgets.forEach((budget) => {
+        targetMap[String(budget.category_id)] = budget;
+    });
+    const copied = [];
+    for (const budget of sourceBudgets) {
+        const categoryId = Number(
+            budget.category_id
+        );
+        const amount = Number(
+            budget.amount || 0
+        );
+        if (!categoryId || amount <= 0) {
+            continue;
+        }
+        const hasTarget =
+            !!targetMap[String(categoryId)];
+
+        /*
+         * Never overwrite an existing current-month
+         * category budget unless explicitly requested.
+         */
+        if (hasTarget && !overwrite) {
+            continue;
+        }
+        await saveCategoryBudget(
+            categoryId,
+            amount,
+            toMonth,
+            toYear
+        );
+        copied.push({
+            categoryId,
+            amount,
+        });
+    }
+    return copied;
+}
+
 export default {
     getCategoryBudgets,
     saveCategoryBudget,
     deleteCategoryBudget,
-    getCategoryBudgetSummary
+    getCategoryBudgetSummary,
+    copyCategoryBudgets,
 };

@@ -256,6 +256,9 @@ export function handleNotificationTap(data, navigationRef) {
             case 'Loans':
                 navigationRef.navigate('Drawer', { screen: 'Loans' });
                 break;
+            case 'CreditCards':
+                navigationRef.navigate('Drawer', { screen: 'CreditCards' });
+                break;
             default:
                 break;
         }
