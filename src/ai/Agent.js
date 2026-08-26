@@ -1,4 +1,4 @@
-import LocalLLMWeb from './LocalLLMWeb';
+import createLocalLLM from './createLocalLLM';
 import ToolRegistry from './ToolRegistry';
 import AgentRouter from './AgentRouter';
 
@@ -6,6 +6,8 @@ import AgentRouter from './AgentRouter';
 import * as transactionTools from './tools/transactionTools';
 import * as budgetTools from './tools/budgetTools';
 import * as analyticsTools from './tools/analyticsTools';
+import * as billTools from './tools/billTools';
+import * as loanTools from './tools/loanTools';
 
 /**
  * Main AI Agent facade.
@@ -13,10 +15,11 @@ import * as analyticsTools from './tools/analyticsTools';
  */
 export default class Agent {
   constructor() {
-    this.llm = new LocalLLMWeb();
+    this.llm = null;
     this.toolRegistry = new ToolRegistry();
     this.router = new AgentRouter(this.toolRegistry);
     this.conversationHistory = [];
+    this.runtimeInfo = null;
     
     this._registerTools();
   }
@@ -25,6 +28,8 @@ export default class Agent {
     this.toolRegistry.register(transactionTools.getCategorySpendingTool);
     this.toolRegistry.register(budgetTools.getBudgetStatusTool);
     this.toolRegistry.register(analyticsTools.getTopExpensesTool);
+    this.toolRegistry.register(billTools.getUpcomingBillsTool);
+    this.toolRegistry.register(loanTools.getLoanSummaryTool);
   }
 
   getSystemPrompt() {
@@ -59,7 +64,12 @@ Do NOT perform financial calculations yourself. Let the tools do that.`;
   }
 
   async initialize(initProgressCallback = null) {
-    await this.llm.initialize(initProgressCallback);
+    this.llm = await createLocalLLM(initProgressCallback);
+    this.runtimeInfo = this.llm.getRuntimeInfo?.() || null;
+  }
+
+  getRuntimeInfo() {
+    return this.runtimeInfo;
   }
 
   /**

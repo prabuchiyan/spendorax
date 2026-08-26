@@ -5,6 +5,17 @@ module.exports = async function(env, argv) {
   const config = await createExpoWebpackConfigAsync(env, argv);
   config.resolve = config.resolve || {};
   config.resolve.alias = config.resolve.alias || {};
+  config.experiments = {
+    ...(config.experiments || {}),
+    asyncWebAssembly: true,
+  };
+
+  config.devServer = config.devServer || {};
+  config.devServer.headers = {
+    ...(config.devServer.headers || {}),
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Embedder-Policy': 'credentialless',
+  };
 
   // Alias the RN asset registry to react-native-web's AssetRegistry
   try {

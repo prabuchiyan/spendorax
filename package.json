@@ -2,6 +2,10 @@
   "name": "money-manager",
   "version": "0.1.0",
   "private": true,
+  "browser": {
+    "perf_hooks": false,
+    "url": false
+  },
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
@@ -14,7 +18,7 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",
-    "@mlc-ai/web-llm": "^0.2.84",
+    "@mlc-ai/web-llm": "0.2.82",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native-community/datetimepicker": "8.0.1",
     "@react-navigation/drawer": "^6.7.2",
