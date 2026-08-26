@@ -1,9 +1,20 @@
 import { executeSql } from '../database/db';
 import events from './events';
-import {
-  getBillsForTransaction,
-  removeTransactionFromBill,
-} from './bills';
+import { removeTransactionFromBill } from './bills';
+
+async function refreshCreditCardBySource(sourceId) {
+  if (!sourceId) return;
+  try {
+    const { getCreditCardBySourceId, refreshCreditCardTotals, syncCreditCardBillAmount } = require('./creditCards');
+    const card = await getCreditCardBySourceId(sourceId);
+    if (card) {
+      await refreshCreditCardTotals(card.id);
+      await syncCreditCardBillAmount(card.id);
+    }
+  } catch (e) {
+    console.warn('Credit card refresh failed', e);
+  }
+}
 
 export async function createTransaction(tx) {
   const {
@@ -51,6 +62,8 @@ export async function createTransaction(tx) {
   try {
     events.emit('transactionsChanged', { action: 'create', id: res.insertId });
   } catch (e) { }
+
+  await refreshCreditCardBySource(source_id || null);
   return res.insertId;
 }
 
@@ -204,6 +217,13 @@ export async function getTransactions(
 }
 
 export async function deleteTransaction(id) {
+  // Query existing transaction before delete so we can refresh credit card totals.
+  const txRes = await executeSql(
+    `SELECT source_id FROM transactions WHERE id = ? LIMIT 1`,
+    [id]
+  );
+  const existingTx = txRes.rows.length > 0 ? txRes.rows.item(0) : null;
+
   // Find every bill linked to this transaction
   const result = await executeSql(
     `SELECT bill_id
@@ -236,9 +256,17 @@ export async function deleteTransaction(id) {
     });
     events.emit('billsChanged');
   } catch (e) { }
+
+  await refreshCreditCardBySource(existingTx?.source_id || null);
 }
 
 export async function updateTransaction(id, fields) {
+  const txRes = await executeSql(
+    `SELECT source_id FROM transactions WHERE id = ? LIMIT 1`,
+    [id]
+  );
+  const existingTx = txRes.rows.length > 0 ? txRes.rows.item(0) : null;
+
   const sets = [];
   const vals = [];
   for (const k of Object.keys(fields)) {
@@ -250,6 +278,11 @@ export async function updateTransaction(id, fields) {
   const sql = `UPDATE transactions SET ${sets.join(', ')} WHERE id = ?`;
   await executeSql(sql, vals);
   try { events.emit('transactionsChanged', { action: 'update', id, fields }); } catch (e) { }
+
+  await refreshCreditCardBySource(existingTx?.source_id || null);
+  if (fields.source_id !== undefined && fields.source_id !== existingTx?.source_id) {
+    await refreshCreditCardBySource(fields.source_id);
+  }
 }
 
 export async function createTransfer({
@@ -260,8 +293,9 @@ export async function createTransfer({
   date
 }) {
   const groupId = Date.now().toString();
-  // Debit
-  await createTransaction({
+
+  // Debit Transaction
+  const debitTransactionId = await createTransaction({
     type: 'expense',
     amount,
     category_id: null,
@@ -273,8 +307,8 @@ export async function createTransfer({
     direction: 'debit'
   });
 
-  // Credit
-  await createTransaction({
+  // Credit Transaction
+  const creditTransactionId = await createTransaction({
     type: 'income',
     amount,
     category_id: null,
@@ -285,6 +319,12 @@ export async function createTransfer({
     transfer_group_id: groupId,
     direction: 'credit'
   });
+
+  return {
+    groupId,
+    debitTransactionId,
+    creditTransactionId,
+  };
 }
 
 export async function getTransactionNoteSuggestions() {

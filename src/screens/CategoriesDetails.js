@@ -2,7 +2,7 @@ import React, { useEffect, useState, useLayoutEffect, useCallback, useMemo } fro
 import {
   View,
   Text,
-  FlatList,
+  SectionList,
   StyleSheet,
   TouchableOpacity,
   Dimensions,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { getTransactions, deleteTransaction } from '../services/transactions';
 import { getCategories } from '../services/categories';
+import { getSources } from '../services/sources';
 import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
@@ -59,6 +60,7 @@ export default function CategoriesDetails({ route, navigation }) {
 
   const [transactions, setTransactions] = useState([]);
   const [categoriesMap, setCategoriesMap] = useState({});
+  const [sourcesMap, setSourcesMap] = useState({});
   const [loading, setLoading] = useState(true);
 
   const initialPeriod = useMemo(() => {
@@ -151,17 +153,29 @@ export default function CategoriesDetails({ route, navigation }) {
     try {
       setLoading(true);
 
-      const [txData, catData] = await Promise.all([
-        getTransactions(1000000, null, null, categoryId, null),
-        getCategories(true)
-      ]);
+      const [txData, catData, sourceData] =
+        await Promise.all([
+          getTransactions(
+            1000000,
+            null,
+            null,
+            categoryId,
+            null
+          ),
+          getCategories(true),
+          getSources(true)
+        ]);
 
       const cmap = {};
       catData.forEach(c => { cmap[c.id] = c; });
 
+      const smap = {};
+      sourceData.forEach(s => { smap[s.id] = s; });
+
       const filtered = txData.filter(tx => tx.category_id === Number(categoryId));
 
       setCategoriesMap(cmap);
+      setSourcesMap(smap);
       setTransactions(filtered);
 
       groupData(filtered);
@@ -221,44 +235,516 @@ export default function CategoriesDetails({ route, navigation }) {
     return transactions.filter(tx => getPeriodKey(tx.date) === selectedBar.label);
   }, [transactions, selectedBar, period]);
 
-  const renderItem = ({ item }) => {
-    const isExpense = item.type === 'expense';
-    const category = categoriesMap[item.category_id] || {};
+  const groupedTransactions = useMemo(() => {
+    const groups = {};
+
+    const getDateKey = (dateValue) => {
+      const date = new Date(dateValue);
+
+      return `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+      ).padStart(2, '0')}-${String(
+        date.getDate()
+      ).padStart(2, '0')}`;
+    };
+
+    filteredTransactions.forEach(item => {
+      const key = getDateKey(item.date);
+
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+
+      groups[key].push(item);
+    });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const yesterday = new Date(today);
+    yesterday.setDate(
+      yesterday.getDate() - 1
+    );
+
+    return Object.keys(groups)
+      .sort((a, b) => b.localeCompare(a))
+      .map(dateKey => {
+        const [year, month, day] =
+          dateKey.split('-').map(Number);
+
+        const date = new Date(
+          year,
+          month - 1,
+          day
+        );
+
+        date.setHours(0, 0, 0, 0);
+
+        let title;
+
+        if (
+          date.getTime() ===
+          today.getTime()
+        ) {
+          title = 'Today';
+        } else if (
+          date.getTime() ===
+          yesterday.getTime()
+        ) {
+          title = 'Yesterday';
+        } else {
+          title = date.toLocaleDateString(
+            'en-IN',
+            {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            }
+          );
+        }
+
+        const dailyTotal =
+          groups[dateKey].reduce(
+            (sum, item) =>
+              sum + Number(item.amount || 0),
+            0
+          );
+
+        return {
+          title,
+          dateKey,
+          data: groups[dateKey],
+          dailyTotal,
+        };
+      });
+  }, [filteredTransactions]);
+
+  const renderItem = ({
+    item,
+    index,
+    section,
+  }) => {
+    const category =
+      categoriesMap[item.category_id] || {};
+
+    const source =
+      sourcesMap[item.source_id] || {};
+
+    const isExpense =
+      String(item.type || '').toLowerCase() ===
+      'expense';
+
+    const isTransfer =
+      String(item.type || '').toLowerCase() ===
+      'transfer' ||
+      item.transfer_group_id ||
+      item.is_transfer;
+
+    const type =
+      isTransfer
+        ? 'transfer'
+        : isExpense
+          ? 'expense'
+          : 'income';
+
+    const amountColor =
+      type === 'income'
+        ? '#20A56A'
+        : type === 'transfer'
+          ? '#718096'
+          : '#D14343';
+
+    const amountPrefix =
+      type === 'income'
+        ? '+'
+        : type === 'expense'
+          ? '-'
+          : '';
+
+    const accentColor =
+      type === 'income'
+        ? '#20A56A'
+        : type === 'transfer'
+          ? '#718096'
+          : '#D14343';
+
+    const iconColor =
+      category.color ||
+      activeCategoryColor ||
+      accentColor;
+
+    const transactionDate =
+      new Date(item.date);
+
+    const dateText =
+      transactionDate.toLocaleDateString(
+        'en-IN',
+        {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        }
+      );
+
+    const timeText =
+      transactionDate.toLocaleTimeString(
+        'en-IN',
+        {
+          hour: '2-digit',
+          minute: '2-digit',
+        }
+      );
+
+    const isLast =
+      index === section.data.length - 1;
 
     return (
       <TouchableOpacity
-        activeOpacity={1}
-        onPress={() => navigation.navigate('TransactionAdd', { isEdit: true, transaction: item })}
+        activeOpacity={0.88}
+        onPress={() =>
+          navigation.navigate(
+            'TransactionAdd',
+            {
+              isEdit: true,
+              transaction: item,
+            }
+          )
+        }
+        style={{
+          marginBottom:
+            isLast ? 12 : 8,
+        }}
       >
-        <Card style={styles.txCard}>
-          <View style={styles.txContent}>
+        <View
+          style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: 17,
+            overflow: 'hidden',
+
+            shadowColor: '#000',
+            shadowOffset: {
+              width: 0,
+              height: 3,
+            },
+            shadowOpacity: 0.06,
+            shadowRadius: 8,
+            elevation: 2,
+          }}
+        >
+
+          {/* LEFT ACCENT */}
+
+          <View
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 4,
+              backgroundColor:
+                accentColor,
+            }}
+          />
+
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+
+              minHeight: 82,
+
+              paddingLeft: 15,
+              paddingRight: 12,
+              paddingVertical: 12,
+            }}
+          >
+
+            {/* ============================================ */}
+            {/* CATEGORY ICON */}
+            {/* ============================================ */}
+
             <View
-              style={[
-                styles.iconContainer,
-                { backgroundColor: rgbaFromColor(category.color || '#999999', 0.10) }
-              ]}
+              style={{
+                width: 50,
+                height: 50,
+                borderRadius: 16,
+
+                backgroundColor:
+                  iconColor,
+
+                justifyContent: 'center',
+                alignItems: 'center',
+
+                marginRight: 12,
+
+                shadowColor:
+                  iconColor,
+
+                shadowOffset: {
+                  width: 0,
+                  height: 3,
+                },
+
+                shadowOpacity: 0.22,
+                shadowRadius: 6,
+                elevation: 3,
+              }}
             >
               <MaterialCommunityIcons
-                name={category.icon || 'tag'}
-                size={22}
-                color={category.color || Colors.muted}
+                name={
+                  category.icon ||
+                  'tag'
+                }
+                size={23}
+                color="#FFFFFF"
               />
             </View>
 
-            <View style={styles.txTextBlock}>
-              <Text style={styles.title} numberOfLines={1}>
-                {item.notes || category.name || 'Untitled'}
+            {/* ============================================ */}
+            {/* DETAILS */}
+            {/* ============================================ */}
+
+            <View
+              style={{
+                flex: 1,
+                minWidth: 0,
+                justifyContent: 'center',
+                paddingRight: 8,
+              }}
+            >
+
+              {/* NOTES */}
+
+              <Text
+                numberOfLines={2}
+                ellipsizeMode="tail"
+                style={{
+                  fontSize: 15,
+                  lineHeight: 19,
+                  fontWeight: '800',
+                  color: Colors.text,
+                  letterSpacing: -0.15,
+                }}
+              >
+                {item.notes ||
+                  category.name ||
+                  'Untitled'}
               </Text>
-              <Text style={styles.date}>{formatDate(item.date)}</Text>
+
+              {/* CATEGORY + SOURCE */}
+
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginTop: 6,
+                  minWidth: 0,
+                }}
+              >
+                {/* CATEGORY */}
+
+                <View
+                  style={{
+                    flexShrink: 1,
+                    maxWidth: '54%',
+
+                    backgroundColor:
+                      iconColor + '12',
+
+                    borderRadius: 6,
+
+                    paddingHorizontal: 7,
+                    paddingVertical: 4,
+
+                    borderWidth: 1,
+                    borderColor:
+                      iconColor + '18',
+                  }}
+                >
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    style={{
+                      color: iconColor,
+                      fontSize: 11,
+                      lineHeight: 13,
+                      fontWeight: '800',
+                    }}
+                  >
+                    {category.name ||
+                      categoryName ||
+                      'Uncategorized'}
+                  </Text>
+                </View>
+
+                {/* DOT */}
+
+                <View
+                  style={{
+                    width: 3,
+                    height: 3,
+                    borderRadius: 2,
+                    backgroundColor:
+                      '#C7CBD1',
+                    marginHorizontal: 6,
+                    flexShrink: 0,
+                  }}
+                />
+
+                {/* SOURCE */}
+
+                <Text
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    color: '#9299A3',
+                    fontSize: 11,
+                    lineHeight: 14,
+                    fontWeight: '600',
+                  }}
+                >
+                  {source.name || 'No source'}
+                </Text>
+              </View>
             </View>
 
-            <View style={styles.rightBlock}>
-              <Text style={[styles.amount, { color: isExpense ? '#D14343' : '#1E8E5A' }]}>
-                ₹{Number(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            {/* ============================================ */}
+            {/* RIGHT COLUMN */}
+            {/* ============================================ */}
+
+            <View
+              style={{
+                width: 96,
+                flexShrink: 0,
+                alignItems: 'flex-end',
+                justifyContent: 'center',
+              }}
+            >
+
+              {/* AMOUNT */}
+
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.72}
+                style={{
+                  width: '100%',
+                  textAlign: 'right',
+                  fontSize: 15,
+                  fontWeight: '900',
+                  color: amountColor,
+                  letterSpacing: -0.35,
+                }}
+              >
+                {amountPrefix}₹
+                {Number(
+                  item.amount || 0
+                ).toLocaleString(
+                  'en-IN',
+                  {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  }
+                )}
               </Text>
+
+              {/* DATE */}
+
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginTop: 5,
+                }}
+              >
+                <MaterialCommunityIcons
+                  name="calendar-month-outline"
+                  size={11}
+                  color="#A3A9B2"
+                />
+
+                <Text
+                  style={{
+                    color: '#9299A3',
+                    fontSize: 10,
+                    fontWeight: '700',
+                    marginLeft: 3,
+                  }}
+                >
+                  {dateText}
+                </Text>
+              </View>
+
+              {/* TIME / TRANSFER */}
+
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginTop: 3,
+                  minHeight: 14,
+                }}
+              >
+                {type === 'transfer' ? (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: '#F1F3F5',
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 5,
+                    }}
+                  >
+                    <MaterialCommunityIcons
+                      name="swap-horizontal"
+                      size={10}
+                      color="#718096"
+                    />
+
+                    <Text
+                      style={{
+                        fontSize: 7.5,
+                        fontWeight: '900',
+                        color: '#718096',
+                        marginLeft: 3,
+                        letterSpacing: 0.2,
+                      }}
+                    >
+                      TRANSFER
+                    </Text>
+                  </View>
+                ) : (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <MaterialCommunityIcons
+                      name="clock-outline"
+                      size={10}
+                      color="#A3A9B2"
+                    />
+
+                    <Text
+                      style={{
+                        color: '#A3A9B2',
+                        fontSize: 9,
+                        fontWeight: '600',
+                        marginLeft: 3,
+                      }}
+                    >
+                      {timeText}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
-        </Card>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -342,14 +828,90 @@ export default function CategoriesDetails({ route, navigation }) {
           <Text style={styles.loadingText}>Loading...</Text>
         </View>
       ) : (
-        <FlatList
-          data={filteredTransactions}
-          keyExtractor={(item) => item.id.toString()}
+        <SectionList
+          sections={groupedTransactions}
+          keyExtractor={(item) =>
+            item.id.toString()
+          }
           renderItem={renderItem}
+
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={ListEmpty}
+
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
+          stickySectionHeadersEnabled={false}
+
+          contentContainerStyle={
+            styles.listContent
+          }
+
+          renderSectionHeader={({
+            section,
+          }) => (
+            <View
+              style={{
+                paddingTop: 9,
+                paddingBottom: 7,
+                backgroundColor:
+                  Colors.background,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent:
+                    'space-between',
+                }}
+              >
+                <View>
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '900',
+                      color: Colors.text,
+                      textTransform:
+                        'uppercase',
+                      letterSpacing: 0.4,
+                    }}
+                  >
+                    {section.title}
+                  </Text>
+
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      color: Colors.muted,
+                      marginTop: 2,
+                    }}
+                  >
+                    {section.data.length}{' '}
+                    {section.data.length === 1
+                      ? 'transaction'
+                      : 'transactions'}
+                  </Text>
+                </View>
+
+                <Text
+                  style={{
+                    color:
+                      activeCategoryColor,
+                    fontSize: 12,
+                    fontWeight: '900',
+                  }}
+                >
+                  ₹
+                  {section.dailyTotal.toLocaleString(
+                    'en-IN',
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }
+                  )}
+                </Text>
+              </View>
+            </View>
+          )}
         />
       )}
 

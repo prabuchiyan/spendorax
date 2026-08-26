@@ -1,191 +1,399 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+} from 'react-native';
+
 import { getSources } from '../services/sources';
 import { getTransactions } from '../services/transactions';
+
 import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
+
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
+import { usePageLoader } from '../context/PageLoaderContext';
 
 export default function SourcesDashboard({ navigation }) {
   const [sources, setSources] = useState([]);
-  const [totalBalance, setTotalBalance] = useState(0);
+  const [tab, setTab] = useState('banks');
+  const [loading, setLoading] = useState(true);
+  const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
+
   const { balanceVisible } = useBalanceVisibility();
 
+  // LOAD
   async function load() {
-    const availableSources = await getSources(true);
-    const transactions = await getTransactions(1000000, 'Yes');
+    setLoading(true);
+    showPageLoader();
 
-    const balanceMap = transactions.reduce((acc, txn) => {
-      const amt = Number(txn.amount || 0);
-      const id = txn.source_id;
-      if (!id) return acc;
-      if (!acc[id]) acc[id] = 0;
-      if (txn.type === 'income') {
-        acc[id] += amt;
-      } else if (txn.type === 'expense') {
-        acc[id] -= amt;
-      }
-      return acc;
-    }, {});
+    try {
+      const availableSources = await getSources(true);
 
-    const updatedSources = availableSources.map(s => {
-      const initial = Number(s.initial_balance || 0);
-      const txnBalance = balanceMap[s.id] || 0;
-      return { ...s, balance: initial + txnBalance };
-    });
+      const transactions = await getTransactions(
+        1000000,
+        'Yes'
+      );
 
-    setSources(updatedSources);
-    setTotalBalance(updatedSources.reduce((sum, s) => sum + s.balance, 0));
+      // Calculate transaction balance per source
+      const balanceMap = transactions.reduce(
+        (acc, txn) => {
+          const amount = Number(txn.amount || 0);
+          const id = txn.source_id;
+
+          if (!id) {
+            return acc;
+          }
+
+          if (!acc[id]) {
+            acc[id] = 0;
+          }
+
+          if (txn.type === 'income') {
+            acc[id] += amount;
+          } else if (txn.type === 'expense') {
+            acc[id] -= amount;
+          }
+
+          return acc;
+        },
+        {}
+      );
+
+      // Add initial balance
+      const updatedSources = availableSources.map(
+        source => {
+          const initial =
+            Number(source.initial_balance || 0);
+
+          const txnBalance =
+            balanceMap[source.id] || 0;
+
+          return {
+            ...source,
+            balance:
+              initial + txnBalance,
+          };
+        }
+      );
+
+      setSources(updatedSources);
+    } catch (error) {
+      console.error(
+        'SourcesDashboard load error:',
+        error
+      );
+
+      setSources([]);
+    } finally {
+      setLoading(false);
+      hidePageLoader();
+    }
   }
 
+  // LOAD ON FOCUS
   useEffect(() => {
-    const unsub = navigation.addListener('focus', () => { load(); });
+    load();
+
+    const unsub =
+      navigation.addListener(
+        'focus',
+        () => {
+          load();
+        }
+      );
+
     return unsub;
   }, [navigation]);
 
+  // FILTER SOURCES BY TAB
+  const filteredSources = useMemo(() => {
+    if (tab === 'creditCards') {
+      return sources.filter(
+        source =>
+          String(source.type || '')
+            .toLowerCase() === 'credit_card'
+      );
+    }
+
+    return sources.filter(
+      source =>
+        String(source.type || '')
+          .toLowerCase() !== 'credit_card'
+    );
+  }, [sources, tab]);
+
+  // TAB TOTAL
+  const tabTotal = useMemo(() => {
+    return filteredSources.reduce(
+      (sum, source) =>
+        sum + Number(source.balance || 0),
+      0
+    );
+  }, [filteredSources]);
+
+  // UI
+  if (loading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={styles.loaderText}>Loading source balances...</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <ScrollView contentContainerStyle={styles.container}>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: Colors.background,
+      }}
+    >
 
-        {/* Total Balance / Net Worth */}
-        <View style={styles.heroSection}>
-          <Text style={styles.heroLabel}>Net Worth</Text>
-          <Text style={styles.heroAmount}>
-            {balanceVisible
-              ? `₹ ${totalBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
-              : '••••••'}
+      {/* TAB NAVIGATION */}
+      <View
+        style={styles.tabContainer}
+      >
+        {/* BANKS & CASH */}
+
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() =>
+            setTab('banks')
+          }
+          style={[
+            styles.tab,
+            {
+              borderBottomWidth:
+                tab === 'banks'
+                  ? 3
+                  : 0,
+
+              borderBottomColor:
+                Colors.primary,
+            },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="bank-outline"
+            size={18}
+            color={
+              tab === 'banks'
+                ? Colors.primary
+                : '#666'
+            }
+            style={{
+              marginRight: 6,
+            }}
+          />
+
+          <Text
+            style={[
+              styles.tabText,
+              {
+                color:
+                  tab === 'banks'
+                    ? Colors.primary
+                    : '#666',
+
+                fontWeight:
+                  tab === 'banks'
+                    ? '700'
+                    : '500',
+              },
+            ]}
+          >
+            Banks & Others
           </Text>
-        </View>
+        </TouchableOpacity>
 
-        <View style={styles.headerRow}>
-          <Text style={styles.sectionTitle}>Your Accounts</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Sources')} style={styles.manageButton}>
-            <Text style={styles.manageButtonText}>Manage</Text>
-          </TouchableOpacity>
-        </View>
+        {/* CREDIT CARDS */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() =>
+            setTab('creditCards')
+          }
+          style={[
+            styles.tab,
+            {
+              borderBottomWidth:
+                tab === 'creditCards'
+                  ? 3
+                  : 0,
 
-        <View style={styles.listContainer}>
-          {sources.length ? sources.map(item => (
+              borderBottomColor:
+                Colors.primary,
+            },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="credit-card-outline"
+            size={18}
+            color={
+              tab === 'creditCards'
+                ? Colors.primary
+                : '#666'
+            }
+            style={{
+              marginRight: 6,
+            }}
+          />
+
+          <Text
+            style={[
+              styles.tabText,
+              {
+                color:
+                  tab === 'creditCards'
+                    ? Colors.primary
+                    : '#666',
+
+                fontWeight:
+                  tab === 'creditCards'
+                    ? '700'
+                    : '500',
+              },
+            ]}
+          >
+            Credit Cards
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <Card style={styles.summaryCard}>
+          <Text style={styles.summaryLabel}>Total</Text>
+          <Text style={styles.summaryAmount}>
+            {balanceVisible ? `₹ ${tabTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : '••••••'}
+          </Text>
+        </Card>
+
+        {filteredSources.length === 0 ? (
+          <View style={styles.emptyState}>
+            <MaterialCommunityIcons name="wallet-outline" size={42} color="#B6BEC8" />
+            <Text style={styles.emptyTitle}>No sources found</Text>
+            <Text style={styles.emptyText}>Add a source to start tracking balances.</Text>
+          </View>
+        ) : (
+          filteredSources.map((sourceItem) => (
             <TouchableOpacity
-              key={item.id}
-              activeOpacity={1}
+              key={sourceItem.id}
+              activeOpacity={0.9}
               onPress={() => navigation.navigate('SourcesDetails', {
-                sourceId: item.id,
-                sourceName: item.name
+                sourceId: sourceItem.id,
+                sourceName: sourceItem.name,
               })}
+              style={styles.sourceCard}
             >
-              <Card style={styles.sourceCard}>
-                <View style={styles.sourceContent}>
-
-                  <View style={[styles.iconWrapper, { backgroundColor: (item.color || Colors.primary) + '15' }]}>
-                    <MaterialCommunityIcons
-                      name={item.icon || 'bank'}
-                      size={24}
-                      color={item.color || Colors.primary}
-                    />
-                  </View>
-
-                  <View style={styles.infoWrapper}>
-                    <Text style={styles.sourceName}>{item.name}</Text>
-                    <Text style={styles.sourceType}>Account</Text>
-                  </View>
-
-                  <View style={styles.amountWrapper}>
-                    <Text style={styles.sourceAmount}>
-                      {balanceVisible
-                        ? `₹${Number(item.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
-                        : '••••••'}
-                    </Text>
-                    <MaterialCommunityIcons name="chevron-right" size={20} color={Colors.muted} />
-                  </View>
-
+              <View style={styles.sourceHeader}>
+                <View style={styles.iconWrap}>
+                  <MaterialCommunityIcons
+                    name={sourceItem.icon || 'wallet-outline'}
+                    size={22}
+                    color={sourceItem.color || Colors.primary}
+                  />
                 </View>
-              </Card>
-            </TouchableOpacity>
-          )) : (
-            <View style={styles.emptyState}>
-              <MaterialCommunityIcons name="wallet-outline" size={48} color={Colors.muted} />
-              <Text style={styles.emptyText}>No sources found</Text>
-            </View>
-          )}
-        </View>
 
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sourceName}>{sourceItem.name}</Text>
+                  <Text style={styles.sourceType}>{sourceItem.type || 'Bank'}</Text>
+                </View>
+
+                <Text style={styles.balanceText}>
+                  {balanceVisible ? `₹ ${Number(sourceItem.balance || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : '••••••'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: Spacing.s,
-  },
-  heroSection: {
-    backgroundColor: Colors.primary,
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 14,
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    backgroundColor: Colors.background,
+    padding: Spacing.md,
   },
-  heroLabel: {
-    color: 'rgba(255,255,255,0.8)',
+  loaderText: {
+    marginTop: 12,
     fontSize: 14,
     fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    color: Colors.muted,
   },
-  heroAmount: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '800',
-    marginTop: 8,
+  content: {
+    padding: Spacing.xs,
+    paddingBottom: 32,
   },
-  headerRow: {
+  tabContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E6EAF0',
+    paddingHorizontal: 12,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 4,
+    paddingVertical: 14,
   },
-  sectionTitle: {
-    fontSize: 18,
+  tabText: {
+    fontSize: 14,
+  },
+  summaryCard: {
+    marginTop: 12,
+    marginBottom: 12,
+    padding: 16,
+  },
+  summaryLabel: {
+    color: Colors.muted,
+    fontSize: 12,
     fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  summaryAmount: {
+    fontSize: 28,
+    fontWeight: '800',
     color: Colors.text,
-  },
-  manageButton: {
-    padding: 4,
-  },
-  manageButtonText: {
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  listContainer: {
-    marginBottom: 24,
+    marginTop: 6,
   },
   sourceCard: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 14,
     marginBottom: 12,
-    padding: 0,
-    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
-  sourceContent: {
+  sourceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  iconWrapper: {
-    width: 48,
-    height: 48,
+  iconWrap: {
+    width: 42,
+    height: 42,
     borderRadius: 12,
-    alignItems: 'center',
+    backgroundColor: '#EEF3FF',
     justifyContent: 'center',
-    marginRight: 16,
-  },
-  infoWrapper: {
-    flex: 1,
+    alignItems: 'center',
+    marginRight: 12,
   },
   sourceName: {
     fontSize: 16,
@@ -193,43 +401,31 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   sourceType: {
+    marginTop: 3,
     fontSize: 12,
     color: Colors.muted,
-    marginTop: 2,
+    textTransform: 'capitalize',
   },
-  amountWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sourceAmount: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.text,
-    marginRight: 8,
-  },
-  addButton: {
-    flexDirection: 'row',
-    backgroundColor: Colors.primary,
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 2,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-    marginLeft: 8,
+  balanceText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: Colors.primary,
   },
   emptyState: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    marginTop: 12,
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.text,
   },
   emptyText: {
+    marginTop: 8,
+    fontSize: 13,
     color: Colors.muted,
-    marginTop: 12,
-    fontSize: 16,
   },
 });

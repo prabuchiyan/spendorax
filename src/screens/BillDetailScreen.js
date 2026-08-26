@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, FlatList, StyleSheet,
-  TouchableOpacity, Modal, ActivityIndicator,
+  TouchableOpacity, Modal, ActivityIndicator, Alert
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -34,6 +34,11 @@ import {
   formatCurrency, formatDueDate,
   getBillDisplayStatus, BILL_STATUS,
 } from '../services/billUtils';
+import {
+  getCreditCards,
+  payCreditCardBill,
+} from '../services/creditCards';
+import { usePageLoader } from '../context/PageLoaderContext';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -375,11 +380,22 @@ function OccurrenceEditModal({ visible, occurrence, onSave, onClose }) {
   );
 }
 
+function isCreditCardBill(bill) {
+  return (
+    typeof bill?.notes === 'string' && (
+      bill.notes.startsWith('Recurring payment template for') ||
+      bill.notes.startsWith('Statement ')
+    )
+  );
+}
+
 // ─── main screen ─────────────────────────────────────────────────────────────
 
 export default function BillDetailScreen({ route, navigation }) {
-  const billId = route.params?.billId;
+  const rawId = route.params?.billId ?? route.params?.id;
   const occurrenceId = route.params?.occurrenceId;
+  const [resolvedTemplateId, setResolvedTemplateId] = useState(null);
+  const billId = resolvedTemplateId ?? rawId;
 
   // ── All useState hooks first (hooks 1-14) ─────────────────────────────────
   const [bill, setBill] = useState(null);
@@ -394,11 +410,15 @@ export default function BillDetailScreen({ route, navigation }) {
   const [confirmAction, setConfirmAction] = useState(null);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState(null);
-  const [showMoreDetails, setShowMoreDetails] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPaymentSourcePicker, setShowPaymentSourcePicker] = useState(false);
+  const [paymentSources, setPaymentSources] = useState([]);
+  const [paymentSourceSearch, setPaymentSourceSearch] = useState('');
+  const [selectedCreditCard, setSelectedCreditCard] = useState(null);
+  const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
 
   // ── hook 15 ───────────────────────────────────────────────────────────────
-  useFocusEffect(useCallback(() => { load(); }, [billId]));
+  useFocusEffect(useCallback(() => { load(); }, [rawId]));
 
   // ── hook 16 ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -469,7 +489,22 @@ export default function BillDetailScreen({ route, navigation }) {
     return (
       <BillForm
         bill={bill}
-        onSaved={() => { setEditing(false); load(); }}
+        onSaved={async () => {
+          try {
+            showPageLoader();
+
+            setEditing(false);
+
+            await load();
+          } catch (e) {
+            console.error(
+              '[BillDetail] Bill save refresh failed:',
+              e
+            );
+          } finally {
+            hidePageLoader();
+          }
+        }}
         onCancel={() => setEditing(false)}
       />
     );
@@ -478,42 +513,68 @@ export default function BillDetailScreen({ route, navigation }) {
   // ── helpers / actions ─────────────────────────────────────────────────────
 
   async function load() {
-    if (!billId) return;
-    const [b, s, cats, srcs] = await Promise.all([
-      getBillById(billId),
-      getBillSeries(billId),
-      getCategories(true),
-      getSources(true),
-    ]);
-    setBill(b);
-    setSeries(s);
-    if (b?.category_id) setCategory(cats.find(c => c.id === b.category_id) || null);
-    if (b?.source_id) setSource(srcs.find(ss => ss.id === b.source_id) || null);
-
-    let occ = null;
-    if (occurrenceId) occ = s.find(o => o.id === occurrenceId) || null;
-    if (!occ) {
-      const now = new Date();
-      occ = s.find(o => {
-        if (!o.due_date) return false;
-        const d = new Date(o.due_date);
-        return d.getFullYear() === now.getFullYear() &&
-          d.getMonth() === now.getMonth() &&
-          o.status !== BILL_STATUS.PAID &&
-          o.status !== BILL_STATUS.SKIPPED;
-      }) || s[0] || null;
+    if (!rawId) {
+      hidePageLoader();
+      return;
     }
-    setSelectedOcc(occ);
-    if (occ) {
-      setLinkedTxs(await getBillLinkedTransactions(occ.id));
-      if (occ.due_date) {
-        setSelectedLabel(
-          new Date(occ.due_date).toLocaleDateString("en", {
-            month: "short",
-            year: "2-digit",
-          })
-        );
+
+    showPageLoader();
+
+    try {
+      // Resolve: if rawId is a child bill, walk up to the template
+      const rawBill = await getBillById(rawId);
+      const templateId = rawBill?.parent_bill_id || rawId;
+      setResolvedTemplateId(templateId);
+
+      const [b, s, cats, srcs] = await Promise.all([
+        getBillById(templateId),
+        getBillSeries(templateId),
+        getCategories(true),
+        getSources(true),
+      ]);
+
+      setBill(b);
+      setSeries(s);
+      if (b?.category_id) setCategory(cats.find(c => c.id === b.category_id) || null);
+      if (b?.source_id) setSource(srcs.find(ss => ss.id === b.source_id) || null);
+
+      // Select the right occurrence
+      let occ = null;
+      if (occurrenceId) {
+        occ = s.find(o => o.id === occurrenceId) || null;
       }
+      if (!occ && rawBill?.parent_bill_id) {
+        // came from statements screen with child bill id directly
+        occ = s.find(o => o.id === rawId) || null;
+      }
+      if (!occ) {
+        const now = new Date();
+        occ = s.find(o => {
+          if (!o.due_date) return false;
+          const d = new Date(o.due_date);
+          return d.getFullYear() === now.getFullYear() &&
+            d.getMonth() === now.getMonth() &&
+            o.status !== BILL_STATUS.PAID &&
+            o.status !== BILL_STATUS.SKIPPED;
+        }) || s[s.length - 1] || null;
+      }
+      setSelectedOcc(occ);
+      if (occ) {
+        setLinkedTxs(await getBillLinkedTransactions(occ.id));
+        if (occ.due_date) {
+          setSelectedLabel(
+            new Date(occ.due_date).toLocaleDateString('en', { month: 'short', year: '2-digit' })
+          );
+        }
+      }
+    } catch (e) {
+      console.error('[BillDetail] load failed:', e);
+      setBill(null);
+      setSeries([]);
+      setSelectedOcc(null);
+      setLinkedTxs([]);
+    } finally {
+      hidePageLoader();
     }
   }
 
@@ -525,48 +586,101 @@ export default function BillDetailScreen({ route, navigation }) {
     setLinkedTxs(occ ? await getBillLinkedTransactions(occ.id) : []);
   }
 
-  async function handleMarkPaid() {
-    if (!selectedOcc) return;
+  const handleMarkPaid = async () => {
+    if (!selectedOcc && !bill) return;
+    const targetBill = selectedOcc || bill;
     try {
-      setLoading(true);
-      await markBillPaid(selectedOcc.id, { source_id: selectedOcc.source_id });
-      await load();
-    } finally {
-      setLoading(false);
+      showPageLoader();
+      const cards = await getCreditCards(false);
+      const card = cards.find(
+        c =>
+          Number(c.payment_bill_id) === Number(targetBill.id) ||
+          Number(c.payment_bill_id) === Number(targetBill.parent_bill_id)
+      );
+
+      // Normal bill
+      if (!card) {
+        await markBillPaid(targetBill.id, {
+          source_id: targetBill.source_id,
+        });
+        await load();
+        hidePageLoader();
+        return;
+      }
+
+      // Credit card bill
+      const sources = await getSources(true);
+      setPaymentSources(
+        sources.filter(
+          s => Number(s.id) !== Number(card.source_id)
+        )
+      );
+      setSelectedCreditCard(card);
+      setPaymentSourceSearch('');
+      setShowPaymentSourcePicker(true);
+      /*
+       * Keep loader ON while the payment-source picker
+       * is displayed. It will be hidden after the actual
+       * payment is completed or cancelled.
+       */
+    } catch (e) {
+      console.error('[BillDetail] Mark paid failed:', e);
+      hidePageLoader();
     }
-  }
+  };
 
   async function handleUnskip() {
     if (!selectedOcc) return;
     try {
-      setLoading(true);
+      showPageLoader();
       await unskipBill(selectedOcc.id);
       await refreshSelectedOccurrence();
+      await load();
+    } catch (e) {
+      console.error('[BillDetail] Unskip failed:', e);
     } finally {
-      setLoading(false);
+      hidePageLoader();
     }
   }
 
   async function handleLinkTransaction(tx) {
     if (!selectedOcc) return;
     try {
-      setLoading(true);
-      await linkAdditionalTransaction(selectedOcc.id, tx.id);
+      showPageLoader();
+      await linkAdditionalTransaction(
+        selectedOcc.id,
+        tx.id
+      );
       setShowLinkModal(false);
       await refreshSelectedOccurrence();
+      await load();
+    } catch (e) {
+      console.error(
+        '[BillDetail] Link transaction failed:',
+        e
+      );
     } finally {
-      setLoading(false);
+      hidePageLoader();
     }
   }
 
   async function handleUnlinkTransaction(tx) {
     if (!selectedOcc) return;
     try {
-      setLoading(true);
-      await removeTransactionFromBill(selectedOcc.id, tx.id);
+      showPageLoader();
+      await removeTransactionFromBill(
+        selectedOcc.id,
+        tx.id
+      );
       await refreshSelectedOccurrence();
+      await load();
+    } catch (e) {
+      console.error(
+        '[BillDetail] Unlink transaction failed:',
+        e
+      );
     } finally {
-      setLoading(false);
+      hidePageLoader();
     }
   }
 
@@ -581,11 +695,25 @@ export default function BillDetailScreen({ route, navigation }) {
     );
   }
 
-  async function handleSaveOccurrence(newAmount, newDueDate) {
+  async function handleSaveOccurrence(
+    newAmount,
+    newDueDate
+  ) {
     if (!selectedOcc) return;
     try {
-      setLoading(true);
-      if (selectedOcc.id === bill.id) {
+      showPageLoader();
+      /*
+       * For CC statement bills (child bills), always
+       * update the existing occurrence.
+       *
+       * For a normal recurring template, create a child
+       * occurrence instead.
+       */
+      if (
+        selectedOcc.id === bill.id &&
+        bill.is_recurring &&
+        !isCreditCardBill(bill)
+      ) {
         await createBill({
           ...bill,
           amount: newAmount,
@@ -595,12 +723,23 @@ export default function BillDetailScreen({ route, navigation }) {
           parent_bill_id: bill.id,
         });
       } else {
-        await updateBill(selectedOcc.id, { amount: newAmount, due_date: newDueDate });
+        await updateBill(
+          selectedOcc.id,
+          {
+            amount: newAmount,
+            due_date: newDueDate,
+          }
+        );
       }
       setShowEditOcc(false);
       await load();
+    } catch (e) {
+      console.error(
+        '[BillDetail] Save occurrence failed:',
+        e
+      );
     } finally {
-      setLoading(false);
+      hidePageLoader();
     }
   }
 
@@ -845,7 +984,7 @@ export default function BillDetailScreen({ route, navigation }) {
 
         {/* Occurrence timeline */}
         <OccurrenceList
-          series={filteredSeries}
+          series={series}
           selectedId={selectedOcc?.id}
           onSelect={handleSelectOccurrence}
         />
@@ -863,25 +1002,42 @@ export default function BillDetailScreen({ route, navigation }) {
           onCancel={() => { setConfirmVisible(false); setConfirmAction(null); }}
           onConfirm={async () => {
             try {
-              setLoading(true);
+              showPageLoader();
               if (confirmAction === 'delete_occ') {
-                if (activeBill.id === bill.id) {
+                const isTemplate =
+                  activeBill.id === bill?.id &&
+                  bill?.is_recurring;
+                if (isTemplate) {
+                  // Template occurrence:
+                  // create tombstone child and delete it.
                   const newId = await createBill({
-                    ...bill, is_recurring: 0, recurrence_type: null, parent_bill_id: bill.id,
+                    ...bill,
+                    is_recurring: 0,
+                    recurrence_type: null,
+                    parent_bill_id: bill.id,
                   });
                   await deleteBill(newId);
                 } else {
+                  // Normal child occurrence.
                   await deleteBill(activeBill.id);
                 }
+                // Wait for everything to finish.
                 await load();
               } else if (confirmAction === 'skip') {
                 await skipBill(activeBill.id);
                 await refreshSelectedOccurrence();
+                await load();
               }
+            } catch (e) {
+              console.error(
+                '[BillDetail] Action failed:',
+                e
+              );
+
             } finally {
-              setLoading(false);
               setConfirmVisible(false);
               setConfirmAction(null);
+              hidePageLoader();
             }
           }}
         />
@@ -931,10 +1087,12 @@ export default function BillDetailScreen({ route, navigation }) {
           <Text style={styles.actionText}>Link</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={() => setShowEditOcc(true)}>
-          <MaterialCommunityIcons name="square-edit-outline" color="#FF9800" size={22} />
-          <Text style={styles.actionText}>Edit</Text>
-        </TouchableOpacity>
+        {!isCreditCardBill(activeBill) && (
+          <TouchableOpacity style={styles.actionButton} onPress={() => setShowEditOcc(true)}>
+            <MaterialCommunityIcons name="square-edit-outline" color="#FF9800" size={22} />
+            <Text style={styles.actionText}>Edit</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity style={styles.actionButton} onPress={() => { setConfirmAction('delete_occ'); setConfirmVisible(true); }}>
           <MaterialCommunityIcons name="delete-outline" color="#F44336" size={22} />
@@ -942,11 +1100,140 @@ export default function BillDetailScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
 
-      {loading && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.75)', justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+      <Modal
+        visible={showPaymentSourcePicker}
+        transparent
+        animationType="slide"
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            justifyContent: 'flex-end',
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: '#fff',
+              maxHeight: '55%',
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              padding: 16,
+            }}
+          >
+
+            <Text
+              style={{
+                fontWeight: '700',
+                fontSize: 16,
+                marginBottom: 12,
+              }}
+            >
+              Select Payment Source
+            </Text>
+
+            <PaperTextInput
+              placeholder="Search source..."
+              value={paymentSourceSearch}
+              onChangeText={setPaymentSourceSearch}
+              mode="outlined"
+              style={{ marginBottom: 10 }}
+            />
+
+            <ScrollView>
+
+              {paymentSources
+                .filter(s =>
+                  s.name
+                    .toLowerCase()
+                    .includes(paymentSourceSearch.toLowerCase())
+                )
+                .map(source => (
+
+                  <TouchableOpacity
+                    key={source.id}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 12,
+                    }}
+                    onPress={async () => {
+                      try {
+                        showPageLoader();
+                        const paymentId =
+                          await payCreditCardBill({
+                            bill: activeBill,
+                            card: selectedCreditCard,
+                            paymentSourceId: source.id,
+                          });
+                        await markBillPaid(
+                          activeBill.id,
+                          {
+                            createTransaction: false,
+                            existingTransactionId: paymentId,
+                          }
+                        );
+                        /*
+                         * Close payment picker only after the DB operations
+                         * are successfully completed.
+                         */
+                        setShowPaymentSourcePicker(false);
+                        setSelectedCreditCard(null);
+                        setPaymentSourceSearch('');
+                        /*
+                         * Wait until the complete bill screen refreshes.
+                         */
+                        await load();
+                      } catch (e) {
+                        console.error(
+                          '[BillDetail] Credit card payment failed:',
+                          e
+                        );
+                        Alert.alert(
+                          'Error',
+                          'Unable to complete payment.'
+                        );
+                      } finally {
+                        hidePageLoader();
+                      }
+                    }}
+                  >
+
+                    <MaterialCommunityIcons
+                      name={source.icon || 'wallet'}
+                      size={22}
+                      color={Colors.primary}
+                    />
+
+                    <Text
+                      style={{
+                        marginLeft: 10,
+                        flex: 1,
+                      }}
+                    >
+                      {source.name}
+                    </Text>
+
+                  </TouchableOpacity>
+
+                ))}
+
+            </ScrollView>
+
+            <PaperButton
+              onPress={() => {
+                setShowPaymentSourcePicker(false);
+                setSelectedCreditCard(null);
+                setPaymentSourceSearch('');
+                hidePageLoader();
+              }}
+            >
+              Cancel
+            </PaperButton>
+
+          </View>
         </View>
-      )}
+      </Modal>
     </View>
   );
 }
