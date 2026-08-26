@@ -45,6 +45,7 @@ export async function initDB() {
       interest_component REAL,
       outstanding_after_payment REAL,
       linked_date TEXT,
+      is_counted INTEGER DEFAULT 1,   -- 1 = counted in calculations, 0 = excluded
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY(category_id) REFERENCES categories(id),
       FOREIGN KEY(source_id) REFERENCES sources(id)
@@ -272,6 +273,7 @@ export async function initDB() {
     try { await executeSql('ALTER TABLE transactions ADD COLUMN interest_component REAL'); } catch (e) { }
     try { await executeSql('ALTER TABLE transactions ADD COLUMN outstanding_after_payment REAL'); } catch (e) { }
     try { await executeSql('ALTER TABLE transactions ADD COLUMN linked_date TEXT'); } catch (e) { }
+    try { await executeSql('ALTER TABLE transactions ADD COLUMN is_counted INTEGER DEFAULT 1'); } catch (e) { }
     try { await executeSql("ALTER TABLE loans ADD COLUMN loan_direction TEXT DEFAULT 'BORROWED'"); } catch (e) { }
     try { await executeSql(`ALTER TABLE loans ADD COLUMN transaction_id INTEGER NULL`); } catch (e) { }
     // Seed defaults if empty (helpful for web/local dev)

@@ -184,7 +184,7 @@ export default function TransactionsScreen({ navigation }) {
 
         const dailyExpense = groups[dateKey].reduce(
           (sum, item) => {
-            return String(item.type || '').toLowerCase() === 'expense'
+            return String(item.type || '').toLowerCase() === 'expense' && item.is_counted !== 0
               ? sum + Number(item.amount || 0)
               : sum;
           },
@@ -193,7 +193,7 @@ export default function TransactionsScreen({ navigation }) {
 
         const dailyIncome = groups[dateKey].reduce(
           (sum, item) => {
-            return String(item.type || '').toLowerCase() === 'income'
+            return String(item.type || '').toLowerCase() === 'income' && item.is_counted !== 0
               ? sum + Number(item.amount || 0)
               : sum;
           },
@@ -859,7 +859,6 @@ export default function TransactionsScreen({ navigation }) {
                   >
 
                     {/* AMOUNT */}
-
                     <Text
                       numberOfLines={1}
                       adjustsFontSizeToFit
@@ -869,16 +868,34 @@ export default function TransactionsScreen({ navigation }) {
                         textAlign: 'right',
                         fontSize: 15,
                         fontWeight: '900',
-                        color: amountColor,
+                        color: item.is_counted === 0 ? '#9CA3AF' : amountColor, // grey out if not counted
                         letterSpacing: -0.35,
+                        textDecorationLine: item.is_counted === 0 ? 'line-through' : 'none', // strikethrough
                       }}
                     >
                       {prefix}₹
                       {Number(item.amount || 0).toFixed(2)}
                     </Text>
 
-                    {/* TIME / TRANSFER */}
+                    {/* NOT COUNTED BADGE */}
+                    {item.is_counted === 0 && (
+                      <View
+                        style={{
+                          backgroundColor: '#F3F4F6',
+                          borderRadius: 4,
+                          paddingHorizontal: 6,
+                          paddingVertical: 2,
+                          marginTop: 3,
+                          alignSelf: 'flex-end',
+                        }}
+                      >
+                        <Text style={{ fontSize: 9, color: '#9CA3AF', fontWeight: '700', letterSpacing: 0.3 }}>
+                          {item.type === 'expense' ? 'NOT SPEND' : 'NOT INCOME'}
+                        </Text>
+                      </View>
+                    )}
 
+                    {/* TIME / TRANSFER */}
                     <View
                       style={{
                         flexDirection: 'row',
@@ -943,6 +960,7 @@ export default function TransactionsScreen({ navigation }) {
                         </View>
                       )}
                     </View>
+
                   </View>
                 </View>
               </View>

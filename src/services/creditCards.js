@@ -216,7 +216,7 @@ export async function getCreditCards(activeOnly = true) {
     if (sourceIds.length > 0) {
         const placeholders = sourceIds.map(() => '?').join(',');
         const txRes = await executeSql(
-            `SELECT source_id, type, amount FROM transactions WHERE source_id IN (${placeholders})`,
+            `SELECT source_id, type, amount FROM transactions WHERE source_id IN (${placeholders}) AND IFNULL(is_counted, 1) = 1`,
             sourceIds
         );
 
@@ -263,7 +263,7 @@ export async function getCreditCardById(id) {
     if (!row.source_id) return row;
 
     const txRes = await executeSql(
-        `SELECT type, amount FROM transactions WHERE source_id = ?`,
+        `SELECT type, amount FROM transactions WHERE source_id = ? AND IFNULL(is_counted, 1) = 1`,
         [row.source_id]
     );
     let outstanding = 0;
@@ -299,7 +299,7 @@ export async function refreshCreditCardTotals(cardId) {
     if (!card || !card.source_id) return null;
 
     const txRes = await executeSql(
-        `SELECT type, amount FROM transactions WHERE source_id = ?`,
+        `SELECT type, amount FROM transactions WHERE source_id = ? AND IFNULL(is_counted, 1) = 1`,
         [card.source_id]
     );
     let outstanding = 0;

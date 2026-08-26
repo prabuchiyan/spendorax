@@ -546,8 +546,8 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       // Restore transactions
       for (const tx of originalData.transactions) {
         await executeSql(
-          `INSERT INTO transactions (id, type, amount, category_id, source_id, date, notes, bill_id, created_at) VALUES (?,?,?,?,?,?,?,?,?)`,
-          [tx.id, tx.type, tx.amount, tx.category_id, tx.source_id, tx.date, tx.notes, tx.bill_id, tx.created_at]
+          `INSERT INTO transactions (id, type, amount, category_id, source_id, date, notes, bill_id, is_counted, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+          [tx.id, tx.type, tx.amount, tx.category_id, tx.source_id, tx.date, tx.notes, tx.bill_id, tx.is_counted !== undefined ? tx.is_counted : 1, tx.created_at]
         );
       }
 
@@ -1155,7 +1155,10 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
 
           // Preserve transfer metadata
           transfer_group_id: tx.transfer_group_id || null,
-          direction: tx.direction || null
+          direction: tx.direction || null,
+
+          // Preserve counted/excluded flag — default to 1 if missing (old backups)
+          is_counted: tx.is_counted !== undefined ? tx.is_counted : 1,
         };
 
         const newTransactionId = await createTransaction(txToCreate);

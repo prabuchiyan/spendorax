@@ -1892,7 +1892,7 @@ export async function runCreditCardStatementScheduler() {
           const txRes = await executeSql(
             `SELECT type, amount, date
              FROM transactions
-             WHERE source_id = ?`,
+             WHERE source_id = ? AND IFNULL(is_counted, 1) = 1`,
             [card.source_id]
           );
 

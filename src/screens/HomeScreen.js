@@ -301,7 +301,8 @@ export default function HomeScreen({ navigation }) {
 
       // SOURCE TRANSACTIONS / BALANCES
       try {
-        const allTransactions = await getTransactions(1000000, 'Yes');
+        // onlyCounted = true — excluded transactions don't affect source balances
+        const allTransactions = await getTransactions(1000000, 'Yes', null, null, null, new Date(), true);
         const balanceMap = allTransactions.reduce(
           (acc, txn) => {
             const amount = Number(txn.amount || 0);

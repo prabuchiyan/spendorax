@@ -554,7 +554,7 @@ export async function recalculateLoanFromLinkedTransactions(loanId) {
     const initialLoanTransactionId = Number(loan.transaction_id || 0);
 
     const res = await executeSql(
-        'SELECT * FROM transactions WHERE loan_id = ? ORDER BY date ASC, id ASC',
+        `SELECT * FROM transactions WHERE loan_id = ? AND IFNULL(is_counted, 1) = 1 ORDER BY date ASC, id ASC`,
         [loanId]
     );
 

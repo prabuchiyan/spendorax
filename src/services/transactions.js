@@ -35,34 +35,24 @@ export async function createTransaction(tx) {
   const interest_component = tx.interest_component != null ? tx.interest_component : null;
   const outstanding_after_payment = tx.outstanding_after_payment != null ? tx.outstanding_after_payment : null;
   const linked_date = tx.linked_date || null;
+  // Default to 1 (counted) if not explicitly passed
+  const is_counted = tx.is_counted !== undefined ? (tx.is_counted ? 1 : 0) : 1;
 
   const res = await executeSql(
     `INSERT INTO transactions 
-    (type, amount, category_id, source_id, date, notes, bill_id, transfer_group_id, direction, loan_id, loan_payment_type, principal_component, interest_component, outstanding_after_payment, linked_date)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    (type, amount, category_id, source_id, date, notes, bill_id, transfer_group_id, direction, loan_id, loan_payment_type, principal_component, interest_component, outstanding_after_payment, linked_date, is_counted)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
-      type,
-      amount,
-      category_id || null,
-      source_id || null,
-      date || new Date().toISOString(),
-      notes || null,
-      bill_id || null,
-      transfer_group_id || null,
-      direction || null,
-      loan_id,
-      loan_payment_type,
-      principal_component,
-      interest_component,
-      outstanding_after_payment,
-      linked_date
+      type, amount, category_id || null, source_id || null,
+      date || new Date().toISOString(), notes || null,
+      bill_id || null, transfer_group_id || null, direction || null,
+      loan_id, loan_payment_type, principal_component,
+      interest_component, outstanding_after_payment, linked_date,
+      is_counted
     ]
   );
 
-  try {
-    events.emit('transactionsChanged', { action: 'create', id: res.insertId });
-  } catch (e) { }
-
+  try { events.emit('transactionsChanged', { action: 'create', id: res.insertId }); } catch (e) { }
   await refreshCreditCardBySource(source_id || null);
   return res.insertId;
 }
@@ -146,7 +136,8 @@ export async function getTransactions(
   sourceId = null,
   categoryId = null,
   period = null,
-  referenceDate = new Date()
+  referenceDate = new Date(),
+  onlyCounted = false
 ) {
   try {
     const params = [];
@@ -192,6 +183,8 @@ export async function getTransactions(
     const filtered = rows.filter((row) => {
 
       if (isTransferInclude === 'No' && row.transfer_group_id !== null) return false;
+      // Exclude uncounted transactions from calculations when requested
+      if (onlyCounted && row.is_counted === 0) return false;
 
       const txDate = parseTransactionDate(row.date);
       if (!txDate) {

@@ -74,6 +74,11 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [loanSearch, setLoanSearch] = useState('');
   const [isDirty, setIsDirty] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [isCounted, setIsCounted] = useState(
+    isEdit && transaction
+      ? (transaction.is_counted !== undefined ? Boolean(transaction.is_counted) : true)
+      : true
+  );
 
   function markDirty() {
     setIsDirty(true);
@@ -269,7 +274,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           category_id: categoryId || null,
           source_id: sourceId,
           date,
-          notes
+          notes,
+          is_counted: isCounted ? 1 : 0,
         };
         try {
           if (isEdit && transaction && transaction.id) {
@@ -1412,6 +1418,77 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               );
             })()
           )}
+        </View>
+      )}
+
+      {/* is_counted toggle — only for expense and income, not transfer */}
+      {type !== 'transfer' && (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginTop: 10,
+            marginBottom: 4,
+            paddingHorizontal: 2,
+          }}
+        >
+          <TouchableOpacity
+            disabled={submitting}
+            onPress={() => { setIsCounted(v => !v); markDirty(); }}
+            activeOpacity={0.8}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: isCounted
+                ? (type === 'expense' ? '#FFF2F2' : '#F1FFF6')
+                : '#F3F4F6',
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: isCounted
+                ? (type === 'expense' ? '#E46A6A' : '#36B37E')
+                : '#D1D5DB',
+              paddingHorizontal: 12,
+              paddingVertical: 7,
+            }}
+          >
+            {/* Toggle track */}
+            <View
+              style={{
+                width: 36,
+                height: 20,
+                borderRadius: 10,
+                backgroundColor: isCounted
+                  ? (type === 'expense' ? '#E46A6A' : '#36B37E')
+                  : '#D1D5DB',
+                justifyContent: 'center',
+                paddingHorizontal: 2,
+                marginRight: 10,
+              }}
+            >
+              <View
+                style={{
+                  width: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  backgroundColor: '#fff',
+                  alignSelf: isCounted ? 'flex-end' : 'flex-start',
+                }}
+              />
+            </View>
+
+            <View>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#222' }}>
+                {type === 'expense'
+                  ? (isCounted ? 'Spend' : 'Not a Spend')
+                  : (isCounted ? 'Income' : 'Not a Income')}
+              </Text>
+              <Text style={{ fontSize: 11, color: '#888', marginTop: 1 }}>
+                {isCounted
+                  ? 'Included in everywhere'
+                  : 'Excluded from everywhere'}
+              </Text>
+            </View>
+          </TouchableOpacity>
         </View>
       )}
 
