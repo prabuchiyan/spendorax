@@ -86,9 +86,34 @@ export async function createNotificationsTable() {
 }
 
 export async function getNotifications() {
-    const res = await executeSql(`SELECT * FROM notifications ORDER BY id ASC`);
+    const res = await executeSql(
+        `SELECT id, type, title, body, enabled, hour, minute, payload 
+            FROM notifications 
+            ORDER BY id ASC`
+    );
     const rows = [];
-    for (let i = 0; i < res.rows.length; i++) rows.push(res.rows.item(i));
+    for (let i = 0; i < res.rows.length; i++) {
+        const row = res.rows.item(i);
+
+        // Detect and fix column swap corruption:
+        // On web localStorage shim, columns may have been stored in wrong order
+        // causing payload JSON to land in 'minute' and actual minute in 'hour'
+        const isCorrupted =
+            typeof row.minute === 'string' && row.minute.startsWith('{');
+
+        if (isCorrupted) {
+            rows.push({
+                ...row,
+                // hour and minute were swapped with payload
+                hour: typeof row.enabled === 'number' && row.enabled <= 23 ? row.enabled : 0,
+                minute: typeof row.hour === 'number' && row.hour <= 59 ? row.hour : 0,
+                enabled: 0,
+                payload: row.minute, // the JSON string that landed in minute
+            });
+        } else {
+            rows.push(row);
+        }
+    }
     return rows;
 }
 

@@ -992,45 +992,42 @@ export default function SourcesDetails({
                   <Text
                     numberOfLines={1}
                     adjustsFontSizeToFit
-                    minimumFontScale={
-                      0.72
-                    }
+                    minimumFontScale={0.72}
                     style={{
-                      width:
-                        '100%',
-
-                      textAlign:
-                        'right',
-
-                      fontSize:
-                        15,
-
-                      fontWeight:
-                        '900',
-
-                      color:
-                        amountColor,
-
-                      letterSpacing:
-                        -0.35,
+                      width: '100%',
+                      textAlign: 'right',
+                      fontSize: 15,
+                      fontWeight: '900',
+                      color: item.is_counted === 0 ? '#9CA3AF' : amountColor,
+                      letterSpacing: -0.35,
+                      textDecorationLine: item.is_counted === 0 ? 'line-through' : 'none',
                     }}
                   >
                     {balanceVisible
-                      ? `${amountPrefix}₹${Number(
-                        item.amount ||
-                        0
-                      ).toLocaleString(
-                        'en-IN',
-                        {
-                          minimumFractionDigits:
-                            2,
-
-                          maximumFractionDigits:
-                            2,
-                        }
-                      )}`
+                      ? `${amountPrefix}₹${Number(item.amount || 0).toLocaleString('en-IN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}`
                       : '••••••'}
                   </Text>
+
+                  {/* NOT COUNTED BADGE */}
+                  {item.is_counted === 0 && (
+                    <View
+                      style={{
+                        backgroundColor: '#F3F4F6',
+                        borderRadius: 4,
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        marginTop: 3,
+                        alignSelf: 'flex-end',
+                      }}
+                    >
+                      <Text style={{ fontSize: 9, color: '#9CA3AF', fontWeight: '700', letterSpacing: 0.3 }}>
+                        {item.type === 'expense' ? 'NOT SPEND' : 'NOT INCOME'}
+                      </Text>
+                    </View>
+                  )}
 
                   {/* DATE */}
                   <View
