@@ -511,20 +511,27 @@ export async function backfillBillOccurrences(templateId) {
     upTo
   );
 
-  const existingRes = await executeSql(
-    `SELECT
-       id,
-       parent_bill_id,
-       due_date,
-       recurrence_occurrence_key,
-       deleted_at
-     FROM bills
-     WHERE id = ?
-        OR parent_bill_id = ?`,
-    [templateId, templateId]
+  // Get ALL existing bills and filter in JavaScript.
+  //
+  // IMPORTANT:
+  // The web/localStorage SQL shim does not reliably support
+  // parameterized SELECT conditions such as:
+  //   WHERE id = ? OR parent_bill_id = ?
+  //
+  // Native SQLite can handle it, but using SELECT * here keeps
+  // web and native behavior consistent.
+  const allBillsRes = await executeSql(
+    `SELECT * FROM bills`,
+    []
   );
 
-  const existingRows = rowsToArray(existingRes);
+  const allBills = rowsToArray(allBillsRes);
+
+  const existingRows = allBills.filter(
+    row =>
+      Number(row.id) === Number(templateId) ||
+      Number(row.parent_bill_id) === Number(templateId)
+  );
 
   const existingOccurrenceKeys = new Set();
 

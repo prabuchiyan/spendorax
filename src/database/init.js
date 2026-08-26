@@ -203,17 +203,53 @@ export async function initDB() {
     }
 
     // 3. Back-fill junction table from legacy linked_transaction_id column
-    //    so previously paid bills immediately appear in getBillLinkedTransactions.
+    //    Web-safe: the localStorage SQL shim does not support INSERT ... SELECT.
     try {
-      await executeSql(`
-    INSERT OR IGNORE INTO bill_linked_transactions (bill_id, transaction_id)
-    SELECT id, linked_transaction_id
-    FROM   bills
-    WHERE  linked_transaction_id IS NOT NULL
-      AND  deleted_at IS NULL
-  `);
+      const billsRes = await executeSql(
+        `SELECT * FROM bills`,
+        []
+      );
+
+      const bills = [];
+
+      for (let i = 0; i < billsRes.rows.length; i++) {
+        bills.push(billsRes.rows.item(i));
+      }
+
+      for (const bill of bills) {
+        if (
+          bill.deleted_at ||
+          bill.linked_transaction_id == null
+        ) {
+          continue;
+        }
+
+        try {
+          await executeSql(
+            `INSERT OR IGNORE INTO bill_linked_transactions
+              (bill_id, transaction_id)
+              VALUES (?, ?)`,
+            [
+              bill.id,
+              bill.linked_transaction_id,
+            ]
+          );
+        } catch (insertError) {
+          console.warn(
+            'Failed to back-fill bill transaction link:',
+            {
+              billId: bill.id,
+              transactionId: bill.linked_transaction_id,
+              error: insertError,
+            }
+          );
+        }
+      }
     } catch (e) {
-      console.warn('bill_linked_transactions back-fill failed', e);
+      console.warn(
+        'bill_linked_transactions back-fill failed',
+        e
+      );
     }
 
     // 4. Trigger immediate backfill of all recurring bill occurrences
