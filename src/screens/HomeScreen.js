@@ -198,10 +198,11 @@ export default function HomeScreen({ navigation }) {
         const bl = await getBillsForCurrentMonth({
           sortBy: 'due_date',
         });
-        // Only bills belonging to the CURRENT month.
-        const currentMonthBills = (
-          Array.isArray(bl) ? bl : []
-        ).filter(bill => {
+        const allBills = Array.isArray(bl) ? bl : [];
+        /* CURRENT MONTH BILLS
+         * Used for the Home bill list and monthly total.
+         */
+        const currentMonthBills = allBills.filter(bill => {
           if (!bill?.due_date) return false;
           const dueDate = new Date(bill.due_date);
           if (isNaN(dueDate.getTime())) return false;
@@ -211,7 +212,6 @@ export default function HomeScreen({ navigation }) {
           );
         });
 
-        // Current month bills sorted by due date.
         currentMonthBills.sort(
           (a, b) =>
             new Date(a.due_date).getTime() -
@@ -219,77 +219,135 @@ export default function HomeScreen({ navigation }) {
         );
 
         setBills(currentMonthBills);
-        /*
-         * Calculate summary ONLY from current-month bills.
+        /* DATE-ONLY BOUNDARIES
+         * Today = today 00:00 Next 7 days = today through +7 days
+         *  We intentionally ignore the bill's time.
          */
-        const currentMonthSummary = currentMonthBills.reduce(
-          (summary, bill) => {
-            const amount = Number(bill.amount || 0);
-            const dueDate = new Date(bill.due_date);
-            if (isNaN(dueDate.getTime())) {
-              return summary;
-            }
-            const isPaid =
-              String(
+        const todayStart = new Date(
+          currentYear,
+          currentMonth,
+          now.getDate(),
+          0,
+          0,
+          0,
+          0
+        );
+        const next7DaysEnd = new Date(todayStart);
+        next7DaysEnd.setDate(
+          next7DaysEnd.getDate() + 7
+        );
+        next7DaysEnd.setHours(
+          23,
+          59,
+          59,
+          999
+        );
+        /* MONTHLY SUMMARY */
+        const currentMonthSummary =
+          currentMonthBills.reduce(
+            (summary, bill) => {
+              const amount = Number(
+                bill.amount || 0
+              );
+              const dueDate = new Date(
+                bill.due_date
+              );
+              if (isNaN(dueDate.getTime())) {
+                return summary;
+              }
+              const status = String(
                 bill.status ||
                 bill.payment_status ||
                 ''
-              ).toLowerCase() === 'paid';
+              ).toLowerCase();
+              const isPaid = status === 'paid';
+              const isSkipped = status === 'skipped';
 
-            /*
-             * Total current-month bills
-             */
-            summary.totalThisMonth += amount;
-            /*
-             * Paid current-month bills
-             */
-            if (isPaid) {
-              summary.totalPaid += amount;
+              /* Total current-month bills */
+              if (!isSkipped) {
+                summary.totalThisMonth += amount;
+              }
+              /* Paid  */
+              if (isPaid) {
+                summary.totalPaid += amount;
+                return summary;
+              }
+              /* Overdue */
+              const dueDateOnly = new Date(
+                dueDate.getFullYear(),
+                dueDate.getMonth(),
+                dueDate.getDate(),
+                0,
+                0,
+                0,
+                0
+              );
+              if (
+                dueDateOnly < todayStart
+              ) {
+                summary.overdueAmount += amount;
+              }
               return summary;
+            },
+            {
+              totalThisMonth: 0,
+              totalPaid: 0,
+              overdueAmount: 0,
+              upcoming7: 0,
             }
-            /*
-             * Unpaid bill:
-             *
-             * Due date before today = OVERDUE
-             * Due date today/future = upcoming
-             */
-            const dueStart = new Date(
+          );
+
+        /* NEXT 7 DAYS
+         * This is calculated separately from currentMonthBills.
+         * Therefore it also works when the  7-day window crosses month-end.
+         */
+        const upcoming7Amount =
+          allBills.reduce((total, bill) => {
+            if (!bill?.due_date) {
+              return total;
+            }
+            const dueDate = new Date(
+              bill.due_date
+            );
+            if (isNaN(dueDate.getTime())) {
+              return total;
+            }
+            const status = String(
+              bill.status ||
+              bill.payment_status ||
+              ''
+            ).toLowerCase();
+            /* Paid / skipped bills should not appear in upcoming amount. */
+            if (
+              status === 'paid' ||
+              status === 'skipped'
+            ) {
+              return total;
+            }
+            /* Compare DATE only. */
+            const dueDateOnly = new Date(
               dueDate.getFullYear(),
               dueDate.getMonth(),
-              dueDate.getDate()
-            );
-            const todayStart = new Date(
-              currentYear,
-              currentMonth,
-              now.getDate()
-            );
-            if (dueStart < todayStart) {
-              summary.overdueAmount += amount;
-            }
-            /*
-             * Next 7 days
-             */
-            const sevenDaysFromNow = new Date(now);
-            sevenDaysFromNow.setHours(23, 59, 59, 999);
-            sevenDaysFromNow.setDate(
-              sevenDaysFromNow.getDate() + 7
+              dueDate.getDate(),
+              0,
+              0,
+              0,
+              0
             );
             if (
-              dueDate >= now &&
-              dueDate <= sevenDaysFromNow
+              dueDateOnly >= todayStart &&
+              dueDateOnly <= next7DaysEnd
             ) {
-              summary.upcoming7 += amount;
+              return total + Number(
+                bill.amount || 0
+              );
             }
-            return summary;
-          },
-          {
-            totalThisMonth: 0,
-            totalPaid: 0,
-            overdueAmount: 0,
-            upcoming7: 0,
-          }
+            return total;
+          }, 0);
+        currentMonthSummary.upcoming7 = upcoming7Amount;
+        setBillsSummary(
+          currentMonthSummary
         );
-        setBillsSummary(currentMonthSummary);
       } catch (e) {
         console.error(
           'Error loading bills:',
@@ -775,7 +833,7 @@ export default function HomeScreen({ navigation }) {
                                 Math.max(0, percentage)
                               )}%`,
                               height: '100%',
-                              backgroundColor: categoryColor,
+                              backgroundColor: '#3F8F6B',
                               borderRadius: 10,
                             }}
                           />
@@ -842,27 +900,15 @@ export default function HomeScreen({ navigation }) {
               marginBottom: 10,
             }}
           >
-            <View>
-              <Text
-                style={{
-                  fontWeight: '800',
-                  fontSize: 16,
-                  color: '#25352D',
-                }}
-              >
-                Latest transactions
-              </Text>
-
-              <Text
-                style={{
-                  fontSize: 11,
-                  color: '#718078',
-                  marginTop: 2,
-                }}
-              >
-                Your most recent activity
-              </Text>
-            </View>
+            <Text
+              style={{
+                fontWeight: '800',
+                fontSize: 16,
+                color: '#2F7355',
+              }}
+            >
+              Latest transactions
+            </Text>
           </View>
           {recentTx.length ? (
             recentTx.slice(0, 3).map((r, index) => {
@@ -1308,7 +1354,14 @@ export default function HomeScreen({ navigation }) {
         </Card>
 
         <Card>
-          <Text style={{ fontWeight: '700', marginBottom: 8 }}>
+          <Text
+            style={{
+              fontWeight: '800',
+              fontSize: 16,
+              color: '#2F7355',
+              marginBottom: 10,
+            }}
+          >
             Spend Areas
           </Text>
 
@@ -1449,7 +1502,7 @@ export default function HomeScreen({ navigation }) {
                             Math.max(0, percent)
                           )}%`,
                           height: '100%',
-                          backgroundColor: color,
+                          backgroundColor: '#3F8F6B',
                           borderRadius: 10,
                         }}
                       />
@@ -1509,85 +1562,562 @@ export default function HomeScreen({ navigation }) {
         </Card>
 
         <Card>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <Text style={{ fontWeight: '600' }}>Bills</Text>
-            <Text
-              style={{ color: '#3F8F6B', fontWeight: '600', fontSize: 13 }}
+          {/* BILLS HEADER */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 14,
+            }}
+          >
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                style={{
+                  fontWeight: '800',
+                  fontSize: 16,
+                  color: '#2F7355',
+                }}
+              >
+                Bills
+              </Text>
+              <Text
+                style={{
+                  fontSize: 11,
+                  color: '#718078',
+                  marginTop: 2,
+                }}
+              >
+                Your monthly bill overview
+              </Text>
+            </View>
+            {/* SINGLE VIEW ALL */}
+            <TouchableOpacity
+              activeOpacity={0.7}
               onPress={() => navigation.navigate('Bills')}
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 10,
+                backgroundColor: '#EAF5EF',
+              }}
             >
-              View all ›
-            </Text>
+              <Text
+                style={{
+                  color: '#3F8F6B',
+                  fontSize: 11,
+                  fontWeight: '800',
+                }}
+              >
+                View all ›
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {billsSummary ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
-              <View style={{ width: '50%', marginBottom: 6 }}>
-                <Text style={{ fontSize: 11, color: '#718078' }}>This month</Text>
-                <Text style={{ fontWeight: '700', color: '#25352D' }}>{balanceVisible ? formatCurrency(billsSummary.totalThisMonth) : '••••••'}</Text>
-              </View>
-              <View style={{ width: '50%', marginBottom: 6 }}>
-                <Text style={{ fontSize: 11, color: '#718078' }}>Paid</Text>
-                <Text style={{ fontWeight: '700', color: '#3F8F6B' }}>{balanceVisible ? formatCurrency(billsSummary.totalPaid) : '••••••'}</Text>
-              </View>
-              <View style={{ width: '50%' }}>
-                <Text style={{ fontSize: 11, color: '#718078' }}>Overdue</Text>
-                <Text style={{ fontWeight: '700', color: '#E46A6A' }}>{balanceVisible ? formatCurrency(billsSummary.overdueAmount) : '••••••'}</Text>
-              </View>
-              <View style={{ width: '50%' }}>
-                <Text style={{ fontSize: 11, color: '#718078' }}>Next 7 days</Text>
-                <Text style={{ fontWeight: '700', color: '#FFB020' }}>{balanceVisible ? formatCurrency(billsSummary.upcoming7) : '••••••'}</Text>
-              </View>
-            </View>
-          ) : null}
-
-          {sortedBills.length ? sortedBills.slice(0, 5).map(b => {
-            const display = getBillDisplayStatus(b);
-            const catColor = categoriesMap[b.category_id]?.color || '#ccc';
-
-            return (
+            <>
+              {/* TOTAL BILL HERO */}
               <View
-                key={b.id}
                 style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  paddingVertical: 8
+                  backgroundColor: '#F5FAF7',
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: '#E5F1EB',
+                  padding: 14,
+                  marginBottom: 12,
                 }}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        color: '#718078',
+                        fontWeight: '600',
+                        marginBottom: 3,
+                      }}
+                    >
+                      Total this month
+                    </Text>
+
+                    <Text
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.7}
+                      style={{
+                        fontSize: 22,
+                        fontWeight: '900',
+                        color: '#2F7355',
+                        letterSpacing: -0.5,
+                      }}
+                    >
+                      {balanceVisible
+                        ? formatCurrency(
+                          billsSummary.totalThisMonth
+                        )
+                        : '••••••'}
+                    </Text>
+                  </View>
+                  {/* BILL COUNT */}
                   <View
                     style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: 5,
-                      backgroundColor: catColor,
-                      marginRight: 8
+                      width: 54,
+                      height: 54,
+                      borderRadius: 17,
+                      backgroundColor: '#EAF5EF',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginLeft: 12,
                     }}
-                  />
-                  <View>
-                    <Text style={{ color: '#25352D', fontWeight: '600' }}>
-                      {b.name}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 18,
+                        fontWeight: '900',
+                        color: '#3F8F6B',
+                      }}
+                    >
+                      {sortedBills.length}
                     </Text>
-                    <Text style={{ fontSize: 12, color: '#718078' }}>
-                      Due: {b.due_date ? new Date(b.due_date).toLocaleDateString() : '—'}
+
+                    <Text
+                      style={{
+                        fontSize: 9,
+                        fontWeight: '700',
+                        color: '#718078',
+                        marginTop: -1,
+                      }}
+                    >
+                      bills
                     </Text>
                   </View>
                 </View>
+              </View>
 
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={{ fontWeight: '700', color: display.color }}>
-                    {balanceVisible ? formatCurrency(b.amount) : '••••••'}
+              {/* STATUS SUMMARY PAID / OVERDUE / NEXT 7 DAYS */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  marginBottom: 14,
+                  gap: 7,
+                }}
+              >
+                {/* PAID */}
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#F8FCFA',
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: '#E5F1EB',
+                    padding: 10,
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      marginBottom: 5,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: 4,
+                        backgroundColor: '#3F8F6B',
+                        marginRight: 5,
+                      }}
+                    />
+                    <Text
+                      style={{
+                        fontSize: 9,
+                        fontWeight: '800',
+                        color: '#718078',
+                      }}
+                    >
+                      Paid
+                    </Text>
+                  </View>
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.7}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: '900',
+                      color: '#2F7355',
+                    }}
+                  >
+                    {balanceVisible
+                      ? formatCurrency(
+                        billsSummary.totalPaid
+                      )
+                      : '••••••'}
                   </Text>
-                  <Text style={{ fontSize: 12, color: display.color }}>
-                    {display.label}
+                </View>
+                {/* OVERDUE */}
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#FFF8F8',
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: '#F3DEDE',
+                    padding: 10,
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      marginBottom: 5,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: 4,
+                        backgroundColor: '#E46A6A',
+                        marginRight: 5,
+                      }}
+                    />
+
+                    <Text
+                      style={{
+                        fontSize: 9,
+                        fontWeight: '800',
+                        color: '#8B6666',
+                      }}
+                    >
+                      Overdue
+                    </Text>
+                  </View>
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.7}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: '900',
+                      color: '#D85C5C',
+                    }}
+                  >
+                    {balanceVisible
+                      ? formatCurrency(
+                        billsSummary.overdueAmount
+                      )
+                      : '••••••'}
+                  </Text>
+                </View>
+                {/* NEXT 7 DAYS */}
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#FFFBF3',
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: '#F2E5C8',
+                    padding: 10,
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      marginBottom: 5,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: 4,
+                        backgroundColor: '#FFB020',
+                        marginRight: 5,
+                      }}
+                    />
+                    <Text
+                      style={{
+                        fontSize: 9,
+                        fontWeight: '800',
+                        color: '#887453',
+                      }}
+                    >
+                      Next 7 days
+                    </Text>
+                  </View>
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.7}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: '900',
+                      color: '#D89510',
+                    }}
+                  >
+                    {balanceVisible
+                      ? formatCurrency(
+                        billsSummary.upcoming7
+                      )
+                      : '••••••'}
                   </Text>
                 </View>
               </View>
-            );
-          }) : (
-            <Text style={{ color: '#718078' }}>
-              No bills added
-            </Text>
+            </>
+          ) : null}
+
+          {/* BILL LIST */}
+          {sortedBills.length ? (
+            <>
+              {sortedBills.slice(0, 4).map((b, index) => {
+                const display = getBillDisplayStatus(b);
+
+                const catColor =
+                  categoriesMap[b.category_id]?.color ||
+                  '#3F8F6B';
+
+                /* Use the status returned by getBillDisplayStatus.
+                 * This keeps Overdue / Upcoming / Paid meaningful.
+                 */
+                const statusColor =
+                  display?.color ||
+                  (
+                    String(display?.label || '')
+                      .toLowerCase()
+                      .includes('overdue')
+                      ? '#E46A6A'
+                      : String(display?.label || '')
+                        .toLowerCase()
+                        .includes('paid')
+                        ? '#3F8F6B'
+                        : '#FFB020'
+                  );
+
+                return (
+                  <TouchableOpacity
+                    key={b.id}
+                    activeOpacity={0.88}
+                    onPress={() =>
+                      navigation.navigate('Bills')
+                    }
+                    style={{
+                      marginBottom:
+                        index ===
+                          Math.min(sortedBills.length, 4) - 1
+                          ? 0
+                          : 7,
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        minHeight: 62,
+                        paddingVertical: 9,
+                        paddingHorizontal: 10,
+                        borderRadius: 15,
+                        backgroundColor: '#FFFFFF',
+                        borderWidth: 1,
+                        borderColor: '#E8F1EC',
+                      }}
+                    >
+                      {/* CATEGORY ICON */}
+                      <View
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 13,
+                          backgroundColor: catColor,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginRight: 10,
+                        }}
+                      >
+                        <MaterialCommunityIcons
+                          name={
+                            categoriesMap[b.category_id]
+                              ?.icon ||
+                            'receipt-text-outline'
+                          }
+                          size={19}
+                          color="#FFFFFF"
+                        />
+                      </View>
+
+                      {/* BILL DETAILS */}
+                      <View
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Text
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                          style={{
+                            fontSize: 13,
+                            fontWeight: '800',
+                            color: '#25352D',
+                          }}
+                        >
+                          {b.name}
+                        </Text>
+
+                        <View
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            marginTop: 4,
+                          }}
+                        >
+                          <MaterialCommunityIcons
+                            name="calendar-outline"
+                            size={11}
+                            color="#8A958F"
+                          />
+
+                          <Text
+                            numberOfLines={1}
+                            style={{
+                              fontSize: 10,
+                              color: '#718078',
+                              fontWeight: '600',
+                              marginLeft: 4,
+                            }}
+                          >
+                            Due{' '}
+                            {b.due_date
+                              ? new Date(
+                                b.due_date
+                              ).toLocaleDateString(
+                                undefined,
+                                {
+                                  day: '2-digit',
+                                  month: 'short',
+                                }
+                              )
+                              : '—'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* RIGHT SIDE AMOUNT + STATUS */}
+                      <View
+                        style={{
+                          alignItems: 'flex-end',
+                          justifyContent: 'center',
+                          marginLeft: 8,
+                          maxWidth: 105,
+                        }}
+                      >
+                        <Text
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.7}
+                          style={{
+                            fontSize: 13,
+                            fontWeight: '900',
+                            color: '#2F7355',
+                          }}
+                        >
+                          {balanceVisible
+                            ? formatCurrency(b.amount)
+                            : '••••••'}
+                        </Text>
+                        {/* STATUS */}
+                        <View
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            marginTop: 4,
+                            maxWidth: '100%',
+                          }}
+                        >
+                          <View
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: 3,
+                              backgroundColor: statusColor,
+                              marginRight: 4,
+                            }}
+                          />
+
+                          <Text
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                            style={{
+                              fontSize: 9,
+                              fontWeight: '800',
+                              color: statusColor,
+                            }}
+                          >
+                            {display.label}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </>
+          ) : (
+            /* EMPTY STATE */
+            <View
+              style={{
+                alignItems: 'center',
+                paddingVertical: 18,
+              }}
+            >
+              <View
+                style={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 15,
+                  backgroundColor: '#EAF5EF',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 8,
+                }}
+              >
+                <MaterialCommunityIcons
+                  name="receipt-text-outline"
+                  size={22}
+                  color="#3F8F6B"
+                />
+              </View>
+
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: '800',
+                  color: '#2F7355',
+                }}
+              >
+                No bills added
+              </Text>
+
+              <Text
+                style={{
+                  fontSize: 10,
+                  color: '#718078',
+                  marginTop: 3,
+                  textAlign: 'center',
+                }}
+              >
+                Your upcoming bills will appear here
+              </Text>
+            </View>
           )}
         </Card>
       </ScrollView>

@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { getCategorySpending } from '../services/reports';
 import { getCategories } from '../services/categories';
 import { getTransactions } from '../services/transactions';
-import { Avatar, Chip } from 'react-native-paper';
+import { Chip } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
 
@@ -349,7 +349,14 @@ export default function SpendAreasDashboard({ route, navigation }) {
 
         {/* SPEND SUMMARY CARD */}
         <Card>
-          <Text style={{ fontWeight: '700', marginBottom: 8, fontSize: 16, color: Colors.text }}>
+          <Text
+            style={{
+              fontWeight: '800',
+              marginBottom: 8,
+              fontSize: 16,
+              color: '#2F7355',
+            }}
+          >
             Spend Areas {selectedPeriod ? `(${formatPeriodLabel(selectedPeriod)})` : ''}
           </Text>
 
@@ -367,67 +374,157 @@ export default function SpendAreasDashboard({ route, navigation }) {
             const icon = cat.icon || 'tag';
 
             const amount = Number(c.amount || 0);
-            const percent = totalSpend > 0 ? (amount / totalSpend) * 100 : 0;
-            const isTargetCategory = String(params.categoryId) === String(c.category_id);
+            const percent =
+              totalSpend > 0
+                ? (amount / totalSpend) * 100
+                : 0;
+            const isTargetCategory =
+              String(params.categoryId) === String(c.category_id);
 
             return (
               <TouchableOpacity
                 key={c.category_id}
-                onPress={() => navigation.navigate('CategoriesDetails', {
-                  categoryId: c.category_id,
-                  categoryName: c.category_name,
-                  mode: filterMode,
-                  periodLabel: selectedPeriod
-                })}
+                activeOpacity={0.88}
+                onPress={() =>
+                  navigation.navigate('CategoriesDetails', {
+                    categoryId: c.category_id,
+                    categoryName: c.category_name,
+                    mode: filterMode,
+                    periodLabel: selectedPeriod,
+                  })
+                }
               >
                 <View
                   style={[
                     styles.categoryRowContainer,
-                    isTargetCategory && styles.highlightCategoryRow
+                    isTargetCategory && styles.highlightCategoryRow,
                   ]}
                 >
                   <View
                     style={{
                       flexDirection: 'row',
-                      justifyContent: 'space-between',
                       alignItems: 'center',
-                      marginBottom: 6
+                      width: '100%',
                     }}
                   >
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Avatar.Icon
-                        size={34}
-                        icon={icon}
-                        style={{
-                          backgroundColor: color,
-                          marginRight: 10
-                        }}
-                        color="#fff"
-                      />
 
-                      <Text style={{ color: Colors.text, fontWeight: '500' }}>
-                        {c.category_name}
-                      </Text>
-                    </View>
-                    <Text style={{ color: '#E46A6A', fontWeight: '600' }}>
-                      ₹{amount.toLocaleString('en-IN')}
-                    </Text>
-                  </View>
-                  <View
-                    style={{
-                      height: 6,
-                      backgroundColor: '#eee',
-                      borderRadius: 4,
-                      overflow: 'hidden'
-                    }}
-                  >
+                    {/* LEFT — 15% Category Icon */}
                     <View
                       style={{
-                        width: `${percent}%`,
-                        height: '100%',
-                        backgroundColor: color
+                        width: '15%',
+                        alignItems: 'flex-start',
+                        justifyContent: 'center',
                       }}
-                    />
+                    >
+                      <View
+                        style={{
+                          width: 42,
+                          height: 42,
+                          borderRadius: 14,
+                          backgroundColor: color,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <MaterialCommunityIcons
+                          name={icon}
+                          size={21}
+                          color="#FFFFFF"
+                        />
+                      </View>
+                    </View>
+
+                    {/*  MIDDLE — 60%  */}
+                    <View
+                      style={{
+                        width: '60%',
+                        paddingHorizontal: 5,
+                        minWidth: 0,
+                      }}
+                    >
+                      {/* Category */}
+                      <Text
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                        style={{
+                          fontSize: 14,
+                          fontWeight: '800',
+                          color: '#2F7355',
+                          marginBottom: 3,
+                        }}
+                      >
+                        {c.category_name}
+                      </Text>
+
+                      {/* Amount */}
+                      <Text
+                        numberOfLines={1}
+                        style={{
+                          fontSize: 11,
+                          fontWeight: '600',
+                          color: '#718078',
+                          marginBottom: 7,
+                        }}
+                      >
+                        ₹{amount.toLocaleString('en-IN')}
+                      </Text>
+                      {/* Progress */}
+                      <View
+                        style={{
+                          width: '100%',
+                          height: 7,
+                          backgroundColor: '#DCEDE4',
+                          borderRadius: 10,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              Math.max(0, percent)
+                            )}%`,
+                            height: '100%',
+                            backgroundColor: '#3F8F6B',
+                            borderRadius: 10,
+                          }}
+                        />
+                      </View>
+                    </View>
+
+                    {/* RIGHT — 25% Percentage */}
+                    <View
+                      style={{
+                        width: '25%',
+                        alignItems: 'flex-end',
+                        justifyContent: 'center',
+                        paddingLeft: 5,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 18,
+                          fontWeight: '900',
+                          color: '#3F8F6B',
+                          letterSpacing: -0.4,
+                        }}
+                      >
+                        {Math.round(percent)}%
+                      </Text>
+
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: '600',
+                          color: '#718078',
+                          marginTop: 3,
+                          textAlign: 'right',
+                        }}
+                      >
+                        of total spend
+                      </Text>
+                    </View>
+
                   </View>
                 </View>
               </TouchableOpacity>
@@ -483,8 +580,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   periodChipSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: '#3F8F6B',
+    borderColor: '#3F8F6B',
   },
   periodChipText: {
     fontSize: 12,
@@ -532,13 +629,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   categoryRowContainer: {
-    marginBottom: 12,
-    padding: 8,
-    borderRadius: 8,
+    marginBottom: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    backgroundColor: '#F8FCFA',
+    borderWidth: 1,
+    borderColor: '#E5F1EB',
   },
   highlightCategoryRow: {
-    backgroundColor: '#fffbe6',
+    backgroundColor: '#F8FCFA',
     borderWidth: 1,
-    borderColor: '#ffe58f',
+    borderColor: '#BFDCCD',
   },
 });

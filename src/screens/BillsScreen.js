@@ -184,90 +184,375 @@ export default function BillsScreen({ navigation }) {
 
   const listHeader = (
     <View>
-      <BillSummaryBar summary={summary} />
+      {/* SUMMARY */}
+      <View style={{ marginBottom: 12 }}>
+        <BillSummaryBar summary={summary} />
+      </View>
+      {/* STATUS FILTERS */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingRight: 8,
+          marginBottom: 12,
+        }}
+      >
+        {STATUS_FILTERS.map(filter => {
+          const active =
+            statusFilter === filter.key;
 
-      {summary?.overdueCount > 0 && (
-        <View style={{
-          backgroundColor: '#FFF0F0', padding: 12, borderRadius: 10, marginBottom: Spacing.xs,
-        }}>
-          <Text style={{ color: '#E46A6A', fontWeight: '700' }}>
-            {summary.overdueCount} overdue — {formatCurrency(summary.overdueAmount)}
-          </Text>
+          const statusColor =
+            filter.key === BILL_STATUS.OVERDUE
+              ? '#E46A6A'
+              : filter.key === BILL_STATUS.PAID
+                ? '#3F8F6B'
+                : filter.key === BILL_STATUS.PENDING
+                  ? '#FFB020'
+                  : '#2F7355';
+          return (
+            <TouchableOpacity
+              key={filter.key}
+              activeOpacity={0.8}
+              onPress={() =>
+                setStatusFilter(filter.key)
+              }
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 13,
+                paddingVertical: 8,
+                borderRadius: 20,
+                marginRight: 7,
+
+                backgroundColor: active
+                  ? '#EAF5EF'
+                  : '#FFFFFF',
+
+                borderWidth: 1,
+                borderColor: active
+                  ? '#CFE6D9'
+                  : '#E6EEE9',
+              }}
+            >
+              {filter.key !== 'all' && (
+                <View
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: statusColor,
+                    marginRight: 6,
+                  }}
+                />
+              )}
+
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: active
+                    ? '800'
+                    : '600',
+                  color: active
+                    ? '#2F7355'
+                    : '#718078',
+                }}
+              >
+                {filter.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {/* SEARCH + FILTER */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginBottom: 10,
+        }}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: '#FFFFFF',
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: '#E5F1EB',
+            height: 46,
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 12,
+          }}
+        >
+          <MaterialCommunityIcons
+            name="magnify"
+            size={20}
+            color="#8A958F"
+          />
+
+          <TextInput
+            placeholder="Search bills"
+            placeholderTextColor="#A0AAA4"
+            value={search}
+            onChangeText={setSearch}
+            style={{
+              flex: 1,
+              marginLeft: 8,
+              fontSize: 13,
+              color: '#25352D',
+            }}
+          />
+
+          {search.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearch('')}
+            >
+              <MaterialCommunityIcons
+                name="close-circle"
+                size={18}
+                color="#A0AAA4"
+              />
+            </TouchableOpacity>
+          )}
         </View>
-      )}
 
-      {/* Current-month label */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-        <MaterialCommunityIcons name="calendar-month" size={15} color={Colors.muted} />
-        <Text style={{ marginLeft: 5, color: Colors.muted, fontSize: 13, fontWeight: '600' }}>
-          Due this month · {monthLabel}
-        </Text>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => setShowCategoryDD(true)}
+          style={{
+            width: 46,
+            height: 46,
+            marginLeft: 8,
+            borderRadius: 14,
+            backgroundColor: categoryFilter
+              ? '#EAF5EF'
+              : '#FFFFFF',
+            borderWidth: 1,
+            borderColor: categoryFilter
+              ? '#CFE6D9'
+              : '#E5F1EB',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <MaterialCommunityIcons
+            name="tune-variant"
+            size={20}
+            color={
+              categoryFilter
+                ? '#3F8F6B'
+                : '#718078'
+            }
+          />
+        </TouchableOpacity>
       </View>
 
-      {/* View-mode toggle */}
-      <View style={{ flexDirection: 'row', marginBottom: 8 }}>
-        {['list', 'calendar'].map(mode => (
-          <TouchableOpacity
-            key={mode}
-            onPress={() => setViewMode(mode)}
+      {/* SORT + MONTH */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 10,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
+          <MaterialCommunityIcons
+            name="calendar-month-outline"
+            size={15}
+            color="#718078"
+          />
+
+          <Text
             style={{
-              flexDirection: 'row', alignItems: 'center',
-              marginRight: 12, paddingBottom: 4,
-              borderBottomWidth: 2,
-              borderBottomColor: viewMode === mode ? Colors.primary : 'transparent',
+              marginLeft: 5,
+              color: '#718078',
+              fontSize: 11,
+              fontWeight: '700',
+            }}
+          >
+            {monthLabel}
+          </Text>
+        </View>
+
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
+          <MaterialCommunityIcons
+            name="sort"
+            size={15}
+            color="#718078"
+          />
+          {[
+            ['due_date', 'Due'],
+            ['amount', 'Amount'],
+          ].map(([key, label]) => (
+            <TouchableOpacity
+              key={key}
+              onPress={() => setSortBy(key)}
+              style={{
+                marginLeft: 10,
+                paddingHorizontal: 8,
+                paddingVertical: 5,
+                borderRadius: 8,
+                backgroundColor:
+                  sortBy === key
+                    ? '#EAF5EF'
+                    : 'transparent',
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 10,
+                  fontWeight: '800',
+                  color:
+                    sortBy === key
+                      ? '#3F8F6B'
+                      : '#718078',
+                }}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* LIST / CALENDAR */}
+      <View
+        style={{
+          flexDirection: 'row',
+          backgroundColor: '#EAF5EF',
+          borderRadius: 12,
+          padding: 3,
+          marginBottom: 12,
+        }}
+      >
+        {[
+          ['list', 'format-list-bulleted', 'List'],
+          ['calendar', 'calendar-month-outline', 'Calendar'],
+        ].map(([mode, icon, label]) => {
+          const active = viewMode === mode;
+
+          return (
+            <TouchableOpacity
+              key={mode}
+              onPress={() => setViewMode(mode)}
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingVertical: 8,
+                borderRadius: 9,
+                backgroundColor: active
+                  ? '#FFFFFF'
+                  : 'transparent',
+              }}
+            >
+              <MaterialCommunityIcons
+                name={icon}
+                size={15}
+                color={
+                  active
+                    ? '#3F8F6B'
+                    : '#718078'
+                }
+              />
+              <Text
+                style={{
+                  marginLeft: 5,
+                  fontSize: 11,
+                  fontWeight: '800',
+                  color: active
+                    ? '#3F8F6B'
+                    : '#718078',
+                }}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {summary?.overdueCount > 0 && (
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#FFF5F5',
+            borderRadius: 13,
+            borderWidth: 1,
+            borderColor: '#F5DCDC',
+            paddingHorizontal: 11,
+            paddingVertical: 9,
+            marginBottom: 10,
+          }}
+        >
+          <View
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 10,
+              backgroundColor: '#FFE5E5',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
             <MaterialCommunityIcons
-              name={mode === 'list' ? 'format-list-bulleted' : 'calendar-month-outline'}
-              size={16}
-              color={viewMode === mode ? Colors.primary : Colors.muted}
+              name="alert-outline"
+              size={17}
+              color="#E46A6A"
             />
-            <Text style={{
-              marginLeft: 4, fontSize: 13, fontWeight: '600',
-              color: viewMode === mode ? Colors.primary : Colors.muted,
-            }}>
-              {mode === 'list' ? 'List' : 'Calendar'}
+          </View>
+          <View
+            style={{
+              flex: 1,
+              marginLeft: 9,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: '800',
+                color: '#A85E5E',
+              }}
+            >
+              Payment attention needed
             </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
 
-      {/* Status dropdown */}
-      <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowStatusDD(true)}>
-        <View>
-          <Text style={styles.label}>Status</Text>
-          <Text style={styles.value}>{STATUS_FILTERS.find(f => f.key === statusFilter)?.label}</Text>
-        </View>
-        <MaterialCommunityIcons name="chevron-down" size={20} color={Colors.muted} />
-      </TouchableOpacity>
-
-      {/* Category dropdown */}
-      <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowCategoryDD(true)}>
-        <View>
-          <Text style={styles.label}>Category</Text>
-          <Text style={styles.value}>
-            {categoryFilter ? categories.find(c => c.id === categoryFilter)?.name : 'All categories'}
-          </Text>
-        </View>
-        <MaterialCommunityIcons name="chevron-down" size={20} color={Colors.muted} />
-      </TouchableOpacity>
-
-      <Searchbar
-        placeholder="Search bills"
-        value={search}
-        onChangeText={setSearch}
-        style={{ marginBottom: Spacing.xs }}
-      />
-
-      <View style={{ flexDirection: 'row', marginBottom: Spacing.xs }}>
-        {[['due_date', 'Due date'], ['amount', 'Amount']].map(([key, label]) => (
-          <TouchableOpacity key={key} onPress={() => setSortBy(key)} style={{ marginRight: 16 }}>
-            <Text style={{ color: sortBy === key ? Colors.primary : Colors.muted, fontWeight: '600', fontSize: 13 }}>
-              Sort: {label}
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: '600',
+                color: '#9A7777',
+                marginTop: 2,
+              }}
+            >
+              {summary.overdueCount} overdue ·{' '}
+              {formatCurrency(
+                summary.overdueAmount
+              )}
             </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+          </View>
+          <MaterialCommunityIcons
+            name="chevron-right"
+            size={18}
+            color="#D98A8A"
+          />
+        </TouchableOpacity>
+      )}
 
       {viewMode === 'calendar' && (
         <BillCalendarView
@@ -275,7 +560,10 @@ export default function BillsScreen({ navigation }) {
           month={calMonth}
           year={calYear}
           onSelectBill={openDetail}
-          onMonthChange={(y, m) => { setCalYear(y); setCalMonth(m); }}
+          onMonthChange={(y, m) => {
+            setCalYear(y);
+            setCalMonth(m);
+          }}
         />
       )}
     </View>
