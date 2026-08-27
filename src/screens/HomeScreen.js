@@ -552,7 +552,7 @@ export default function HomeScreen({ navigation }) {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
+    <View style={{ flex: 1, backgroundColor: '#F5FAF7' }}>
       <ScrollView
         style={{
           flex: 1,
@@ -613,7 +613,7 @@ export default function HomeScreen({ navigation }) {
 
                 <Text
                   style={{
-                    color: Colors.muted,
+                    color: '#718078',
                     marginTop: 8,
                     textAlign: 'center',
                   }}
@@ -624,8 +624,13 @@ export default function HomeScreen({ navigation }) {
 
                 <PaperButton
                   mode="contained"
+                  buttonColor="#3F8F6B"
+                  textColor="#FFFFFF"
                   onPress={() => navigation.navigate('Budgets')}
-                  style={{ marginTop: 12 }}
+                  style={{
+                    marginTop: 12,
+                    borderRadius: 12,
+                  }}
                 >
                   Create Budget
                 </PaperButton>
@@ -638,8 +643,10 @@ export default function HomeScreen({ navigation }) {
           <Card>
             <Text
               style={{
-                fontWeight: '700',
-                marginBottom: 12,
+                fontWeight: '800',
+                fontSize: 16,
+                color: '#2F7355',
+                marginBottom: 14,
               }}
             >
               Category Budgets
@@ -648,151 +655,177 @@ export default function HomeScreen({ navigation }) {
             {[...categoryBudgets]
               .sort((a, b) => b.percentage - a.percentage)
               .map(budget => {
-                // Use the category's own color everywhere.
-                const categoryColor =
-                  budget.color || '#4B7CF3';
+                const categoryColor = budget.color || '#4B7CF3';
+
+                const spent = Number(budget.spent || 0);
+                const budgetAmount = Number(budget.budget || 0);
+                const remaining = Number(budget.remaining || 0);
+                const percentage = Math.round(Number(budget.percentage || 0));
 
                 return (
                   <TouchableOpacity
                     key={budget.id}
+                    activeOpacity={0.88}
                     onPress={() =>
-                      navigation.navigate(
-                        'CategoriesDetails',
-                        {
-                          categoryId: budget.categoryId,
-                          categoryName: budget.categoryName,
-                        }
-                      )
+                      navigation.navigate('CategoriesDetails', {
+                        categoryId: budget.categoryId,
+                        categoryName: budget.categoryName,
+                      })
                     }
                     style={{
-                      marginBottom: 16,
+                      marginBottom: 10,
+                      paddingVertical: 12,
+                      paddingHorizontal: 10,
+                      borderRadius: 16,
+                      backgroundColor: '#F8FCFA',
+                      borderWidth: 1,
+                      borderColor: '#E5F1EB',
                     }}
                   >
-                    {/* CATEGORY HEADER */}
                     <View
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginBottom: 6,
+                        width: '100%',
                       }}
                     >
+                      {/* =====================================
+              LEFT — 15%
+              Icon aligned to the LEFT
+          ===================================== */}
                       <View
                         style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          flex: 1,
+                          width: '15%',
+                          alignItems: 'flex-start',
+                          justifyContent: 'center',
                         }}
                       >
-                        <Avatar.Icon
-                          size={36}
-                          icon={budget.icon}
-                          style={{
-                            backgroundColor: categoryColor,
-                            marginRight: 10,
-                          }}
-                        />
-
                         <View
                           style={{
-                            flex: 1,
+                            width: 42,
+                            height: 42,
+                            borderRadius: 14,
+                            backgroundColor: categoryColor,
+                            alignItems: 'center',
+                            justifyContent: 'center',
                           }}
                         >
-                          <Text
-                            style={{
-                              fontWeight: '600',
-                              fontSize: 14,
-                            }}
-                          >
-                            {budget.categoryName}
-                          </Text>
-
-                          <Text
-                            style={{
-                              fontSize: 12,
-                              color: Colors.muted,
-                            }}
-                          >
-                            {balanceVisible
-                              ? `₹${Number(
-                                budget.spent || 0
-                              ).toLocaleString('en-IN')} / ₹${Number(
-                                budget.budget || 0
-                              ).toLocaleString('en-IN')}`
-                              : '•••••• / ••••••'}
-                          </Text>
+                          <MaterialCommunityIcons
+                            name={budget.icon || 'tag-outline'}
+                            size={21}
+                            color="#FFFFFF"
+                          />
                         </View>
                       </View>
 
-                      {/* PERCENTAGE + REMAINING */}
+                      {/* =====================================
+              MIDDLE — 60%
+              Category + budget + progress
+          ===================================== */}
                       <View
                         style={{
-                          alignItems: 'flex-end',
-                          marginLeft: 8,
+                          width: '60%',
+                          paddingHorizontal: 5,
+                          minWidth: 0,
                         }}
                       >
+                        {/* Category */}
                         <Text
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
                           style={{
-                            fontWeight: '700',
-                            color: categoryColor,
-                            fontSize: 16,
+                            fontSize: 14,
+                            fontWeight: '800',
+                            color: '#2F7355',
+                            marginBottom: 3,
                           }}
                         >
-                          {Math.round(
-                            Number(budget.percentage || 0)
-                          )}
-                          %
+                          {budget.categoryName}
                         </Text>
 
+                        {/* Budget */}
                         <Text
+                          numberOfLines={1}
                           style={{
                             fontSize: 11,
                             fontWeight: '600',
-                            color: budget.exceeded
-                              ? '#E46A6A'
-                              : categoryColor,
+                            color: '#718078',
+                            marginBottom: 7,
                           }}
                         >
                           {balanceVisible
-                            ? budget.exceeded
-                              ? `+₹${Math.abs(
-                                Number(
-                                  budget.remaining || 0
-                                )
-                              ).toLocaleString('en-IN')}`
-                              : `₹${Number(
-                                budget.remaining || 0
-                              ).toLocaleString('en-IN')}`
+                            ? `₹${spent.toLocaleString('en-IN')} of ₹${budgetAmount.toLocaleString('en-IN')}`
+                            : '•••••• of ••••••'}
+                        </Text>
+
+                        {/* Progress */}
+                        <View
+                          style={{
+                            width: '100%',
+                            height: 7,
+                            backgroundColor: '#DCEDE4',
+                            borderRadius: 10,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <View
+                            style={{
+                              width: `${Math.min(
+                                100,
+                                Math.max(0, percentage)
+                              )}%`,
+                              height: '100%',
+                              backgroundColor: categoryColor,
+                              borderRadius: 10,
+                            }}
+                          />
+                        </View>
+                      </View>
+
+                      {/* =====================================
+              RIGHT — 25%
+              Only percentage + remaining
+          ===================================== */}
+                      <View
+                        style={{
+                          width: '25%',
+                          alignItems: 'flex-end',
+                          justifyContent: 'center',
+                          paddingLeft: 5,
+                        }}
+                      >
+                        {/* Percentage */}
+                        <Text
+                          style={{
+                            fontSize: 18,
+                            fontWeight: '900',
+                            color: '#3F8F6B',
+                            letterSpacing: -0.4,
+                          }}
+                        >
+                          {percentage}%
+                        </Text>
+
+                        {/* Remaining */}
+                        <Text
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.75}
+                          style={{
+                            fontSize: 10,
+                            fontWeight: '700',
+                            color: '#718078',
+                            marginTop: 3,
+                            textAlign: 'right',
+                          }}
+                        >
+                          {balanceVisible
+                            ? remaining >= 0
+                              ? `₹${remaining.toLocaleString('en-IN')} left`
+                              : `₹${Math.abs(remaining).toLocaleString('en-IN')} over`
                             : '••••••'}
                         </Text>
                       </View>
-                    </View>
-
-                    {/* CATEGORY PROGRESS BAR */}
-                    <View
-                      style={{
-                        height: 8,
-                        backgroundColor: '#E8EDF3',
-                        borderRadius: 4,
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <View
-                        style={{
-                          width: `${Math.min(
-                            100,
-                            Math.max(
-                              0,
-                              Number(
-                                budget.percentage || 0
-                              )
-                            )
-                          )}%`,
-                          height: '100%',
-                          backgroundColor: categoryColor,
-                          borderRadius: 4,
-                        }}
-                      />
                     </View>
                   </TouchableOpacity>
                 );
@@ -814,7 +847,7 @@ export default function HomeScreen({ navigation }) {
                 style={{
                   fontWeight: '800',
                   fontSize: 16,
-                  color: Colors.text,
+                  color: '#25352D',
                 }}
               >
                 Latest transactions
@@ -823,7 +856,7 @@ export default function HomeScreen({ navigation }) {
               <Text
                 style={{
                   fontSize: 11,
-                  color: Colors.muted,
+                  color: '#718078',
                   marginTop: 2,
                 }}
               >
@@ -1030,7 +1063,7 @@ export default function HomeScreen({ navigation }) {
                             fontSize: 15,
                             lineHeight: 19,
                             fontWeight: '800',
-                            color: Colors.text,
+                            color: '#25352D',
                             letterSpacing: -0.15,
                           }}
                         >
@@ -1255,7 +1288,7 @@ export default function HomeScreen({ navigation }) {
           ) : (
             <Text
               style={{
-                color: Colors.muted,
+                color: '#718078',
                 paddingVertical: 8,
               }}
             >
@@ -1267,7 +1300,7 @@ export default function HomeScreen({ navigation }) {
               onPress={() => navigation.navigate('Transactions')}
               style={{ alignItems: 'center', marginTop: 8 }}
             >
-              <Text style={{ color: Colors.primary, fontWeight: '600' }}>
+              <Text style={{ color: '#3F8F6B', fontWeight: '600' }}>
                 See all ↓
               </Text>
             </TouchableOpacity>
@@ -1288,7 +1321,7 @@ export default function HomeScreen({ navigation }) {
               </View>
             </TouchableOpacity>
           ) : (
-            <Text style={{ color: Colors.muted }}>No data</Text>
+            <Text style={{ color: '#718078' }}>No data</Text>
           )}
 
           {topCategories.slice(0, 3).map(c => {
@@ -1297,60 +1330,166 @@ export default function HomeScreen({ navigation }) {
             const icon = cat.icon || 'tag';
 
             const amount = Number(c.amount || 0);
-            const percent = totalSpend > 0 ? (amount / totalSpend) * 100 : 0;
+            const percent =
+              totalSpend > 0
+                ? (amount / totalSpend) * 100
+                : 0;
 
             return (
               <TouchableOpacity
-                onPress={() => navigation.navigate('CategoriesDetails', {
-                  categoryId: c.category_id,
-                  categoryName: c.category_name
-                })}
+                key={c.category_id}
+                activeOpacity={0.88}
+                onPress={() =>
+                  navigation.navigate('CategoriesDetails', {
+                    categoryId: c.category_id,
+                    categoryName: c.category_name,
+                  })
+                }
+                style={{
+                  marginBottom: 10,
+                  paddingVertical: 12,
+                  paddingHorizontal: 10,
+                  borderRadius: 16,
+                  backgroundColor: '#F8FCFA',
+                  borderWidth: 1,
+                  borderColor: '#E5F1EB',
+                }}
               >
-                <View key={c.category_id}
-                  style={{ marginBottom: 12 }}
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    width: '100%',
+                  }}
                 >
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: 6
-                    }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Avatar.Icon
-                        size={34}
-                        icon={icon}
-                        style={{
-                          backgroundColor: color,
-                          marginRight: 10
-                        }}
-                        color="#fff"
-                      />
 
-                      <Text style={{ color: Colors.text, fontWeight: '500' }}>
-                        {c.category_name}
-                      </Text>
-                    </View>
-                    <Text style={{ color: '#E46A6A', fontWeight: '600' }}>
-                      ₹{amount.toLocaleString('en-IN')}
-                    </Text>
-                  </View>
+                  {/* =====================================
+            LEFT — 15%
+            Category icon
+        ===================================== */}
                   <View
                     style={{
-                      height: 6,
-                      backgroundColor: '#eee',
-                      borderRadius: 4,
-                      overflow: 'hidden'
+                      width: '15%',
+                      alignItems: 'flex-start',
+                      justifyContent: 'center',
                     }}
                   >
                     <View
                       style={{
-                        width: `${percent}%`,
-                        height: '100%',
-                        backgroundColor: color
+                        width: 42,
+                        height: 42,
+                        borderRadius: 14,
+                        backgroundColor: color,
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       }}
-                    />
+                    >
+                      <MaterialCommunityIcons
+                        name={icon}
+                        size={21}
+                        color="#FFFFFF"
+                      />
+                    </View>
+                  </View>
+
+                  {/* =====================================
+            MIDDLE — 60%
+            Category + amount + progress
+        ===================================== */}
+                  <View
+                    style={{
+                      width: '60%',
+                      paddingHorizontal: 5,
+                      minWidth: 0,
+                    }}
+                  >
+                    {/* Category name */}
+                    <Text
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                      style={{
+                        fontSize: 14,
+                        fontWeight: '800',
+                        color: '#2F7355',
+                        marginBottom: 3,
+                      }}
+                    >
+                      {c.category_name}
+                    </Text>
+
+                    {/* Amount */}
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        fontSize: 11,
+                        fontWeight: '600',
+                        color: '#718078',
+                        marginBottom: 7,
+                      }}
+                    >
+                      {balanceVisible
+                        ? `₹${amount.toLocaleString('en-IN')}`
+                        : '••••••'}
+                    </Text>
+
+                    {/* Progress */}
+                    <View
+                      style={{
+                        width: '100%',
+                        height: 7,
+                        backgroundColor: '#DCEDE4',
+                        borderRadius: 10,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            Math.max(0, percent)
+                          )}%`,
+                          height: '100%',
+                          backgroundColor: color,
+                          borderRadius: 10,
+                        }}
+                      />
+                    </View>
+                  </View>
+
+                  {/* =====================================
+            RIGHT — 25%
+            Percentage only
+        ===================================== */}
+                  <View
+                    style={{
+                      width: '25%',
+                      alignItems: 'flex-end',
+                      justifyContent: 'center',
+                      paddingLeft: 5,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 18,
+                        fontWeight: '900',
+                        color: '#3F8F6B',
+                        letterSpacing: -0.4,
+                      }}
+                    >
+                      {Math.round(percent)}%
+                    </Text>
+
+                    <Text
+                      style={{
+                        fontSize: 10,
+                        fontWeight: '600',
+                        color: '#718078',
+                        marginTop: 3,
+                        textAlign: 'right',
+                      }}
+                    >
+                      of total spend
+                    </Text>
                   </View>
 
                 </View>
@@ -1362,7 +1501,7 @@ export default function HomeScreen({ navigation }) {
               onPress={() => navigation.navigate('SpendAreasDashboard')}
               style={{ alignItems: 'center', marginTop: 8 }}
             >
-              <Text style={{ color: Colors.primary, fontWeight: '600' }}>
+              <Text style={{ color: '#3F8F6B', fontWeight: '600' }}>
                 See all ↓
               </Text>
             </TouchableOpacity>
@@ -1373,7 +1512,7 @@ export default function HomeScreen({ navigation }) {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <Text style={{ fontWeight: '600' }}>Bills</Text>
             <Text
-              style={{ color: Colors.primary, fontWeight: '600', fontSize: 13 }}
+              style={{ color: '#3F8F6B', fontWeight: '600', fontSize: 13 }}
               onPress={() => navigation.navigate('Bills')}
             >
               View all ›
@@ -1383,19 +1522,19 @@ export default function HomeScreen({ navigation }) {
           {billsSummary ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
               <View style={{ width: '50%', marginBottom: 6 }}>
-                <Text style={{ fontSize: 11, color: Colors.muted }}>This month</Text>
-                <Text style={{ fontWeight: '700', color: Colors.text }}>{balanceVisible ? formatCurrency(billsSummary.totalThisMonth) : '••••••'}</Text>
+                <Text style={{ fontSize: 11, color: '#718078' }}>This month</Text>
+                <Text style={{ fontWeight: '700', color: '#25352D' }}>{balanceVisible ? formatCurrency(billsSummary.totalThisMonth) : '••••••'}</Text>
               </View>
               <View style={{ width: '50%', marginBottom: 6 }}>
-                <Text style={{ fontSize: 11, color: Colors.muted }}>Paid</Text>
-                <Text style={{ fontWeight: '700', color: '#36B37E' }}>{balanceVisible ? formatCurrency(billsSummary.totalPaid) : '••••••'}</Text>
+                <Text style={{ fontSize: 11, color: '#718078' }}>Paid</Text>
+                <Text style={{ fontWeight: '700', color: '#3F8F6B' }}>{balanceVisible ? formatCurrency(billsSummary.totalPaid) : '••••••'}</Text>
               </View>
               <View style={{ width: '50%' }}>
-                <Text style={{ fontSize: 11, color: Colors.muted }}>Overdue</Text>
+                <Text style={{ fontSize: 11, color: '#718078' }}>Overdue</Text>
                 <Text style={{ fontWeight: '700', color: '#E46A6A' }}>{balanceVisible ? formatCurrency(billsSummary.overdueAmount) : '••••••'}</Text>
               </View>
               <View style={{ width: '50%' }}>
-                <Text style={{ fontSize: 11, color: Colors.muted }}>Next 7 days</Text>
+                <Text style={{ fontSize: 11, color: '#718078' }}>Next 7 days</Text>
                 <Text style={{ fontWeight: '700', color: '#FFB020' }}>{balanceVisible ? formatCurrency(billsSummary.upcoming7) : '••••••'}</Text>
               </View>
             </View>
@@ -1426,10 +1565,10 @@ export default function HomeScreen({ navigation }) {
                     }}
                   />
                   <View>
-                    <Text style={{ color: Colors.text, fontWeight: '600' }}>
+                    <Text style={{ color: '#25352D', fontWeight: '600' }}>
                       {b.name}
                     </Text>
-                    <Text style={{ fontSize: 12, color: Colors.muted }}>
+                    <Text style={{ fontSize: 12, color: '#718078' }}>
                       Due: {b.due_date ? new Date(b.due_date).toLocaleDateString() : '—'}
                     </Text>
                   </View>
@@ -1446,7 +1585,7 @@ export default function HomeScreen({ navigation }) {
               </View>
             );
           }) : (
-            <Text style={{ color: Colors.muted }}>
+            <Text style={{ color: '#718078' }}>
               No bills added
             </Text>
           )}
