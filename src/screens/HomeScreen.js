@@ -150,8 +150,30 @@ export default function HomeScreen({ navigation }) {
   const [billsSummary, setBillsSummary] = useState(null);
   const [categoryBudgets, setCategoryBudgets] = useState([]);
 
-  async function load() {
-    showPageLoader();
+  /* Prevent multiple Home loads from running at the same time. */
+  const loadingRef = React.useRef(false);
+  /* Track whether Home has already loaded once. */
+  const hasLoadedRef = React.useRef(false);
+  /* Used to request a lightweight refresh when returning to Home after another screen. */
+  const refreshPendingRef = React.useRef(false);
+
+  async function load({
+    showLoader = true,
+    force = false,
+  } = {}) {
+    /* Don't allow multiple database loads at the same time. */
+    if (loadingRef.current) {
+      return [];
+    }
+    /* If Home is already loaded and this isn't an explicit refresh, don't perform another complete reload.  */
+    if (hasLoadedRef.current && !force) {
+      return [];
+    }
+    loadingRef.current = true;
+
+    if (showLoader) {
+      showPageLoader();
+    }
     try {
       // CATEGORIES
       try {
@@ -382,16 +404,54 @@ export default function HomeScreen({ navigation }) {
       console.error('Home.load failed:', e);
       return [];
     } finally {
-      hidePageLoader();
+      loadingRef.current = false;
+      hasLoadedRef.current = true;
+      if (showLoader) {
+        hidePageLoader();
+      }
     }
   }
 
+  /*
+   * =========================================
+   * INITIAL HOME LOAD
+   * =========================================
+   *
+   * Only the first Home mount performs the
+   * complete database load.
+   */
   useEffect(() => {
+    let mounted = true;
     (async () => {
-      const bs = await load();
-      if (bs && bs.length) setSelectedBudgetId(String(bs[0].budget.id));
+      const bs = await load({
+        showLoader: true,
+        force: true,
+      });
+      if (mounted && bs && bs.length) {
+        setSelectedBudgetId(String(bs[0].budget.id));
+      }
     })();
+    return () => {
+      mounted = false;
+    };
   }, []);
+
+  /* HOME FOCUS */
+  useEffect(() => {
+    const unsubscribe =
+      navigation.addListener('focus', () => {
+        /* Only refresh if another part of the app explicitly marked Home as needing refresh. */
+        if (!refreshPendingRef.current) {
+          return;
+        }
+        refreshPendingRef.current = false;
+        load({
+          showLoader: false,
+          force: true,
+        });
+      });
+    return unsubscribe;
+  }, [navigation]);
 
   useEffect(() => {
     const unsub = navigation.addListener('focus', () => { load(); });
@@ -399,28 +459,67 @@ export default function HomeScreen({ navigation }) {
   }, [navigation]);
 
   useEffect(() => {
-    const off = events.on('transactionsChanged', () => { load(); });
+    const off = events.on(
+      'transactionsChanged',
+      () => {
+        /* Mark Home dirty.
+         * The actual refresh happens when Home is focused, 
+         * avoiding unnecessary work while the user is still on another page. */
+        refreshPendingRef.current = true;
+        /* If Home is already visible, refresh immediately but WITHOUT the page loader. */
+        if (hasLoadedRef.current) {
+          refreshPendingRef.current = false;
+          load({
+            showLoader: false,
+            force: true,
+          });
+        }
+      }
+    );
     return () => off();
   }, []);
 
   useEffect(() => {
-    const offBills = events.on('billsChanged', () => { load(); });
+    const offBills = events.on(
+      'billsChanged',
+      () => {
+        refreshPendingRef.current = true;
+        /* If Home is currently visible, update immediately without blocking UI. */
+        if (hasLoadedRef.current) {
+          refreshPendingRef.current = false;
+          load({
+            showLoader: false,
+            force: true,
+          });
+        }
+      }
+    );
     return () => offBills();
   }, []);
 
   useEffect(() => {
-    const off2 = events.on('budgetsChanged', async (id) => {
-      console.debug && console.debug('Home.budgetsChanged received id:', id);
-      if (id) {
-        console.debug && console.debug('Home.budgetsChanged setSelectedBudgetId ->', String(id));
-        setSelectedBudgetId(String(id));
+    const off2 = events.on('budgetsChanged',
+      async (id) => {
+        console.debug && console.debug('Home.budgetsChanged received id:', id);
+        if (id) {
+          setSelectedBudgetId(
+            String(id)
+          );
+        }
+        refreshPendingRef.current = true;
+        /* Home is already loaded, so refresh silently in the background.  */
+        if (hasLoadedRef.current) {
+          refreshPendingRef.current = false;
+          const bs = await load({
+            showLoader: false,
+            force: true,
+          });
+          if (!id && bs && bs.length) {
+            setSelectedBudgetId(String(bs[0].budget.id));
+          }
+        }
       }
-      const bs = await load();
-      if (!id && bs && bs.length) {
-        console.debug && console.debug('Home.budgetsChanged setSelectedBudgetId after load ->', String(bs[0].budget.id));
-        setSelectedBudgetId(String(bs[0].budget.id));
-      }
-    });
+    );
     return () => off2();
   }, []);
 
@@ -455,10 +554,16 @@ export default function HomeScreen({ navigation }) {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <ScrollView
-        contentContainerStyle={{
-          padding: Spacing.xs,
-          paddingBottom: 120
+        style={{
+          flex: 1,
         }}
+        contentContainerStyle={{
+          paddingHorizontal: Spacing.xs,
+          paddingTop: Spacing.xs,
+          paddingBottom: 82,
+          flexGrow: 1,
+        }}
+        showsVerticalScrollIndicator={false}
       >
         <Card>
           {budgets.length ? (
@@ -1350,7 +1455,30 @@ export default function HomeScreen({ navigation }) {
       <BottomStatsBar
         navigation={navigation}
         totalBalance={totalBalance}
-        billsSummary={billsSummary?.upcomingAndPendingDueAmt}
+        billsSummary={{
+          count: bills.filter(bill => {
+            const status = String(bill.status || '').toLowerCase();
+
+            return (
+              status !== 'paid' &&
+              status !== 'skipped'
+            );
+          }).length,
+          totalAmount: bills
+            .filter(bill => {
+              const status = String(bill.status || '').toLowerCase();
+
+              return (
+                status !== 'paid' &&
+                status !== 'skipped'
+              );
+            })
+            .reduce(
+              (sum, bill) =>
+                sum + Number(bill.amount || 0),
+              0
+            ),
+        }}
         totalMonthlySpend={totalMonthlySpend}
         balanceVisible={balanceVisible}
       />
