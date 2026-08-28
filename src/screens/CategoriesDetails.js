@@ -11,9 +11,9 @@ import {
 import { getTransactions, deleteTransaction } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
-import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import FAB from '../components/FAB';
 import { useFocusEffect } from '@react-navigation/native';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { Chip } from 'react-native-paper';
@@ -914,7 +914,7 @@ export default function CategoriesDetails({ route, navigation }) {
           )}
         />
       )}
-
+      
       <ConfirmDialog
         visible={confirmVisible}
         title="Delete Transaction"
@@ -922,6 +922,22 @@ export default function CategoriesDetails({ route, navigation }) {
         onCancel={() => setConfirmVisible(false)}
         onConfirm={handleDeleteConfirm}
       />
+
+      <FAB
+        onPress={() =>
+          navigation.navigate('TransactionAdd', {
+            categoryId: Number(categoryId),
+          })
+        }
+        style={{
+          position: 'absolute',
+          bottom: 70,
+          right: 20,
+          zIndex: 20,
+          elevation: 20,
+        }}
+      />
+
     </View>
   );
 }

@@ -17,7 +17,7 @@ import { Feather } from '@expo/vector-icons';
 import LinkedBillCard from './LinkedBillCard';
 import { usePageLoader } from '../context/PageLoaderContext';
 
-export default function TransactionForm({ onCreated, onCancel, transaction, isEdit, onPressBill }) {
+export default function TransactionForm({ onCreated, onCancel, transaction, isEdit, onPressBill, sourceId: initialSourceId, categoryId: initialCategoryId }) {
   const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
   // TEMP: Keep loader visible on web so it can be tested.
   // Remove this helper after testing.
@@ -33,8 +33,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [sources, setSources] = useState([]);
   const [categoryUsage, setCategoryUsage] = useState({});
   const [sourceUsage, setSourceUsage] = useState({});
-  const [categoryId, setCategoryId] = useState(isEdit && transaction ? transaction.category_id : null);
-  const [sourceId, setSourceId] = useState(isEdit && transaction ? transaction.source_id : null);
+  const [categoryId, setCategoryId] = useState(isEdit && transaction ? transaction.category_id : initialCategoryId ?? null);
+  const [sourceId, setSourceId] = useState(isEdit && transaction ? transaction.source_id : initialSourceId ?? null);
   const [date, setDate] = useState(isEdit && transaction ? transaction.date : new Date().toISOString());
   const [notes, setNotes] = useState(isEdit && transaction ? transaction.notes : '');
   const [transferGroupId, setTransferGroupId] = useState(isEdit && transaction ? transaction.transfer_group_id : '');
@@ -48,15 +48,11 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   const [noteSuggestions, setNoteSuggestions] = useState([]);
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [showCategoryGrid, setShowCategoryGrid] = useState(
-    !(isEdit && transaction?.category_id)
-  );
+  const [showCategoryGrid, setShowCategoryGrid] = useState(!((isEdit && transaction?.category_id) || (!isEdit && initialCategoryId)));
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
   const categorySearchRef = useRef(null);
-  const [showSourceGrid, setShowSourceGrid] = useState(
-    !(isEdit && transaction?.source_id)
-  );
+  const [showSourceGrid, setShowSourceGrid] = useState(!((isEdit && transaction?.source_id) || (!isEdit && initialSourceId)));
   const [showToAccountGrid, setShowToAccountGrid] = useState(true);
   const [showSourceModal, setShowSourceModal] = useState(false);
   const [sourceSearch, setSourceSearch] = useState('');

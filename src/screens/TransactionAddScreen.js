@@ -1,10 +1,11 @@
 import React, { useLayoutEffect } from 'react';
-import { View, ScrollView } from 'react-native';
+import { ScrollView } from 'react-native';
 import TransactionForm from '../components/TransactionForm';
 import Card from '../components/Card';
 
 export default function TransactionAddScreen({ navigation, route }) {
-  const isEdit = route.params?.isEdit;
+  const params = route.params || {};
+  const isEdit = !!params.isEdit;
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -20,6 +21,7 @@ export default function TransactionAddScreen({ navigation, route }) {
     >
       <Card style={{ margin: 0 }}>
         <TransactionForm
+          {...params}
           onCancel={() => navigation.goBack()}
           onPressBill={(bill) =>
             navigation.navigate('BillDetail', {
@@ -27,7 +29,6 @@ export default function TransactionAddScreen({ navigation, route }) {
               occurrenceId: bill.id,
             })
           }
-          {...route.params}
         />
       </Card>
     </ScrollView>

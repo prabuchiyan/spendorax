@@ -14,22 +14,14 @@ import {
   Animated,
   Easing,
 } from 'react-native';
+import FAB from '../components/FAB';
 import { getTransactions } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
-import {
-  Colors,
-  Spacing,
-} from '../components/Theme';
-import {
-  MaterialCommunityIcons,
-} from '@expo/vector-icons';
-import {
-  useFocusEffect,
-} from '@react-navigation/native';
-import {
-  useBalanceVisibility,
-} from '../context/BalanceVisibilityContext';
+import { Colors, Spacing } from '../components/Theme';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 
 function PageLoader({
   message = 'Loading transactions...',
@@ -1526,6 +1518,22 @@ export default function SourcesDetails({
           )}
         />
       )}
+
+      <FAB
+        onPress={() =>
+          navigation.navigate('TransactionAdd', {
+            sourceId: Number(sourceId),
+          })
+        }
+        style={{
+          position: 'absolute',
+          bottom: 70,
+          right: 20,
+          zIndex: 20,
+          elevation: 20,
+        }}
+      />
+
     </View>
   );
 }
