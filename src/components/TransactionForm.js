@@ -19,13 +19,6 @@ import { usePageLoader } from '../context/PageLoaderContext';
 
 export default function TransactionForm({ onCreated, onCancel, transaction, isEdit, onPressBill, sourceId: initialSourceId, categoryId: initialCategoryId }) {
   const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
-  // TEMP: Keep loader visible on web so it can be tested.
-  // Remove this helper after testing.
-  const waitForWebLoader = async () => {
-    if (Platform.OS === 'web') {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-  };
   const [amount, setAmount] = useState(isEdit && transaction ? String(transaction.amount) : '');
   const [amountError, setAmountError] = useState(false);
   const [type, setType] = useState(isEdit && transaction ? transaction.type : 'expense');
@@ -81,72 +74,77 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   }
 
   useEffect(() => {
-    (async () => {
+    let cancelled = false;
+
+    async function loadInitialData() {
       try {
-        const cats = await getCategories(true);
-        const src = await getSources(true);
-        setCategories(cats);
-        setSources(src);
-        try {
-          const transactions = await getTransactions(
-            1000000,
-            'Yes'
-          );
-          const categoryCount = {};
-          const sourceCount = {};
-          transactions.forEach(txn => {
-            // Category usage
-            if (
-              txn.category_id &&
-              txn.type !== 'transfer'
-            ) {
-              const categoryKey =
-                String(txn.category_id);
+        /* Categories and sources are required for the initial form,
+         * so load them together instead of waiting for one after another. */
+        const [cats, src] = await Promise.all([
+          getCategories(true),
+          getSources(true),
+        ]);
+        if (cancelled) return;
+        setCategories(cats || []);
+        setSources(src || []);
+        /* Everything below is secondary data.
+         * It is intentionally loaded after the form's primary data has been rendered 
+         * so opening Add Transaction does not wait for transaction history, notes or loans. */
 
-              categoryCount[categoryKey] =
-                (categoryCount[categoryKey] || 0) + 1;
-            }
-
-            // Source usage
-            if (txn.source_id) {
-              const sourceKey =
-                String(txn.source_id);
-
-              sourceCount[sourceKey] =
-                (sourceCount[sourceKey] || 0) + 1;
-            }
+        // CATEGORY / SOURCE USAGE
+        getTransactions(1000000, 'Yes')
+          .then(transactions => {
+            if (cancelled) return;
+            const categoryCount = {};
+            const sourceCount = {};
+            (transactions || []).forEach(txn => {
+              // Category usage
+              if (txn.category_id && txn.type !== 'transfer') {
+                const categoryKey = String(
+                  txn.category_id
+                );
+                categoryCount[categoryKey] = (categoryCount[categoryKey] || 0) + 1;
+              }
+              // Source usage
+              if (txn.source_id) {
+                const sourceKey = String(txn.source_id);
+                sourceCount[sourceKey] =
+                  (sourceCount[sourceKey] || 0) + 1;
+              }
+            });
+            setCategoryUsage(categoryCount);
+            setSourceUsage(sourceCount);
+          }).catch(usageError => {
+            console.warn('Unable to calculate category/source usage:', usageError);
+            if (cancelled) return;
+            setCategoryUsage({});
+            setSourceUsage({});
           });
-
-          setCategoryUsage(categoryCount);
-          setSourceUsage(sourceCount);
-        } catch (usageError) {
-          console.warn(
-            'Unable to calculate category/source usage:',
-            usageError
-          );
-
-          setCategoryUsage({});
-          setSourceUsage({});
-        }
-        // NOTE SUGGESTIONS
-        const notes =
-          await getTransactionNoteSuggestions();
-
-        setNoteSuggestions(notes);
+        //NOTE SUGGESTIONS
+        getTransactionNoteSuggestions().then(notes => {
+          if (cancelled) return;
+          setNoteSuggestions(notes || []);
+        }).catch(error => {
+          console.warn('Unable to load transaction note suggestions:', error);
+          if (cancelled) return;
+          setNoteSuggestions([]);
+        });
         // LOANS
-        try {
-          const lns = await getLoans();
-          setLoansList(lns);
-        } catch (e) {
-          // ignore
-        }
-      } catch (e) {
-        console.warn(
-          'TransactionForm initial load failed:',
-          e
-        );
+        getLoans().then(lns => {
+          if (cancelled) return;
+          setLoansList(lns || []);
+        }).catch(error => {
+          console.warn('Unable to load loans:', error);
+          if (cancelled) return;
+          setLoansList([]);
+        });
+      } catch (error) {
+        if (cancelled) return;
+        console.warn('TransactionForm initial load failed:', error);
       }
-    })();
+    }
+    loadInitialData();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -1365,9 +1363,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                             await unlinkTransactionFromLoan(
                               transaction.id
                             );
-
-                            // TEMP: Keep loader visible on web for testing
-                            await waitForWebLoader();
 
                             setSelectedLoanId(null);
                             setLoanSearch('');
@@ -2740,9 +2735,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                                   linkedDate: transaction.date || date,
                                 }
                               );
-
-                              // Keep loader visible on web for testing.
-                              await waitForWebLoader();
                             }
 
                             /*
