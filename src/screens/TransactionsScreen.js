@@ -628,39 +628,29 @@ export default function TransactionsScreen({ navigation }) {
           const category = categories.find(
             x => x.id === item.category_id
           );
-
           const source = sources.find(
             x => x.id === item.source_id
           );
-
           const type = getTransactionType(item);
-
           const amountColor = getAmountColor(type);
           const prefix = getAmountPrefix(type);
-
           const transactionDate = new Date(item.date);
-
           const timeText = transactionDate.toLocaleTimeString(
-            undefined,
+            'en-IN',
             {
               hour: '2-digit',
               minute: '2-digit',
+              hour12: true,
             }
           );
-
           const accentColor =
             type === 'income'
               ? '#20A56A'
               : type === 'transfer'
                 ? '#718096'
                 : '#E35D6A';
-
-          const iconColor =
-            category?.color || accentColor;
-
-          const isLast =
-            index === section.data.length - 1;
-
+          const iconColor = category?.color || accentColor;
+          const isLast = index === section.data.length - 1;
           return (
             <TouchableOpacity
               activeOpacity={0.88}

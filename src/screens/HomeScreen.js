@@ -10,11 +10,11 @@ import { getBillsForCurrentMonth } from '../services/bills';
 import { getBillDisplayStatus, formatCurrency } from '../services/billUtils';
 import { getSources } from '../services/sources';
 import { getCategories } from '../services/categories';
-import { Avatar, Button as PaperButton } from 'react-native-paper';
+import { Button as PaperButton } from 'react-native-paper';
 import events from '../services/events';
 import Card from '../components/Card';
 import FAB from '../components/FAB';
-import { Colors, Spacing } from '../components/Theme';
+import { Spacing } from '../components/Theme';
 import BottomStatsBar from '../components/BottomStatsBar';
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 import { usePageLoader } from '../context/PageLoaderContext';
@@ -969,16 +969,15 @@ export default function HomeScreen({ navigation }) {
                     year: 'numeric',
                   }
                 );
-
               const timeText =
                 transactionDate.toLocaleTimeString(
-                  undefined,
+                  'en-IN',
                   {
                     hour: '2-digit',
                     minute: '2-digit',
+                    hour12: true,
                   }
                 );
-
               return (
                 <TouchableOpacity
                   key={r.id}

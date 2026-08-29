@@ -218,10 +218,22 @@ export default function SpendAreasDashboard({ route, navigation }) {
     transactions.forEach(t => {
       if (t.type !== 'expense') return;
       if (!t.date) return;
+      // Uncategorized expenses must NOT be included
+      // in Spend Areas or Total Spend calculations.
+      if (
+        t.category_id === null ||
+        t.category_id === undefined ||
+        String(t.category_id).trim() === '' ||
+        String(t.category_id).toLowerCase() === 'uncategorized'
+      ) {
+        return;
+      }
       const dateStr = String(t.date).replace(' ', 'T');
       if (!filterFn(dateStr)) return;
-      const cid = t.category_id || 'uncategorized';
-      byId[cid] = (byId[cid] || 0) + (parseFloat(t.amount) || 0);
+      const cid = String(t.category_id);
+      byId[cid] =
+        (byId[cid] || 0) +
+        (parseFloat(t.amount) || 0);
     });
     return Object.keys(byId).map(k => {
       const cat = categoriesMap[k] || { name: 'Uncategorized' };
@@ -631,14 +643,26 @@ export default function SpendAreasDashboard({ route, navigation }) {
               const prefix = '-';
               const accentColor = '#E35D6A';
               const iconColor = category.color || accentColor;
-              const transactionDate = new Date(String(item.date).replace(' ', 'T'));
-              const timeText = transactionDate.toLocaleTimeString(
-                undefined,
-                {
+              const rawTransactionDate = String(item.date || '').trim();
+              const normalizedTransactionDate =
+                rawTransactionDate.includes('T')
+                  ? rawTransactionDate
+                  : rawTransactionDate.replace(' ', 'T');
+              const transactionDate = new Date(normalizedTransactionDate);
+              const dateText = !isNaN(transactionDate.getTime())
+                ? transactionDate.toLocaleDateString('en-IN', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                })
+                : rawTransactionDate;
+              const timeText = !isNaN(transactionDate.getTime())
+                ? transactionDate.toLocaleTimeString('en-IN', {
                   hour: '2-digit',
                   minute: '2-digit',
-                }
-              );
+                  hour12: true,
+                })
+                : '';
               const isLast = index === selectedPeriodTransactions.length - 1;
               return (
                 <TouchableOpacity
@@ -750,7 +774,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
                         >
                           {item.notes || 'No notes'}
                         </Text>
-                        {/* CATEGORY + SOURCE */}
+                        {/* SOURCE */}
                         <View
                           style={{
                             flexDirection: 'row',
@@ -759,47 +783,6 @@ export default function SpendAreasDashboard({ route, navigation }) {
                             minWidth: 0,
                           }}
                         >
-                          {/* CATEGORY PILL */}
-                          <View
-                            style={{
-                              flexShrink: 1,
-                              maxWidth: '58%',
-                              backgroundColor:
-                                iconColor + '12',
-                              borderRadius: 6,
-                              paddingHorizontal: 7,
-                              paddingVertical: 4,
-                              borderWidth: 1,
-                              borderColor:
-                                iconColor + '18',
-                            }}
-                          >
-                            <Text
-                              numberOfLines={1}
-                              ellipsizeMode="tail"
-                              style={{
-                                color: iconColor,
-                                fontSize: 11,
-                                lineHeight: 13,
-                                fontWeight: '800',
-                              }}
-                            >
-                              {category.name ||
-                                'Uncategorized'}
-                            </Text>
-                          </View>
-                          {/* DOT */}
-                          <View
-                            style={{
-                              width: 3,
-                              height: 3,
-                              borderRadius: 2,
-                              backgroundColor: '#C7CBD1',
-                              marginHorizontal: 6,
-                              flexShrink: 0,
-                            }}
-                          />
-                          {/* SOURCE */}
                           <Text
                             numberOfLines={1}
                             ellipsizeMode="tail"
@@ -817,7 +800,6 @@ export default function SpendAreasDashboard({ route, navigation }) {
                               item.source?.name ||
                               'No source'}
                           </Text>
-
                         </View>
                       </View>
 
@@ -880,7 +862,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
                             </Text>
                           </View>
                         )}
-                        {/* TIME */}
+                        {/* TRANSACTION DATE + TIME */}
                         <View
                           style={{
                             flexDirection: 'row',
@@ -891,7 +873,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
                           }}
                         >
                           <MaterialCommunityIcons
-                            name="clock-outline"
+                            name="calendar-clock-outline"
                             size={11}
                             color="#A3A9B2"
                           />
@@ -902,11 +884,11 @@ export default function SpendAreasDashboard({ route, navigation }) {
                               fontWeight: '600',
                               marginLeft: 3,
                             }}
+                            numberOfLines={1}
                           >
-                            {timeText}
+                            {dateText}{timeText ? ` • ${timeText}` : ''}
                           </Text>
                         </View>
-
                       </View>
                     </View>
                   </View>
