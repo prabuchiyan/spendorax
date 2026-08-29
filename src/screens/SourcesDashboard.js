@@ -7,15 +7,10 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-
 import { getSources } from '../services/sources';
 import { getTransactions } from '../services/transactions';
-
-import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
-
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 import { usePageLoader } from '../context/PageLoaderContext';
 
@@ -24,14 +19,12 @@ export default function SourcesDashboard({ navigation }) {
   const [tab, setTab] = useState('banks');
   const [loading, setLoading] = useState(true);
   const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
-
   const { balanceVisible } = useBalanceVisibility();
 
   // LOAD
   async function load() {
     setLoading(true);
     showPageLoader();
-
     try {
       const availableSources = await getSources(true);
 
@@ -39,27 +32,22 @@ export default function SourcesDashboard({ navigation }) {
         1000000,
         'Yes'
       );
-
       // Calculate transaction balance per source
       const balanceMap = transactions.reduce(
         (acc, txn) => {
           const amount = Number(txn.amount || 0);
           const id = txn.source_id;
-
           if (!id) {
             return acc;
           }
-
           if (!acc[id]) {
             acc[id] = 0;
           }
-
           if (txn.type === 'income') {
             acc[id] += amount;
           } else if (txn.type === 'expense') {
             acc[id] -= amount;
           }
-
           return acc;
         },
         {}
@@ -68,12 +56,8 @@ export default function SourcesDashboard({ navigation }) {
       // Add initial balance
       const updatedSources = availableSources.map(
         source => {
-          const initial =
-            Number(source.initial_balance || 0);
-
-          const txnBalance =
-            balanceMap[source.id] || 0;
-
+          const initial = Number(source.initial_balance || 0);
+          const txnBalance = balanceMap[source.id] || 0;
           return {
             ...source,
             balance:
@@ -81,14 +65,9 @@ export default function SourcesDashboard({ navigation }) {
           };
         }
       );
-
       setSources(updatedSources);
     } catch (error) {
-      console.error(
-        'SourcesDashboard load error:',
-        error
-      );
-
+      console.error('SourcesDashboard load error:', error);
       setSources([]);
     } finally {
       setLoading(false);
@@ -99,7 +78,6 @@ export default function SourcesDashboard({ navigation }) {
   // LOAD ON FOCUS
   useEffect(() => {
     load();
-
     const unsub =
       navigation.addListener(
         'focus',
@@ -107,25 +85,16 @@ export default function SourcesDashboard({ navigation }) {
           load();
         }
       );
-
     return unsub;
   }, [navigation]);
 
   // FILTER SOURCES BY TAB
   const filteredSources = useMemo(() => {
     if (tab === 'creditCards') {
-      return sources.filter(
-        source =>
-          String(source.type || '')
-            .toLowerCase() === 'credit_card'
-      );
+      return sources.filter(source => String(source.type || '').toLowerCase() === 'credit_card');
     }
-
     return sources.filter(
-      source =>
-        String(source.type || '')
-          .toLowerCase() !== 'credit_card'
-    );
+      source => String(source.type || '').toLowerCase() !== 'credit_card');
   }, [sources, tab]);
 
   // TAB TOTAL
@@ -137,7 +106,6 @@ export default function SourcesDashboard({ navigation }) {
     );
   }, [filteredSources]);
 
-  // UI
   // UI
   if (loading) {
     return (
@@ -152,15 +120,12 @@ export default function SourcesDashboard({ navigation }) {
       </View>
     );
   }
-
   const sourceCount = filteredSources.length;
 
   return (
     <View style={styles.container}>
 
-      {/* =========================
-        ACCOUNT TYPE SWITCHER
-    ========================== */}
+      {/* ACCOUNT TYPE SWITCHER */}
       <View style={styles.tabArea}>
         <View style={styles.tabContainer}>
 
@@ -246,9 +211,7 @@ export default function SourcesDashboard({ navigation }) {
         showsVerticalScrollIndicator={false}
       >
 
-        {/* =========================
-          AVAILABLE BALANCE
-      ========================== */}
+        {/* AVAILABLE BALANCE */}
         <View style={styles.balanceCard}>
 
           <View style={styles.balanceTopRow}>
@@ -318,9 +281,7 @@ export default function SourcesDashboard({ navigation }) {
 
         </View>
 
-        {/* =========================
-          SECTION HEADER
-      ========================== */}
+        {/* SECTION HEADER */}
         {filteredSources.length > 0 && (
           <View style={styles.sectionHeader}>
 
@@ -345,9 +306,7 @@ export default function SourcesDashboard({ navigation }) {
           </View>
         )}
 
-        {/* =========================
-          EMPTY STATE
-      ========================== */}
+        {/* EMPTY STATE */}
         {filteredSources.length === 0 ? (
           <View style={styles.emptyState}>
 
@@ -379,9 +338,7 @@ export default function SourcesDashboard({ navigation }) {
           </View>
         ) : (
 
-          /* =========================
-             SOURCE LIST
-          ========================== */
+          /* SOURCE LIST */
           filteredSources.map((sourceItem) => {
 
             const sourceColor =
@@ -517,26 +474,15 @@ export default function SourcesDashboard({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-
-  /* =========================
-     SCREEN
-  ========================== */
-
   container: {
     flex: 1,
     backgroundColor: Colors.background,
   },
-
   content: {
     paddingHorizontal: 14,
     paddingTop: 14,
     paddingBottom: 34,
   },
-
-  /* =========================
-     LOADER
-  ========================== */
-
   loaderContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -544,32 +490,24 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     padding: Spacing.md,
   },
-
   loaderText: {
     marginTop: 12,
     fontSize: 14,
     fontWeight: '600',
     color: Colors.muted,
   },
-
-  /* =========================
-     TABS
-  ========================== */
-
   tabArea: {
     paddingHorizontal: 14,
     paddingTop: 10,
     paddingBottom: 4,
     backgroundColor: Colors.background,
   },
-
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: '#EEF1F5',
     borderRadius: 15,
     padding: 4,
   },
-
   tab: {
     flex: 1,
     minHeight: 44,
@@ -579,7 +517,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 8,
   },
-
   activeTab: {
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
@@ -591,7 +528,6 @@ const styles = StyleSheet.create({
     },
     elevation: 2,
   },
-
   tabIcon: {
     width: 28,
     height: 28,
@@ -600,32 +536,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 6,
   },
-
   activeTabIcon: {
     backgroundColor: '#EEF3FF',
   },
-
   tabText: {
     fontSize: 13,
     fontWeight: '600',
     color: Colors.muted,
   },
-
   activeTabText: {
     color: Colors.primary,
     fontWeight: '800',
   },
-
-  /* =========================
-     BALANCE CARD
-  ========================== */
-
   balanceCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 22,
     padding: 18,
     marginBottom: 18,
-
     shadowColor: '#000',
     shadowOpacity: 0.06,
     shadowRadius: 14,
@@ -633,22 +560,18 @@ const styles = StyleSheet.create({
       width: 0,
       height: 5,
     },
-
     elevation: 3,
   },
-
   balanceTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-
   balanceTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-
   balanceIcon: {
     width: 38,
     height: 38,
@@ -658,20 +581,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 10,
   },
-
   balanceLabel: {
     fontSize: 13,
     fontWeight: '800',
     color: Colors.text,
   },
-
   balanceSubLabel: {
     marginTop: 2,
     fontSize: 11,
     fontWeight: '500',
     color: Colors.muted,
   },
-
   balanceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -680,14 +600,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 6,
   },
-
   balanceBadgeText: {
     marginLeft: 4,
     fontSize: 10,
     fontWeight: '700',
     color: Colors.muted,
   },
-
   summaryAmount: {
     marginTop: 17,
     fontSize: 30,
@@ -695,13 +613,11 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     color: Colors.text,
   },
-
   balanceFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 12,
   },
-
   footerDot: {
     width: 7,
     height: 7,
@@ -709,17 +625,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#22C55E',
     marginRight: 7,
   },
-
   footerText: {
     fontSize: 11,
     fontWeight: '600',
     color: Colors.muted,
   },
-
-  /* =========================
-     SECTION HEADER
-  ========================== */
-
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -727,20 +637,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingHorizontal: 2,
   },
-
   sectionTitle: {
     fontSize: 17,
     fontWeight: '900',
     color: Colors.text,
   },
-
   sectionSubtitle: {
     marginTop: 2,
     fontSize: 11,
     color: Colors.muted,
     fontWeight: '500',
   },
-
   countBadge: {
     minWidth: 28,
     height: 28,
@@ -750,26 +657,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   countBadgeText: {
     fontSize: 12,
     fontWeight: '800',
     color: Colors.primary,
   },
-
-  /* =========================
-     SOURCE CARD
-  ========================== */
-
   sourceCard: {
     position: 'relative',
     overflow: 'hidden',
-
     backgroundColor: '#FFFFFF',
     borderRadius: 17,
-
     marginBottom: 10,
-
     shadowColor: '#000',
     shadowOpacity: 0.035,
     shadowRadius: 9,
@@ -777,10 +675,8 @@ const styles = StyleSheet.create({
       width: 0,
       height: 3,
     },
-
     elevation: 2,
   },
-
   sourceAccent: {
     position: 'absolute',
     left: 0,
@@ -789,7 +685,6 @@ const styles = StyleSheet.create({
     width: 3,
     borderRadius: 3,
   },
-
   sourceCardContent: {
     minHeight: 70,
     flexDirection: 'row',
@@ -798,7 +693,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingLeft: 16,
   },
-
   iconWrap: {
     width: 44,
     height: 44,
@@ -807,24 +701,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-
   sourceInfo: {
     flex: 1,
     minWidth: 0,
   },
-
   sourceName: {
     fontSize: 15,
     fontWeight: '800',
     color: Colors.text,
   },
-
   sourceMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 5,
   },
-
   sourceTypeDot: {
     width: 5,
     height: 5,
@@ -832,25 +722,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#AAB2BD',
     marginRight: 6,
   },
-
   sourceType: {
     fontSize: 11,
     fontWeight: '600',
     color: Colors.muted,
     textTransform: 'capitalize',
   },
-
   sourceRight: {
     alignItems: 'flex-end',
     justifyContent: 'center',
     marginLeft: 8,
   },
-
   balanceText: {
     fontSize: 15,
     fontWeight: '900',
   },
-
   chevronWrap: {
     marginTop: 3,
     width: 20,
@@ -858,18 +744,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
-
-  /* =========================
-     EMPTY STATE
-  ========================== */
-
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 30,
     paddingVertical: 70,
   },
-
   emptyIcon: {
     width: 66,
     height: 66,
@@ -879,13 +759,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 14,
   },
-
   emptyTitle: {
     fontSize: 18,
     fontWeight: '800',
     color: Colors.text,
   },
-
   emptyText: {
     marginTop: 7,
     maxWidth: 260,

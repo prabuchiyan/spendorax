@@ -3,19 +3,19 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, FlatList } from '
 import Svg, { Circle } from 'react-native-svg';
 import { getCategories } from '../services/categories';
 import { getTransactions } from '../services/transactions';
+import { getSources } from '../services/sources';
 import { Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
+import { usePageLoader } from '../context/PageLoaderContext';
 
 function CategoryDonut({ data = [], categoriesMap = {} }) {
   const size = 160;
   const strokeWidth = 18;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-
   const total = data.reduce((sum, d) => sum + Number(d.amount || 0), 0);
-
   let cumulative = 0;
 
   return (
@@ -26,12 +26,9 @@ function CategoryDonut({ data = [], categoriesMap = {} }) {
           const percent = total > 0 ? value / total : 0;
           const cat = categoriesMap[d.category_id] || {};
           const color = cat.color || '#eee';
-
           const strokeDasharray = `${circumference * percent} ${circumference}`;
           const rotation = (cumulative / total) * 360;
-
           cumulative += value;
-
           return (
             <Circle
               key={i}
@@ -64,31 +61,65 @@ function CategoryDonut({ data = [], categoriesMap = {} }) {
 
 export default function SpendAreasDashboard({ route, navigation }) {
   const params = route?.params || {};
+  const {
+    show: showPageLoader,
+    hide: hidePageLoader,
+  } = usePageLoader();
   const periodScrollRef = useRef(null);
   const periodChipPositions = useRef({});
   const periodScrollWidth = useRef(0);
   const [transactions, setTransactions] = useState([]);
   const [categoriesMap, setCategoriesMap] = useState({});
+  const [sourcesMap, setSourcesMap] = useState({});
   const [filterMode, setFilterMode] = useState(params.mode || 'monthly');
   const [selectedPeriod, setSelectedPeriod] = useState(params.periodLabel || null);
 
   async function loadInitialData() {
+    showPageLoader();
     try {
-      const catsAll = await getCategories(true);
+      const [
+        catsAll,
+        sourcesAll,
+        tx,
+      ] = await Promise.all([
+        getCategories(true),
+        getSources(true),
+        getTransactions(1000000, 'Yes'),
+      ]);
+      // CATEGORIES
       const cmap = {};
-      catsAll.forEach(c => { cmap[c.id] = c; });
+      (catsAll || []).forEach(c => {
+        cmap[String(c.id)] = c;
+      });
       setCategoriesMap(cmap);
-
-      const tx = await getTransactions(1000000);
-      setTransactions(tx);
+      // SOURCES
+      const smap = {};
+      (sourcesAll || []).forEach(source => {
+        smap[String(source.id)] = source;
+      });
+      setSourcesMap(smap);
+      // TRANSACTIONS
+      setTransactions(tx || []);
     } catch (e) {
       console.error('Error loading dashboard data:', e);
+      setCategoriesMap({});
+      setSourcesMap({});
+      setTransactions([]);
+    } finally {
+      hidePageLoader();
     }
   }
 
   useEffect(() => {
     loadInitialData();
-  }, []);
+    const unsubscribe = navigation.addListener(
+      'focus',
+      () => {
+        loadInitialData();
+      }
+    );
+    return unsubscribe;
+  }, [navigation]);
 
   // Sync state if parameters change
   useEffect(() => {
@@ -109,7 +140,6 @@ export default function SpendAreasDashboard({ route, navigation }) {
       const dateStr = String(t.date).replace(' ', 'T');
       const dateObj = new Date(dateStr);
       if (isNaN(dateObj.getTime())) return;
-
       let key = '';
       if (filterMode === 'daily') {
         key = dateStr.split('T')[0];
@@ -129,7 +159,6 @@ export default function SpendAreasDashboard({ route, navigation }) {
       }
     });
 
-    // Oldest → newest
     return Array.from(periods).sort((a, b) =>
       a.localeCompare(b)
     );
@@ -138,7 +167,6 @@ export default function SpendAreasDashboard({ route, navigation }) {
   // Fallback selectedPeriod to the latest period if none is selected or matches the mode
   useEffect(() => {
     if (allPeriods.length === 0) return;
-
     // Keep the selected period if it is still valid.
     if (
       selectedPeriod &&
@@ -146,7 +174,6 @@ export default function SpendAreasDashboard({ route, navigation }) {
     ) {
       return;
     }
-
     // Default to the MOST RECENT period.
     setSelectedPeriod(
       allPeriods[allPeriods.length - 1]
@@ -174,10 +201,8 @@ export default function SpendAreasDashboard({ route, navigation }) {
   // Aggregate category spending on client-side
   const topCategories = useMemo(() => {
     if (transactions.length === 0 || !selectedPeriod) return [];
-
     const byId = {};
     let filterFn;
-
     if (filterMode === 'daily' || filterMode === 'monthly' || filterMode === 'yearly') {
       filterFn = (dateStr) => dateStr.startsWith(selectedPeriod);
     } else if (filterMode === 'weekly') {
@@ -190,7 +215,6 @@ export default function SpendAreasDashboard({ route, navigation }) {
     } else {
       filterFn = () => true;
     }
-
     transactions.forEach(t => {
       if (t.type !== 'expense') return;
       if (!t.date) return;
@@ -199,12 +223,50 @@ export default function SpendAreasDashboard({ route, navigation }) {
       const cid = t.category_id || 'uncategorized';
       byId[cid] = (byId[cid] || 0) + (parseFloat(t.amount) || 0);
     });
-
     return Object.keys(byId).map(k => {
       const cat = categoriesMap[k] || { name: 'Uncategorized' };
       return { category_id: k, category_name: cat.name, amount: byId[k] };
     }).sort((a, b) => b.amount - a.amount);
   }, [transactions, selectedPeriod, filterMode, categoriesMap]);
+
+  const selectedPeriodTransactions = useMemo(() => {
+    if (!transactions.length || !selectedPeriod) return [];
+    let filterFn;
+    if (
+      filterMode === 'daily' ||
+      filterMode === 'monthly' ||
+      filterMode === 'yearly'
+    ) {
+      filterFn = (dateStr) =>
+        dateStr.startsWith(selectedPeriod);
+    } else if (filterMode === 'weekly') {
+      const weekStart = new Date(`${selectedPeriod}T00:00:00`);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+      filterFn = (dateStr) => {
+        const date = new Date(dateStr);
+        return date >= weekStart && date < weekEnd;
+      };
+    } else {
+      filterFn = () => true;
+    }
+    return transactions
+      .filter(transaction => {
+        if (transaction.type !== 'expense') return false;
+        if (!transaction.date) return false;
+        const dateStr = String(transaction.date).replace(' ', 'T');
+        return filterFn(dateStr);
+      })
+      .sort(
+        (a, b) =>
+          new Date(String(b.date).replace(' ', 'T')) -
+          new Date(String(a.date).replace(' ', 'T'))
+      );
+  }, [
+    transactions,
+    selectedPeriod,
+    filterMode,
+  ]);
 
   const totalSpend = useMemo(() => {
     return topCategories.reduce((sum, c) => sum + Number(c.amount || 0), 0);
@@ -212,19 +274,10 @@ export default function SpendAreasDashboard({ route, navigation }) {
 
   const focusSelectedPeriod = useCallback((period) => {
     if (!period) return;
-
-    const position =
-      periodChipPositions.current[period];
-
+    const position = periodChipPositions.current[period];
     if (!position) return;
-
-    const chipCenter =
-      position.x + position.width / 2;
-
-    const targetX =
-      chipCenter -
-      periodScrollWidth.current / 2;
-
+    const chipCenter = position.x + position.width / 2;
+    const targetX = chipCenter - periodScrollWidth.current / 2;
     periodScrollRef.current?.scrollTo({
       x: Math.max(0, targetX),
       animated: true,
@@ -278,11 +331,8 @@ export default function SpendAreasDashboard({ route, navigation }) {
               style={styles.periodSelectorContainer}
               contentContainerStyle={styles.periodSelectorContent}
               onLayout={(event) => {
-                periodScrollWidth.current =
-                  event.nativeEvent.layout.width;
-
-                // Focus selected month after the ScrollView
-                // has received its actual width.
+                periodScrollWidth.current = event.nativeEvent.layout.width;
+                // Focus selected month after the ScrollView has received its actual width.
                 if (selectedPeriod) {
                   requestAnimationFrame(() => {
                     focusSelectedPeriod(selectedPeriod);
@@ -291,9 +341,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
               }}
             >
               {allPeriods.map((p) => {
-                const isSelected =
-                  selectedPeriod === p;
-
+                const isSelected = selectedPeriod === p;
                 return (
                   <TouchableOpacity
                     key={p}
@@ -309,8 +357,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
                         width,
                       };
 
-                      // If this is the selected month,
-                      // focus it after its position is known.
+                      // If this is the selected month, focus it after its position is known.
                       if (isSelected) {
                         requestAnimationFrame(() => {
                           focusSelectedPeriod(p);
@@ -319,7 +366,6 @@ export default function SpendAreasDashboard({ route, navigation }) {
                     }}
                     onPress={() => {
                       setSelectedPeriod(p);
-
                       // Immediately focus the tapped month.
                       requestAnimationFrame(() => {
                         focusSelectedPeriod(p);
@@ -372,15 +418,9 @@ export default function SpendAreasDashboard({ route, navigation }) {
             const cat = categoriesMap[c.category_id] || {};
             const color = cat.color || '#4B7CF3';
             const icon = cat.icon || 'tag';
-
             const amount = Number(c.amount || 0);
-            const percent =
-              totalSpend > 0
-                ? (amount / totalSpend) * 100
-                : 0;
-            const isTargetCategory =
-              String(params.categoryId) === String(c.category_id);
-
+            const percent = totalSpend > 0 ? (amount / totalSpend) * 100 : 0;
+            const isTargetCategory = String(params.categoryId) === String(c.category_id);
             return (
               <TouchableOpacity
                 key={c.category_id}
@@ -531,6 +571,350 @@ export default function SpendAreasDashboard({ route, navigation }) {
             );
           })}
         </Card>
+
+        {/* SELECTED PERIOD TRANSACTIONS */}
+        <View style={styles.transactionsSection}>
+
+          {/* SECTION HEADER */}
+          <View style={styles.transactionsHeader}>
+            <View>
+              <Text style={styles.transactionsTitle}>
+                Transactions
+              </Text>
+
+              <Text style={styles.transactionsSubtitle}>
+                {selectedPeriod
+                  ? `${formatPeriodLabel(selectedPeriod)} • ${selectedPeriodTransactions.length
+                  } ${selectedPeriodTransactions.length === 1
+                    ? 'transaction'
+                    : 'transactions'
+                  }`
+                  : 'Selected period'}
+              </Text>
+            </View>
+
+            <View style={styles.transactionCountBadge}>
+              <Text style={styles.transactionCountText}>
+                {selectedPeriodTransactions.length}
+              </Text>
+            </View>
+          </View>
+
+          {selectedPeriodTransactions.length === 0 ? (
+
+            /* EMPTY */
+            <View style={styles.emptyTransactions}>
+              <View style={styles.emptyTransactionsIcon}>
+                <MaterialCommunityIcons
+                  name="clipboard-text-outline"
+                  size={36}
+                  color="#AEB4BC"
+                />
+              </View>
+
+              <Text style={styles.emptyTransactionsTitle}>
+                No transactions yet
+              </Text>
+
+              <Text style={styles.emptyTransactionsText}>
+                No expenses found for this period
+              </Text>
+            </View>
+
+          ) : (
+
+            /* TRANSACTION CARDS */
+            selectedPeriodTransactions.map((item, index) => {
+              const category = categoriesMap[item.category_id] || {};
+              const type = 'expense';
+              const amountColor = '#E35D6A';
+              const prefix = '-';
+              const accentColor = '#E35D6A';
+              const iconColor = category.color || accentColor;
+              const transactionDate = new Date(String(item.date).replace(' ', 'T'));
+              const timeText = transactionDate.toLocaleTimeString(
+                undefined,
+                {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }
+              );
+              const isLast = index === selectedPeriodTransactions.length - 1;
+              return (
+                <TouchableOpacity
+                  key={String(item.id)}
+                  activeOpacity={0.88}
+                  onPress={() =>
+                    navigation.navigate('TransactionAdd', {
+                      isEdit: true,
+                      transaction: item,
+                    })
+                  }
+                  style={{
+                    marginBottom: isLast ? 12 : 8,
+                  }}
+                >
+
+                  {/* EXACT TRANSACTION CARD */}
+                  <View
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: 17,
+                      overflow: 'hidden',
+
+                      shadowColor: '#000',
+                      shadowOffset: {
+                        width: 0,
+                        height: 3,
+                      },
+                      shadowOpacity: 0.06,
+                      shadowRadius: 8,
+                      elevation: 2,
+                    }}
+                  >
+
+                    {/* LEFT ACCENT */}
+                    <View
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 4,
+                        backgroundColor: accentColor,
+                      }}
+                    />
+
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        minHeight: 82,
+                        paddingLeft: 15,
+                        paddingRight: 12,
+                        paddingVertical: 12,
+                      }}
+                    >
+
+                      {/* CATEGORY ICON */}
+                      <View
+                        style={{
+                          width: 50,
+                          height: 50,
+                          borderRadius: 16,
+                          backgroundColor: iconColor,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          marginRight: 12,
+
+                          shadowColor: iconColor,
+                          shadowOffset: {
+                            width: 0,
+                            height: 3,
+                          },
+                          shadowOpacity: 0.22,
+                          shadowRadius: 6,
+                          elevation: 3,
+                        }}
+                      >
+                        <MaterialCommunityIcons
+                          name={
+                            category.icon ||
+                            'arrow-up-circle-outline'
+                          }
+                          size={23}
+                          color="#FFFFFF"
+                        />
+                      </View>
+
+                      {/* MIDDLE DETAILS */}
+                      <View
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          justifyContent: 'center',
+                          paddingRight: 8,
+                        }}
+                      >
+                        {/* NOTES */}
+                        <Text
+                          numberOfLines={2}
+                          ellipsizeMode="tail"
+                          style={{
+                            fontSize: 15,
+                            lineHeight: 19,
+                            fontWeight: '800',
+                            color: Colors.text,
+                            letterSpacing: -0.15,
+                          }}
+                        >
+                          {item.notes || 'No notes'}
+                        </Text>
+                        {/* CATEGORY + SOURCE */}
+                        <View
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            marginTop: 6,
+                            minWidth: 0,
+                          }}
+                        >
+                          {/* CATEGORY PILL */}
+                          <View
+                            style={{
+                              flexShrink: 1,
+                              maxWidth: '58%',
+                              backgroundColor:
+                                iconColor + '12',
+                              borderRadius: 6,
+                              paddingHorizontal: 7,
+                              paddingVertical: 4,
+                              borderWidth: 1,
+                              borderColor:
+                                iconColor + '18',
+                            }}
+                          >
+                            <Text
+                              numberOfLines={1}
+                              ellipsizeMode="tail"
+                              style={{
+                                color: iconColor,
+                                fontSize: 11,
+                                lineHeight: 13,
+                                fontWeight: '800',
+                              }}
+                            >
+                              {category.name ||
+                                'Uncategorized'}
+                            </Text>
+                          </View>
+                          {/* DOT */}
+                          <View
+                            style={{
+                              width: 3,
+                              height: 3,
+                              borderRadius: 2,
+                              backgroundColor: '#C7CBD1',
+                              marginHorizontal: 6,
+                              flexShrink: 0,
+                            }}
+                          />
+                          {/* SOURCE */}
+                          <Text
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              color: '#9299A3',
+                              fontSize: 11,
+                              lineHeight: 14,
+                              fontWeight: '600',
+                            }}
+                          >
+                            {sourcesMap[String(item.source_id)]?.name ||
+                              item.source_name ||
+                              item.source?.name ||
+                              'No source'}
+                          </Text>
+
+                        </View>
+                      </View>
+
+                      {/* RIGHT AMOUNT COLUMN */}
+                      <View
+                        style={{
+                          width: 90,
+                          flexShrink: 0,
+                          alignItems: 'flex-end',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {/* AMOUNT */}
+                        <Text
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.75}
+                          style={{
+                            width: '100%',
+                            textAlign: 'right',
+                            fontSize: 15,
+                            fontWeight: '900',
+                            color:
+                              item.is_counted === 0
+                                ? '#9CA3AF'
+                                : amountColor,
+                            letterSpacing: -0.35,
+                            textDecorationLine:
+                              item.is_counted === 0
+                                ? 'line-through'
+                                : 'none',
+                          }}
+                        >
+                          {prefix}₹
+                          {Number(
+                            item.amount || 0
+                          ).toFixed(2)}
+                        </Text>
+                        {/* NOT COUNTED */}
+                        {item.is_counted === 0 && (
+                          <View
+                            style={{
+                              backgroundColor: '#F3F4F6',
+                              borderRadius: 4,
+                              paddingHorizontal: 6,
+                              paddingVertical: 2,
+                              marginTop: 3,
+                              alignSelf: 'flex-end',
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 9,
+                                color: '#9CA3AF',
+                                fontWeight: '700',
+                                letterSpacing: 0.3,
+                              }}
+                            >
+                              NOT SPEND
+                            </Text>
+                          </View>
+                        )}
+                        {/* TIME */}
+                        <View
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            marginTop: 6,
+                            minHeight: 15,
+                          }}
+                        >
+                          <MaterialCommunityIcons
+                            name="clock-outline"
+                            size={11}
+                            color="#A3A9B2"
+                          />
+                          <Text
+                            style={{
+                              color: '#A3A9B2',
+                              fontSize: 10,
+                              fontWeight: '600',
+                              marginLeft: 3,
+                            }}
+                          >
+                            {timeText}
+                          </Text>
+                        </View>
+
+                      </View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -641,5 +1025,65 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FCFA',
     borderWidth: 1,
     borderColor: '#BFDCCD',
+  },
+  transactionsSection: {
+    marginTop: 4,
+  },
+  transactionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    paddingHorizontal: 2,
+  },
+  transactionsTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#2F7355',
+  },
+  transactionsSubtitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#718078',
+    marginTop: 3,
+  },
+  transactionCountBadge: {
+    minWidth: 32,
+    height: 32,
+    paddingHorizontal: 8,
+    borderRadius: 16,
+    backgroundColor: '#E6F2EC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  transactionCountText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#2F7355',
+  },
+  emptyTransactions: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 35,
+  },
+  emptyTransactionsIcon: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: '#EEF0F3',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyTransactionsTitle: {
+    color: Colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 14,
+  },
+  emptyTransactionsText: {
+    color: Colors.muted,
+    fontSize: 12,
+    marginTop: 5,
+    textAlign: 'center',
   },
 });
