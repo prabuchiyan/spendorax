@@ -21,49 +21,73 @@ export default function SourceCreateModal({
   const [color, setColor] = useState('#4B7CF3');
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    // Only initialize/reset when the modal is opened
+    if (!visible) {
+      return;
+    }
     if (editData) {
+      // EDIT MODE
       setName(editData.name || '');
       setInitial(String(editData.initial_balance || 0));
       setIcon(editData.icon || 'cash');
       setColor(editData.color || '#4B7CF3');
     } else {
+      // CREATE MODE - always start completely fresh
       setName('');
       setInitial('0');
       setIcon('cash');
       setColor('#4B7CF3');
     }
-  }, [editData]);
+    setSaving(false);
+    setShowIconPicker(false);
+    setShowColorPicker(false);
+  }, [visible, editData]);
 
   async function handleSave() {
-    if (!name) return;
+    // Prevent duplicate taps
+    if (saving) {
+      return;
+    }
+    if (!name.trim()) {
+      return;
+    }
 
     const payload = {
-      name,
+      name: name.trim(),
       initial_balance: parseFloat(initial) || 0,
       icon,
       color,
       is_active: 1,
     };
-
-    if (editData) {
-      await updateSource(editData.id, payload);
-    } else {
-      await createSource(payload);
-    }
-
-    if (onSourceCreated) {
-      onSourceCreated();
-    } else if (onSave) {
-      onSave();
+    setSaving(true);
+    try {
+      if (editData && editData.id) {
+        // EDIT
+        await updateSource(editData.id, payload);
+      } else {
+        // CREATE
+        await createSource(payload);
+      }
+      if (onSourceCreated) {
+        onSourceCreated();
+      } else if (onSave) {
+        onSave();
+      }
+    } catch (error) {
+      console.error('Error saving source:', error);
+      alert('Failed to save source. Please try again.');
+    } finally {
+      setSaving(false);
     }
   }
 
   return (
     <FormModalShell
       visible={visible}
-      onClose={onClose}
+      onClose={saving ? undefined : onClose}
       icon={icon}
       iconColor={color}
       iconSize={24}
@@ -71,13 +95,24 @@ export default function SourceCreateModal({
       subtitle="Manage your source details"
       actions={
         <>
-          <Button onPress={onClose} textColor="#666">Cancel</Button>
+          <Button
+            onPress={onClose}
+            textColor="#666"
+            disabled={saving}
+          >
+            Cancel
+          </Button>
           <Button
             mode="contained"
             onPress={handleSave}
-            style={[formModalStyles.saveBtn, { backgroundColor: color }]}
+            loading={saving}
+            disabled={saving}
+            style={[
+              formModalStyles.saveBtn,
+              { backgroundColor: color },
+            ]}
           >
-            {editData ? 'Update' : 'Create'}
+            {saving ? '' : editData ? 'Update' : 'Create'}
           </Button>
         </>
       }
@@ -103,6 +138,7 @@ export default function SourceCreateModal({
         onChangeText={setName}
         mode="outlined"
         style={formModalStyles.input}
+        disabled={saving}
       />
 
       <TextInput
@@ -112,11 +148,22 @@ export default function SourceCreateModal({
         keyboardType="numeric"
         mode="outlined"
         style={formModalStyles.input}
+        disabled={saving}
       />
 
       <View style={formModalStyles.controls}>
-        <FormControlButton icon="image" label="Icon" onPress={() => setShowIconPicker(true)} />
-        <FormControlButton icon="palette" label="Color" onPress={() => setShowColorPicker(true)} />
+        <FormControlButton
+          icon="image"
+          label="Icon"
+          onPress={() => setShowIconPicker(true)}
+          disabled={saving}
+        />
+        <FormControlButton
+          icon="palette"
+          label="Color"
+          onPress={() => setShowColorPicker(true)}
+          disabled={saving}
+        />
       </View>
     </FormModalShell>
   );
