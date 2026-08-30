@@ -687,10 +687,47 @@ export async function getBillSeries(templateId) {
   const template = await getBillById(templateId);
   if (!template) return [];
 
-  if (!template.is_recurring || !template.recurrence_type) {
+  // CC payment templates: is_recurring=1 but recurrence_type=null
+  // Fetch children directly by parent_bill_id
+  const isCCTemplate =
+    template.is_recurring &&
+    typeof template.notes === 'string' &&
+    template.notes.startsWith('Recurring payment template for');
+
+  if (!template.is_recurring && !isCCTemplate) {
     return [template];
   }
 
+  // For CC templates with no recurrence_type, skip the normal recurring logic
+  // and just return all non-deleted children sorted by due_date
+  if (isCCTemplate || !template.recurrence_type) {
+    const allChildren = (await fetchAllBillsRaw())
+      .filter(r => Number(r.parent_bill_id) === Number(templateId))
+      .map(normalizeBill)
+      .filter(Boolean);
+
+    const links = rowsToArray(
+      await executeSql(`SELECT * FROM bill_linked_transactions`, [])
+    );
+    const transactions = rowsToArray(
+      await executeSql(`SELECT * FROM transactions`, [])
+    );
+
+    const enriched = allChildren.map(bill => {
+      const billLinks = links.filter(l => Number(l.bill_id) === Number(bill.id));
+      const paidAmount = billLinks.reduce((sum, link) => {
+        const tx = transactions.find(t => Number(t.id) === Number(link.transaction_id));
+        return sum + Number(tx?.amount || 0);
+      }, 0);
+      return { ...bill, paid_amount: paidAmount };
+    });
+
+    return enriched.sort((a, b) =>
+      (a.due_date || '').localeCompare(b.due_date || '')
+    );
+  }
+
+  // Normal recurring bill — existing logic below
   const allChildren = (await fetchAllBillsRaw())
     .filter(r => Number(r.parent_bill_id) === Number(templateId))
     .map(normalizeBill)
@@ -698,48 +735,31 @@ export async function getBillSeries(templateId) {
 
   const children = allChildren.filter(c => !c.deleted_at);
 
-  // If a child row exists (even if deleted) for the exact same month as the template's due_date,
-  // it acts as an override for the template. We should replace the template with the child row
-  // for that month.
   let activeTemplate = template;
   if (template.due_date) {
     const templateMonth = template.due_date.slice(0, 7);
-    const overrideChild = allChildren.find(c => c.due_date && c.due_date.slice(0, 7) === templateMonth);
-    if (overrideChild) {
-      // The child overrides the template for this month. 
-      // We don't need to show the template occurrence.
-      activeTemplate = null;
-    }
+    const overrideChild = allChildren.find(
+      c => c.due_date && c.due_date.slice(0, 7) === templateMonth
+    );
+    if (overrideChild) activeTemplate = null;
   }
 
-  // Combine and sort newest first
   const series = activeTemplate ? [activeTemplate, ...children] : [...children];
 
   const links = rowsToArray(
     await executeSql(`SELECT * FROM bill_linked_transactions`, [])
   );
-
   const transactions = rowsToArray(
     await executeSql(`SELECT * FROM transactions`, [])
   );
 
   const enriched = series.map(bill => {
-
-    const billLinks = links.filter(
-      l => Number(l.bill_id) === Number(bill.id)
-    );
-
+    const billLinks = links.filter(l => Number(l.bill_id) === Number(bill.id));
     const paidAmount = billLinks.reduce((sum, link) => {
-      const tx = transactions.find(
-        t => Number(t.id) === Number(link.transaction_id)
-      );
+      const tx = transactions.find(t => Number(t.id) === Number(link.transaction_id));
       return sum + Number(tx?.amount || 0);
     }, 0);
-
-    return {
-      ...bill,
-      paid_amount: paidAmount,
-    };
+    return { ...bill, paid_amount: paidAmount };
   });
 
   return enriched.sort((a, b) =>
@@ -845,15 +865,43 @@ export async function getBillsForCurrentMonth(options = {}) {
 
   // ── Non-recurring bills ───────────────────────────────────────────────────
   for (const row of nonRecurring) {
-    // Hide Credit Card template bills.
-    // Their generated statement child bill will be displayed instead.
-    const isCreditCardTemplate = !row.parent_bill_id && row.is_recurring &&
-      typeof row.notes === 'string' && row.notes.startsWith('Recurring payment template for');
-    if (isCreditCardTemplate) {
-      continue;
+    // Never show the CC template bill itself
+    const isCreditCardTemplate =
+      !row.parent_bill_id &&
+      row.is_recurring &&
+      typeof row.notes === 'string' &&
+      row.notes.startsWith('Recurring payment template for');
+    if (isCreditCardTemplate) continue;
+
+    const isCCStatement =
+      Number(row.parent_bill_id) > 0 &&
+      typeof row.notes === 'string' &&
+      row.notes.startsWith('Statement ');
+
+    if (isCCStatement) {
+      // CC statement bills: only show the one due this month OR overdue ones.
+      // Past paid statements are visible via BillDetail series, not the main list.
+      const dueMonth = row.due_date ? String(row.due_date).slice(0, 7) : null;
+      const isCurrentOrOverdue =
+        !dueMonth ||
+        dueMonth === currentMonthPrefix ||
+        (dueMonth < currentMonthPrefix && row.status !== BILL_STATUS.PAID);
+
+      if (!isCurrentOrOverdue) continue;
+
+      const n = normalizeBill(row);
+      if (!n) continue;
+
+      // Attach _templateId so tapping navigates to the full statement series
+      result.push({
+        ...n,
+        _templateId: row.parent_bill_id,
+        _isRecurringSeries: true,
+      });
+    } else {
+      const n = normalizeBill(row);
+      if (n) result.push(n);
     }
-    const n = normalizeBill(row);
-    if (n) { result.push(n); }
   }
 
   // ── Recurring series ──────────────────────────────────────────────────────
