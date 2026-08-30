@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, Modal } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { getAllCreditCardStatements, deleteCreditCardStatement } from '../services/creditCards';
+import { getAllCreditCardStatements } from '../services/creditCards';
+import { deleteStatement } from '../services/creditCardScheduler';
 import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -36,7 +37,10 @@ export default function CreditCardStatementsScreen({ navigation }) {
 
     try {
       setDeleting(true);
-      await deleteCreditCardStatement(deleteTarget.id);
+      // deleteStatement handles: hard-deletes the statement row,
+      // soft-deletes the linked bill, then immediately re-runs
+      // the scheduler so the cycle regenerates if balance > 0.
+      await deleteStatement(deleteTarget.id);
       const items = await getAllCreditCardStatements();
       setStatements(items || []);
       setDeleteTarget(null);
@@ -46,7 +50,6 @@ export default function CreditCardStatementsScreen({ navigation }) {
         error
       );
       setDeleteTarget(null);
-      // Use Alert only for an actual error.
       Alert.alert(
         'Delete Failed',
         error?.message || 'Unable to delete the statement.'

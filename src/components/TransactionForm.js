@@ -16,6 +16,7 @@ import ConfirmDialog from './ConfirmDialog';
 import { Feather } from '@expo/vector-icons';
 import LinkedBillCard from './LinkedBillCard';
 import { usePageLoader } from '../context/PageLoaderContext';
+import { onCardTransactionChanged } from '../services/creditCardScheduler';
 
 export default function TransactionForm({ onCreated, onCancel, transaction, isEdit, onPressBill, sourceId: initialSourceId, categoryId: initialCategoryId }) {
   const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
@@ -322,6 +323,20 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           return;
         }
       }
+      // AFTER — add this block immediately after the type === 'transfer' / else block resolves,
+      // just before setIsDirty(false):
+      // Notify credit card scheduler if this source belongs to a card
+      try {
+        const affectedSourceId = type === 'transfer' ? sourceId : sourceId;
+        await onCardTransactionChanged(affectedSourceId);
+        // For transfers, the destination may also be a credit card source
+        if (type === 'transfer' && toAccount) {
+          await onCardTransactionChanged(toAccount);
+        }
+      } catch (e) {
+        // Non-critical — don't block save
+        console.warn('[TransactionForm] onCardTransactionChanged failed:', e);
+      }
       setIsDirty(false);
       if (onCreated) onCreated(id);
       if (!isEdit) { // Only reset form if it was a new transaction
@@ -342,6 +357,14 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
   const handleDelete = async () => {
     await deleteTransaction(transaction.id);
+    // Notify scheduler — deleted transaction may affect a credit card statement
+    try {
+      if (transaction.source_id) {
+        await onCardTransactionChanged(transaction.source_id);
+      }
+    } catch (e) {
+      console.warn('[TransactionForm] onCardTransactionChanged on delete failed:', e);
+    }
     setConfirmVisible(false);
     onCancel?.();
   };

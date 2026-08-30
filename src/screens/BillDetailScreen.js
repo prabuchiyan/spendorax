@@ -39,6 +39,7 @@ import {
   payCreditCardBill,
 } from '../services/creditCards';
 import { usePageLoader } from '../context/PageLoaderContext';
+import { onStatementPaid } from '../services/creditCardScheduler';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -1160,12 +1161,11 @@ export default function BillDetailScreen({ route, navigation }) {
                     onPress={async () => {
                       try {
                         showPageLoader();
-                        const paymentId =
-                          await payCreditCardBill({
-                            bill: activeBill,
-                            card: selectedCreditCard,
-                            paymentSourceId: source.id,
-                          });
+                        const paymentId = await payCreditCardBill({
+                          bill: activeBill,
+                          card: selectedCreditCard,
+                          paymentSourceId: source.id,
+                        });
                         await markBillPaid(
                           activeBill.id,
                           {
@@ -1173,38 +1173,28 @@ export default function BillDetailScreen({ route, navigation }) {
                             existingTransactionId: paymentId,
                           }
                         );
-                        /*
-                         * Close payment picker only after the DB operations
-                         * are successfully completed.
-                         */
+                        try {
+                          await onStatementPaid(selectedCreditCard.id);
+                        } catch (e) {
+                          console.warn('[BillDetailScreen] onStatementPaid failed:', e);
+                        }
                         setShowPaymentSourcePicker(false);
                         setSelectedCreditCard(null);
                         setPaymentSourceSearch('');
-                        /*
-                         * Wait until the complete bill screen refreshes.
-                         */
                         await load();
                       } catch (e) {
-                        console.error(
-                          '[BillDetail] Credit card payment failed:',
-                          e
-                        );
-                        Alert.alert(
-                          'Error',
-                          'Unable to complete payment.'
-                        );
+                        console.error('[BillDetail] Credit card payment failed:', e);
+                        Alert.alert('Error', 'Unable to complete payment.');
                       } finally {
                         hidePageLoader();
                       }
                     }}
                   >
-
                     <MaterialCommunityIcons
                       name={source.icon || 'wallet'}
                       size={22}
                       color={Colors.primary}
                     />
-
                     <Text
                       style={{
                         marginLeft: 10,
@@ -1213,11 +1203,8 @@ export default function BillDetailScreen({ route, navigation }) {
                     >
                       {source.name}
                     </Text>
-
                   </TouchableOpacity>
-
                 ))}
-
             </ScrollView>
 
             <PaperButton
