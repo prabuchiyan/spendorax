@@ -872,11 +872,6 @@ export default function SpendAreasDashboard({ route, navigation }) {
                             minHeight: 15,
                           }}
                         >
-                          <MaterialCommunityIcons
-                            name="calendar-clock-outline"
-                            size={11}
-                            color="#A3A9B2"
-                          />
                           <Text
                             style={{
                               color: '#A3A9B2',
