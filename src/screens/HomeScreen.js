@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Animated, Platform } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getCategorySpending } from '../services/reports';
@@ -29,58 +29,243 @@ function daysRemainingInMonth() {
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-function BudgetDonut({ limit = 0, spent = 0, remaining = 0, daysLeft = 0, balanceVisible = true }) {
-  const percentRaw = limit > 0 ? (spent / limit) : 0;
-  const percent = Math.max(0, percentRaw);
-  const pct = limit > 0 ? Math.min(100, Math.round(percent * 100)) : 0;
-  const color = percent <= 1 ? (percent < 0.7 ? '#14B8A6' : '#FFB020') : '#E46A6A';
-  const innerColor = remaining >= 0 ? '#14B8A6' : '#E46A6A';
+function BudgetDonut({
+  limit = 0,
+  spent = 0,
+  remaining = 0,
+  daysLeft = 0,
+  balanceVisible = true,
+}) {
+  const percentRaw =
+    limit > 0 ? spent / limit : 0;
+
+  const percent = Math.max(
+    0,
+    percentRaw
+  );
+
+  const pct =
+    limit > 0
+      ? Math.min(
+          100,
+          Math.round(percent * 100)
+        )
+      : 0;
+
+  const color =
+    percent <= 1
+      ? percent < 0.7
+        ? '#14B8A6'
+        : '#FFB020'
+      : '#E46A6A';
+
+  const innerColor =
+    remaining >= 0
+      ? '#14B8A6'
+      : '#E46A6A';
+
   const size = 180;
   const strokeWidth = 18;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
 
-  // Animated progress
-  const safePercent = isNaN(percent) ? 0 : percent;
+  const radius =
+    (size - strokeWidth) / 2;
 
-  const anim = React.useRef(new Animated.Value(Math.min(1, safePercent))).current;
+  const circumference =
+    2 * Math.PI * radius;
+
+  const safePercent =
+    Number.isNaN(percent)
+      ? 0
+      : percent;
+
+  // ==========================================================
+  // ANIMATED PROGRESS
+  // ==========================================================
+
+  const anim = React.useRef(
+    new Animated.Value(
+      Math.min(1, safePercent)
+    )
+  ).current;
+
   React.useEffect(() => {
-    Animated.timing(anim, { toValue: Math.min(1, percent), duration: 700, useNativeDriver: false }).start();
+    Animated.timing(anim, {
+      toValue: Math.min(
+        1,
+        percent
+      ),
+      duration: 700,
+      useNativeDriver: false,
+    }).start();
   }, [percent]);
 
-  const dashAnim = anim.interpolate({ inputRange: [0, 1], outputRange: [circumference, 0] });
+  const dashAnim =
+    anim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [
+        circumference,
+        0,
+      ],
+    });
 
-  function fmt(v) {
-    return `₹${Number(v || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+  // ==========================================================
+  // FORMAT CURRENCY
+  // ==========================================================
+
+  function fmt(value) {
+    return `₹${Number(
+      value || 0
+    ).toLocaleString(
+      'en-IN',
+      {
+        maximumFractionDigits: 2,
+      }
+    )}`;
   }
 
+  // ==========================================================
+  // WEB
+  // ==========================================================
+  //
+  // react-native-web + AnimatedCircle can pass unsupported
+  // SVG props such as `collapsable`.
+  //
+  // Use a normal Circle on web. The progress is calculated
+  // directly so the visual result remains correct.
+  // ==========================================================
+
+  const webDashOffset =
+    circumference -
+    circumference *
+      Math.min(
+        1,
+        safePercent
+      );
+
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <Svg width={size} height={size}>
-        <Circle cx={size / 2} cy={size / 2} r={radius} stroke="#eee" strokeWidth={strokeWidth} fill="none" />
-        <AnimatedCircle
+    <View
+      style={{
+        width: size,
+        height: size,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Svg
+        width={size}
+        height={size}
+      >
+        {/* ==================================================
+            BACKGROUND RING
+            ================================================== */}
+
+        <Circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={color}
+          stroke="#eee"
           strokeWidth={strokeWidth}
-          strokeLinecap="round"
           fill="none"
-          strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={dashAnim}
-          rotation="-90"
-          originX={size / 2}
-          originY={size / 2}
         />
+
+        {/* ==================================================
+            PROGRESS RING
+            ================================================== */}
+
+        {Platform.OS === 'web' ? (
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={color}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            fill="none"
+            strokeDasharray={`${circumference} ${circumference}`}
+            strokeDashoffset={
+              webDashOffset
+            }
+            rotation="-90"
+            originX={size / 2}
+            originY={size / 2}
+          />
+        ) : (
+          <AnimatedCircle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={color}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            fill="none"
+            strokeDasharray={`${circumference} ${circumference}`}
+            strokeDashoffset={dashAnim}
+            rotation="-90"
+            originX={size / 2}
+            originY={size / 2}
+          />
+        )}
       </Svg>
-      <View style={{ position: 'absolute', width: size * 0.7, alignItems: 'center', justifyContent: 'center', padding: 6 }}>
-        <Text style={{ fontWeight: '700', color: innerColor, textAlign: 'center' }}>
+
+      {/* ======================================================
+          CENTER CONTENT
+          ====================================================== */}
+
+      <View
+        style={{
+          position: 'absolute',
+          width: size * 0.7,
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 6,
+        }}
+      >
+        <Text
+          style={{
+            fontWeight: '700',
+            color: innerColor,
+            textAlign: 'center',
+          }}
+        >
           {remaining >= 0
-            ? `Safe to Spend: ${balanceVisible ? fmt(remaining) : '••••••'}`
-            : `Overspent: ${balanceVisible ? fmt(Math.abs(remaining)) : '••••••'}`}
+            ? `Safe to Spend: ${
+                balanceVisible
+                  ? fmt(remaining)
+                  : '••••••'
+              }`
+            : `Overspent: ${
+                balanceVisible
+                  ? fmt(
+                      Math.abs(
+                        remaining
+                      )
+                    )
+                  : '••••••'
+              }`}
         </Text>
-        <Text style={{ fontSize: 13, color: '#667085', marginTop: 6, textAlign: 'center' }}>{daysLeft} day(s) left</Text>
-        {limit > 0 ? <Text style={{ fontSize: 11, color: '#999', marginTop: 6 }}>Used: {pct}%</Text> : null}
+
+        <Text
+          style={{
+            fontSize: 13,
+            color: '#667085',
+            marginTop: 6,
+            textAlign: 'center',
+          }}
+        >
+          {daysLeft} day(s) left
+        </Text>
+
+        {limit > 0 ? (
+          <Text
+            style={{
+              fontSize: 11,
+              color: '#999',
+              marginTop: 6,
+            }}
+          >
+            Used: {pct}%
+          </Text>
+        ) : null}
       </View>
     </View>
   );

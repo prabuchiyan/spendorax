@@ -583,47 +583,92 @@ export async function syncCreditCardBillAmount(cardId) {
     let card = await getCreditCardById(cardId);
     if (!card) return;
 
-    // ── Self-heal: if payment_bill_id missing, find template bill by notes ──
+    // =========================================================
+    // FIND / RESTORE CREDIT CARD PAYMENT TEMPLATE
+    // =========================================================
+
     if (!card.payment_bill_id) {
-        const billsRes = await executeSql(`SELECT * FROM bills`, []);
+        const billsRes = await executeSql(
+            `SELECT * FROM bills`,
+            []
+        );
+
         for (let i = 0; i < billsRes.rows.length; i++) {
             const b = billsRes.rows.item(i);
+
             if (
                 !b.deleted_at &&
-                b.is_recurring &&
+                Number(b.is_recurring) === 1 &&
                 typeof b.notes === 'string' &&
-                b.notes === `Recurring payment template for ${card.name}`
+                b.notes ===
+                    `Recurring payment template for ${card.name}`
             ) {
-                // Write it back to the card row
                 await executeSql(
-                    `UPDATE credit_cards SET payment_bill_id = ? WHERE id = ?`,
-                    [b.id, cardId]
+                    `UPDATE credit_cards
+                     SET payment_bill_id = ?
+                     WHERE id = ?`,
+                    [
+                        b.id,
+                        cardId,
+                    ]
                 );
-                card = { ...card, payment_bill_id: b.id };
+
+                card = {
+                    ...card,
+                    payment_bill_id: b.id,
+                };
+
                 break;
             }
         }
     }
 
-    if (!card.payment_bill_id) return; // template bill doesn't exist yet
+    if (!card.payment_bill_id) {
+        return;
+    }
 
-    const outstanding = card.outstanding;
+    // =========================================================
+    // UPDATE ONLY THE CREDIT CARD TEMPLATE
+    // =========================================================
+    //
+    // IMPORTANT:
+    // Do NOT update statement bills here.
+    //
+    // Each statement already has its own fixed amount.
+    //
+    // Example:
+    //
+    // Statement 1 = 15,000
+    // Statement 2 = 24,740.42
+    //
+    // They MUST remain those amounts.
+    // =========================================================
 
-    // Update template
-    await updateBill(card.payment_bill_id, { amount: outstanding });
+    const outstanding =
+        Number(card.outstanding || 0);
 
-    // Update all unpaid child bills
-    const billsRes = await executeSql(
-        `SELECT * FROM bills WHERE parent_bill_id = ?`,
-        [card.payment_bill_id]
+    await updateBill(
+        card.payment_bill_id,
+        {
+            amount: outstanding,
+        }
     );
 
-    for (let i = 0; i < billsRes.rows.length; i++) {
-        const bill = billsRes.rows.item(i);
-        if (bill.deleted_at || bill.is_paid || !bill.due_date) continue;
-        await executeSql(
-            `UPDATE bills SET amount = ?, updated_at = ? WHERE id = ?`,
-            [outstanding, new Date().toISOString(), bill.id]
-        );
-    }
+    // =========================================================
+    // DO NOT UPDATE CHILD STATEMENT BILLS
+    // =========================================================
+    //
+    // Previously this function did:
+    //
+    // UPDATE bills
+    // SET amount = outstanding
+    // WHERE parent_bill_id = payment_bill_id
+    //
+    // That is WRONG for multi-cycle statements because it
+    // changes every statement to the combined card outstanding.
+    //
+    // Statement amounts are owned by the statement generator.
+    // =========================================================
+
+    return;
 }

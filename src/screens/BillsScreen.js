@@ -74,6 +74,7 @@ export default function BillsScreen({ navigation }) {
   const [paymentSourceSearch, setPaymentSourceSearch] = useState('');
   const [selectedPaymentBill, setSelectedPaymentBill] = useState(null);
   const [selectedCreditCard, setSelectedCreditCard] = useState(null);
+  const [expandedCreditCards, setExpandedCreditCards] = useState({});
 
   // ── data load ──────────────────────────────────────────────────────────────
   async function load() {
@@ -102,8 +103,154 @@ export default function BillsScreen({ navigation }) {
 
   // ── derived lists ──────────────────────────────────────────────────────────
   const filteredItems = useMemo(() => {
-    if (!search.trim()) return items;
-    return items.filter(b => b.name?.toLowerCase().includes(search.toLowerCase()));
+    const query = search.trim().toLowerCase();
+
+    const sourceItems = query
+      ? items.filter(b =>
+        b.name?.toLowerCase().includes(query)
+      )
+      : items;
+
+    // ==========================================================
+    // GROUP CREDIT CARD STATEMENTS
+    // ==========================================================
+    //
+    // Example:
+    //
+    // Bill 191
+    // parent_bill_id = 5
+    // amount = 15000
+    //
+    // Bill 192
+    // parent_bill_id = 5
+    // amount = 24740.42
+    //
+    // Become:
+    //
+    // SBI Credit Card
+    // amount = 39740.42
+    // children = [191, 192]
+    //
+    // ==========================================================
+
+    const groups = new Map();
+    const normalBills = [];
+
+    sourceItems.forEach(bill => {
+      const parentId =
+        Number(bill.parent_bill_id || 0);
+
+      const isStatement =
+        bill._isCreditCardStatement === true ||
+        (
+          typeof bill.notes === 'string' &&
+          bill.notes.startsWith('Statement ')
+        );
+
+      if (
+        isStatement &&
+        parentId > 0
+      ) {
+        if (!groups.has(parentId)) {
+          groups.set(parentId, []);
+        }
+
+        groups.get(parentId).push(bill);
+      } else {
+        normalBills.push(bill);
+      }
+    });
+
+    // ==========================================================
+    // BUILD ONE PARENT BILL FOR EACH CREDIT CARD
+    // ==========================================================
+
+    const groupedCreditCards = [];
+
+    groups.forEach((statements, parentId) => {
+      if (!statements.length) {
+        return;
+      }
+
+      // Sort statements by statement date / due date.
+      statements.sort((a, b) => {
+        const ad =
+          a.statement_date ||
+          a.due_date ||
+          '9999-12-31';
+
+        const bd =
+          b.statement_date ||
+          b.due_date ||
+          '9999-12-31';
+
+        return ad.localeCompare(bd);
+      });
+
+      // --------------------------------------------------------
+      // Parent amount = sum of all statements
+      // --------------------------------------------------------
+
+      const totalAmount =
+        statements.reduce(
+          (sum, statement) =>
+            sum + Number(statement.amount || 0),
+          0
+        );
+
+      // --------------------------------------------------------
+      // Use the latest statement for the parent card's
+      // status/due-date display.
+      // --------------------------------------------------------
+
+      const latestStatement =
+        statements[statements.length - 1];
+
+      groupedCreditCards.push({
+        ...latestStatement,
+
+        // ------------------------------------------------------
+        // IMPORTANT: this is the GROUP/PARENT ID.
+        // ------------------------------------------------------
+
+        id: `cc-${parentId}`,
+
+        parent_bill_id: parentId,
+
+        name:
+          latestStatement.name ||
+          'Credit Card',
+
+        amount: totalAmount,
+
+        // ------------------------------------------------------
+        // Children = actual generated statement bills
+        // ------------------------------------------------------
+
+        children: statements,
+
+        _isCreditCardParent: true,
+
+        _isCreditCardStatement: false,
+
+        _isRecurringSeries: false,
+
+        _templateId: parentId,
+
+        // Number of generated statements.
+        _statementCount:
+          statements.length,
+      });
+    });
+
+    // ==========================================================
+    // RETURN NORMAL BILLS + CREDIT CARD PARENTS
+    // ==========================================================
+
+    return [
+      ...normalBills,
+      ...groupedCreditCards,
+    ];
   }, [items, search]);
 
   const filteredCategories = useMemo(() => {
@@ -130,33 +277,94 @@ export default function BillsScreen({ navigation }) {
 
   const handleMarkPaid = async (bill) => {
     try {
-      // Check whether this bill belongs to a Credit Card
+      // ==========================================================
+      // FIND CREDIT CARD
+      // ==========================================================
+
       const cards = await getCreditCards(false);
+
+      const parentBillId =
+        Number(
+          bill.parent_bill_id ||
+          bill._templateId ||
+          bill.id
+        );
+
       const card = cards.find(
         c =>
-          Number(c.payment_bill_id) === Number(bill.parent_bill_id || bill.id)
+          Number(c.payment_bill_id) ===
+          parentBillId
       );
-      // Normal bill → existing flow
+
+      // ==========================================================
+      // NORMAL BILL
+      // ==========================================================
+
       if (!card) {
-        await markBillPaid(bill.id, {
-          source_id: bill.source_id,
-        });
+        await markBillPaid(
+          bill.id,
+          {
+            source_id:
+              bill.source_id,
+          }
+        );
+
         await load();
         return;
       }
-      // Credit Card bill → ask user to choose payment source
-      const sources = await getSources(true);
-      const availableSources = sources.filter(
-        s => Number(s.id) !== Number(card.source_id)
+
+      // ==========================================================
+      // CREDIT CARD BILL
+      // ==========================================================
+      //
+      // IMPORTANT:
+      // Do NOT change the statement amount here.
+      //
+      // We only open the payment-source picker.
+      // The actual statement bill remains unchanged until the
+      // payment is explicitly recorded.
+      // ==========================================================
+
+      const sources =
+        await getSources(true);
+
+      const availableSources =
+        sources.filter(
+          s =>
+            Number(s.id) !==
+            Number(card.source_id)
+        );
+
+      setPaymentSources(
+        availableSources
       );
-      setPaymentSources(availableSources);
-      setSelectedPaymentBill(bill);
-      setSelectedCreditCard(card);
+
+      // Keep the actual bill that initiated
+      // the payment action.
+      setSelectedPaymentBill(
+        bill
+      );
+
+      setSelectedCreditCard(
+        card
+      );
+
       setPaymentSourceSearch('');
-      setShowPaymentSourcePicker(true);
+
+      setShowPaymentSourcePicker(
+        true
+      );
+
     } catch (e) {
-      console.error(e);
-      Alert.alert('Error', 'Unable to mark bill as paid.');
+      console.error(
+        'handleMarkPaid error:',
+        e
+      );
+
+      Alert.alert(
+        'Error',
+        'Unable to mark bill as paid.'
+      );
     }
   };
 
@@ -171,17 +379,324 @@ export default function BillsScreen({ navigation }) {
   const now = new Date();
   const monthLabel = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 
-  const renderBill = ({ item }) => (
-    <SwipeableBillCard
-      bill={item}
-      category={categoriesMap[item.category_id]}
-      onPress={openDetail}
-      onMarkPaid={handleMarkPaid}
-      onSkip={handleSkip}
-      onEdit={isCreditCardBill(item) ? null : openEdit}
-    />
-  );
+  const renderBill = ({ item }) => {
+    // ==========================================================
+    // CREDIT CARD PARENT
+    // ==========================================================
 
+    if (item._isCreditCardParent) {
+      const parentKey = String(
+        item.parent_bill_id ||
+        item._templateId ||
+        item.id
+      );
+
+      const isExpanded =
+        expandedCreditCards[parentKey] === true;
+
+      const toggleStatements = () => {
+        setExpandedCreditCards(prev => ({
+          ...prev,
+          [parentKey]:
+            !prev[parentKey],
+        }));
+      };
+
+      return (
+        <View
+          style={{
+            marginBottom: 8,
+          }}
+        >
+          {/* ====================================================
+            PARENT CREDIT CARD BILL
+            ==================================================== */}
+
+          <SwipeableBillCard
+            bill={item}
+            category={
+              categoriesMap[item.category_id]
+            }
+
+            onPress={() => {
+              if (
+                item.children &&
+                item.children.length > 0
+              ) {
+                openDetail(
+                  item.children[0]
+                );
+              } else {
+                openDetail(item);
+              }
+            }}
+
+            onMarkPaid={() => {
+              handleMarkPaid(item);
+            }}
+
+            onSkip={null}
+            onEdit={null}
+
+            showExpandButton={true}
+            expanded={isExpanded}
+            onToggleExpand={
+              toggleStatements
+            }
+          />
+
+          {/* ====================================================
+            STATEMENT CHILDREN
+            ==================================================== */}
+
+          {isExpanded &&
+            item.children &&
+            item.children.length > 0 && (
+              <View
+                style={{
+                  marginLeft: 22,
+                  marginTop: -2,
+                  marginBottom: 4,
+
+                  borderLeftWidth: 2,
+                  borderLeftColor:
+                    '#DCEBE2',
+
+                  paddingLeft: 12,
+                  paddingTop: 4,
+                }}
+              >
+                {item.children.map(
+                  (statement, index) => (
+                    <View
+                      key={String(
+                        statement.id
+                      )}
+                      style={{
+                        backgroundColor:
+                          '#F8FBF9',
+
+                        borderRadius: 12,
+
+                        padding: 10,
+
+                        marginBottom:
+                          index ===
+                            item.children.length - 1
+                            ? 0
+                            : 7,
+
+                        borderWidth: 1,
+                        borderColor:
+                          '#E5F1EB',
+                      }}
+                    >
+                      {/* ========================================
+                        STATEMENT HEADER
+                        ======================================== */}
+
+                      <View
+                        style={{
+                          flexDirection:
+                            'row',
+                          alignItems:
+                            'center',
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: 30,
+                            height: 30,
+                            borderRadius: 10,
+
+                            backgroundColor:
+                              '#EAF5EF',
+
+                            alignItems:
+                              'center',
+
+                            justifyContent:
+                              'center',
+                          }}
+                        >
+                          <MaterialCommunityIcons
+                            name="credit-card-outline"
+                            size={17}
+                            color="#3F8F6B"
+                          />
+                        </View>
+
+                        <View
+                          style={{
+                            flex: 1,
+                            marginLeft: 9,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              fontWeight:
+                                '800',
+                              color:
+                                '#25352D',
+                            }}
+                          >
+                            Statement
+                          </Text>
+
+                          <Text
+                            style={{
+                              fontSize: 10,
+                              color:
+                                '#718078',
+                              marginTop: 2,
+                            }}
+                          >
+                            {statement.statement_date ||
+                              statement.due_date ||
+                              '-'}
+                          </Text>
+                        </View>
+
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            fontWeight:
+                              '800',
+                            color:
+                              '#25352D',
+                          }}
+                        >
+                          {formatCurrency(
+                            Number(
+                              statement.amount ||
+                              0
+                            )
+                          )}
+                        </Text>
+                      </View>
+
+                      {/* ========================================
+                        STATEMENT FOOTER
+                        ======================================== */}
+
+                      <View
+                        style={{
+                          flexDirection:
+                            'row',
+
+                          justifyContent:
+                            'space-between',
+
+                          alignItems:
+                            'center',
+
+                          marginTop: 8,
+
+                          paddingTop: 7,
+
+                          borderTopWidth:
+                            1,
+
+                          borderTopColor:
+                            '#E5F1EB',
+                        }}
+                      >
+                        <View
+                          style={{
+                            flexDirection:
+                              'row',
+
+                            alignItems:
+                              'center',
+                          }}
+                        >
+                          <MaterialCommunityIcons
+                            name="calendar-clock-outline"
+                            size={14}
+                            color="#8A958F"
+                          />
+
+                          <Text
+                            style={{
+                              fontSize: 9,
+                              color:
+                                '#8A958F',
+                              marginLeft: 4,
+                            }}
+                          >
+                            Due{' '}
+                            {statement.due_date ||
+                              '-'}
+                          </Text>
+                        </View>
+
+                        <TouchableOpacity
+                          activeOpacity={
+                            0.7
+                          }
+                          onPress={() =>
+                            openDetail(
+                              statement
+                            )
+                          }
+                          style={{
+                            paddingHorizontal:
+                              8,
+
+                            paddingVertical:
+                              4,
+
+                            borderRadius:
+                              7,
+
+                            backgroundColor:
+                              '#EAF5EF',
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 9,
+                              fontWeight:
+                                '800',
+                              color:
+                                '#3F8F6B',
+                            }}
+                          >
+                            View
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )
+                )}
+              </View>
+            )}
+        </View>
+      );
+    }
+
+    // ==========================================================
+    // NORMAL BILL
+    // ==========================================================
+
+    return (
+      <SwipeableBillCard
+        bill={item}
+        category={
+          categoriesMap[item.category_id]
+        }
+        onPress={openDetail}
+        onMarkPaid={handleMarkPaid}
+        onSkip={handleSkip}
+        onEdit={
+          isCreditCardBill(item)
+            ? null
+            : openEdit
+        }
+      />
+    );
+  };
   const listHeader = (
     <View>
       {/* SUMMARY */}

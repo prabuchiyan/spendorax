@@ -789,266 +789,582 @@ export async function getBillsForCurrentMonth(options = {}) {
   const year = now.getFullYear();
   const month = now.getMonth();
   const today = todayStr();
-  const currentMonthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+
+  const currentMonthPrefix =
+    `${year}-${String(month + 1).padStart(2, '0')}`;
+
+  // ============================================================
+  // LOAD ALL BILLS
+  // ============================================================
 
   const allRaw = await fetchAllBillsRaw();
 
-  // ── Deduplicate recurring series ──────────────────────────────────────────
+  // ============================================================
+  // LOAD CREDIT CARD PAYMENT TEMPLATE IDS
+  // ============================================================
+  //
+  // credit_cards.payment_bill_id points to the recurring
+  // credit-card payment template.
+  //
+  // Example:
+  //
+  // payment_bill_id = 5
+  //
+  // bills:
+  //   id 5   -> CC template
+  //   id 191 -> statement 1
+  //   id 192 -> statement 2
+  //
+  // The template is hidden.
+  // Statements are displayed individually.
+  // ============================================================
+
+  let creditCardPaymentBillIds = new Set();
+
+  try {
+    const ccRes = await executeSql(
+      `SELECT payment_bill_id
+       FROM credit_cards
+       WHERE payment_bill_id IS NOT NULL`,
+      []
+    );
+
+    creditCardPaymentBillIds = new Set(
+      rowsToArray(ccRes)
+        .map(row => Number(row.payment_bill_id))
+        .filter(Boolean)
+    );
+  } catch (e) {
+    console.warn(
+      'getBillsForCurrentMonth: unable to load credit card payment bill IDs',
+      e
+    );
+  }
+
+  // ============================================================
+  // CLASSIFY BILLS
+  // ============================================================
+
   const recurringGroups = {};
   const nonRecurring = [];
 
   for (const row of allRaw) {
+    const rowId =
+      Number(row.id);
 
-    // ============================================================
+    const parentBillId =
+      Number(row.parent_bill_id || 0);
+
+    // ==========================================================
     // CREDIT CARD PAYMENT TEMPLATE
-    // ============================================================
+    // ==========================================================
     //
-    // Credit-card templates are recurring bills used ONLY as a
-    // template by runCreditCardStatementScheduler().
+    // Never show the recurring CC payment template.
     //
-    // They must NEVER appear in the Bills list and must NEVER
-    // generate a normal recurring occurrence here.
-    //
-    // The actual bill displayed to the user is the generated
-    // statement child:
-    //
-    //   parent_bill_id = template.id
-    //   is_recurring   = 0
-    //   notes          = "Statement YYYY-MM-DD..."
-    //
+
     const isCreditCardTemplate =
-      !row.parent_bill_id && row.is_recurring &&
-      typeof row.notes === 'string' && row.notes.startsWith('Recurring payment template for');
+      parentBillId === 0 &&
+      Number(row.is_recurring) === 1 &&
+      creditCardPaymentBillIds.has(rowId);
 
     if (isCreditCardTemplate) {
-      // IMPORTANT:
-      // Do not add this to recurringGroups.
-      // Credit-card scheduler owns these bills.
       continue;
     }
 
-    // ============================================================
-    // CREDIT CARD GENERATED STATEMENT BILL
-    // ============================================================
+    // ==========================================================
+    // CREDIT CARD GENERATED STATEMENT
+    // ==========================================================
     //
-    // This is the real bill that should appear in the Bills list.
+    // Every generated statement is an independent bill.
     //
-    const isCreditCardStatementBill = Number(row.parent_bill_id) > 0 && Number(row.is_recurring) === 0 &&
-      typeof row.notes === 'string' && row.notes.startsWith('Statement ');
+    // IMPORTANT:
+    // Do NOT put these into recurringGroups.
+    //
 
-    if (isCreditCardStatementBill) {
+    const isCreditCardStatement =
+      parentBillId > 0 &&
+      Number(row.is_recurring) === 0 &&
+      creditCardPaymentBillIds.has(parentBillId);
+
+    if (isCreditCardStatement) {
       nonRecurring.push(row);
       continue;
     }
 
-    // ============================================================
+    // ==========================================================
     // NORMAL NON-RECURRING BILL
-    // ============================================================
+    // ==========================================================
 
-    if (!row.is_recurring || !row.recurrence_type) {
+    if (
+      !row.is_recurring ||
+      !row.recurrence_type
+    ) {
       if (!row.parent_bill_id) {
         nonRecurring.push(row);
       }
+
       continue;
     }
 
-    // ============================================================
+    // ==========================================================
     // NORMAL RECURRING BILL
-    // ============================================================
+    // ==========================================================
 
-    const templateId = row.parent_bill_id || row.id;
-    if (!recurringGroups[templateId] || row.parent_bill_id === null) {
+    const templateId =
+      row.parent_bill_id || row.id;
+
+    if (
+      !recurringGroups[templateId] ||
+      row.parent_bill_id === null
+    ) {
       recurringGroups[templateId] = row;
     }
   }
+
   const result = [];
 
-  // ── Non-recurring bills ───────────────────────────────────────────────────
+  // ============================================================
+  // NON-RECURRING BILLS
+  // ============================================================
+
   for (const row of nonRecurring) {
-    // Never show the CC template bill itself
-    const isCreditCardTemplate =
-      !row.parent_bill_id &&
-      row.is_recurring &&
-      typeof row.notes === 'string' &&
-      row.notes.startsWith('Recurring payment template for');
-    if (isCreditCardTemplate) continue;
+    const parentBillId =
+      Number(row.parent_bill_id || 0);
+
+    // ==========================================================
+    // CREDIT CARD STATEMENT
+    // ==========================================================
 
     const isCCStatement =
-      Number(row.parent_bill_id) > 0 &&
-      typeof row.notes === 'string' &&
-      row.notes.startsWith('Statement ');
+      parentBillId > 0 &&
+      Number(row.is_recurring) === 0 &&
+      creditCardPaymentBillIds.has(parentBillId);
 
     if (isCCStatement) {
-      // CC statement bills: only show the one due this month OR overdue ones.
-      // Past paid statements are visible via BillDetail series, not the main list.
-      const dueMonth = row.due_date ? String(row.due_date).slice(0, 7) : null;
-      const isCurrentOrOverdue =
-        !dueMonth ||
-        dueMonth === currentMonthPrefix ||
-        (dueMonth < currentMonthPrefix && row.status !== BILL_STATUS.PAID);
 
-      if (!isCurrentOrOverdue) continue;
+      // --------------------------------------------------------
+      // READ STATEMENT DATE FROM NOTES
+      // --------------------------------------------------------
+      //
+      // Scheduler creates notes similar to:
+      //
+      // Statement 2026-08-13
+      //
+      // We use the statement date to decide whether the
+      // statement has actually been generated/reached.
+      //
 
-      const n = normalizeBill(row);
-      if (!n) continue;
+      const notes =
+        String(row.notes || '');
 
-      // Attach _templateId so tapping navigates to the full statement series
-      result.push({
-        ...n,
-        _templateId: row.parent_bill_id,
-        _isRecurringSeries: true,
-      });
-    } else {
-      const n = normalizeBill(row);
-      if (n) result.push(n);
-    }
-  }
-
-  // ── Recurring series ──────────────────────────────────────────────────────
-  for (const template of Object.values(recurringGroups)) {
-    // Determine this month's expected due date via string arithmetic
-    const endOfMonth = new Date(year, month + 1, 0).toISOString().slice(0, 10);
-    const upTo = template.recurrence_end_date ? [template.recurrence_end_date.slice(0, 10), endOfMonth].sort()[0] : endOfMonth;
-    const allDates = generateOccurrenceDates(template, upTo);
-
-    // Find this month's date purely by string prefix — no Date parsing,
-    // no timezone risk.
-    const thisMonthDate = allDates.find(d => d.startsWith(currentMonthPrefix));
-    if (!thisMonthDate) {
-      // Series has no occurrence this month
-      const n = normalizeBill(template);
-      if (n) result.push({ ...n, _templateId: template.id, _isRecurringSeries: true });
-      continue;
-    }
-
-    // Always check latest DB state (avoids duplicate occurrence creation)
-    const allBills = await fetchAllBillsRaw();
-    // ============================================================
-    // FIND CURRENT RECURRING OCCURRENCE
-    // ============================================================
-    //
-    // IMPORTANT:
-    // Always check recurrence_occurrence_key FIRST.
-    //
-    // Example:
-    // Expected recurring bill = September 2026
-    // User moved bill to = August 2026
-    //
-    // occurrence_key is still:
-    // 2026
-    //
-    // Therefore August bill is already the September occurrence.
-    // DO NOT create another September bill.
-    //
-
-    const occurrenceKey = getRecurrenceOccurrenceKey(
-      template.recurrence_type,
-      thisMonthDate,
-      template.recurrence_interval
-    );
-
-    let occurrenceRow = allBills.find(
-      b =>
-        Number(b.parent_bill_id) === Number(template.id) &&
-        !b.deleted_at &&
-        String(b.recurrence_occurrence_key || '') ===
-        String(occurrenceKey)
-    );
-
-    if (occurrenceRow) {
-      // Existing occurrence found by stable recurrence key.
-      occurrenceRow = normalizeBill(occurrenceRow);
-    } else if (
-      template.due_date &&
-      template.due_date.slice(0, 10) === thisMonthDate
-    ) {
-      // Template itself represents this occurrence.
-      occurrenceRow = normalizeBill(template);
-
-    } else {
-      // Backward compatibility for old bills created
-      // before recurrence_occurrence_key was added.
-      occurrenceRow = allBills.find(
-        b =>
-          Number(b.parent_bill_id) === Number(template.id) &&
-          !b.deleted_at &&
-          b.due_date?.slice(0, 10) === thisMonthDate
-      );
-
-      if (occurrenceRow) {
-        occurrenceRow = normalizeBill(occurrenceRow);
-      } else {
-        // No existing occurrence -> create exactly ONE.
-        const newId = await _insertBill({
-          name: template.name,
-          amount: template.amount,
-          due_date: thisMonthDate,
-          is_recurring: 0,
-          recurrence_type: null,
-          recurrence_interval: 1,
-          recurrence_end_date: null,
-          category_id: template.category_id,
-          source_id: template.source_id,
-          reminder_days_before: template.reminder_days_before,
-          auto_pay: template.auto_pay,
-          notes: template.notes,
-          attachment_url: template.attachment_url,
-          parent_bill_id: template.id,
-          recurrence_occurrence_key: occurrenceKey,
-        });
-
-        occurrenceRow = normalizeBill(
-          await getBillById(newId)
+      const statementMatch =
+        notes.match(
+          /Statement\s+(\d{4}-\d{2}-\d{2})/
         );
-      }
-    }
 
-    if (!occurrenceRow) continue;
-    if (occurrenceRow) {
-      // Hide Credit Card template bills from Bills screen.
-      // Only show the generated statement (child) bill.
-      const isCreditCardTemplate =
-        !template.parent_bill_id &&
-        template.is_recurring &&
-        typeof template.notes === 'string' &&
-        template.notes.startsWith('Recurring payment template for');
+      const statementDate =
+        statementMatch
+          ? statementMatch[1]
+          : null;
 
-      // If we're still pointing at the template itself, don't display it.
+      // --------------------------------------------------------
+      // FUTURE STATEMENT
+      // --------------------------------------------------------
+      //
+      // Example:
+      //
+      // Today          = 2026-08-30
+      // Statement date = 2026-09-13
+      //
+      // Do NOT display it yet.
+      //
+
       if (
-        isCreditCardTemplate &&
-        Number(occurrenceRow.id) === Number(template.id)
+        statementDate &&
+        statementDate > today
       ) {
         continue;
       }
 
+      // --------------------------------------------------------
+      // NORMALIZE
+      // --------------------------------------------------------
+
+      const n =
+        normalizeBill(row);
+
+      if (!n) {
+        continue;
+      }
+
+      // --------------------------------------------------------
+      // IMPORTANT
+      // --------------------------------------------------------
+      //
+      // This is an INDIVIDUAL bill.
+      //
+      // Do NOT set:
+      //
+      // _templateId
+      // _isRecurringSeries: true
+      //
+      // Otherwise the Bills UI can treat multiple CC
+      // statements as one recurring series and combine
+      // their amounts.
+      //
+
       result.push({
-        ...occurrenceRow,
-        _templateId: template.id,
-        _isRecurringSeries: true,
+        ...n,
+
+        _isCreditCardStatement: true,
+
+        _isRecurringSeries: false,
+
+        _templateId: null,
+
+        statement_date:
+          statementDate,
+
+        closing_balance:
+          Number(n.amount || 0),
       });
+
+      continue;
+    }
+
+    // ==========================================================
+    // NORMAL NON-RECURRING BILL
+    // ==========================================================
+
+    const n =
+      normalizeBill(row);
+
+    if (n) {
+      result.push(n);
     }
   }
 
-  // ── Filter & sort ─────────────────────────────────────────────────────────
-  let filtered = result.filter(Boolean);
+  // ============================================================
+  // NORMAL RECURRING SERIES
+  // ============================================================
 
-  if (options.status && options.status !== 'all') {
-    const statuses = Array.isArray(options.status) ? options.status : [options.status];
-    filtered = filtered.filter(b => statuses.includes(b.status));
+  for (
+    const template of Object.values(recurringGroups)
+  ) {
+
+    const endOfMonth =
+      new Date(
+        year,
+        month + 1,
+        0
+      )
+        .toISOString()
+        .slice(0, 10);
+
+    const upTo =
+      template.recurrence_end_date
+        ? [
+          template.recurrence_end_date.slice(0, 10),
+          endOfMonth,
+        ].sort()[0]
+        : endOfMonth;
+
+    const allDates =
+      generateOccurrenceDates(
+        template,
+        upTo
+      );
+
+    const thisMonthDate =
+      allDates.find(
+        d =>
+          d.startsWith(
+            currentMonthPrefix
+          )
+      );
+
+    // ----------------------------------------------------------
+    // NO OCCURRENCE THIS MONTH
+    // ----------------------------------------------------------
+
+    if (!thisMonthDate) {
+      const n =
+        normalizeBill(template);
+
+      if (n) {
+        result.push({
+          ...n,
+
+          _templateId:
+            template.id,
+
+          _isRecurringSeries:
+            true,
+        });
+      }
+
+      continue;
+    }
+
+    // ----------------------------------------------------------
+    // LOAD LATEST BILLS
+    // ----------------------------------------------------------
+
+    const allBills =
+      await fetchAllBillsRaw();
+
+    // ----------------------------------------------------------
+    // OCCURRENCE KEY
+    // ----------------------------------------------------------
+
+    const occurrenceKey =
+      getRecurrenceOccurrenceKey(
+        template.recurrence_type,
+        thisMonthDate,
+        template.recurrence_interval
+      );
+
+    let occurrenceRow =
+      allBills.find(
+        b =>
+          Number(b.parent_bill_id) ===
+          Number(template.id) &&
+          !b.deleted_at &&
+          String(
+            b.recurrence_occurrence_key || ''
+          ) ===
+          String(occurrenceKey)
+      );
+
+    // ----------------------------------------------------------
+    // EXISTING OCCURRENCE
+    // ----------------------------------------------------------
+
+    if (occurrenceRow) {
+
+      occurrenceRow =
+        normalizeBill(occurrenceRow);
+
+    }
+
+    // ----------------------------------------------------------
+    // TEMPLATE ITSELF IS THIS MONTH
+    // ----------------------------------------------------------
+
+    else if (
+      template.due_date &&
+      template.due_date.slice(0, 10) ===
+      thisMonthDate
+    ) {
+
+      occurrenceRow =
+        normalizeBill(template);
+
+    }
+
+    // ----------------------------------------------------------
+    // OLD OCCURRENCE WITHOUT KEY
+    // ----------------------------------------------------------
+
+    else {
+
+      occurrenceRow =
+        allBills.find(
+          b =>
+            Number(b.parent_bill_id) ===
+            Number(template.id) &&
+            !b.deleted_at &&
+            b.due_date?.slice(0, 10) ===
+            thisMonthDate
+        );
+
+      // --------------------------------------------------------
+      // FOUND OLD OCCURRENCE
+      // --------------------------------------------------------
+
+      if (occurrenceRow) {
+
+        occurrenceRow =
+          normalizeBill(occurrenceRow);
+
+      }
+
+      // --------------------------------------------------------
+      // CREATE MISSING NORMAL RECURRING OCCURRENCE
+      // --------------------------------------------------------
+
+      else {
+
+        const newId =
+          await _insertBill({
+            name:
+              template.name,
+
+            amount:
+              template.amount,
+
+            due_date:
+              thisMonthDate,
+
+            is_recurring:
+              0,
+
+            recurrence_type:
+              null,
+
+            recurrence_interval:
+              1,
+
+            recurrence_end_date:
+              null,
+
+            category_id:
+              template.category_id,
+
+            source_id:
+              template.source_id,
+
+            reminder_days_before:
+              template.reminder_days_before,
+
+            auto_pay:
+              template.auto_pay,
+
+            notes:
+              template.notes,
+
+            attachment_url:
+              template.attachment_url,
+
+            parent_bill_id:
+              template.id,
+
+            recurrence_occurrence_key:
+              occurrenceKey,
+          });
+
+        occurrenceRow =
+          normalizeBill(
+            await getBillById(newId)
+          );
+      }
+    }
+
+    if (!occurrenceRow) {
+      continue;
+    }
+
+    // ----------------------------------------------------------
+    // NEVER SHOW CREDIT CARD TEMPLATE
+    // ----------------------------------------------------------
+
+    const isCreditCardTemplate =
+      !template.parent_bill_id &&
+      Number(template.is_recurring) === 1 &&
+      creditCardPaymentBillIds.has(
+        Number(template.id)
+      );
+
+    if (
+      isCreditCardTemplate &&
+      Number(occurrenceRow.id) ===
+      Number(template.id)
+    ) {
+      continue;
+    }
+
+    // ----------------------------------------------------------
+    // NORMAL RECURRING BILL
+    // ----------------------------------------------------------
+
+    result.push({
+      ...occurrenceRow,
+
+      _templateId:
+        template.id,
+
+      _isRecurringSeries:
+        true,
+    });
   }
+
+  // ============================================================
+  // FILTERS
+  // ============================================================
+
+  let filtered =
+    result.filter(Boolean);
+
+  if (
+    options.status &&
+    options.status !== 'all'
+  ) {
+
+    const statuses =
+      Array.isArray(options.status)
+        ? options.status
+        : [options.status];
+
+    filtered =
+      filtered.filter(
+        bill =>
+          statuses.includes(
+            bill.status
+          )
+      );
+  }
+
   if (options.category_id) {
-    filtered = filtered.filter(b => b.category_id === options.category_id);
+    filtered =
+      filtered.filter(
+        bill =>
+          bill.category_id ===
+          options.category_id
+      );
   }
 
-  const sortBy = options.sortBy || 'due_date';
-  const dir = options.sortDir === 'desc' ? -1 : 1;
+  // ============================================================
+  // SORT
+  // ============================================================
+
+  const sortBy =
+    options.sortBy || 'due_date';
+
+  const dir =
+    options.sortDir === 'desc'
+      ? -1
+      : 1;
+
   filtered.sort((a, b) => {
-    if (sortBy === 'amount') return (Number(a.amount) - Number(b.amount)) * dir;
-    const ad = a.due_date || '9999-12-31';
-    const bd = b.due_date || '9999-12-31';
-    if (ad < bd) return -1 * dir;
-    if (ad > bd) return 1 * dir;
-    return (a.name || '').localeCompare(b.name || '') * dir;
+
+    if (sortBy === 'amount') {
+      return (
+        Number(a.amount) -
+        Number(b.amount)
+      ) * dir;
+    }
+
+    const ad =
+      a.due_date ||
+      '9999-12-31';
+
+    const bd =
+      b.due_date ||
+      '9999-12-31';
+
+    if (ad < bd) {
+      return -1 * dir;
+    }
+
+    if (ad > bd) {
+      return 1 * dir;
+    }
+
+    return (
+      (a.name || '').localeCompare(
+        b.name || ''
+      ) * dir
+    );
   });
 
   return filtered;

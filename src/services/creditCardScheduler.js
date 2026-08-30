@@ -157,20 +157,38 @@ function getCyclePeriod(statementDay, statementDate) {
 function getAllCycles(statementDay, fromDate, todayDate) {
   const cycles = [];
 
-  // Find the first statement date on or after fromDate
   let year = fromDate.getFullYear();
-  let month = fromDate.getMonth() + 1; // 1-based
+  let month = fromDate.getMonth() + 1;
 
-  // Walk forward month by month until statement date <= today
-  // We cap at 10 years of history to be safe (shouldn't ever be needed)
   let safety = 0;
 
   while (safety++ < 120) {
-    const statementDate = getStatementDate(statementDay, year, month);
+    const statementDate = getStatementDate(
+      statementDay,
+      year,
+      month
+    );
 
-    if (statementDate > todayDate) break; // Don't generate future statements
+    // IMPORTANT:
+    // Do NOT generate a statement until its statement date
+    // has arrived.
+    //
+    // Example:
+    // Today:          2026-08-30
+    // Statement date: 2026-09-13
+    //
+    // The Sep 13 statement must NOT exist yet.
+    if (statementDate > todayDate) {
+      break;
+    }
 
-    const { cycleStart, cycleEnd } = getCyclePeriod(statementDay, statementDate);
+    const {
+      cycleStart,
+      cycleEnd
+    } = getCyclePeriod(
+      statementDay,
+      statementDate
+    );
 
     cycles.push({
       statementDate,
@@ -179,9 +197,12 @@ function getAllCycles(statementDay, fromDate, todayDate) {
       cycleEnd,
     });
 
-    // Advance to next month
     month++;
-    if (month > 12) { month = 1; year++; }
+
+    if (month > 12) {
+      month = 1;
+      year++;
+    }
   }
 
   return cycles;
@@ -316,9 +337,19 @@ async function processCycle(card, cycle, cardTxs, allStatements, allBills, today
     return;
   }
 
-  // ── No statement exists → decide whether to create one ───────────────────
+  // Check whether this cycle has any transactions.
+  //
+  // For a closed cycle:
+  //   cycleStart → cycleEnd
+  //
+  // For the current/open cycle:
+  //   cycleStart → today
+  //
+  const effectiveCycleEnd =
+    cycle.isCurrent
+      ? todayStr
+      : cycleEnd;
 
-  // Check if this cycle has any transactions
   const cycleHasTxs = cardTxs.some(
     t => {
       const d = String(t.date || '').slice(0, 10);
@@ -326,18 +357,31 @@ async function processCycle(card, cycle, cardTxs, allStatements, allBills, today
     }
   );
 
-  if (!cycleHasTxs) return; // No transactions in this cycle → nothing to generate
+  if (!cycleHasTxs) return;
 
-  // Calculate balances
-  const { openingBalance, purchases, payments } = calcCycleAmounts(
-    cardTxs, cycleStart, cycleEnd
+  const {
+    openingBalance,
+    purchases,
+    payments
+  } = calcCycleAmounts(
+    cardTxs,
+    cycleStart,
+    cycleEnd
   );
-  const closingBalance = openingBalance + purchases - payments;
 
-  if (closingBalance <= 0) return; // Zero or negative balance → skip
+  const closingBalance =
+    openingBalance +
+    purchases -
+    payments;
+
+  if (closingBalance <= 0) return;
 
   // Calculate due date
-  const dueDate = new Date(cycle.statementDate);
+  const dueDate = new Date(
+    cycle.isCurrent
+      ? todayStr
+      : cycle.statementDate
+  );
   if (card.due_after_days != null) {
     dueDate.setDate(dueDate.getDate() + Number(card.due_after_days || 0));
   }
