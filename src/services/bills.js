@@ -470,30 +470,10 @@ export async function backfillBillOccurrences(templateId) {
     return;
   }
 
-  // Make sure old occurrences have their permanent keys.
   await backfillMissingOccurrenceKeys(template);
 
   const today = todayStr();
 
-  /*
-   * IMPORTANT:
-   *
-   * recurrence_effective_date tells us when the CURRENT
-   * recurrence rule started.
-   *
-   * Example:
-   *
-   * 2024-01 -> Monthly
-   * 2025-01 -> Monthly
-   * 2025-12 -> Monthly
-   *
-   * Changed to Yearly on:
-   *
-   * 2026-01-01
-   *
-   * Therefore we MUST NOT generate yearly occurrences
-   * for 2024 or 2025.
-   */
   const effectiveDate =
     template.recurrence_effective_date ||
     template.due_date ||
@@ -511,15 +491,6 @@ export async function backfillBillOccurrences(templateId) {
     upTo
   );
 
-  // Get ALL existing bills and filter in JavaScript.
-  //
-  // IMPORTANT:
-  // The web/localStorage SQL shim does not reliably support
-  // parameterized SELECT conditions such as:
-  //   WHERE id = ? OR parent_bill_id = ?
-  //
-  // Native SQLite can handle it, but using SELECT * here keeps
-  // web and native behavior consistent.
   const allBillsRes = await executeSql(
     `SELECT * FROM bills`,
     []
@@ -536,8 +507,6 @@ export async function backfillBillOccurrences(templateId) {
   const existingOccurrenceKeys = new Set();
 
   for (const row of existingRows) {
-    if (row.deleted_at) continue;
-
     if (Number(row.id) === Number(templateId)) {
       if (row.due_date) {
         const key = getRecurrenceOccurrenceKey(
@@ -559,7 +528,6 @@ export async function backfillBillOccurrences(templateId) {
       continue;
     }
 
-    // Old occurrence without a key.
     if (row.due_date) {
       const key = getRecurrenceOccurrenceKey(
         template.recurrence_type,
@@ -575,24 +543,11 @@ export async function backfillBillOccurrences(templateId) {
   for (const dueDate of expectedDates) {
     if (!dueDate) continue;
 
-    const dueDateOnly =
-      String(dueDate).slice(0, 10);
-    /*
-     * IMPORTANT:
-     *
-     * Never generate the NEW recurrence before
-     * recurrence_effective_date.
-     *
-     * This protects historical monthly bills.
-     */
+    const dueDateOnly = String(dueDate).slice(0, 10);
     if (dueDateOnly < effectiveDateOnly) {
       continue;
     }
 
-    /*
-     * The template itself already represents its
-     * original occurrence.
-     */
     if (
       template.due_date &&
       template.due_date.slice(0, 10) === dueDateOnly
@@ -609,9 +564,6 @@ export async function backfillBillOccurrences(templateId) {
 
     if (!occurrenceKey) continue;
 
-    /*
-     * Already exists.
-     */
     if (
       existingOccurrenceKeys.has(
         String(occurrenceKey)
@@ -636,10 +588,6 @@ export async function backfillBillOccurrences(templateId) {
       attachment_url: template.attachment_url,
       parent_bill_id: templateId,
       recurrence_occurrence_key: occurrenceKey,
-      /*
-       * Child keeps the recurrence version
-       * that created it.
-       */
       recurrence_effective_date: effectiveDateOnly,
     });
 
@@ -1168,15 +1116,14 @@ export async function getBillsForCurrentMonth(options = {}) {
 
     else {
 
-      occurrenceRow =
-        allBills.find(
-          b =>
-            Number(b.parent_bill_id) ===
-            Number(template.id) &&
-            !b.deleted_at &&
-            b.due_date?.slice(0, 10) ===
-            thisMonthDate
-        );
+      occurrenceRow = allBills.find(
+        b =>
+          Number(b.parent_bill_id) ===
+          Number(template.id) &&
+          !b.deleted_at &&
+          b.due_date?.slice(0, 10) ===
+          thisMonthDate
+      );
 
       // --------------------------------------------------------
       // FOUND OLD OCCURRENCE
@@ -1188,65 +1135,55 @@ export async function getBillsForCurrentMonth(options = {}) {
           normalizeBill(occurrenceRow);
 
       }
-
-      // --------------------------------------------------------
-      // CREATE MISSING NORMAL RECURRING OCCURRENCE
-      // --------------------------------------------------------
-
       else {
+        const wasDeleted = allBills.find(
+          b =>
+            Number(b.parent_bill_id) ===
+            Number(template.id) &&
+            !!b.deleted_at &&
+            (
+              (
+                occurrenceKey &&
+                String(b.recurrence_occurrence_key || '') ===
+                String(occurrenceKey)
+              ) ||
+              b.due_date?.slice(0, 10) ===
+              thisMonthDate
+            )
+        );
+        // --------------------------------------------------------
+        // DELETED OCCURRENCE — RESPECT USER'S DELETION
+        // --------------------------------------------------------
+        if (wasDeleted) {
+          occurrenceRow = null;
+        }
 
-        const newId =
-          await _insertBill({
-            name:
-              template.name,
-
-            amount:
-              template.amount,
-
-            due_date:
-              thisMonthDate,
-
-            is_recurring:
-              0,
-
-            recurrence_type:
-              null,
-
-            recurrence_interval:
-              1,
-
-            recurrence_end_date:
-              null,
-
-            category_id:
-              template.category_id,
-
-            source_id:
-              template.source_id,
-
-            reminder_days_before:
-              template.reminder_days_before,
-
-            auto_pay:
-              template.auto_pay,
-
-            notes:
-              template.notes,
-
-            attachment_url:
-              template.attachment_url,
-
-            parent_bill_id:
-              template.id,
-
-            recurrence_occurrence_key:
-              occurrenceKey,
+        // --------------------------------------------------------
+        // CREATE MISSING NORMAL RECURRING OCCURRENCE
+        // --------------------------------------------------------
+        else {
+          const newId = await _insertBill({
+            name: template.name,
+            amount: template.amount,
+            due_date: thisMonthDate,
+            is_recurring: 0,
+            recurrence_type: null,
+            recurrence_interval: 1,
+            recurrence_end_date: null,
+            category_id: template.category_id,
+            source_id: template.source_id,
+            reminder_days_before: template.reminder_days_before,
+            auto_pay: template.auto_pay,
+            notes: template.notes,
+            attachment_url: template.attachment_url,
+            parent_bill_id: template.id,
+            recurrence_occurrence_key: occurrenceKey,
           });
-
-        occurrenceRow =
-          normalizeBill(
-            await getBillById(newId)
-          );
+          occurrenceRow =
+            normalizeBill(
+              await getBillById(newId)
+            );
+        }
       }
     }
 
@@ -1652,9 +1589,6 @@ async function _ensureNextOccurrence(templateId) {
     template.recurrence_type || ''
   ).toLowerCase();
 
-  /*
-   * Current recurrence becomes valid from this date.
-   */
   const effectiveDate =
     template.recurrence_effective_date ||
     template.due_date ||
@@ -1663,9 +1597,6 @@ async function _ensureNextOccurrence(templateId) {
   const effectiveDateOnly =
     String(effectiveDate).slice(0, 10);
 
-  /*
-   * Generate enough future dates.
-   */
   const future = new Date();
 
   if (
@@ -1673,34 +1604,23 @@ async function _ensureNextOccurrence(templateId) {
     type === 'year' ||
     type === 'annual'
   ) {
-    future.setFullYear(
-      future.getFullYear() + 10
-    );
+    future.setFullYear(future.getFullYear() + 10);
   } else if (
     type === 'monthly' ||
     type === 'month'
   ) {
-    future.setFullYear(
-      future.getFullYear() + 2
-    );
+    future.setFullYear(future.getFullYear() + 2);
   } else {
-    future.setFullYear(
-      future.getFullYear() + 1
-    );
+    future.setFullYear(future.getFullYear() + 1);
   }
   let upTo = formatDate(future);
   if (
     template.recurrence_end_date &&
     template.recurrence_end_date.slice(0, 10) < upTo
   ) {
-    upTo =
-      template.recurrence_end_date.slice(0, 10);
+    upTo = template.recurrence_end_date.slice(0, 10);
   }
-  const allDates =
-    generateOccurrenceDates(
-      template,
-      upTo
-    );
+  const allDates = generateOccurrenceDates(template, upTo);
   if (!allDates || !allDates.length) {
     return;
   }
@@ -1718,20 +1638,16 @@ async function _ensureNextOccurrence(templateId) {
   const existingRows = rowsToArray(existingRes);
   const existingKeys = new Set();
   for (const row of existingRows) {
-    if (row.deleted_at) continue;
     if (row.recurrence_occurrence_key) {
       existingKeys.add(
-        String(
-          row.recurrence_occurrence_key
-        )
+        String(row.recurrence_occurrence_key)
       );
     } else if (row.due_date) {
-      const key =
-        getRecurrenceOccurrenceKey(
-          template.recurrence_type,
-          row.due_date,
-          template.recurrence_interval
-        );
+      const key = getRecurrenceOccurrenceKey(
+        template.recurrence_type,
+        row.due_date,
+        template.recurrence_interval
+      );
       if (key) {
         existingKeys.add(String(key));
       }
@@ -1744,31 +1660,17 @@ async function _ensureNextOccurrence(templateId) {
   for (const occurrenceDate of sortedDates) {
     if (!occurrenceDate) continue;
 
-    /*
-     * NEVER create an occurrence belonging to the
-     * previous recurrence rule.
-     */
-    if (
-      occurrenceDate < effectiveDateOnly
-    ) {
+    if (occurrenceDate < effectiveDateOnly) {
       continue;
     }
-    const occurrenceKey =
-      getRecurrenceOccurrenceKey(
-        template.recurrence_type,
-        occurrenceDate,
-        template.recurrence_interval
-      );
+    const occurrenceKey = getRecurrenceOccurrenceKey(
+      template.recurrence_type,
+      occurrenceDate,
+      template.recurrence_interval
+    );
 
     if (!occurrenceKey) continue;
-    /*
-     * Already exists.
-     */
-    if (
-      existingKeys.has(
-        String(occurrenceKey)
-      )
-    ) {
+    if (existingKeys.has(String(occurrenceKey))) {
       continue;
     }
     const newId = await _insertBill({
