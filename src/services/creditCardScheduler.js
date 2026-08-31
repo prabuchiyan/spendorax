@@ -452,8 +452,6 @@ function calcCycleAmounts(cardTxs, cycleStart, cycleEnd) {
   let payments = 0;
 
   for (const tx of cardTxs) {
-    if (Number(tx.is_counted) === 0) continue;
-
     const d = String(tx.date || '').slice(0, 10);
     const amount = Number(tx.amount || 0);
 
