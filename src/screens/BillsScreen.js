@@ -295,14 +295,13 @@ export default function BillsScreen({ navigation }) {
       ) {
         return {
           ...bill,
-          // DISPLAY THE SELECTED/PREFERRED OCCURRENCE
+          // Display the preferred recurring occurrence.
           due_date: preferred.due_date,
           status: preferred.status,
           amount: preferred.amount,
-          // Preserve the no-due-date state from the preferred
-          // occurrence. Without this, BillCard cannot know that there is no due date.
+          // Preserve the no-due-date state.
           _noDueDate: preferred._noDueDate === true,
-          // Preserve the actual template identity.
+          // Preserve the recurring template identity.
           _templateId: bill._templateId || templateId,
           _displayOccurrenceId: preferred.id,
           _displayOccurrence: preferred,
@@ -310,71 +309,203 @@ export default function BillsScreen({ navigation }) {
       }
       return bill;
     });
-
+    // SEARCH FILTER
     const sourceItems = query
-      ? displayItems.filter(b =>
-        b.name?.toLowerCase().includes(query)
+      ? displayItems.filter(bill =>
+        bill.name
+          ?.toLowerCase()
+          .includes(query)
       )
       : displayItems;
+    // GROUP CREDIT-CARD STATEMENTS
+    // Credit-card statements are different from normal recurring bills.
+    // We group all statements belonging to the same credit card,
+    // but the parent Bill Card uses ONLY the current month's statements for:
+    //   - amount
+    //   - due date
+    //   - status
+    // All actual statements remain inside `children`.
     const groups = new Map();
     const normalBills = [];
     sourceItems.forEach(bill => {
-      const parentId = Number(bill.parent_bill_id || 0);
-      const isStatement = bill._isCreditCardStatement === true ||
+      const parentId =
+        Number(
+          bill.parent_bill_id || 0
+        );
+      const isStatement =
+        bill._isCreditCardStatement === true ||
         (
           typeof bill.notes === 'string' &&
-          bill.notes.startsWith('Statement ')
+          bill.notes.startsWith(
+            'Statement '
+          )
         );
-      if (isStatement && parentId > 0) {
+      if (
+        isStatement &&
+        parentId > 0
+      ) {
         if (!groups.has(parentId)) {
-          groups.set(parentId, []);
+          groups.set(
+            parentId,
+            []
+          );
         }
-        groups.get(parentId).push(bill);
+        groups
+          .get(parentId)
+          .push(bill);
       } else {
         normalBills.push(bill);
       }
     });
-
-    // BUILD ONE PARENT BILL FOR EACH CREDIT CARD
+    // CURRENT MONTH
+    // Current month is determined using DUE DATE.
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const currentMonthPrefix =
+      `${currentYear}-${String(
+        currentMonth + 1
+      ).padStart(2, '0')}`;
+    // BUILD ONE BILL-CARD PARENT FOR EACH CREDIT CARD
     const groupedCreditCards = [];
-    groups.forEach((statements, parentId) => {
-      if (!statements.length) {
-        return;
-      }
-      // Sort statements by statement date / due date.
-      statements.sort((a, b) => {
-        const ad = a.statement_date || a.due_date || '9999-12-31';
-        const bd = b.statement_date || b.due_date || '9999-12-31';
-        return ad.localeCompare(bd);
-      });
-      // Parent amount = sum of all statements
-      const totalAmount = statements.reduce((sum, statement) => sum + Number(statement.amount || 0), 0);
-      // Use the latest statement for the parent card's status/due-date display.
-      const latestStatement = statements[statements.length - 1];
+    groups.forEach(
+      (statements, parentId) => {
+        if (
+          !statements.length
+        ) {
+          return;
+        }
+        // SORT ALL STATEMENTS BY DUE DATE
+        // Due date is preferred because this screen represents bills that need to be paid.
+        statements.sort(
+          (a, b) => {
+            const ad =
+              a.due_date ||
+              a.statement_date ||
+              '9999-12-31';
+            const bd =
+              b.due_date ||
+              b.statement_date ||
+              '9999-12-31';
 
-      groupedCreditCards.push({
-        ...latestStatement,
-        // IMPORTANT: this is the GROUP/PARENT ID.
-        id: `cc-${parentId}`,
-        parent_bill_id: parentId,
-        name: latestStatement.name || 'Credit Card',
-        amount: totalAmount,
-        // Children = actual generated statement bills
-        children: statements,
-        _isCreditCardParent: true,
-        _isCreditCardStatement: false,
-        _isRecurringSeries: false,
-        _templateId: parentId,
-        // Number of generated statements.
-        _statementCount: statements.length,
-      });
-    });
-    // RETURN NORMAL BILLS + CREDIT CARD PARENTS
+            return ad.localeCompare(
+              bd
+            );
+          }
+        );
+
+        // CURRENT MONTH STATEMENTS
+        // ONLY these statements are used to calculate the amount displayed on the Bill Card.
+        const currentMonthStatements =
+          statements.filter(
+            statement => {
+              const dueDate = statement.due_date || '';
+              return dueDate.startsWith(
+                currentMonthPrefix
+              );
+            }
+          );
+        // DETERMINE WHAT THE CARD SHOULD DISPLAY
+        // Normal case:
+        //     Current month statement exists
+        // Fallback:
+        //     No current-month statement exists.
+        //     Use the latest statement on/before today.
+        // This fallback prevents the credit card from disappearing
+        // completely when there is no current-month statement.
+        let displayStatements = [];
+        if (
+          currentMonthStatements.length > 0
+        ) {
+          displayStatements = currentMonthStatements;
+        } else {
+          const todayString = now.toISOString().slice(0, 10);
+          const previousStatements =
+            statements.filter(statement => {
+              const dueDate = statement.due_date || '';
+              return (dueDate && dueDate <= todayString);
+            })
+              .sort(
+                (a, b) =>
+                  (
+                    b.due_date ||
+                    ''
+                  ).localeCompare(
+                    a.due_date ||
+                    ''
+                  )
+              );
+          if (
+            previousStatements.length > 0
+          ) {
+            displayStatements = [previousStatements[0],];
+          } else {
+            // No current or previous statement.
+            // Use the nearest upcoming statement if available.
+            const upcomingStatements = statements.filter(
+              statement => {
+                const dueDate = statement.due_date || '';
+                return (dueDate > todayString);
+              }
+            ).sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''));
+            if (upcomingStatements.length > 0) {
+              displayStatements = [upcomingStatements[0],];
+            }
+          }
+        }
+        // IF THERE IS NOTHING TO DISPLAY
+        if (!displayStatements.length) {
+          return;
+        }
+        // PARENT AMOUNT
+        // Sum ONLY the statements represented by the Bill Card.
+        const totalAmount =
+          displayStatements.reduce(
+            (sum, statement) =>
+              sum +
+              Number(
+                statement.amount || 0
+              ),
+            0
+          );
+        const latestDisplayStatement = displayStatements[displayStatements.length - 1];
+        // BUILD CREDIT-CARD PARENT
+        groupedCreditCards.push({
+          ...latestDisplayStatement,
+          id: `cc-${parentId}`,
+          parent_bill_id: parentId,
+          name: latestDisplayStatement.name || 'Credit Card',
+          // Amount is ONLY for the current/displayed statement.
+          amount: totalAmount,
+          // ALL ACTUAL STATEMENTS
+          // Keep every generated statement here so the  Statements expansion continues to work.
+          children: statements,
+          // STATEMENTS REPRESENTED BY THE CARD
+          _displayStatements: displayStatements,
+          // CREDIT-CARD FLAGS
+          _isCreditCardParent: true,
+          _isCreditCardStatement: false,
+          _isRecurringSeries: false,
+          _templateId: parentId,
+          // COUNTS
+          _statementCount: statements.length,
+          _currentMonthStatementCount: currentMonthStatements.length,
+          _isCurrentMonthCreditCard: currentMonthStatements.length > 0,
+          // NO DUE DATE STATE
+          _noDueDate: !latestDisplayStatement.due_date,
+        });
+      }
+    );
+    // RETURN NORMAL BILLS + CREDIT-CARD PARENTS
     return [
       ...normalBills,
       ...groupedCreditCards,
     ];
-  }, [items, search, preferredOccurrences]);
+  }, [
+    items,
+    search,
+    preferredOccurrences,
+  ]);
 
   const filteredCategories = useMemo(() => {
     if (!categorySearch.trim()) return categories;
