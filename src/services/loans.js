@@ -507,6 +507,151 @@ export async function recordAdvance({ loanId, date, amount, sourceId = null, cat
     return pRes.insertId;
 }
 
+export async function recordTopUp({
+    loanId,
+    date,
+    amount,
+    sourceId = null,
+    categoryId = null,
+    notes = '',
+}) {
+    const loan = await getLoanById(loanId);
+
+    if (!loan) {
+        throw new Error('Loan not found');
+    }
+
+    if ((loan.loan_direction || 'BORROWED') !== 'BORROWED') {
+        throw new Error('Top Up is available only for borrowed loans');
+    }
+
+    if (!amount || Number(amount) <= 0) {
+        throw new Error('Amount must be greater than zero');
+    }
+
+    const fullDate = date
+        ? (
+            date.length === 10
+                ? date + 'T' + new Date().toTimeString().slice(0, 8)
+                : date
+        )
+        : new Date().toISOString();
+
+    const topUpAmount = Number(amount);
+
+    const newOutstanding = +(
+        Number(loan.outstanding_amount || 0) +
+        topUpAmount
+    ).toFixed(2);
+
+    const newPrincipalAmount = +(
+        Number(loan.principal_amount || 0) +
+        topUpAmount
+    ).toFixed(2);
+
+    const pRes = await executeSql(
+        `INSERT INTO loan_payments (
+            loan_id,
+            payment_date,
+            payment_amount,
+            principal_component,
+            interest_component,
+            remaining_balance,
+            payment_type,
+            payment_source_id,
+            payment_category_id,
+            remarks
+        )
+        VALUES (?,?,?,?,?,?,?,?,?,?)`,
+        [
+            loanId,
+            fullDate,
+            topUpAmount,
+            topUpAmount,
+            0,
+            newOutstanding,
+            'TOP_UP',
+            sourceId || null,
+            categoryId || null,
+            notes || null,
+        ]
+    );
+
+    await executeSql(
+        `UPDATE loans
+         SET outstanding_amount = ?,
+             principal_amount = ?,
+             status = 'Active',
+             updated_at = datetime('now')
+         WHERE id = ?`,
+        [
+            newOutstanding,
+            newPrincipalAmount,
+            loanId,
+        ]
+    );
+
+    /*
+     * Top Up on a BORROWED loan means
+     * additional money is received from the lender.
+     *
+     * Therefore:
+     * transaction type = income
+     * direction        = credit
+     */
+    try {
+        const txId = await createTransaction({
+            type: 'income',
+            amount: topUpAmount,
+            category_id: categoryId || null,
+            source_id: sourceId || null,
+            date: fullDate,
+            notes: notes || `Loan top up: ${loan.loan_name}`,
+            bill_id: null,
+            transfer_group_id: null,
+            direction: 'credit',
+            loan_id: loanId,
+            loan_payment_type: 'TOP_UP',
+            principal_component: topUpAmount,
+            interest_component: 0,
+            outstanding_after_payment: newOutstanding,
+            linked_date: fullDate,
+        });
+
+        await executeSql(
+            `UPDATE loan_payments
+             SET transaction_id = ?
+             WHERE id = ?`,
+            [
+                txId,
+                pRes.insertId,
+            ]
+        );
+    } catch (e) {
+        console.warn(
+            'Failed to create linked top up transaction',
+            e
+        );
+    }
+
+    try {
+        events.emit('loanPaymentsChanged', {
+            action: 'top_up',
+            id: pRes.insertId,
+            loanId,
+        });
+    } catch (e) { }
+
+    try {
+        events.emit('loansChanged', {
+            action: 'update',
+            id: loanId,
+        });
+    } catch (e) { }
+
+    return pRes.insertId;
+}
+
 export async function getLoanPayments(loanId, limit = 1000, offset = 0) {
     // support pagination via limit & offset
     const res = await executeSql('SELECT * FROM loan_payments WHERE loan_id = ? ORDER BY payment_date DESC LIMIT ? OFFSET ?', [loanId, limit, offset]);
@@ -850,6 +995,7 @@ export default {
     recordPrepayment,
     forecloseLoan,
     recordAdvance,
+    recordTopUp,
     getLoanPayments,
     hasDuplicatePayment,
     recalculateLoanFromLinkedTransactions,

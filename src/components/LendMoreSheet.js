@@ -255,23 +255,47 @@ export default function LendMoreSheet({ visible, loanId, loanName, onClose, onSu
                     </View>
                 </View>
 
-                {/* Date picker */}
-                {showDatePicker && Platform.OS !== 'web' && (
-                    <DateTimePicker
-                        value={new Date(date)}
-                        mode="date"
-                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                        maximumDate={new Date()}
-                        onChange={(event, selectedDate) => {
-                            if (Platform.OS === 'android') {
-                                setShowDatePicker(false);
-                                if (event.type === 'dismissed') return;
+                {/* Date Picker */}
+                {showDatePicker &&
+                    Platform.OS !== 'web' && (
+                        <DateTimePicker
+                            value={
+                                date
+                                    ? new Date(`${date}T00:00:00`)
+                                    : new Date()
                             }
-                            if (selectedDate) setDate(selectedDate.toISOString().slice(0, 10));
-                            if (Platform.OS === 'ios') setShowDatePicker(false);
-                        }}
-                    />
-                )}
+                            mode="date"
+                            display={
+                                Platform.OS === 'ios'
+                                    ? 'spinner'
+                                    : 'default'
+                            }
+                            maximumDate={new Date()}
+                            onChange={(event, selectedDate) => {
+                                if (Platform.OS === 'android') {
+                                    setShowDatePicker(false);
+
+                                    if (
+                                        event.type === 'dismissed'
+                                    ) {
+                                        return;
+                                    }
+                                }
+
+                                if (selectedDate) {
+                                    setDate(
+                                        selectedDate
+                                            .toISOString()
+                                            .slice(0, 10)
+                                    );
+                                }
+
+                                if (Platform.OS === 'ios') {
+                                    setShowDatePicker(false);
+                                }
+                            }}
+                        />
+                    )}
             </Modal>
 
             {/* Source Picker Modal */}

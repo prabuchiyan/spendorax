@@ -9,6 +9,7 @@ import Card from '../components/Card';
 import calc from '../services/loanCalculations';
 import { Colors } from '../components/Theme';
 import LendMoreSheet from '../components/LendMoreSheet';
+import TopUpSheet from '../components/TopUpSheet';
 
 function ActionButton({
     icon,
@@ -109,6 +110,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
     const [snackbarVisible, setSnackbarVisible] = useState(false);
     const [snackbarMsg, setSnackbarMsg] = useState('');
     const [showLendMore, setShowLendMore] = useState(false);
+    const [showTopUp, setShowTopUp] = useState(false);
 
     useEffect(() => {
         (async () => {
@@ -486,6 +488,14 @@ export default function LoanDetailsScreen({ route, navigation }) {
                             />
 
                             <ActionButton
+                                color="#2563EB"
+                                bg="#DBEAFE"
+                                icon="cash-plus"
+                                title="Top Up"
+                                onPress={() => setShowTopUp(true)}
+                            />
+
+                            <ActionButton
                                 color="#EA580C"
                                 bg="#FED7AA"
                                 icon="trending-up"
@@ -814,7 +824,23 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 onSuccess={() => refresh()}
             />
 
-            <Snackbar visible={snackbarVisible} onDismiss={() => setSnackbarVisible(false)} duration={3000} action={{ label: 'OK', onPress: () => setSnackbarVisible(false) }}>
+            <TopUpSheet
+                visible={showTopUp}
+                loanId={loan.id}
+                loanName={loan.loan_name}
+                onClose={() => setShowTopUp(false)}
+                onSuccess={() => refresh()}
+            />
+
+            <Snackbar
+                visible={snackbarVisible}
+                onDismiss={() => setSnackbarVisible(false)}
+                duration={3000}
+                action={{
+                    label: 'OK',
+                    onPress: () => setSnackbarVisible(false),
+                }}
+            >
                 {snackbarMsg}
             </Snackbar>
         </ScrollView>
