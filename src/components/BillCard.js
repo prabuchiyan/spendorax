@@ -96,7 +96,7 @@ function BillCard({
                 {bill.name}
               </Text>
             </View>
-
+            {/* DUE DATE */}
             <Text
               style={{
                 color: Colors.muted,
@@ -104,13 +104,18 @@ function BillCard({
                 marginBottom: 6,
               }}
             >
-              Due {formatDueDate(bill.due_date)}
-              {bill.is_recurring
-                ? ` · ${
-                    bill.recurrence_type ||
+              {bill._noDueDate || !bill.due_date ? (
+                'No due date scheduled'
+              ) : (
+                <>
+                  Due {formatDueDate(bill.due_date)}
+                  {bill.is_recurring
+                    ? ` · ${bill.recurrence_type ||
                     'recurring'
-                  }`
-                : ''}
+                    }`
+                    : ''}
+                </>
+              )}
             </Text>
 
             <Chip
@@ -172,15 +177,10 @@ function BillCard({
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-
-                backgroundColor:
-                  '#EAF5EF',
-
+                backgroundColor: '#EAF5EF',
                 paddingHorizontal: 9,
                 paddingVertical: 6,
-
                 borderRadius: 8,
-
                 marginRight: 4,
               }}
             >
@@ -209,12 +209,10 @@ function BillCard({
             </TouchableOpacity>
           ) : null}
 
-          {/* ==================================================
-              MARK PAID
-              ================================================== */}
+          {/* MARK PAID */}
 
           {bill.status !== 'paid' &&
-          bill.status !== 'skipped' ? (
+            bill.status !== 'skipped' ? (
             <TouchableOpacity
               onPress={() =>
                 onMarkPaid &&
@@ -250,12 +248,10 @@ function BillCard({
             </TouchableOpacity>
           ) : null}
 
-          {/* ==================================================
-              SKIP
-              ================================================== */}
+          {/*  SKIP */}
 
           {bill.status !== 'paid' &&
-          bill.status !== 'skipped' ? (
+            bill.status !== 'skipped' ? (
             <TouchableOpacity
               onPress={() =>
                 onSkip &&

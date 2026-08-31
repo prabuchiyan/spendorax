@@ -14,6 +14,7 @@ import {
   getBillsForCurrentMonth,
   getBillsSummary,
   getBillById,
+  getBillSeries,
   markBillPaid,
   skipBill,
   deleteBill,
@@ -48,8 +49,149 @@ function isCreditCardBill(bill) {
     );
 }
 
+function getPreferredBillOccurrence(bill, allBills) {
+  if (
+    !bill.is_recurring &&
+    !bill._isRecurringSeries
+  ) {
+    return bill;
+  }
+  const templateId = Number(
+    bill._templateId ||
+    bill.parent_bill_id ||
+    bill.id
+  );
+  if (!templateId) {
+    return bill;
+  }
+  const today = new Date();
+  const todayString = today.toISOString().slice(0, 10);
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
+  const currentMonthPrefix = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+  const occurrences = allBills
+    .filter(row => {
+      const rowTemplateId = Number(
+        row.parent_bill_id ||
+        row._templateId ||
+        row.id
+      );
+      return (
+        rowTemplateId === templateId &&
+        !row.deleted_at
+      );
+    })
+    // IMPORTANT:
+    // Occurrences without a due date are not
+    // considered when determining the preferred due.
+    .filter(row => Boolean(row.due_date))
+    .sort((a, b) =>
+      (b.due_date || '').localeCompare(
+        a.due_date || ''
+      )
+    );
+
+  if (!occurrences.length) {
+    return {
+      ...bill,
+      // Explicitly tell the card that there is
+      // no actual due date.
+      due_date: null,
+      _noDueDate: true,
+    };
+  }
+
+  // 1. CURRENT MONTH
+  const currentMonthBill =
+    occurrences.find(row =>
+      row.due_date.startsWith(
+        currentMonthPrefix
+      )
+    );
+
+  if (currentMonthBill) {
+    // Current month is still unpaid.
+    if (
+      currentMonthBill.status !== 'paid' &&
+      currentMonthBill.status !== 'skipped'
+    ) {
+      return currentMonthBill;
+    }
+
+    // Current month is paid.
+    // Find latest previous pending/overdue.
+    const previousPending =
+      occurrences.find(row => {
+        return (
+          row.due_date <
+          currentMonthBill.due_date &&
+          row.status !== 'paid' &&
+          row.status !== 'skipped'
+        );
+      });
+
+    if (previousPending) {
+      return previousPending;
+    }
+
+    // No previous pending.
+    // Find nearest upcoming.
+    const upcoming =
+      occurrences
+        .filter(row =>
+          row.due_date >
+          currentMonthBill.due_date
+        )
+        .sort((a, b) =>
+          a.due_date.localeCompare(
+            b.due_date
+          )
+        )[0];
+    return upcoming || currentMonthBill;
+  }
+
+  // 2. NO CURRENT-MONTH DUE
+  const previousPending =
+    occurrences.find(row => {
+      return (
+        row.due_date <= todayString &&
+        row.status !== 'paid' &&
+        row.status !== 'skipped'
+      );
+    });
+
+  if (previousPending) {
+    return previousPending;
+  }
+
+  // 3. NO PREVIOUS PENDING
+  // Find nearest future due.
+  const upcoming =
+    occurrences
+      .filter(row =>
+        row.due_date > todayString
+      )
+      .sort((a, b) =>
+        a.due_date.localeCompare(
+          b.due_date
+        )
+      )[0];
+
+  if (upcoming) {
+    return upcoming;
+  }
+
+  // 4. NOTHING TO DISPLAY
+  return {
+    ...bill,
+    due_date: null,
+    _noDueDate: true,
+  };
+}
+
 export default function BillsScreen({ navigation }) {
   const [items, setItems] = useState([]);
+  const [preferredOccurrences, setPreferredOccurrences] = useState({});
   const [summary, setSummary] = useState(null);
   const [categories, setCategories] = useState([]);
   const [categoriesMap, setCategoriesMap] = useState({});
@@ -89,6 +231,45 @@ export default function BillsScreen({ navigation }) {
       getCategories(true),
     ]);
     setItems(rows);
+    const preferredMap = {};
+    await Promise.all(
+      rows.map(async bill => {
+        if (
+          !bill.is_recurring &&
+          !bill._isRecurringSeries
+        ) {
+          return;
+        }
+
+        // Do not interfere with credit-card statements.
+        if (bill._isCreditCardStatement) {
+          return;
+        }
+        try {
+          const templateId =
+            bill._templateId ||
+            bill.parent_bill_id ||
+            bill.id;
+
+          const series =
+            await getBillSeries(templateId);
+
+          preferredMap[
+            String(templateId)
+          ] = getPreferredBillOccurrence(
+            bill,
+            series
+          );
+        } catch (e) {
+          console.warn(
+            'Preferred bill occurrence error:',
+            templateId,
+            e
+          );
+        }
+      })
+    );
+    setPreferredOccurrences(preferredMap);
     setSummary(sum);
     const expCats = cats.filter(c => c.type === 'expense');
     setCategories(expCats);
@@ -104,154 +285,96 @@ export default function BillsScreen({ navigation }) {
   // ── derived lists ──────────────────────────────────────────────────────────
   const filteredItems = useMemo(() => {
     const query = search.trim().toLowerCase();
+    const displayItems = items.map(bill => {
+      const templateId = bill._templateId || bill.parent_bill_id || bill.id;
+      const preferred = preferredOccurrences[String(templateId)];
+      if (
+        preferred &&
+        !bill._isCreditCardParent &&
+        !bill._isCreditCardStatement
+      ) {
+        return {
+          ...bill,
+          // DISPLAY THE SELECTED/PREFERRED OCCURRENCE
+          due_date: preferred.due_date,
+          status: preferred.status,
+          amount: preferred.amount,
+          // Preserve the no-due-date state from the preferred
+          // occurrence. Without this, BillCard cannot know that there is no due date.
+          _noDueDate: preferred._noDueDate === true,
+          // Preserve the actual template identity.
+          _templateId: bill._templateId || templateId,
+          _displayOccurrenceId: preferred.id,
+          _displayOccurrence: preferred,
+        };
+      }
+      return bill;
+    });
 
     const sourceItems = query
-      ? items.filter(b =>
+      ? displayItems.filter(b =>
         b.name?.toLowerCase().includes(query)
       )
-      : items;
-
-    // ==========================================================
-    // GROUP CREDIT CARD STATEMENTS
-    // ==========================================================
-    //
-    // Example:
-    //
-    // Bill 191
-    // parent_bill_id = 5
-    // amount = 15000
-    //
-    // Bill 192
-    // parent_bill_id = 5
-    // amount = 24740.42
-    //
-    // Become:
-    //
-    // SBI Credit Card
-    // amount = 39740.42
-    // children = [191, 192]
-    //
-    // ==========================================================
-
+      : displayItems;
     const groups = new Map();
     const normalBills = [];
-
     sourceItems.forEach(bill => {
-      const parentId =
-        Number(bill.parent_bill_id || 0);
-
-      const isStatement =
-        bill._isCreditCardStatement === true ||
+      const parentId = Number(bill.parent_bill_id || 0);
+      const isStatement = bill._isCreditCardStatement === true ||
         (
           typeof bill.notes === 'string' &&
           bill.notes.startsWith('Statement ')
         );
-
-      if (
-        isStatement &&
-        parentId > 0
-      ) {
+      if (isStatement && parentId > 0) {
         if (!groups.has(parentId)) {
           groups.set(parentId, []);
         }
-
         groups.get(parentId).push(bill);
       } else {
         normalBills.push(bill);
       }
     });
 
-    // ==========================================================
     // BUILD ONE PARENT BILL FOR EACH CREDIT CARD
-    // ==========================================================
-
     const groupedCreditCards = [];
-
     groups.forEach((statements, parentId) => {
       if (!statements.length) {
         return;
       }
-
       // Sort statements by statement date / due date.
       statements.sort((a, b) => {
-        const ad =
-          a.statement_date ||
-          a.due_date ||
-          '9999-12-31';
-
-        const bd =
-          b.statement_date ||
-          b.due_date ||
-          '9999-12-31';
-
+        const ad = a.statement_date || a.due_date || '9999-12-31';
+        const bd = b.statement_date || b.due_date || '9999-12-31';
         return ad.localeCompare(bd);
       });
-
-      // --------------------------------------------------------
       // Parent amount = sum of all statements
-      // --------------------------------------------------------
-
-      const totalAmount =
-        statements.reduce(
-          (sum, statement) =>
-            sum + Number(statement.amount || 0),
-          0
-        );
-
-      // --------------------------------------------------------
-      // Use the latest statement for the parent card's
-      // status/due-date display.
-      // --------------------------------------------------------
-
-      const latestStatement =
-        statements[statements.length - 1];
+      const totalAmount = statements.reduce((sum, statement) => sum + Number(statement.amount || 0), 0);
+      // Use the latest statement for the parent card's status/due-date display.
+      const latestStatement = statements[statements.length - 1];
 
       groupedCreditCards.push({
         ...latestStatement,
-
-        // ------------------------------------------------------
         // IMPORTANT: this is the GROUP/PARENT ID.
-        // ------------------------------------------------------
-
         id: `cc-${parentId}`,
-
         parent_bill_id: parentId,
-
-        name:
-          latestStatement.name ||
-          'Credit Card',
-
+        name: latestStatement.name || 'Credit Card',
         amount: totalAmount,
-
-        // ------------------------------------------------------
         // Children = actual generated statement bills
-        // ------------------------------------------------------
-
         children: statements,
-
         _isCreditCardParent: true,
-
         _isCreditCardStatement: false,
-
         _isRecurringSeries: false,
-
         _templateId: parentId,
-
         // Number of generated statements.
-        _statementCount:
-          statements.length,
+        _statementCount: statements.length,
       });
     });
-
-    // ==========================================================
     // RETURN NORMAL BILLS + CREDIT CARD PARENTS
-    // ==========================================================
-
     return [
       ...normalBills,
       ...groupedCreditCards,
     ];
-  }, [items, search]);
+  }, [items, search, preferredOccurrences]);
 
   const filteredCategories = useMemo(() => {
     if (!categorySearch.trim()) return categories;
@@ -277,29 +400,12 @@ export default function BillsScreen({ navigation }) {
 
   const handleMarkPaid = async (bill) => {
     try {
-      // ==========================================================
       // FIND CREDIT CARD
-      // ==========================================================
-
       const cards = await getCreditCards(false);
-
       const parentBillId =
-        Number(
-          bill.parent_bill_id ||
-          bill._templateId ||
-          bill.id
-        );
-
-      const card = cards.find(
-        c =>
-          Number(c.payment_bill_id) ===
-          parentBillId
-      );
-
-      // ==========================================================
+        Number(bill.parent_bill_id || bill._templateId || bill.id);
+      const card = cards.find(c => Number(c.payment_bill_id) === parentBillId);
       // NORMAL BILL
-      // ==========================================================
-
       if (!card) {
         await markBillPaid(
           bill.id,
@@ -308,63 +414,24 @@ export default function BillsScreen({ navigation }) {
               bill.source_id,
           }
         );
-
         await load();
         return;
       }
-
-      // ==========================================================
       // CREDIT CARD BILL
-      // ==========================================================
-      //
-      // IMPORTANT:
       // Do NOT change the statement amount here.
-      //
       // We only open the payment-source picker.
-      // The actual statement bill remains unchanged until the
-      // payment is explicitly recorded.
-      // ==========================================================
-
-      const sources =
-        await getSources(true);
-
-      const availableSources =
-        sources.filter(
-          s =>
-            Number(s.id) !==
-            Number(card.source_id)
-        );
-
-      setPaymentSources(
-        availableSources
-      );
-
-      // Keep the actual bill that initiated
-      // the payment action.
-      setSelectedPaymentBill(
-        bill
-      );
-
-      setSelectedCreditCard(
-        card
-      );
-
+      // The actual statement bill remains unchanged until the payment is explicitly recorded.
+      const sources = await getSources(true);
+      const availableSources = sources.filter(s => Number(s.id) !== Number(card.source_id));
+      setPaymentSources(availableSources);
+      // Keep the actual bill that initiated  the payment action.
+      setSelectedPaymentBill(bill);
+      setSelectedCreditCard(card);
       setPaymentSourceSearch('');
-
-      setShowPaymentSourcePicker(
-        true
-      );
-
+      setShowPaymentSourcePicker(true);
     } catch (e) {
-      console.error(
-        'handleMarkPaid error:',
-        e
-      );
-
-      Alert.alert(
-        'Error',
-        'Unable to mark bill as paid.'
-      );
+      console.error('handleMarkPaid error:', e);
+      Alert.alert('Error', 'Unable to mark bill as paid.');
     }
   };
 
@@ -375,25 +442,17 @@ export default function BillsScreen({ navigation }) {
     setConfirmVisible(true);
   }
 
-  // ── render ─────────────────────────────────────────────────────────────────
   const now = new Date();
   const monthLabel = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-
   const renderBill = ({ item }) => {
-    // ==========================================================
     // CREDIT CARD PARENT
-    // ==========================================================
-
     if (item._isCreditCardParent) {
       const parentKey = String(
         item.parent_bill_id ||
         item._templateId ||
         item.id
       );
-
-      const isExpanded =
-        expandedCreditCards[parentKey] === true;
-
+      const isExpanded = expandedCreditCards[parentKey] === true;
       const toggleStatements = () => {
         setExpandedCreditCards(prev => ({
           ...prev,
@@ -401,23 +460,18 @@ export default function BillsScreen({ navigation }) {
             !prev[parentKey],
         }));
       };
-
       return (
         <View
           style={{
             marginBottom: 8,
           }}
         >
-          {/* ====================================================
-            PARENT CREDIT CARD BILL
-            ==================================================== */}
-
+          {/* PARENT CREDIT CARD BILL */}
           <SwipeableBillCard
             bill={item}
             category={
               categoriesMap[item.category_id]
             }
-
             onPress={() => {
               if (
                 item.children &&
@@ -430,14 +484,11 @@ export default function BillsScreen({ navigation }) {
                 openDetail(item);
               }
             }}
-
             onMarkPaid={() => {
               handleMarkPaid(item);
             }}
-
             onSkip={null}
             onEdit={null}
-
             showExpandButton={true}
             expanded={isExpanded}
             onToggleExpand={
@@ -445,10 +496,7 @@ export default function BillsScreen({ navigation }) {
             }
           />
 
-          {/* ====================================================
-            STATEMENT CHILDREN
-            ==================================================== */}
-
+          {/* STATEMENT CHILDREN */}
           {isExpanded &&
             item.children &&
             item.children.length > 0 && (
@@ -457,11 +505,8 @@ export default function BillsScreen({ navigation }) {
                   marginLeft: 22,
                   marginTop: -2,
                   marginBottom: 4,
-
                   borderLeftWidth: 2,
-                  borderLeftColor:
-                    '#DCEBE2',
-
+                  borderLeftColor: '#DCEBE2',
                   paddingLeft: 12,
                   paddingTop: 4,
                 }}
@@ -473,28 +518,15 @@ export default function BillsScreen({ navigation }) {
                         statement.id
                       )}
                       style={{
-                        backgroundColor:
-                          '#F8FBF9',
-
+                        backgroundColor: '#F8FBF9',
                         borderRadius: 12,
-
                         padding: 10,
-
-                        marginBottom:
-                          index ===
-                            item.children.length - 1
-                            ? 0
-                            : 7,
-
+                        marginBottom: index === item.children.length - 1 ? 0 : 7,
                         borderWidth: 1,
-                        borderColor:
-                          '#E5F1EB',
+                        borderColor: '#E5F1EB',
                       }}
                     >
-                      {/* ========================================
-                        STATEMENT HEADER
-                        ======================================== */}
-
+                      {/* STATEMENT HEADER */}
                       <View
                         style={{
                           flexDirection:
@@ -508,15 +540,9 @@ export default function BillsScreen({ navigation }) {
                             width: 30,
                             height: 30,
                             borderRadius: 10,
-
-                            backgroundColor:
-                              '#EAF5EF',
-
-                            alignItems:
-                              'center',
-
-                            justifyContent:
-                              'center',
+                            backgroundColor: '#EAF5EF',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                           }}
                         >
                           <MaterialCommunityIcons
@@ -525,7 +551,6 @@ export default function BillsScreen({ navigation }) {
                             color="#3F8F6B"
                           />
                         </View>
-
                         <View
                           style={{
                             flex: 1,
@@ -535,80 +560,50 @@ export default function BillsScreen({ navigation }) {
                           <Text
                             style={{
                               fontSize: 11,
-                              fontWeight:
-                                '800',
-                              color:
-                                '#25352D',
+                              fontWeight: '800',
+                              color: '#25352D',
                             }}
                           >
                             Statement
                           </Text>
-
                           <Text
                             style={{
                               fontSize: 10,
-                              color:
-                                '#718078',
+                              color: '#718078',
                               marginTop: 2,
                             }}
                           >
-                            {statement.statement_date ||
-                              statement.due_date ||
-                              '-'}
+                            {statement.statement_date || statement.due_date || '-'}
                           </Text>
                         </View>
 
                         <Text
                           style={{
                             fontSize: 12,
-                            fontWeight:
-                              '800',
-                            color:
-                              '#25352D',
+                            fontWeight: '800',
+                            color: '#25352D',
                           }}
                         >
-                          {formatCurrency(
-                            Number(
-                              statement.amount ||
-                              0
-                            )
-                          )}
+                          {formatCurrency(Number(statement.amount || 0))}
                         </Text>
                       </View>
 
-                      {/* ========================================
-                        STATEMENT FOOTER
-                        ======================================== */}
-
+                      {/* STATEMENT FOOTER  */}
                       <View
                         style={{
-                          flexDirection:
-                            'row',
-
-                          justifyContent:
-                            'space-between',
-
-                          alignItems:
-                            'center',
-
+                          flexDirection: 'row',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
                           marginTop: 8,
-
                           paddingTop: 7,
-
-                          borderTopWidth:
-                            1,
-
-                          borderTopColor:
-                            '#E5F1EB',
+                          borderTopWidth: 1,
+                          borderTopColor: '#E5F1EB',
                         }}
                       >
                         <View
                           style={{
-                            flexDirection:
-                              'row',
-
-                            alignItems:
-                              'center',
+                            flexDirection: 'row',
+                            alignItems: 'center',
                           }}
                         >
                           <MaterialCommunityIcons
@@ -620,47 +615,33 @@ export default function BillsScreen({ navigation }) {
                           <Text
                             style={{
                               fontSize: 9,
-                              color:
-                                '#8A958F',
+                              color: '#8A958F',
                               marginLeft: 4,
                             }}
                           >
-                            Due{' '}
-                            {statement.due_date ||
-                              '-'}
+                            Due{' '}{statement.due_date || '-'}
                           </Text>
                         </View>
 
                         <TouchableOpacity
-                          activeOpacity={
-                            0.7
-                          }
+                          activeOpacity={0.7}
                           onPress={() =>
                             openDetail(
                               statement
                             )
                           }
                           style={{
-                            paddingHorizontal:
-                              8,
-
-                            paddingVertical:
-                              4,
-
-                            borderRadius:
-                              7,
-
-                            backgroundColor:
-                              '#EAF5EF',
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            borderRadius: 7,
+                            backgroundColor: '#EAF5EF',
                           }}
                         >
                           <Text
                             style={{
                               fontSize: 9,
-                              fontWeight:
-                                '800',
-                              color:
-                                '#3F8F6B',
+                              fontWeight: '800',
+                              color: '#3F8F6B',
                             }}
                           >
                             View
@@ -676,10 +657,7 @@ export default function BillsScreen({ navigation }) {
       );
     }
 
-    // ==========================================================
     // NORMAL BILL
-    // ==========================================================
-
     return (
       <SwipeableBillCard
         bill={item}
@@ -713,9 +691,7 @@ export default function BillsScreen({ navigation }) {
         }}
       >
         {STATUS_FILTERS.map(filter => {
-          const active =
-            statusFilter === filter.key;
-
+          const active = statusFilter === filter.key;
           const statusColor =
             filter.key === BILL_STATUS.OVERDUE
               ? '#E46A6A'
@@ -738,15 +714,9 @@ export default function BillsScreen({ navigation }) {
                 paddingVertical: 8,
                 borderRadius: 20,
                 marginRight: 7,
-
-                backgroundColor: active
-                  ? '#EAF5EF'
-                  : '#FFFFFF',
-
+                backgroundColor: active ? '#EAF5EF' : '#FFFFFF',
                 borderWidth: 1,
-                borderColor: active
-                  ? '#CFE6D9'
-                  : '#E6EEE9',
+                borderColor: active ? '#CFE6D9' : '#E6EEE9',
               }}
             >
               {filter.key !== 'all' && (
@@ -760,16 +730,11 @@ export default function BillsScreen({ navigation }) {
                   }}
                 />
               )}
-
               <Text
                 style={{
                   fontSize: 11,
-                  fontWeight: active
-                    ? '800'
-                    : '600',
-                  color: active
-                    ? '#2F7355'
-                    : '#718078',
+                  fontWeight: active ? '800' : '600',
+                  color: active ? '#2F7355' : '#718078',
                 }}
               >
                 {filter.label}
@@ -840,13 +805,9 @@ export default function BillsScreen({ navigation }) {
             height: 46,
             marginLeft: 8,
             borderRadius: 14,
-            backgroundColor: categoryFilter
-              ? '#EAF5EF'
-              : '#FFFFFF',
+            backgroundColor: categoryFilter ? '#EAF5EF' : '#FFFFFF',
             borderWidth: 1,
-            borderColor: categoryFilter
-              ? '#CFE6D9'
-              : '#E5F1EB',
+            borderColor: categoryFilter ? '#CFE6D9' : '#E5F1EB',
             alignItems: 'center',
             justifyContent: 'center',
           }}
