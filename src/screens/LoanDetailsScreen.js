@@ -100,6 +100,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
   const [showLendMore, setShowLendMore] = useState(false);
+  const [expandedActivityId, setExpandedActivityId] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -615,6 +616,21 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
               const isPayment = !isTopUp;
 
+              /*
+               * Detect transaction direction/type.
+               */
+              const transactionType = String(
+                tx.type || tx.transaction_type || tx.direction || "",
+              ).toLowerCase();
+
+              const isExpense =
+                transactionType === "expense" ||
+                transactionType === "debit" ||
+                transactionType === "debit_expense";
+
+              /*
+               * Activity appearance.
+               */
               const activityTitle = isTopUp ? "Loan Top Up" : "Loan Payment";
 
               const activityDescription = isTopUp
@@ -626,6 +642,16 @@ export default function LoanDetailsScreen({ route, navigation }) {
               const activityColor = isTopUp ? "#7C3AED" : "#16A34A";
 
               const activityBg = isTopUp ? "#EDE9FE" : "#DCFCE7";
+
+              /*
+               * Transaction appearance.
+               *
+               * Expenses always override the normal
+               * activity colour and appear red.
+               */
+              const transactionColor = isExpense ? "#DC2626" : activityColor;
+
+              const transactionBg = isExpense ? "#FEE2E2" : activityBg;
 
               const transactionDate = new Date(tx.date);
 
@@ -652,23 +678,20 @@ export default function LoanDetailsScreen({ route, navigation }) {
                     index === linkedTxs.length - 1 && styles.activityRowLast,
                   ]}
                 >
-                  {/* --------------------------------------------------------- */}
-                  {/* Timeline                                                   */}
-                  {/* --------------------------------------------------------- */}
-
+                  {/* Timeline */}
                   <View style={styles.activityTimeline}>
                     <View
                       style={[
                         styles.activityTimelineIcon,
                         {
-                          backgroundColor: activityBg,
+                          backgroundColor: transactionBg,
                         },
                       ]}
                     >
                       <MaterialCommunityIcons
-                        name={activityIcon}
+                        name={isExpense ? "cash-minus" : activityIcon}
                         size={20}
-                        color={activityColor}
+                        color={transactionColor}
                       />
                     </View>
 
@@ -677,238 +700,317 @@ export default function LoanDetailsScreen({ route, navigation }) {
                     )}
                   </View>
 
-                  {/* --------------------------------------------------------- */}
-                  {/* Activity Card                                              */}
-                  {/* --------------------------------------------------------- */}
-
-                  <View
+                  {/* Activity */}
+                  <TouchableOpacity
+                    activeOpacity={0.92}
                     style={[
                       styles.activityItemCard,
                       {
                         borderLeftColor: activityColor,
                       },
                     ]}
+                    onPress={() =>
+                      setExpandedActivityId(
+                        expandedActivityId === tx.id ? null : tx.id,
+                      )
+                    }
                   >
-                    {/* ------------------------------------------------------- */}
-                    {/* Top Row                                                   */}
-                    {/* ------------------------------------------------------- */}
+                    {/* ============================================================= */}
+                    {/* COMPACT / ALWAYS VISIBLE                                      */}
+                    {/* ============================================================= */}
 
                     <View style={styles.activityItemTop}>
                       <View style={styles.activityItemTitleWrap}>
-                        <Text
-                          style={styles.activityItemTitle}
-                          numberOfLines={1}
-                        >
-                          {activityTitle}
-                        </Text>
+                        <View style={styles.activityTitleRow}>
+                          <Text
+                            style={styles.activityItemTitle}
+                            numberOfLines={1}
+                          >
+                            {activityTitle}
+                          </Text>
+
+                          <View
+                            style={[
+                              styles.activityTypeBadge,
+                              {
+                                backgroundColor: transactionBg,
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.activityTypeBadgeText,
+                                {
+                                  color: transactionColor,
+                                },
+                              ]}
+                            >
+                              {isExpense
+                                ? "Expense"
+                                : isTopUp
+                                  ? "Top Up"
+                                  : "Payment"}
+                            </Text>
+                          </View>
+                        </View>
 
                         <Text
                           style={styles.activityItemDescription}
-                          numberOfLines={2}
+                          numberOfLines={1}
                         >
                           {isTopUp
                             ? activityDescription
                             : tx.notes || activityDescription}
                         </Text>
-                      </View>
 
-                      <Text
-                        style={[
-                          styles.activityAmount,
-                          {
-                            color: activityColor,
-                          },
-                        ]}
-                      >
-                        ₹{amount.toLocaleString("en-IN")}
-                      </Text>
-                    </View>
+                        <View style={styles.activityMetaRow}>
+                          <View style={styles.activityMetaItem}>
+                            <MaterialCommunityIcons
+                              name="calendar-outline"
+                              size={14}
+                              color="#64748B"
+                            />
 
-                    {/* ------------------------------------------------------- */}
-                    {/* Date / Type                                               */}
-                    {/* ------------------------------------------------------- */}
+                            <Text style={styles.activityMetaText}>
+                              {formattedDate}
+                            </Text>
+                          </View>
 
-                    <View style={styles.activityMetaRow}>
-                      <View style={styles.activityMetaItem}>
-                        <MaterialCommunityIcons
-                          name="calendar-outline"
-                          size={15}
-                          color="#64748B"
-                        />
+                          {!!formattedTime && (
+                            <View style={styles.activityMetaItem}>
+                              <MaterialCommunityIcons
+                                name="clock-outline"
+                                size={14}
+                                color="#64748B"
+                              />
 
-                        <Text style={styles.activityMetaText}>
-                          {formattedDate}
-                        </Text>
-                      </View>
-
-                      {!!formattedTime && (
-                        <View style={styles.activityMetaItem}>
-                          <MaterialCommunityIcons
-                            name="clock-outline"
-                            size={15}
-                            color="#64748B"
-                          />
-
-                          <Text style={styles.activityMetaText}>
-                            {formattedTime}
-                          </Text>
+                              <Text style={styles.activityMetaText}>
+                                {formattedTime}
+                              </Text>
+                            </View>
+                          )}
                         </View>
-                      )}
+                      </View>
 
-                      <View
-                        style={[
-                          styles.activityTypeBadge,
-                          {
-                            backgroundColor: activityBg,
-                          },
-                        ]}
-                      >
+                      <View style={styles.activityAmountWrap}>
                         <Text
                           style={[
-                            styles.activityTypeBadgeText,
+                            styles.activityAmount,
                             {
-                              color: activityColor,
+                              color: transactionColor,
                             },
                           ]}
                         >
-                          {isTopUp ? "Top Up" : "Payment"}
+                          {isExpense ? "− " : "+ "}₹
+                          {amount.toLocaleString("en-IN")}
                         </Text>
+
+                        <MaterialCommunityIcons
+                          name={
+                            expandedActivityId === tx.id
+                              ? "chevron-up"
+                              : "chevron-down"
+                          }
+                          size={20}
+                          color="#94A3B8"
+                        />
                       </View>
                     </View>
 
-                    {/* ------------------------------------------------------- */}
-                    {/* Payment Breakdown                                         */}
-                    {/* ------------------------------------------------------- */}
+                    {/* ============================================================= */}
+                    {/* EXPANDED DETAILS                                              */}
+                    {/* ============================================================= */}
 
-                    {isPayment && (
-                      <View style={styles.breakdownCard}>
-                        <View style={styles.breakdownHeader}>
+                    {expandedActivityId === tx.id && (
+                      <View style={styles.expandedActivity}>
+                        <View style={styles.expandedDivider} />
+
+                        {/* Payment Breakdown */}
+                        {isPayment && (
+                          <View style={styles.breakdownCard}>
+                            <View style={styles.breakdownHeader}>
+                              <MaterialCommunityIcons
+                                name="chart-donut"
+                                size={16}
+                                color="#64748B"
+                              />
+
+                              <Text style={styles.breakdownHeaderText}>
+                                Payment Breakdown
+                              </Text>
+                            </View>
+
+                            <View style={styles.breakdownGrid}>
+                              <View style={styles.breakdownItem}>
+                                <Text style={styles.breakdownLabel}>
+                                  Principal
+                                </Text>
+
+                                <Text
+                                  style={[
+                                    styles.breakdownValue,
+                                    {
+                                      color: "#2563EB",
+                                    },
+                                  ]}
+                                >
+                                  ₹{principal.toLocaleString("en-IN")}
+                                </Text>
+                              </View>
+
+                              <View style={styles.breakdownDivider} />
+
+                              <View style={styles.breakdownItem}>
+                                <Text style={styles.breakdownLabel}>
+                                  Interest
+                                </Text>
+
+                                <Text
+                                  style={[
+                                    styles.breakdownValue,
+                                    {
+                                      color: "#EA580C",
+                                    },
+                                  ]}
+                                >
+                                  ₹{interest.toLocaleString("en-IN")}
+                                </Text>
+                              </View>
+
+                              <View style={styles.breakdownDivider} />
+
+                              <View style={styles.breakdownItem}>
+                                <Text style={styles.breakdownLabel}>
+                                  Balance After
+                                </Text>
+
+                                <Text
+                                  style={[
+                                    styles.breakdownValue,
+                                    {
+                                      color: "#DC2626",
+                                    },
+                                  ]}
+                                >
+                                  ₹{balance.toLocaleString("en-IN")}
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
+                        )}
+
+                        {/* Top Up Information */}
+                        {isTopUp && (
+                          <View style={styles.topUpInfo}>
+                            <MaterialCommunityIcons
+                              name="information-outline"
+                              size={17}
+                              color="#7C3AED"
+                            />
+
+                            <Text style={styles.topUpInfoText}>
+                              ₹{amount.toLocaleString("en-IN")} was added to the
+                              loan balance.
+                            </Text>
+                          </View>
+                        )}
+
+                        {/* Transaction Details */}
+                        <View style={styles.transactionDetails}>
+                          <Text style={styles.transactionDetailsTitle}>
+                            Transaction Details
+                          </Text>
+
+                          <View style={styles.detailRow}>
+                            <Text style={styles.detailLabel}>Date & Time</Text>
+
+                            <Text style={styles.detailValue}>
+                              {formattedDate}
+                              {formattedTime ? ` • ${formattedTime}` : ""}
+                            </Text>
+                          </View>
+
+                          {!!tx.notes && (
+                            <View style={styles.detailRow}>
+                              <Text style={styles.detailLabel}>Notes</Text>
+
+                              <Text
+                                style={styles.detailValue}
+                                numberOfLines={4}
+                              >
+                                {tx.notes}
+                              </Text>
+                            </View>
+                          )}
+
+                          {!!tx.source_name && (
+                            <View style={styles.detailRow}>
+                              <Text style={styles.detailLabel}>
+                                Payment Source
+                              </Text>
+
+                              <Text style={styles.detailValue}>
+                                {tx.source_name}
+                              </Text>
+                            </View>
+                          )}
+
+                          {!!tx.category_name && (
+                            <View style={styles.detailRow}>
+                              <Text style={styles.detailLabel}>Category</Text>
+
+                              <Text style={styles.detailValue}>
+                                {tx.category_name}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+
+                        {/* Remove From Loan */}
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          onPress={async (event) => {
+                            event.stopPropagation?.();
+
+                            try {
+                              await unlinkTransactionFromLoan(tx.id);
+
+                              await loadLinkedTransactions();
+                              await refresh();
+
+                              if (expandedActivityId === tx.id) {
+                                setExpandedActivityId(null);
+                              }
+
+                              setSnackbarMsg(
+                                "Transaction removed from this loan.",
+                              );
+                            } catch (e) {
+                              console.error(e);
+
+                              setSnackbarMsg(
+                                e?.message ||
+                                  "Unable to remove this transaction.",
+                              );
+                            }
+
+                            setSnackbarVisible(true);
+                          }}
+                          style={styles.unlinkButton}
+                        >
                           <MaterialCommunityIcons
-                            name="chart-donut"
+                            name="link-variant-off"
                             size={16}
-                            color="#64748B"
+                            color="#DC2626"
                           />
 
-                          <Text style={styles.breakdownHeaderText}>
-                            Payment Breakdown
+                          <Text style={styles.unlinkButtonText}>
+                            Remove from loan
                           </Text>
-                        </View>
-
-                        <View style={styles.breakdownGrid}>
-                          <View style={styles.breakdownItem}>
-                            <Text style={styles.breakdownLabel}>Principal</Text>
-
-                            <Text
-                              style={[
-                                styles.breakdownValue,
-                                {
-                                  color: "#2563EB",
-                                },
-                              ]}
-                            >
-                              ₹{principal.toLocaleString("en-IN")}
-                            </Text>
-                          </View>
-
-                          <View style={styles.breakdownDivider} />
-
-                          <View style={styles.breakdownItem}>
-                            <Text style={styles.breakdownLabel}>Interest</Text>
-
-                            <Text
-                              style={[
-                                styles.breakdownValue,
-                                {
-                                  color: "#EA580C",
-                                },
-                              ]}
-                            >
-                              ₹{interest.toLocaleString("en-IN")}
-                            </Text>
-                          </View>
-
-                          <View style={styles.breakdownDivider} />
-
-                          <View style={styles.breakdownItem}>
-                            <Text style={styles.breakdownLabel}>
-                              Balance After
-                            </Text>
-
-                            <Text
-                              style={[
-                                styles.breakdownValue,
-                                {
-                                  color: "#DC2626",
-                                },
-                              ]}
-                            >
-                              ₹{balance.toLocaleString("en-IN")}
-                            </Text>
-                          </View>
-                        </View>
+                        </TouchableOpacity>
                       </View>
                     )}
-
-                    {/* ------------------------------------------------------- */}
-                    {/* Top Up Explanation                                        */}
-                    {/* ------------------------------------------------------- */}
-
-                    {isTopUp && (
-                      <View style={styles.topUpInfo}>
-                        <MaterialCommunityIcons
-                          name="information-outline"
-                          size={16}
-                          color="#7C3AED"
-                        />
-
-                        <Text style={styles.topUpInfoText}>
-                          This amount was added to the loan balance.
-                        </Text>
-                      </View>
-                    )}
-
-                    {/* ------------------------------------------------------- */}
-                    {/* Actions                                                   */}
-                    {/* ------------------------------------------------------- */}
-
-                    <View style={styles.activityActions}>
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={async () => {
-                          try {
-                            await unlinkTransactionFromLoan(tx.id);
-
-                            await loadLinkedTransactions();
-                            await refresh();
-
-                            setSnackbarMsg(
-                              "Transaction removed from this loan.",
-                            );
-                          } catch (e) {
-                            console.error(e);
-
-                            setSnackbarMsg(
-                              e?.message ||
-                                "Unable to remove this transaction.",
-                            );
-                          }
-
-                          setSnackbarVisible(true);
-                        }}
-                        style={styles.unlinkButton}
-                      >
-                        <MaterialCommunityIcons
-                          name="link-variant-off"
-                          size={16}
-                          color="#DC2626"
-                        />
-
-                        <Text style={styles.unlinkButtonText}>
-                          Remove from loan
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
+                  </TouchableOpacity>
                 </View>
               );
             })}
@@ -1253,6 +1355,87 @@ const styles = StyleSheet.create({
 
   unlinkButtonText: {
     marginLeft: 5,
+    color: "#DC2626",
+    fontSize: 11,
+    fontWeight: "800",
+  },
+
+  activityTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+
+  activityAmountWrap: {
+    alignItems: "flex-end",
+    marginLeft: 8,
+  },
+
+  expandedActivity: {
+    marginTop: 2,
+  },
+
+  expandedDivider: {
+    height: 1,
+    backgroundColor: "#E2E8F0",
+    marginTop: 14,
+    marginBottom: 13,
+  },
+
+  transactionDetails: {
+    marginTop: 13,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+
+  transactionDetailsTitle: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#475569",
+    marginBottom: 10,
+  },
+
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+    gap: 12,
+  },
+
+  detailLabel: {
+    flex: 0.85,
+    fontSize: 11,
+    color: "#94A3B8",
+    fontWeight: "700",
+  },
+
+  detailValue: {
+    flex: 1.4,
+    fontSize: 11,
+    color: "#334155",
+    fontWeight: "700",
+    textAlign: "right",
+    lineHeight: 16,
+  },
+
+  unlinkButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 13,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+  },
+
+  unlinkButtonText: {
+    marginLeft: 6,
     color: "#DC2626",
     fontSize: 11,
     fontWeight: "800",
