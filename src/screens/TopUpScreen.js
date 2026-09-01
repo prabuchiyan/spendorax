@@ -270,6 +270,7 @@ export default function TopUpScreen({ route, navigation }) {
   // -------------------------------------------------------------------------
 
   const [amountFocused, setAmountFocused] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
   const [errors, setErrors] = useState({});
 
   // =========================================================================
@@ -326,6 +327,16 @@ export default function TopUpScreen({ route, navigation }) {
 
   const selectedCategory = categories.find(
     (category) => Number(category.id) === Number(categoryId),
+  );
+
+  const incomeCategories = categories.filter(
+    (category) => String(category.type || "").toLowerCase() === "income",
+  );
+
+  const filteredIncomeCategories = incomeCategories.filter((category) =>
+    String(category.name || "")
+      .toLowerCase()
+      .includes(categorySearch.trim().toLowerCase()),
   );
 
   // =========================================================================
@@ -715,19 +726,6 @@ export default function TopUpScreen({ route, navigation }) {
           {/* Header                                                     */}
           {/* ========================================================= */}
           <View style={styles.header}>
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={handleBack}
-              disabled={loading}
-              style={styles.headerBackButton}
-            >
-              <MaterialCommunityIcons
-                name="arrow-left"
-                size={24}
-                color="#FFFFFF"
-              />
-            </TouchableOpacity>
-
             <View style={styles.headerIcon}>
               <MaterialCommunityIcons
                 name="cash-plus"
@@ -1037,26 +1035,31 @@ export default function TopUpScreen({ route, navigation }) {
         visible={showCategoryPicker}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowCategoryPicker(false)}
+        onRequestClose={() => {
+          setShowCategoryPicker(false);
+          setCategorySearch("");
+        }}
       >
         <View style={styles.pickerOverlay}>
           <View style={styles.pickerSheet}>
             <View style={styles.pickerHandle} />
 
+            {/* Header */}
             <View style={styles.pickerHeader}>
-              <View
-                style={{
-                  flex: 1,
-                }}
-              >
-                <Text style={styles.pickerTitle}>Select Category</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pickerTitle}>Select Income Category</Text>
 
                 <Text style={styles.pickerSubtitle}>
-                  Choose the category for this top up
+                  Choose an income category for this top up
                 </Text>
               </View>
 
-              <TouchableOpacity onPress={() => setShowCategoryPicker(false)}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowCategoryPicker(false);
+                  setCategorySearch("");
+                }}
+              >
                 <MaterialCommunityIcons
                   name="close-circle"
                   size={28}
@@ -1065,38 +1068,79 @@ export default function TopUpScreen({ route, navigation }) {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {categories.map((category) => (
+            {/* Search */}
+            <View style={styles.categorySearchContainer}>
+              <MaterialCommunityIcons
+                name="magnify"
+                size={22}
+                color="#64748B"
+              />
+
+              <TextInput
+                value={categorySearch}
+                onChangeText={setCategorySearch}
+                placeholder="Search income category..."
+                placeholderTextColor="#94A3B8"
+                style={styles.categorySearchInput}
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
+
+              {categorySearch.length > 0 && (
+                <TouchableOpacity onPress={() => setCategorySearch("")}>
+                  <MaterialCommunityIcons
+                    name="close-circle"
+                    size={20}
+                    color="#94A3B8"
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Category List */}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {filteredIncomeCategories.map((category) => (
                 <PickerItem
                   key={category.id}
-                  icon={category.icon || "shape-outline"}
-                  iconColor={category.color || "#EA580C"}
-                  iconBg={(category.color || "#EA580C") + "20"}
+                  icon={category.icon || "cash-plus"}
+                  iconColor={category.color || "#16A34A"}
+                  iconBg={(category.color || "#16A34A") + "20"}
                   selected={Number(category.id) === Number(categoryId)}
                   title={category.name}
-                  subtitle={
-                    category.type
-                      ? `${category.type} Category`
-                      : "Loan Category"
-                  }
+                  subtitle="Income Category"
                   onPress={() => {
                     setCategoryId(category.id);
-
+                    setCategorySearch("");
                     setShowCategoryPicker(false);
+
+                    setErrors((prev) => ({
+                      ...prev,
+                      category: undefined,
+                    }));
                   }}
                 />
               ))}
 
-              {categories.length === 0 && (
+              {/* No Results */}
+              {filteredIncomeCategories.length === 0 && (
                 <View style={styles.emptyPicker}>
-                  <MaterialCommunityIcons
-                    name="shape-outline"
-                    size={32}
-                    color="#94A3B8"
-                  />
+                  <View style={styles.emptyPickerIcon}>
+                    <MaterialCommunityIcons
+                      name="magnify-close"
+                      size={30}
+                      color="#94A3B8"
+                    />
+                  </View>
+
+                  <Text style={styles.emptyPickerTitle}>
+                    No income category found
+                  </Text>
 
                   <Text style={styles.emptyPickerText}>
-                    No categories found
+                    Try searching with a different name.
                   </Text>
                 </View>
               )}
@@ -1105,7 +1149,10 @@ export default function TopUpScreen({ route, navigation }) {
             <PaperButton
               mode="outlined"
               style={styles.pickerCloseButton}
-              onPress={() => setShowCategoryPicker(false)}
+              onPress={() => {
+                setShowCategoryPicker(false);
+                setCategorySearch("");
+              }}
             >
               Close
             </PaperButton>
@@ -1698,5 +1745,48 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     fontWeight: "600",
+  },
+  categorySearchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1.5,
+    borderColor: "#D6E4FF",
+    borderRadius: 16,
+    minHeight: 52,
+    paddingHorizontal: 14,
+    marginBottom: 14,
+  },
+
+  categorySearchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: "#111827",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    outlineStyle: "none",
+  },
+
+  emptyPickerIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 18,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+
+  emptyPickerTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#334155",
+  },
+
+  emptyPickerText: {
+    marginTop: 5,
+    fontSize: 13,
+    color: "#94A3B8",
+    textAlign: "center",
   },
 });
