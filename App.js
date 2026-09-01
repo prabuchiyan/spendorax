@@ -27,6 +27,7 @@ import LoanDetailsScreen from './src/screens/LoanDetailsScreen';
 import LoanPaymentScreen from './src/screens/LoanPaymentScreen';
 import LoanForeclosureScreen from './src/screens/LoanForeclosureScreen';
 import LendMoreScreen from './src/screens/LendMoreScreen';
+import TopUpScreen from './src/screens/TopUpScreen';
 import LoanListScreen from './src/screens/LoanListScreen';
 import CreditCardStatementsScreen from './src/screens/CreditCardStatementsScreen';
 import { initDB } from './src/database/init';
@@ -140,6 +141,7 @@ export default function App() {
               <Stack.Screen name="LoanPayment" component={LoanPaymentScreen} options={{ title: 'Record Payment' }} />
               <Stack.Screen name="LoanForeclose" component={LoanForeclosureScreen} options={{ title: 'Loan Foreclose' }} />
               <Stack.Screen name="LendMore" component={LendMoreScreen} options={{ title: 'Lend More' }} />
+              <Stack.Screen name="TopUp" component={TopUpScreen} options={{ title: 'Top Up' }} />
               <Stack.Screen name="LoanList" component={LoanListScreen} options={{ title: 'All Loans' }} />
               <Stack.Screen name="CreditCardStatements" component={CreditCardStatementsScreen} options={{ title: 'Credit Card Statements' }} />
               <Stack.Screen name="LoanHistory" component={require('./src/screens/LoanHistoryScreen').default} options={{ title: 'Loan History' }} />
