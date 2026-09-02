@@ -377,7 +377,13 @@ export default function LoanPaymentScreen({ route, navigation }) {
     const value = Number(amount);
 
     try {
+      // Immediately disable the button and show loader
       setLoading(true);
+
+      // Give React Native one render cycle to display the loader
+      await new Promise((resolve) => {
+        requestAnimationFrame(resolve);
+      });
 
       if (mode === "prepayment") {
         await recordPrepayment({
@@ -777,11 +783,17 @@ export default function LoanPaymentScreen({ route, navigation }) {
                 fontWeight: "800",
               }}
             >
-              {mode === "receive"
-                ? "Save Received Payment"
-                : mode === "prepayment"
-                  ? "Save Prepayment"
-                  : "Save Payment"}
+              {loading
+                ? mode === "receive"
+                  ? "Saving Received Payment..."
+                  : mode === "prepayment"
+                    ? "Saving Prepayment..."
+                    : "Saving Payment..."
+                : mode === "receive"
+                  ? "Save Received Payment"
+                  : mode === "prepayment"
+                    ? "Save Prepayment"
+                    : "Save Payment"}
             </PaperButton>
           </View>
         </Card>

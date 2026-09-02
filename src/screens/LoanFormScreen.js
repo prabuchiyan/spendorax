@@ -450,6 +450,11 @@ export default function LoanFormScreen({ navigation, route }) {
     // Save
     try {
       setSubmitting(true);
+      // Allow React Native to render the loading state
+      // before starting the database operation.
+      await new Promise(resolve => {
+        requestAnimationFrame(resolve);
+      });
       console.log(
         "[LoanForm] Saving loan_start_date:",
         payload.loan_start_date,
