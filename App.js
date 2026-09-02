@@ -22,6 +22,7 @@ import BillsScreen from './src/screens/BillsScreen';
 import BillDetailScreen from './src/screens/BillDetailScreen';
 import BackupScreen from './src/screens/BackupScreen';
 import DrawerNavigator from './navigation/DrawerNavigator';
+import LoanDashboardScreen from './src/screens/LoanDashboardScreen';
 import LoanFormScreen from './src/screens/LoanFormScreen';
 import LoanDetailsScreen from './src/screens/LoanDetailsScreen';
 import LoanPaymentScreen from './src/screens/LoanPaymentScreen';
@@ -136,6 +137,7 @@ export default function App() {
               <Stack.Screen name="Bills" component={BillsScreen} options={{ title: 'Bills' }} />
               <Stack.Screen name="BillDetail" component={BillDetailScreen} options={{ title: 'Bill Details' }} />
               <Stack.Screen name="Backup" component={BackupScreen} options={{ title: 'Backup & Restore' }} />
+              <Stack.Screen name="LoanDashboard" component={LoanDashboardScreen} />
               <Stack.Screen name="LoanForm" component={LoanFormScreen} options={{ title: 'Add / Edit Loan' }} />
               <Stack.Screen name="LoanDetails" component={LoanDetailsScreen} options={{ title: 'Loan Details' }} />
               <Stack.Screen name="LoanPayment" component={LoanPaymentScreen} options={{ title: 'Record Payment' }} />

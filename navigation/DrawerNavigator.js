@@ -168,7 +168,7 @@ export default function DrawerNavigator() {
         })}
       />
       <Drawer.Screen name="Transactions" component={TransactionsScreen} />
-      <Drawer.Screen name="Loans" component={LoanDashboardScreen} />
+      <Drawer.Screen name="Loans" component={LoanDashboardScreen} options={{ title: "Loans" }} />
       <Drawer.Screen name="CreditCards" component={CreditCardsScreen} options={{ title: 'Credit Cards' }} />
       <Drawer.Screen name="CreditCardStatements" component={CreditCardStatementsScreen} options={{ title: 'Credit Card Statements' }} />
       <Drawer.Screen name="Budgets" component={BudgetsScreen} />
