@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-
 import {
   ActivityIndicator,
   ScrollView,
@@ -10,7 +9,6 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { getLoans, getLoanPayments } from "../services/loans";
 import events from "../services/events";
-import Card from "../components/Card";
 import FAB from "../components/FAB";
 import { Colors, Spacing } from "../components/Theme";
 
@@ -50,11 +48,7 @@ function computeNextDueDate(loan) {
         ? new Date(loan.loan_start_date).getDate()
         : today.getDate());
 
-    const candidate = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      day,
-    );
+    const candidate = new Date(today.getFullYear(), today.getMonth(), day);
 
     if (candidate < today) {
       candidate.setMonth(candidate.getMonth() + 1);
@@ -90,13 +84,7 @@ function getProgressColor(percent) {
    SMALL ICON
 ========================================================= */
 
-function IconBox({
-  icon,
-  color,
-  size = 42,
-  iconSize = 21,
-  radius = 13,
-}) {
+function IconBox({ icon, color, size = 42, iconSize = 21, radius = 13 }) {
   return (
     <View
       style={{
@@ -108,11 +96,7 @@ function IconBox({
         justifyContent: "center",
       }}
     >
-      <MaterialCommunityIcons
-        name={icon}
-        size={iconSize}
-        color={color}
-      />
+      <MaterialCommunityIcons name={icon} size={iconSize} color={color} />
     </View>
   );
 }
@@ -190,13 +174,7 @@ function StatCard({ title, amount, icon, color }) {
           marginBottom: 8,
         }}
       >
-        <IconBox
-          icon={icon}
-          color={color}
-          size={30}
-          iconSize={16}
-          radius={9}
-        />
+        <IconBox icon={icon} color={color} size={30} iconSize={16} radius={9} />
 
         <Text
           numberOfLines={1}
@@ -243,10 +221,7 @@ function PrimarySummaryCard({
   isBorrowed,
 }) {
   const progressColor = getProgressColor(percentage);
-  const safePercentage = Math.max(
-    0,
-    Math.min(100, Number(percentage || 0)),
-  );
+  const safePercentage = Math.max(0, Math.min(100, Number(percentage || 0)));
 
   return (
     <View
@@ -460,10 +435,7 @@ function PrimarySummaryCard({
                 marginTop: 2,
                 fontSize: 12,
                 fontWeight: "900",
-                color:
-                  number(outstanding) > 0
-                    ? "#172033"
-                    : "#16A34A",
+                color: number(outstanding) > 0 ? "#172033" : "#16A34A",
               }}
             >
               {money(outstanding)}
@@ -475,11 +447,15 @@ function PrimarySummaryCard({
   );
 }
 
-/* =========================================================
-   OVERVIEW CARD
-========================================================= */
+/* OVERVIEW CARD */
+function OverviewCard({ summary, accent, isBorrowed, navigation, direction }) {
+  const openLoanList = (status) => {
+    navigation.navigate("LoanList", {
+      status,
+      direction,
+    });
+  };
 
-function OverviewCard({ summary, accent, isBorrowed }) {
   return (
     <View
       style={{
@@ -507,11 +483,7 @@ function OverviewCard({ summary, accent, isBorrowed }) {
         }}
       >
         <IconBox
-          icon={
-            isBorrowed
-              ? "shield-check-outline"
-              : "account-cash-outline"
-          }
+          icon={isBorrowed ? "shield-check-outline" : "account-cash-outline"}
           color={accent}
           size={38}
           iconSize={20}
@@ -555,12 +527,14 @@ function OverviewCard({ summary, accent, isBorrowed }) {
           value={summary.activeCount}
           label="Active"
           color={accent}
+          onPress={() => openLoanList("Active")}
         />
 
         <OverviewItem
           value={summary.closedCount}
           label="Closed"
           color="#687385"
+          onPress={() => openLoanList("Closed")}
         />
 
         <OverviewItem
@@ -574,16 +548,9 @@ function OverviewCard({ summary, accent, isBorrowed }) {
   );
 }
 
-function OverviewItem({ value, label, color, last }) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        alignItems: "center",
-        borderRightWidth: last ? 0 : 1,
-        borderRightColor: "#EDF0F3",
-      }}
-    >
+function OverviewItem({ value, label, color, last, onPress }) {
+  const content = (
+    <>
       <Text
         style={{
           fontSize: 19,
@@ -604,14 +571,43 @@ function OverviewItem({ value, label, color, last }) {
       >
         {label}
       </Text>
-    </View>
+    </>
+  );
+
+  if (!onPress) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          borderRightWidth: last ? 0 : 1,
+          borderRightColor: "#EDF0F3",
+        }}
+      >
+        {content}
+      </View>
+    );
+  }
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={onPress}
+      style={{
+        flex: 1,
+        alignItems: "center",
+        borderRightWidth: last ? 0 : 1,
+        borderRightColor: "#EDF0F3",
+      }}
+    >
+      {content}
+    </TouchableOpacity>
   );
 }
 
 /* =========================================================
    SECTION HEADER
 ========================================================= */
-
 function SectionHeader({ title, subtitle, count }) {
   return (
     <View
@@ -690,8 +686,7 @@ function DirectionLoanCard({ loan, direction, navigation }) {
 
   const total = paid + outstanding;
 
-  const percentage =
-    total > 0 ? Math.min(100, (paid / total) * 100) : 0;
+  const percentage = total > 0 ? Math.min(100, (paid / total) * 100) : 0;
 
   const progressColor = getProgressColor(percentage);
 
@@ -700,8 +695,7 @@ function DirectionLoanCard({ loan, direction, navigation }) {
     loan.loan_end_date &&
     new Date(loan.loan_end_date) < new Date();
 
-  const completed =
-    percentage >= 100 || outstanding <= 0;
+  const completed = percentage >= 100 || outstanding <= 0;
 
   const accent = overdue
     ? "#E25563"
@@ -709,17 +703,9 @@ function DirectionLoanCard({ loan, direction, navigation }) {
       ? "#36B37E"
       : "#4F7CAC";
 
-  const status = overdue
-    ? "OVERDUE"
-    : completed
-      ? "COMPLETED"
-      : "ACTIVE";
+  const status = overdue ? "OVERDUE" : completed ? "COMPLETED" : "ACTIVE";
 
-  const statusColor = overdue
-    ? "#E25563"
-    : completed
-      ? "#16A34A"
-      : accent;
+  const statusColor = overdue ? "#E25563" : completed ? "#16A34A" : accent;
 
   return (
     <TouchableOpacity
@@ -771,11 +757,7 @@ function DirectionLoanCard({ loan, direction, navigation }) {
           }}
         >
           <IconBox
-            icon={
-              direction === "BORROWED"
-                ? "bank-minus"
-                : "cash-plus"
-            }
+            icon={direction === "BORROWED" ? "bank-minus" : "cash-plus"}
             color={accent}
             size={40}
             iconSize={20}
@@ -808,10 +790,8 @@ function DirectionLoanCard({ loan, direction, navigation }) {
                 color: "#8A94A6",
               }}
             >
-              {direction === "BORROWED"
-                ? "Outstanding"
-                : "Pending recovery"}{" "}
-              • {money(outstanding)}
+              {direction === "BORROWED" ? "Outstanding" : "Pending recovery"} •{" "}
+              {money(outstanding)}
             </Text>
           </View>
 
@@ -831,10 +811,7 @@ function DirectionLoanCard({ loan, direction, navigation }) {
               {Math.round(percentage)}%
             </Text>
 
-            <StatusBadge
-              status={status}
-              color={statusColor}
-            />
+            <StatusBadge status={status} color={statusColor} />
           </View>
         </View>
 
@@ -898,11 +875,9 @@ function DirectionLoanCard({ loan, direction, navigation }) {
 ========================================================= */
 
 function UpcomingCard({ loan, direction, navigation }) {
-  const accent =
-    direction === "BORROWED" ? "#36B37E" : "#4F7CAC";
+  const accent = direction === "BORROWED" ? "#36B37E" : "#4F7CAC";
 
-  const dueDate =
-    loan.nextDueDate || computeNextDueDate(loan);
+  const dueDate = loan.nextDueDate || computeNextDueDate(loan);
 
   const overdue =
     dueDate &&
@@ -943,9 +918,7 @@ function UpcomingCard({ loan, direction, navigation }) {
       >
         <IconBox
           icon={
-            direction === "BORROWED"
-              ? "calendar-arrow-right"
-              : "calendar-check"
+            direction === "BORROWED" ? "calendar-arrow-right" : "calendar-check"
           }
           color={overdue ? "#E25563" : accent}
           size={36}
@@ -993,10 +966,7 @@ function UpcomingCard({ loan, direction, navigation }) {
           color: overdue ? "#E25563" : accent,
         }}
       >
-        {money(
-          number(loan.emi_amount) ||
-            number(loan.outstanding_amount),
-        )}
+        {money(number(loan.emi_amount) || number(loan.outstanding_amount))}
       </Text>
 
       <Text
@@ -1006,9 +976,7 @@ function UpcomingCard({ loan, direction, navigation }) {
           color: "#8A94A6",
         }}
       >
-        {direction === "BORROWED"
-          ? "Next EMI"
-          : "Expected recovery"}
+        {direction === "BORROWED" ? "Next EMI" : "Expected recovery"}
       </Text>
     </TouchableOpacity>
   );
@@ -1019,8 +987,7 @@ function UpcomingCard({ loan, direction, navigation }) {
 ========================================================= */
 
 function RecentPaymentCard({ item, direction }) {
-  const accent =
-    direction === "BORROWED" ? "#36B37E" : "#4F7CAC";
+  const accent = direction === "BORROWED" ? "#36B37E" : "#4F7CAC";
 
   return (
     <View
@@ -1041,11 +1008,7 @@ function RecentPaymentCard({ item, direction }) {
         }}
       >
         <IconBox
-          icon={
-            direction === "BORROWED"
-              ? "cash-minus"
-              : "cash-plus"
-          }
+          icon={direction === "BORROWED" ? "cash-minus" : "cash-plus"}
           color={accent}
           size={36}
           iconSize={18}
@@ -1092,11 +1055,7 @@ function RecentPaymentCard({ item, direction }) {
               color: accent,
             }}
           >
-            {money(
-              item.amount ??
-                item.payment_amount ??
-                item.paid_amount,
-            )}
+            {money(item.amount ?? item.payment_amount ?? item.paid_amount)}
           </Text>
 
           <Text
@@ -1107,9 +1066,7 @@ function RecentPaymentCard({ item, direction }) {
               color: "#9AA3AF",
             }}
           >
-            {direction === "BORROWED"
-              ? "PAYMENT"
-              : "RECOVERY"}
+            {direction === "BORROWED" ? "PAYMENT" : "RECOVERY"}
           </Text>
         </View>
       </View>
@@ -1209,13 +1166,7 @@ function DirectionTabs({ direction, setDirection }) {
   );
 }
 
-function DirectionTab({
-  active,
-  icon,
-  label,
-  color,
-  onPress,
-}) {
+function DirectionTab({ active, icon, label, color, onPress }) {
   return (
     <TouchableOpacity
       activeOpacity={0.85}
@@ -1276,9 +1227,7 @@ function LoanDirectionDashboard({ navigation }) {
 
       const data = await getLoans();
 
-      console.log(
-        "========== LOAN DASHBOARD DEBUG ==========",
-      );
+      console.log("========== LOAN DASHBOARD DEBUG ==========");
 
       console.log("Requested direction:", direction);
 
@@ -1295,9 +1244,7 @@ function LoanDirectionDashboard({ navigation }) {
       );
 
       const filtered = data
-        .filter(
-          (loan) => getDirection(loan) === direction,
-        )
+        .filter((loan) => getDirection(loan) === direction)
         .map((loan) => ({
           ...loan,
           nextDueDate: computeNextDueDate(loan),
@@ -1312,11 +1259,7 @@ function LoanDirectionDashboard({ navigation }) {
       let recent = [];
 
       for (const loan of filtered) {
-        const rows = await getLoanPayments(
-          loan.id,
-          6,
-          0,
-        );
+        const rows = await getLoanPayments(loan.id, 6, 0);
 
         recent = recent.concat(
           rows.map((payment) => ({
@@ -1327,17 +1270,12 @@ function LoanDirectionDashboard({ navigation }) {
       }
 
       recent.sort(
-        (a, b) =>
-          new Date(b.payment_date) -
-          new Date(a.payment_date),
+        (a, b) => new Date(b.payment_date) - new Date(a.payment_date),
       );
 
       setPayments(recent.slice(0, 6));
     } catch (error) {
-      console.error(
-        "Loan dashboard load error:",
-        error,
-      );
+      console.error("Loan dashboard load error:", error);
     } finally {
       setLoading(false);
     }
@@ -1346,20 +1284,11 @@ function LoanDirectionDashboard({ navigation }) {
   useEffect(() => {
     load();
 
-    const unsubscribe = navigation.addListener(
-      "focus",
-      load,
-    );
+    const unsubscribe = navigation.addListener("focus", load);
 
-    const offLoans = events.on(
-      "loansChanged",
-      load,
-    );
+    const offLoans = events.on("loansChanged", load);
 
-    const offPayments = events.on(
-      "loanPaymentsChanged",
-      load,
-    );
+    const offPayments = events.on("loanPaymentsChanged", load);
 
     return () => {
       unsubscribe?.();
@@ -1376,48 +1305,34 @@ function LoanDirectionDashboard({ navigation }) {
     const active = loans.filter(isActive);
 
     const outstanding = loans.reduce(
-      (sum, loan) =>
-        sum + number(loan.outstanding_amount),
+      (sum, loan) => sum + number(loan.outstanding_amount),
       0,
     );
 
     const paid = loans.reduce(
-      (sum, loan) =>
-        sum + number(loan.principal_paid),
+      (sum, loan) => sum + number(loan.principal_paid),
       0,
     );
 
     const total = paid + outstanding;
 
-    const percentage =
-      total > 0
-        ? Math.min(100, (paid / total) * 100)
-        : 0;
+    const percentage = total > 0 ? Math.min(100, (paid / total) * 100) : 0;
 
-    const emi = active.reduce(
-      (sum, loan) =>
-        sum + number(loan.emi_amount),
-      0,
-    );
+    const emi = active.reduce((sum, loan) => sum + number(loan.emi_amount), 0);
 
     const interest = loans.reduce(
-      (sum, loan) =>
-        sum + number(loan.interest_paid),
+      (sum, loan) => sum + number(loan.interest_paid),
       0,
     );
 
     const overdue = loans.filter(
-      (loan) =>
-        loan.isOverdue &&
-        number(loan.outstanding_amount) > 0,
+      (loan) => loan.isOverdue && number(loan.outstanding_amount) > 0,
     ).length;
 
     const activeCount = active.length;
 
     const closedCount = loans.filter(
-      (loan) =>
-        !isActive(loan) ||
-        number(loan.outstanding_amount) <= 0,
+      (loan) => !isActive(loan) || number(loan.outstanding_amount) <= 0,
     ).length;
 
     return {
@@ -1439,16 +1354,8 @@ function LoanDirectionDashboard({ navigation }) {
 
   const upcoming = useMemo(() => {
     return loans
-      .filter(
-        (loan) =>
-          isActive(loan) &&
-          number(loan.outstanding_amount) > 0,
-      )
-      .sort(
-        (a, b) =>
-          new Date(a.nextDueDate) -
-          new Date(b.nextDueDate),
-      )
+      .filter((loan) => isActive(loan) && number(loan.outstanding_amount) > 0)
+      .sort((a, b) => new Date(a.nextDueDate) - new Date(b.nextDueDate))
       .slice(0, 6);
   }, [loans]);
 
@@ -1458,15 +1365,9 @@ function LoanDirectionDashboard({ navigation }) {
 
   const activeLoans = useMemo(() => {
     return loans
-      .filter(
-        (loan) =>
-          isActive(loan) &&
-          number(loan.outstanding_amount) > 0,
-      )
+      .filter((loan) => isActive(loan) && number(loan.outstanding_amount) > 0)
       .sort(
-        (a, b) =>
-          number(b.outstanding_amount) -
-          number(a.outstanding_amount),
+        (a, b) => number(b.outstanding_amount) - number(a.outstanding_amount),
       );
   }, [loans]);
 
@@ -1476,29 +1377,21 @@ function LoanDirectionDashboard({ navigation }) {
 
   const isBorrowed = direction === "BORROWED";
 
-  const accent = isBorrowed
-    ? "#36B37E"
-    : "#4F7CAC";
+  const accent = isBorrowed ? "#36B37E" : "#4F7CAC";
 
-  const title = isBorrowed
-    ? "Loans"
-    : "Money Lent";
+  const title = isBorrowed ? "Loans" : "Money Lent";
 
   const subtitle = isBorrowed
     ? "Track what you still need to repay"
     : "Track what others still owe you";
 
-  const primaryTitle = isBorrowed
-    ? "Outstanding Loan"
-    : "Pending Recovery";
+  const primaryTitle = isBorrowed ? "Outstanding Loan" : "Pending Recovery";
 
   const primarySubtitle = isBorrowed
     ? "Amount you still need to repay"
     : "Amount still owed to you";
 
-  const primaryIcon = isBorrowed
-    ? "bank-minus"
-    : "cash-plus";
+  const primaryIcon = isBorrowed ? "bank-minus" : "cash-plus";
 
   /* =====================================================
      LOADING
@@ -1524,10 +1417,7 @@ function LoanDirectionDashboard({ navigation }) {
             justifyContent: "center",
           }}
         >
-          <ActivityIndicator
-            size="small"
-            color={accent}
-          />
+          <ActivityIndicator size="small" color={accent} />
         </View>
 
         <Text
@@ -1616,10 +1506,7 @@ function LoanDirectionDashboard({ navigation }) {
             TABS
         ================================================= */}
 
-        <DirectionTabs
-          direction={direction}
-          setDirection={setDirection}
-        />
+        <DirectionTabs direction={direction} setDirection={setDirection} />
 
         {/* =================================================
             SUMMARY
@@ -1649,56 +1536,27 @@ function LoanDirectionDashboard({ navigation }) {
           }}
         >
           <StatCard
-            title={
-              isBorrowed
-                ? "Monthly EMI"
-                : "Total Lent"
-            }
-            amount={money(
-              isBorrowed
-                ? summary.emi
-                : summary.total,
-            )}
-            icon={
-              isBorrowed
-                ? "calendar-month"
-                : "cash-multiple"
-            }
+            title={isBorrowed ? "Monthly EMI" : "Total Lent"}
+            amount={money(isBorrowed ? summary.emi : summary.total)}
+            icon={isBorrowed ? "calendar-month" : "cash-multiple"}
             color={accent}
           />
 
           <StatCard
-            title={
-              isBorrowed
-                ? "Interest Paid"
-                : "Recovered"
-            }
-            amount={money(
-              isBorrowed
-                ? summary.interest
-                : summary.paid,
-            )}
-            icon={
-              isBorrowed
-                ? "percent"
-                : "cash-check"
-            }
-            color={
-              isBorrowed
-                ? "#F59E0B"
-                : "#36B37E"
-            }
+            title={isBorrowed ? "Interest Paid" : "Recovered"}
+            amount={money(isBorrowed ? summary.interest : summary.paid)}
+            icon={isBorrowed ? "percent" : "cash-check"}
+            color={isBorrowed ? "#F59E0B" : "#36B37E"}
           />
         </View>
 
-        {/* =================================================
-            OVERVIEW
-        ================================================= */}
-
+        {/* OVERVIEW  */}
         <OverviewCard
           summary={summary}
           accent={accent}
           isBorrowed={isBorrowed}
+          navigation={navigation}
+          direction={direction}
         />
 
         {/* =================================================
@@ -1706,11 +1564,7 @@ function LoanDirectionDashboard({ navigation }) {
         ================================================= */}
 
         <SectionHeader
-          title={
-            isBorrowed
-              ? "Upcoming Payments"
-              : "Expected Recovery"
-          }
+          title={isBorrowed ? "Upcoming Payments" : "Expected Recovery"}
           subtitle={
             isBorrowed
               ? "Your next scheduled payments"
@@ -1723,15 +1577,9 @@ function LoanDirectionDashboard({ navigation }) {
           <EmptyCard
             compact
             color={accent}
-            icon={
-              isBorrowed
-                ? "calendar-check-outline"
-                : "cash-check"
-            }
+            icon={isBorrowed ? "calendar-check-outline" : "cash-check"}
             title={
-              isBorrowed
-                ? "No upcoming payments"
-                : "No pending recoveries"
+              isBorrowed ? "No upcoming payments" : "No pending recoveries"
             }
             subtitle={
               isBorrowed
@@ -1763,15 +1611,9 @@ function LoanDirectionDashboard({ navigation }) {
         ================================================= */}
 
         <SectionHeader
-          title={
-            isBorrowed
-              ? "Active Loans"
-              : "Active Money Lent"
-          }
+          title={isBorrowed ? "Active Loans" : "Active Money Lent"}
           subtitle={
-            isBorrowed
-              ? "Currently being repaid"
-              : "People who still owe you"
+            isBorrowed ? "Currently being repaid" : "People who still owe you"
           }
           count={activeLoans.length}
         />
@@ -1779,16 +1621,8 @@ function LoanDirectionDashboard({ navigation }) {
         {activeLoans.length === 0 ? (
           <EmptyCard
             color={accent}
-            icon={
-              isBorrowed
-                ? "bank-off-outline"
-                : "account-cash-outline"
-            }
-            title={
-              isBorrowed
-                ? "No active loans"
-                : "No active lending"
-            }
+            icon={isBorrowed ? "bank-off-outline" : "account-cash-outline"}
+            title={isBorrowed ? "No active loans" : "No active lending"}
             subtitle={
               isBorrowed
                 ? "Add a borrowed loan to start tracking repayments."
@@ -1811,15 +1645,9 @@ function LoanDirectionDashboard({ navigation }) {
         ================================================= */}
 
         <SectionHeader
-          title={
-            isBorrowed
-              ? "Recent Payments"
-              : "Recent Recoveries"
-          }
+          title={isBorrowed ? "Recent Payments" : "Recent Recoveries"}
           subtitle={
-            isBorrowed
-              ? "Latest loan payments"
-              : "Latest repayments received"
+            isBorrowed ? "Latest loan payments" : "Latest repayments received"
           }
           count={payments.length}
         />
@@ -1858,11 +1686,7 @@ function LoanDirectionDashboard({ navigation }) {
           bottom: 18,
         }}
       >
-        <FAB
-          onPress={() =>
-            navigation.navigate("LoanForm")
-          }
-        />
+        <FAB onPress={() => navigation.navigate("LoanForm")} />
       </View>
     </View>
   );
@@ -1873,11 +1697,7 @@ function LoanDirectionDashboard({ navigation }) {
 ========================================================= */
 
 export function LoanDashboardScreen({ navigation }) {
-  return (
-    <LoanDirectionDashboard
-      navigation={navigation}
-    />
-  );
+  return <LoanDirectionDashboard navigation={navigation} />;
 }
 
 export default LoanDashboardScreen;

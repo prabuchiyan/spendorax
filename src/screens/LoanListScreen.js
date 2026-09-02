@@ -1,22 +1,24 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   FlatList,
   TouchableOpacity,
   Text,
   TextInput,
-  Platform
-} from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { getLoans } from '../services/loans';
-import LoanCard from '../components/LoanCard';
-import { Colors } from '../components/Theme';
+  Platform,
+} from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { getLoans } from "../services/loans";
+import LoanCard from "../components/LoanCard";
+import { Colors } from "../components/Theme";
 
-export default function LoanListScreen({ navigation }) {
+export default function LoanListScreen({ navigation, route }) {
   const [loans, setLoans] = useState([]);
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('ALL');
-  const [directionFilter, setDirectionFilter] = useState('ALL');
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState(route?.params?.status || "ALL");
+  const [directionFilter, setDirectionFilter] = useState(
+    route?.params?.direction || "ALL",
+  );
 
   async function load() {
     const data = await getLoans();
@@ -24,47 +26,58 @@ export default function LoanListScreen({ navigation }) {
   }
 
   useEffect(() => {
-    load();
-    const unsub = navigation.addListener('focus', load);
+    const applyParams = () => {
+      const status = route?.params?.status;
+      const direction = route?.params?.direction;
+
+      setFilter(status || "ALL");
+      setDirectionFilter(direction || "ALL");
+
+      load();
+    };
+
+    applyParams();
+
+    const unsub = navigation.addListener("focus", applyParams);
+
     return unsub;
-  }, [navigation]);
+  }, [navigation, route]);
 
   const stats = useMemo(() => {
     return {
       total: loans.length,
-      active: loans.filter(l => (l.status || 'Active') === 'Active').length,
-      closed: loans.filter(l => l.status === 'Closed').length,
+      active: loans.filter((l) => (l.status || "Active") === "Active").length,
+      closed: loans.filter((l) => l.status === "Closed").length,
     };
   }, [loans]);
 
   const filtered = useMemo(() => {
     return [...loans]
-      .filter(l => {
-        const matchesSearch =
-          (l.loan_name || '')
-            .toLowerCase()
-            .includes(search.toLowerCase());
+      .filter((l) => {
+        const matchesSearch = (l.loan_name || "")
+          .toLowerCase()
+          .includes(search.toLowerCase());
 
         const matchesFilter =
-          filter === 'ALL'
-            ? true
-            : (l.status || 'Active') === filter;
+          filter === "ALL" ? true : (l.status || "Active") === filter;
 
         const matchesDirection =
-          directionFilter === 'ALL'
+          directionFilter === "ALL"
             ? true
-            : (l.loan_direction || 'BORROWED') === directionFilter;
+            : (l.loan_direction || "BORROWED") === directionFilter;
 
         return matchesSearch && matchesFilter && matchesDirection;
       })
       .sort((a, b) => {
         // Active first
-        if ((a.status || 'Active') !== (b.status || 'Active')) {
-          return (a.status || 'Active') === 'Active' ? -1 : 1;
+        if ((a.status || "Active") !== (b.status || "Active")) {
+          return (a.status || "Active") === "Active" ? -1 : 1;
         }
 
         // Oldest loan first
-        return new Date(a.loan_start_date || 0) - new Date(b.loan_start_date || 0);
+        return (
+          new Date(a.loan_start_date || 0) - new Date(b.loan_start_date || 0)
+        );
       });
   }, [loans, search, filter, directionFilter]);
 
@@ -72,17 +85,17 @@ export default function LoanListScreen({ navigation }) {
     <View
       style={{
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: "#fff",
         padding: 14,
         borderRadius: 16,
         marginHorizontal: 4,
-        alignItems: 'center',
+        alignItems: "center",
       }}
     >
       <Text
         style={{
           fontSize: 22,
-          fontWeight: '900',
+          fontWeight: "900",
           color: Colors.primary,
         }}
       >
@@ -116,7 +129,7 @@ export default function LoanListScreen({ navigation }) {
 
             <View
               style={{
-                flexDirection: 'row',
+                flexDirection: "row",
                 marginBottom: 16,
               }}
             >
@@ -133,16 +146,16 @@ export default function LoanListScreen({ navigation }) {
             >
               <View
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  backgroundColor: '#FFFFFF',
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: "#FFFFFF",
                   borderRadius: 18,
                   height: 56,
                   paddingHorizontal: 16,
                   borderWidth: 1,
-                  borderColor: '#E2E8F0',
+                  borderColor: "#E2E8F0",
                   elevation: 2,
-                  shadowColor: '#000',
+                  shadowColor: "#000",
                   shadowOpacity: 0.05,
                   shadowRadius: 8,
                   shadowOffset: {
@@ -173,21 +186,18 @@ export default function LoanListScreen({ navigation }) {
                       flex: 1,
                       marginLeft: 12,
                       fontSize: 15,
-                      color: '#111827',
+                      color: "#111827",
                       paddingVertical: 0,
                       borderWidth: 0,
                     },
-                    Platform.OS === 'web' && {
-                      outlineStyle: 'none',
+                    Platform.OS === "web" && {
+                      outlineStyle: "none",
                     },
                   ]}
                 />
 
                 {search.length > 0 && (
-                  <TouchableOpacity
-                    onPress={() => setSearch('')}
-                    hitSlop={10}
-                  >
+                  <TouchableOpacity onPress={() => setSearch("")} hitSlop={10}>
                     <MaterialCommunityIcons
                       name="close-circle"
                       size={20}
@@ -202,11 +212,11 @@ export default function LoanListScreen({ navigation }) {
 
             <View
               style={{
-                flexDirection: 'row',
+                flexDirection: "row",
                 marginBottom: 18,
               }}
             >
-              {['ALL', 'Active', 'Closed'].map(f => (
+              {["ALL", "Active", "Closed"].map((f) => (
                 <TouchableOpacity
                   key={f}
                   onPress={() => setFilter(f)}
@@ -214,20 +224,14 @@ export default function LoanListScreen({ navigation }) {
                     paddingHorizontal: 16,
                     paddingVertical: 8,
                     borderRadius: 20,
-                    backgroundColor:
-                      filter === f
-                        ? Colors.primary
-                        : '#E5E7EB',
+                    backgroundColor: filter === f ? Colors.primary : "#E5E7EB",
                     marginRight: 10,
                   }}
                 >
                   <Text
                     style={{
-                      color:
-                        filter === f
-                          ? '#fff'
-                          : '#374151',
-                      fontWeight: '700',
+                      color: filter === f ? "#fff" : "#374151",
+                      fontWeight: "700",
                     }}
                   >
                     {f}
@@ -236,10 +240,32 @@ export default function LoanListScreen({ navigation }) {
               ))}
             </View>
             {/* Direction Filter */}
-            <View style={{ flexDirection: 'row', marginBottom: 18 }}>
-              {['ALL', 'BORROWED', 'LENT'].map(d => (
-                <TouchableOpacity key={d} onPress={() => setDirectionFilter(d)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: directionFilter === d ? Colors.primary : '#E5E7EB', marginRight: 10 }}>
-                  <Text style={{ color: directionFilter === d ? '#fff' : '#374151', fontWeight: '700' }}>{d === 'ALL' ? 'All' : (d === 'BORROWED' ? 'Borrowed' : 'Lent')}</Text>
+            <View style={{ flexDirection: "row", marginBottom: 18 }}>
+              {["ALL", "BORROWED", "LENT"].map((d) => (
+                <TouchableOpacity
+                  key={d}
+                  onPress={() => setDirectionFilter(d)}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 20,
+                    backgroundColor:
+                      directionFilter === d ? Colors.primary : "#E5E7EB",
+                    marginRight: 10,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: directionFilter === d ? "#fff" : "#374151",
+                      fontWeight: "700",
+                    }}
+                  >
+                    {d === "ALL"
+                      ? "All"
+                      : d === "BORROWED"
+                        ? "Borrowed"
+                        : "Lent"}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -249,7 +275,7 @@ export default function LoanListScreen({ navigation }) {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() =>
-              navigation.navigate('LoanDetails', {
+              navigation.navigate("LoanDetails", {
                 id: item.id,
               })
             }
@@ -257,13 +283,11 @@ export default function LoanListScreen({ navigation }) {
             <LoanCard loan={item} />
           </TouchableOpacity>
         )}
-        ItemSeparatorComponent={() => (
-          <View style={{ height: 12 }} />
-        )}
+        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         ListEmptyComponent={
           <View
             style={{
-              alignItems: 'center',
+              alignItems: "center",
               marginTop: 80,
             }}
           >
@@ -277,7 +301,7 @@ export default function LoanListScreen({ navigation }) {
               style={{
                 marginTop: 16,
                 fontSize: 18,
-                fontWeight: '700',
+                fontWeight: "700",
               }}
             >
               No loans found
