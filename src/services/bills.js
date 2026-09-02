@@ -1,7 +1,7 @@
-import { Platform } from 'react-native';
-import { executeSql } from '../database/db';
-import { createTransaction, createTransfer } from './transactions';
-import { emit } from './events';
+import { Platform } from "react-native";
+import { executeSql } from "../database/db";
+import { createTransaction, createTransfer } from "./transactions";
+import { emit } from "./events";
 import {
   BILL_STATUS,
   computeBillStatus,
@@ -9,10 +9,10 @@ import {
   daysBetween,
   monthKey,
   generateOccurrenceDates,
-} from './billUtils';
-import { runCreditCardStatementScheduler, deleteStatement, onCardTransactionChanged, onStatementPaid } from './creditCardScheduler';
-// ─── helpers ─────────────────────────────────────────────────────────────────
+} from "./billUtils";
+import { runCreditCardStatementScheduler } from "./creditCardScheduler";
 
+// ─── helpers ─────────────────────────────────────────────────────────────────
 function rowsToArray(res) {
   const rows = [];
   for (let i = 0; i < res.rows.length; i++) rows.push(res.rows.item(i));
@@ -25,16 +25,19 @@ function normalizeBill(row) {
   return { ...row, status, is_paid: status === BILL_STATUS.PAID ? 1 : 0 };
 }
 
-function nowIso() { return new Date().toISOString(); }
-function emitBillsChanged() { emit('billsChanged'); }
+function nowIso() {
+  return new Date().toISOString();
+}
+function emitBillsChanged() {
+  emit("billsChanged");
+}
 
 async function fetchAllBillsRaw() {
   const res = await executeSql(`SELECT * FROM bills`, []);
-  return rowsToArray(res).filter(r => !r.deleted_at);
+  return rowsToArray(res).filter((r) => !r.deleted_at);
 }
 
 // ─── bill_linked_transactions ─────────────────────────────────────────────────
-
 export async function createBillLinkedTransactionsTable() {
   await executeSql(`
     CREATE TABLE IF NOT EXISTS bill_linked_transactions (
@@ -51,12 +54,12 @@ export async function addTransactionToBill(billId, transactionId) {
   try {
     await executeSql(
       `INSERT OR IGNORE INTO bill_linked_transactions (bill_id, transaction_id) VALUES (?, ?)`,
-      [billId, transactionId]
+      [billId, transactionId],
     );
 
     const res = await executeSql(
       `SELECT * FROM bill_linked_transactions WHERE bill_id = ?`,
-      [billId]
+      [billId],
     );
   } catch (e) {
     console.log(e);
@@ -67,7 +70,7 @@ export async function removeTransactionFromBill(billId, transactionId) {
   await executeSql(
     `DELETE FROM bill_linked_transactions
      WHERE bill_id = ? AND transaction_id = ?`,
-    [billId, transactionId]
+    [billId, transactionId],
   );
 
   // Any links remaining?
@@ -75,8 +78,8 @@ export async function removeTransactionFromBill(billId, transactionId) {
     await executeSql(
       `SELECT * FROM bill_linked_transactions
        WHERE bill_id = ?`,
-      [billId]
-    )
+      [billId],
+    ),
   );
   // No linked transactions left -> reset bill status
   if (remaining.length === 0) {
@@ -89,12 +92,7 @@ export async function removeTransactionFromBill(billId, transactionId) {
        paid_at = NULL,
        updated_at = ?
      WHERE id = ?`,
-      [
-        BILL_STATUS.PENDING,
-        0,
-        nowIso(),
-        billId,
-      ]
+      [BILL_STATUS.PENDING, 0, nowIso(), billId],
     );
   }
 }
@@ -110,7 +108,7 @@ export async function getBillLinkedTransactions(billId) {
        LEFT JOIN categories c ON c.id = t.category_id
        WHERE blt.bill_id = ?
        ORDER BY t.date DESC`,
-      [billId]
+      [billId],
     );
     return rowsToArray(res);
   } catch (e) {
@@ -118,33 +116,31 @@ export async function getBillLinkedTransactions(billId) {
     const links = rowsToArray(
       await executeSql(
         `SELECT * FROM bill_linked_transactions WHERE bill_id = ?`,
-        [billId]
-      )
+        [billId],
+      ),
     );
 
     const transactions = rowsToArray(
-      await executeSql(`SELECT * FROM transactions`, [])
+      await executeSql(`SELECT * FROM transactions`, []),
     );
 
-    const sources = rowsToArray(
-      await executeSql(`SELECT * FROM sources`, [])
-    );
+    const sources = rowsToArray(await executeSql(`SELECT * FROM sources`, []));
 
     const categories = rowsToArray(
-      await executeSql(`SELECT * FROM categories`, [])
+      await executeSql(`SELECT * FROM categories`, []),
     );
 
     return links
-      .map(link => {
-        const tx = transactions.find(t => t.id == link.transaction_id);
+      .map((link) => {
+        const tx = transactions.find((t) => t.id == link.transaction_id);
         if (!tx) return null;
 
         return {
           ...tx,
-          source_name: sources.find(s => s.id == tx.source_id)?.name,
-          category_name: categories.find(c => c.id == tx.category_id)?.name,
-          category_icon: categories.find(c => c.id == tx.category_id)?.icon,
-          category_color: categories.find(c => c.id == tx.category_id)?.color,
+          source_name: sources.find((s) => s.id == tx.source_id)?.name,
+          category_name: categories.find((c) => c.id == tx.category_id)?.name,
+          category_icon: categories.find((c) => c.id == tx.category_id)?.icon,
+          category_color: categories.find((c) => c.id == tx.category_id)?.color,
         };
       })
       .filter(Boolean)
@@ -177,7 +173,7 @@ export async function getBillsForTransaction(transactionId) {
        FROM bill_linked_transactions blt
        JOIN bills b ON b.id = blt.bill_id
        WHERE blt.transaction_id = ? AND b.deleted_at IS NULL`,
-      [transactionId]
+      [transactionId],
     );
     return rowsToArray(res).map(normalizeBill).filter(Boolean);
   } catch (e) {
@@ -277,7 +273,7 @@ async function _insertBill({
       recurrence_effective_date,
       ts,
       ts,
-    ]
+    ],
   );
   return res.insertId;
 }
@@ -292,7 +288,7 @@ async function ensureRecurringOccurrenceColumn() {
     await executeSql(
       `ALTER TABLE bills
        ADD COLUMN recurrence_occurrence_key TEXT`,
-      []
+      [],
     );
   } catch (e) {
     // Column already exists.
@@ -310,7 +306,7 @@ async function ensureRecurringOccurrenceColumn() {
     await executeSql(
       `ALTER TABLE bills
        ADD COLUMN recurrence_effective_date TEXT`,
-      []
+      [],
     );
   } catch (e) {
     // Column already exists.
@@ -340,7 +336,7 @@ async function ensureRecurringOccurrenceColumn() {
 function getRecurrenceOccurrenceKey(
   recurrenceType,
   occurrenceDate,
-  recurrenceInterval = 1
+  recurrenceInterval = 1,
 ) {
   if (!occurrenceDate) return null;
 
@@ -348,43 +344,30 @@ function getRecurrenceOccurrenceKey(
 
   if (!date || date.length < 10) return null;
 
-  const type = String(recurrenceType || '').toLowerCase();
+  const type = String(recurrenceType || "").toLowerCase();
 
   const year = date.slice(0, 4);
   const month = date.slice(0, 7);
 
-  if (
-    type === 'yearly' ||
-    type === 'year' ||
-    type === 'annual'
-  ) {
+  if (type === "yearly" || type === "year" || type === "annual") {
     return year;
   }
 
-  if (
-    type === 'monthly' ||
-    type === 'month'
-  ) {
+  if (type === "monthly" || type === "month") {
     return month;
   }
 
-  if (
-    type === 'weekly' ||
-    type === 'week'
-  ) {
+  if (type === "weekly" || type === "week") {
     // Generated date is the occurrence identity.
     return `W:${date}`;
   }
 
-  if (
-    type === 'daily' ||
-    type === 'day'
-  ) {
+  if (type === "daily" || type === "day") {
     return date;
   }
 
   // Fallback for custom recurrence types.
-  return `${type || 'custom'}:${date}:${recurrenceInterval || 1}`;
+  return `${type || "custom"}:${date}:${recurrenceInterval || 1}`;
 }
 
 /**
@@ -408,7 +391,7 @@ async function backfillMissingOccurrenceKeys(template) {
      FROM bills
      WHERE parent_bill_id = ?
        AND deleted_at IS NULL`,
-    [template.id]
+    [template.id],
   );
 
   const children = rowsToArray(childrenRes);
@@ -418,7 +401,7 @@ async function backfillMissingOccurrenceKeys(template) {
     const key = getRecurrenceOccurrenceKey(
       template.recurrence_type,
       child.due_date,
-      template.recurrence_interval
+      template.recurrence_interval,
     );
     if (!key) continue;
     await executeSql(
@@ -426,7 +409,7 @@ async function backfillMissingOccurrenceKeys(template) {
        SET recurrence_occurrence_key = ?,
            updated_at = ?
        WHERE id = ?`,
-      [key, nowIso(), child.id]
+      [key, nowIso(), child.id],
     );
   }
 }
@@ -462,11 +445,7 @@ export async function backfillBillOccurrences(templateId) {
 
   const template = await getBillById(templateId);
 
-  if (
-    !template ||
-    !template.is_recurring ||
-    !template.recurrence_type
-  ) {
+  if (!template || !template.is_recurring || !template.recurrence_type) {
     return;
   }
 
@@ -475,33 +454,24 @@ export async function backfillBillOccurrences(templateId) {
   const today = todayStr();
 
   const effectiveDate =
-    template.recurrence_effective_date ||
-    template.due_date ||
-    today;
+    template.recurrence_effective_date || template.due_date || today;
 
-  const effectiveDateOnly =
-    String(effectiveDate).slice(0, 10);
+  const effectiveDateOnly = String(effectiveDate).slice(0, 10);
 
   const upTo = template.recurrence_end_date
     ? template.recurrence_end_date.slice(0, 10)
     : today;
 
-  const expectedDates = generateOccurrenceDates(
-    template,
-    upTo
-  );
+  const expectedDates = generateOccurrenceDates(template, upTo);
 
-  const allBillsRes = await executeSql(
-    `SELECT * FROM bills`,
-    []
-  );
+  const allBillsRes = await executeSql(`SELECT * FROM bills`, []);
 
   const allBills = rowsToArray(allBillsRes);
 
   const existingRows = allBills.filter(
-    row =>
+    (row) =>
       Number(row.id) === Number(templateId) ||
-      Number(row.parent_bill_id) === Number(templateId)
+      Number(row.parent_bill_id) === Number(templateId),
   );
 
   const existingOccurrenceKeys = new Set();
@@ -512,7 +482,7 @@ export async function backfillBillOccurrences(templateId) {
         const key = getRecurrenceOccurrenceKey(
           template.recurrence_type,
           row.due_date,
-          template.recurrence_interval
+          template.recurrence_interval,
         );
         if (key) {
           existingOccurrenceKeys.add(String(key));
@@ -522,9 +492,7 @@ export async function backfillBillOccurrences(templateId) {
     }
 
     if (row.recurrence_occurrence_key) {
-      existingOccurrenceKeys.add(
-        String(row.recurrence_occurrence_key)
-      );
+      existingOccurrenceKeys.add(String(row.recurrence_occurrence_key));
       continue;
     }
 
@@ -532,7 +500,7 @@ export async function backfillBillOccurrences(templateId) {
       const key = getRecurrenceOccurrenceKey(
         template.recurrence_type,
         row.due_date,
-        template.recurrence_interval
+        template.recurrence_interval,
       );
       if (key) {
         existingOccurrenceKeys.add(String(key));
@@ -548,27 +516,19 @@ export async function backfillBillOccurrences(templateId) {
       continue;
     }
 
-    if (
-      template.due_date &&
-      template.due_date.slice(0, 10) === dueDateOnly
-    ) {
+    if (template.due_date && template.due_date.slice(0, 10) === dueDateOnly) {
       continue;
     }
 
-    const occurrenceKey =
-      getRecurrenceOccurrenceKey(
-        template.recurrence_type,
-        dueDateOnly,
-        template.recurrence_interval
-      );
+    const occurrenceKey = getRecurrenceOccurrenceKey(
+      template.recurrence_type,
+      dueDateOnly,
+      template.recurrence_interval,
+    );
 
     if (!occurrenceKey) continue;
 
-    if (
-      existingOccurrenceKeys.has(
-        String(occurrenceKey)
-      )
-    ) {
+    if (existingOccurrenceKeys.has(String(occurrenceKey))) {
       continue;
     }
 
@@ -591,9 +551,7 @@ export async function backfillBillOccurrences(templateId) {
       recurrence_effective_date: effectiveDateOnly,
     });
 
-    existingOccurrenceKeys.add(
-      String(occurrenceKey)
-    );
+    existingOccurrenceKeys.add(String(occurrenceKey));
   }
 }
 
@@ -639,8 +597,8 @@ export async function getBillSeries(templateId) {
   // Fetch children directly by parent_bill_id
   const isCCTemplate =
     template.is_recurring &&
-    typeof template.notes === 'string' &&
-    template.notes.startsWith('Recurring payment template for');
+    typeof template.notes === "string" &&
+    template.notes.startsWith("Recurring payment template for");
 
   if (!template.is_recurring && !isCCTemplate) {
     return [template];
@@ -650,44 +608,48 @@ export async function getBillSeries(templateId) {
   // and just return all non-deleted children sorted by due_date
   if (isCCTemplate || !template.recurrence_type) {
     const allChildren = (await fetchAllBillsRaw())
-      .filter(r => Number(r.parent_bill_id) === Number(templateId))
+      .filter((r) => Number(r.parent_bill_id) === Number(templateId))
       .map(normalizeBill)
       .filter(Boolean);
 
     const links = rowsToArray(
-      await executeSql(`SELECT * FROM bill_linked_transactions`, [])
+      await executeSql(`SELECT * FROM bill_linked_transactions`, []),
     );
     const transactions = rowsToArray(
-      await executeSql(`SELECT * FROM transactions`, [])
+      await executeSql(`SELECT * FROM transactions`, []),
     );
 
-    const enriched = allChildren.map(bill => {
-      const billLinks = links.filter(l => Number(l.bill_id) === Number(bill.id));
+    const enriched = allChildren.map((bill) => {
+      const billLinks = links.filter(
+        (l) => Number(l.bill_id) === Number(bill.id),
+      );
       const paidAmount = billLinks.reduce((sum, link) => {
-        const tx = transactions.find(t => Number(t.id) === Number(link.transaction_id));
+        const tx = transactions.find(
+          (t) => Number(t.id) === Number(link.transaction_id),
+        );
         return sum + Number(tx?.amount || 0);
       }, 0);
       return { ...bill, paid_amount: paidAmount };
     });
 
     return enriched.sort((a, b) =>
-      (a.due_date || '').localeCompare(b.due_date || '')
+      (a.due_date || "").localeCompare(b.due_date || ""),
     );
   }
 
   // Normal recurring bill — existing logic below
   const allChildren = (await fetchAllBillsRaw())
-    .filter(r => Number(r.parent_bill_id) === Number(templateId))
+    .filter((r) => Number(r.parent_bill_id) === Number(templateId))
     .map(normalizeBill)
     .filter(Boolean);
 
-  const children = allChildren.filter(c => !c.deleted_at);
+  const children = allChildren.filter((c) => !c.deleted_at);
 
   let activeTemplate = template;
   if (template.due_date) {
     const templateMonth = template.due_date.slice(0, 7);
     const overrideChild = allChildren.find(
-      c => c.due_date && c.due_date.slice(0, 7) === templateMonth
+      (c) => c.due_date && c.due_date.slice(0, 7) === templateMonth,
     );
     if (overrideChild) activeTemplate = null;
   }
@@ -695,23 +657,27 @@ export async function getBillSeries(templateId) {
   const series = activeTemplate ? [activeTemplate, ...children] : [...children];
 
   const links = rowsToArray(
-    await executeSql(`SELECT * FROM bill_linked_transactions`, [])
+    await executeSql(`SELECT * FROM bill_linked_transactions`, []),
   );
   const transactions = rowsToArray(
-    await executeSql(`SELECT * FROM transactions`, [])
+    await executeSql(`SELECT * FROM transactions`, []),
   );
 
-  const enriched = series.map(bill => {
-    const billLinks = links.filter(l => Number(l.bill_id) === Number(bill.id));
+  const enriched = series.map((bill) => {
+    const billLinks = links.filter(
+      (l) => Number(l.bill_id) === Number(bill.id),
+    );
     const paidAmount = billLinks.reduce((sum, link) => {
-      const tx = transactions.find(t => Number(t.id) === Number(link.transaction_id));
+      const tx = transactions.find(
+        (t) => Number(t.id) === Number(link.transaction_id),
+      );
       return sum + Number(tx?.amount || 0);
     }, 0);
     return { ...bill, paid_amount: paidAmount };
   });
 
   return enriched.sort((a, b) =>
-    (a.due_date || '').localeCompare(b.due_date || '')
+    (a.due_date || "").localeCompare(b.due_date || ""),
   );
 }
 
@@ -738,8 +704,7 @@ export async function getBillsForCurrentMonth(options = {}) {
   const month = now.getMonth();
   const today = todayStr();
 
-  const currentMonthPrefix =
-    `${year}-${String(month + 1).padStart(2, '0')}`;
+  const currentMonthPrefix = `${year}-${String(month + 1).padStart(2, "0")}`;
 
   // ============================================================
   // LOAD ALL BILLS
@@ -774,18 +739,18 @@ export async function getBillsForCurrentMonth(options = {}) {
       `SELECT payment_bill_id
        FROM credit_cards
        WHERE payment_bill_id IS NOT NULL`,
-      []
+      [],
     );
 
     creditCardPaymentBillIds = new Set(
       rowsToArray(ccRes)
-        .map(row => Number(row.payment_bill_id))
-        .filter(Boolean)
+        .map((row) => Number(row.payment_bill_id))
+        .filter(Boolean),
     );
   } catch (e) {
     console.warn(
-      'getBillsForCurrentMonth: unable to load credit card payment bill IDs',
-      e
+      "getBillsForCurrentMonth: unable to load credit card payment bill IDs",
+      e,
     );
   }
 
@@ -797,11 +762,9 @@ export async function getBillsForCurrentMonth(options = {}) {
   const nonRecurring = [];
 
   for (const row of allRaw) {
-    const rowId =
-      Number(row.id);
+    const rowId = Number(row.id);
 
-    const parentBillId =
-      Number(row.parent_bill_id || 0);
+    const parentBillId = Number(row.parent_bill_id || 0);
 
     // ==========================================================
     // CREDIT CARD PAYMENT TEMPLATE
@@ -843,10 +806,7 @@ export async function getBillsForCurrentMonth(options = {}) {
     // NORMAL NON-RECURRING BILL
     // ==========================================================
 
-    if (
-      !row.is_recurring ||
-      !row.recurrence_type
-    ) {
+    if (!row.is_recurring || !row.recurrence_type) {
       if (!row.parent_bill_id) {
         nonRecurring.push(row);
       }
@@ -858,13 +818,9 @@ export async function getBillsForCurrentMonth(options = {}) {
     // NORMAL RECURRING BILL
     // ==========================================================
 
-    const templateId =
-      row.parent_bill_id || row.id;
+    const templateId = row.parent_bill_id || row.id;
 
-    if (
-      !recurringGroups[templateId] ||
-      row.parent_bill_id === null
-    ) {
+    if (!recurringGroups[templateId] || row.parent_bill_id === null) {
       recurringGroups[templateId] = row;
     }
   }
@@ -876,8 +832,7 @@ export async function getBillsForCurrentMonth(options = {}) {
   // ============================================================
 
   for (const row of nonRecurring) {
-    const parentBillId =
-      Number(row.parent_bill_id || 0);
+    const parentBillId = Number(row.parent_bill_id || 0);
 
     // ==========================================================
     // CREDIT CARD STATEMENT
@@ -889,7 +844,6 @@ export async function getBillsForCurrentMonth(options = {}) {
       creditCardPaymentBillIds.has(parentBillId);
 
     if (isCCStatement) {
-
       // --------------------------------------------------------
       // READ STATEMENT DATE FROM NOTES
       // --------------------------------------------------------
@@ -902,18 +856,11 @@ export async function getBillsForCurrentMonth(options = {}) {
       // statement has actually been generated/reached.
       //
 
-      const notes =
-        String(row.notes || '');
+      const notes = String(row.notes || "");
 
-      const statementMatch =
-        notes.match(
-          /Statement\s+(\d{4}-\d{2}-\d{2})/
-        );
+      const statementMatch = notes.match(/Statement\s+(\d{4}-\d{2}-\d{2})/);
 
-      const statementDate =
-        statementMatch
-          ? statementMatch[1]
-          : null;
+      const statementDate = statementMatch ? statementMatch[1] : null;
 
       // --------------------------------------------------------
       // FUTURE STATEMENT
@@ -927,10 +874,7 @@ export async function getBillsForCurrentMonth(options = {}) {
       // Do NOT display it yet.
       //
 
-      if (
-        statementDate &&
-        statementDate > today
-      ) {
+      if (statementDate && statementDate > today) {
         continue;
       }
 
@@ -938,8 +882,7 @@ export async function getBillsForCurrentMonth(options = {}) {
       // NORMALIZE
       // --------------------------------------------------------
 
-      const n =
-        normalizeBill(row);
+      const n = normalizeBill(row);
 
       if (!n) {
         continue;
@@ -970,11 +913,9 @@ export async function getBillsForCurrentMonth(options = {}) {
 
         _templateId: null,
 
-        statement_date:
-          statementDate,
+        statement_date: statementDate,
 
-        closing_balance:
-          Number(n.amount || 0),
+        closing_balance: Number(n.amount || 0),
       });
 
       continue;
@@ -984,8 +925,7 @@ export async function getBillsForCurrentMonth(options = {}) {
     // NORMAL NON-RECURRING BILL
     // ==========================================================
 
-    const n =
-      normalizeBill(row);
+    const n = normalizeBill(row);
 
     if (n) {
       result.push(n);
@@ -996,58 +936,33 @@ export async function getBillsForCurrentMonth(options = {}) {
   // NORMAL RECURRING SERIES
   // ============================================================
 
-  for (
-    const template of Object.values(recurringGroups)
-  ) {
+  for (const template of Object.values(recurringGroups)) {
+    const endOfMonth = new Date(year, month + 1, 0).toISOString().slice(0, 10);
 
-    const endOfMonth =
-      new Date(
-        year,
-        month + 1,
-        0
-      )
-        .toISOString()
-        .slice(0, 10);
+    const upTo = template.recurrence_end_date
+      ? [template.recurrence_end_date.slice(0, 10), endOfMonth].sort()[0]
+      : endOfMonth;
 
-    const upTo =
-      template.recurrence_end_date
-        ? [
-          template.recurrence_end_date.slice(0, 10),
-          endOfMonth,
-        ].sort()[0]
-        : endOfMonth;
+    const allDates = generateOccurrenceDates(template, upTo);
 
-    const allDates =
-      generateOccurrenceDates(
-        template,
-        upTo
-      );
-
-    const thisMonthDate =
-      allDates.find(
-        d =>
-          d.startsWith(
-            currentMonthPrefix
-          )
-      );
+    const thisMonthDate = allDates.find((d) =>
+      d.startsWith(currentMonthPrefix),
+    );
 
     // ----------------------------------------------------------
     // NO OCCURRENCE THIS MONTH
     // ----------------------------------------------------------
 
     if (!thisMonthDate) {
-      const n =
-        normalizeBill(template);
+      const n = normalizeBill(template);
 
       if (n) {
         result.push({
           ...n,
 
-          _templateId:
-            template.id,
+          _templateId: template.id,
 
-          _isRecurringSeries:
-            true,
+          _isRecurringSeries: true,
         });
       }
 
@@ -1058,71 +973,52 @@ export async function getBillsForCurrentMonth(options = {}) {
     // LOAD LATEST BILLS
     // ----------------------------------------------------------
 
-    const allBills =
-      await fetchAllBillsRaw();
+    const allBills = await fetchAllBillsRaw();
 
     // ----------------------------------------------------------
     // OCCURRENCE KEY
     // ----------------------------------------------------------
 
-    const occurrenceKey =
-      getRecurrenceOccurrenceKey(
-        template.recurrence_type,
-        thisMonthDate,
-        template.recurrence_interval
-      );
+    const occurrenceKey = getRecurrenceOccurrenceKey(
+      template.recurrence_type,
+      thisMonthDate,
+      template.recurrence_interval,
+    );
 
-    let occurrenceRow =
-      allBills.find(
-        b =>
-          Number(b.parent_bill_id) ===
-          Number(template.id) &&
-          !b.deleted_at &&
-          String(
-            b.recurrence_occurrence_key || ''
-          ) ===
-          String(occurrenceKey)
-      );
+    let occurrenceRow = allBills.find(
+      (b) =>
+        Number(b.parent_bill_id) === Number(template.id) &&
+        !b.deleted_at &&
+        String(b.recurrence_occurrence_key || "") === String(occurrenceKey),
+    );
 
     // ----------------------------------------------------------
     // EXISTING OCCURRENCE
     // ----------------------------------------------------------
 
     if (occurrenceRow) {
-
-      occurrenceRow =
-        normalizeBill(occurrenceRow);
-
+      occurrenceRow = normalizeBill(occurrenceRow);
     }
 
     // ----------------------------------------------------------
     // TEMPLATE ITSELF IS THIS MONTH
     // ----------------------------------------------------------
-
     else if (
       template.due_date &&
-      template.due_date.slice(0, 10) ===
-      thisMonthDate
+      template.due_date.slice(0, 10) === thisMonthDate
     ) {
-
-      occurrenceRow =
-        normalizeBill(template);
-
+      occurrenceRow = normalizeBill(template);
     }
 
     // ----------------------------------------------------------
     // OLD OCCURRENCE WITHOUT KEY
     // ----------------------------------------------------------
-
     else {
-
       occurrenceRow = allBills.find(
-        b =>
-          Number(b.parent_bill_id) ===
-          Number(template.id) &&
+        (b) =>
+          Number(b.parent_bill_id) === Number(template.id) &&
           !b.deleted_at &&
-          b.due_date?.slice(0, 10) ===
-          thisMonthDate
+          b.due_date?.slice(0, 10) === thisMonthDate,
       );
 
       // --------------------------------------------------------
@@ -1130,26 +1026,16 @@ export async function getBillsForCurrentMonth(options = {}) {
       // --------------------------------------------------------
 
       if (occurrenceRow) {
-
-        occurrenceRow =
-          normalizeBill(occurrenceRow);
-
-      }
-      else {
+        occurrenceRow = normalizeBill(occurrenceRow);
+      } else {
         const wasDeleted = allBills.find(
-          b =>
-            Number(b.parent_bill_id) ===
-            Number(template.id) &&
+          (b) =>
+            Number(b.parent_bill_id) === Number(template.id) &&
             !!b.deleted_at &&
-            (
-              (
-                occurrenceKey &&
-                String(b.recurrence_occurrence_key || '') ===
-                String(occurrenceKey)
-              ) ||
-              b.due_date?.slice(0, 10) ===
-              thisMonthDate
-            )
+            ((occurrenceKey &&
+              String(b.recurrence_occurrence_key || "") ===
+                String(occurrenceKey)) ||
+              b.due_date?.slice(0, 10) === thisMonthDate),
         );
         // --------------------------------------------------------
         // DELETED OCCURRENCE — RESPECT USER'S DELETION
@@ -1179,10 +1065,7 @@ export async function getBillsForCurrentMonth(options = {}) {
             parent_bill_id: template.id,
             recurrence_occurrence_key: occurrenceKey,
           });
-          occurrenceRow =
-            normalizeBill(
-              await getBillById(newId)
-            );
+          occurrenceRow = normalizeBill(await getBillById(newId));
         }
       }
     }
@@ -1198,14 +1081,11 @@ export async function getBillsForCurrentMonth(options = {}) {
     const isCreditCardTemplate =
       !template.parent_bill_id &&
       Number(template.is_recurring) === 1 &&
-      creditCardPaymentBillIds.has(
-        Number(template.id)
-      );
+      creditCardPaymentBillIds.has(Number(template.id));
 
     if (
       isCreditCardTemplate &&
-      Number(occurrenceRow.id) ===
-      Number(template.id)
+      Number(occurrenceRow.id) === Number(template.id)
     ) {
       continue;
     }
@@ -1217,11 +1097,9 @@ export async function getBillsForCurrentMonth(options = {}) {
     result.push({
       ...occurrenceRow,
 
-      _templateId:
-        template.id,
+      _templateId: template.id,
 
-      _isRecurringSeries:
-        true,
+      _isRecurringSeries: true,
     });
   }
 
@@ -1229,65 +1107,38 @@ export async function getBillsForCurrentMonth(options = {}) {
   // FILTERS
   // ============================================================
 
-  let filtered =
-    result.filter(Boolean);
+  let filtered = result.filter(Boolean);
 
-  if (
-    options.status &&
-    options.status !== 'all'
-  ) {
+  if (options.status && options.status !== "all") {
+    const statuses = Array.isArray(options.status)
+      ? options.status
+      : [options.status];
 
-    const statuses =
-      Array.isArray(options.status)
-        ? options.status
-        : [options.status];
-
-    filtered =
-      filtered.filter(
-        bill =>
-          statuses.includes(
-            bill.status
-          )
-      );
+    filtered = filtered.filter((bill) => statuses.includes(bill.status));
   }
 
   if (options.category_id) {
-    filtered =
-      filtered.filter(
-        bill =>
-          bill.category_id ===
-          options.category_id
-      );
+    filtered = filtered.filter(
+      (bill) => bill.category_id === options.category_id,
+    );
   }
 
   // ============================================================
   // SORT
   // ============================================================
 
-  const sortBy =
-    options.sortBy || 'due_date';
+  const sortBy = options.sortBy || "due_date";
 
-  const dir =
-    options.sortDir === 'desc'
-      ? -1
-      : 1;
+  const dir = options.sortDir === "desc" ? -1 : 1;
 
   filtered.sort((a, b) => {
-
-    if (sortBy === 'amount') {
-      return (
-        Number(a.amount) -
-        Number(b.amount)
-      ) * dir;
+    if (sortBy === "amount") {
+      return (Number(a.amount) - Number(b.amount)) * dir;
     }
 
-    const ad =
-      a.due_date ||
-      '9999-12-31';
+    const ad = a.due_date || "9999-12-31";
 
-    const bd =
-      b.due_date ||
-      '9999-12-31';
+    const bd = b.due_date || "9999-12-31";
 
     if (ad < bd) {
       return -1 * dir;
@@ -1297,11 +1148,7 @@ export async function getBillsForCurrentMonth(options = {}) {
       return 1 * dir;
     }
 
-    return (
-      (a.name || '').localeCompare(
-        b.name || ''
-      ) * dir
-    );
+    return (a.name || "").localeCompare(b.name || "") * dir;
   });
 
   return filtered;
@@ -1310,25 +1157,29 @@ export async function getBillsForCurrentMonth(options = {}) {
 // ─── getBills (legacy, unchanged) ────────────────────────────────────────────
 
 export async function getBills({
-  status = null, category_id = null,
-  sortBy = 'due_date', sortDir = 'asc', includeSkipped = true,
+  status = null,
+  category_id = null,
+  sortBy = "due_date",
+  sortDir = "asc",
+  includeSkipped = true,
 } = {}) {
   await syncBillStatuses();
   let rows = (await fetchAllBillsRaw()).map(normalizeBill).filter(Boolean);
   if (status) {
     const statuses = Array.isArray(status) ? status : [status];
-    rows = rows.filter(b => statuses.includes(b.status));
+    rows = rows.filter((b) => statuses.includes(b.status));
   }
-  if (category_id) rows = rows.filter(b => b.category_id === category_id);
-  if (!includeSkipped) rows = rows.filter(b => b.status !== BILL_STATUS.SKIPPED);
-  const dir = sortDir === 'desc' ? -1 : 1;
+  if (category_id) rows = rows.filter((b) => b.category_id === category_id);
+  if (!includeSkipped)
+    rows = rows.filter((b) => b.status !== BILL_STATUS.SKIPPED);
+  const dir = sortDir === "desc" ? -1 : 1;
   rows.sort((a, b) => {
-    if (sortBy === 'amount') return (Number(a.amount) - Number(b.amount)) * dir;
-    const ad = a.due_date || '9999-12-31';
-    const bd = b.due_date || '9999-12-31';
+    if (sortBy === "amount") return (Number(a.amount) - Number(b.amount)) * dir;
+    const ad = a.due_date || "9999-12-31";
+    const bd = b.due_date || "9999-12-31";
     if (ad < bd) return -1 * dir;
     if (ad > bd) return 1 * dir;
-    return (a.name || '').localeCompare(b.name || '') * dir;
+    return (a.name || "").localeCompare(b.name || "") * dir;
   });
   return rows;
 }
@@ -1347,7 +1198,7 @@ export async function syncBillStatuses() {
     ) {
       await executeSql(
         `UPDATE bills SET status = ?, updated_at = ? WHERE id = ?`,
-        [status, nowIso(), bill.id]
+        [status, nowIso(), bill.id],
       );
     }
   }
@@ -1366,11 +1217,9 @@ export async function getBillsSummary() {
 
   // Hide Credit Card template bills from all dashboard statistics.
   // Only the generated statement (child) bill should be counted.
-  const rows = (await fetchAllBillsRaw())
-    .map(normalizeBill)
-    .filter(Boolean);
+  const rows = (await fetchAllBillsRaw()).map(normalizeBill).filter(Boolean);
 
-  const active = rows.filter(b => {
+  const active = rows.filter((b) => {
     if (b.status === BILL_STATUS.SKIPPED) {
       return false;
     }
@@ -1378,42 +1227,49 @@ export async function getBillsSummary() {
     const isCreditCardTemplate =
       !b.parent_bill_id &&
       b.is_recurring &&
-      typeof b.notes === 'string' &&
-      b.notes.startsWith('Recurring payment template for');
+      typeof b.notes === "string" &&
+      b.notes.startsWith("Recurring payment template for");
 
     return !isCreditCardTemplate;
   });
 
-  const thisMonth = active.filter(b => {
+  const thisMonth = active.filter((b) => {
     if (!b.due_date) return false;
     const d = new Date(b.due_date.slice(0, 10));
     return d.getFullYear() === year && d.getMonth() === month;
   });
 
-  const totalThisMonth = thisMonth.reduce((s, b) => s + Number(b.amount || 0), 0);
+  const totalThisMonth = thisMonth.reduce(
+    (s, b) => s + Number(b.amount || 0),
+    0,
+  );
   const totalPaid = thisMonth
-    .filter(b => b.status === BILL_STATUS.PAID)
+    .filter((b) => b.status === BILL_STATUS.PAID)
     .reduce((s, b) => s + Number(b.amount || 0), 0);
   const overdueAmount = active
-    .filter(b => b.status === BILL_STATUS.OVERDUE)
+    .filter((b) => b.status === BILL_STATUS.OVERDUE)
     .reduce((s, b) => s + Number(b.amount || 0), 0);
-  const overdueCount = active.filter(b => b.status === BILL_STATUS.OVERDUE).length;
+  const overdueCount = active.filter(
+    (b) => b.status === BILL_STATUS.OVERDUE,
+  ).length;
 
   const upcoming7 = active
-    .filter(b => {
-      if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED) return false;
+    .filter((b) => {
+      if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED)
+        return false;
       const days = daysBetween(today, b.due_date);
       return days !== null && days >= 0 && days <= 7;
     })
     .reduce((s, b) => s + Number(b.amount || 0), 0);
 
-  const upcoming3 = active.filter(b => {
-    if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED) return false;
+  const upcoming3 = active.filter((b) => {
+    if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED)
+      return false;
     const days = daysBetween(today, b.due_date);
     return days !== null && days >= 0 && days <= 3;
   });
 
-  const inThisCalMonth = b => {
+  const inThisCalMonth = (b) => {
     if (!b.due_date) return false;
     const d = new Date(b.due_date);
     return (
@@ -1423,28 +1279,44 @@ export async function getBillsSummary() {
     );
   };
 
-  const dueThisMonthCount = active.filter(b =>
-    b.status !== BILL_STATUS.PAID && b.status !== BILL_STATUS.SKIPPED && inThisCalMonth(b)
+  const dueThisMonthCount = active.filter(
+    (b) =>
+      b.status !== BILL_STATUS.PAID &&
+      b.status !== BILL_STATUS.SKIPPED &&
+      inThisCalMonth(b),
   ).length;
 
   const dueThisMonthAmount = active
-    .filter(b => b.status !== BILL_STATUS.PAID && b.status !== BILL_STATUS.SKIPPED && inThisCalMonth(b))
+    .filter(
+      (b) =>
+        b.status !== BILL_STATUS.PAID &&
+        b.status !== BILL_STATUS.SKIPPED &&
+        inThisCalMonth(b),
+    )
     .reduce((s, b) => s + Number(b.amount || 0), 0);
 
   const upcomingAndPendingDueAmt = active
-    .filter(b => !b.is_paid && inThisCalMonth(b))
-    .reduce((acc, b) => {
-      acc.totalAmount += Number(b.amount || 0);
-      acc.count += 1;
-      return acc;
-    }, { totalAmount: 0, count: 0 });
+    .filter((b) => !b.is_paid && inThisCalMonth(b))
+    .reduce(
+      (acc, b) => {
+        acc.totalAmount += Number(b.amount || 0);
+        acc.count += 1;
+        return acc;
+      },
+      { totalAmount: 0, count: 0 },
+    );
 
   return {
-    month: mk, totalThisMonth, totalPaid,
-    overdueAmount, overdueCount,
-    upcoming7, upcoming3Count: upcoming3.length,
-    dueThisMonthCount, dueThisMonthAmount,
-    pendingCount: active.filter(b => b.status === BILL_STATUS.PENDING).length,
+    month: mk,
+    totalThisMonth,
+    totalPaid,
+    overdueAmount,
+    overdueCount,
+    upcoming7,
+    upcoming3Count: upcoming3.length,
+    dueThisMonthCount,
+    dueThisMonthAmount,
+    pendingCount: active.filter((b) => b.status === BILL_STATUS.PENDING).length,
     upcomingAndPendingDueAmt,
   };
 }
@@ -1453,13 +1325,13 @@ export async function getBillInsights() {
   await syncBillStatuses();
   const today = todayStr();
   const rows = (await fetchAllBillsRaw()).map(normalizeBill).filter(Boolean);
-  const active = rows.filter(b => b.status !== BILL_STATUS.SKIPPED);
+  const active = rows.filter((b) => b.status !== BILL_STATUS.SKIPPED);
 
   const recurringMonthly = active
-    .filter(b => b.is_recurring)
+    .filter((b) => b.is_recurring)
     .reduce((s, b) => s + Number(b.amount || 0), 0);
 
-  const upcomingDues = active.filter(b => {
+  const upcomingDues = active.filter((b) => {
     if (b.status === BILL_STATUS.PAID) return false;
     const days = daysBetween(today, b.due_date);
     return days !== null && days >= 0 && days <= 7;
@@ -1470,12 +1342,21 @@ export async function getBillInsights() {
     const cid = b.category_id || 0;
     byCategory[cid] = (byCategory[cid] || 0) + Number(b.amount || 0);
   }
-  let topCategoryId = null, topCategoryAmount = 0;
+  let topCategoryId = null,
+    topCategoryAmount = 0;
   for (const [cid, amt] of Object.entries(byCategory)) {
-    if (amt > topCategoryAmount) { topCategoryId = Number(cid); topCategoryAmount = amt; }
+    if (amt > topCategoryAmount) {
+      topCategoryId = Number(cid);
+      topCategoryAmount = amt;
+    }
   }
 
-  return { recurringMonthlyTotal: recurringMonthly, upcomingDues, topCategoryId, topCategoryAmount };
+  return {
+    recurringMonthlyTotal: recurringMonthly,
+    upcomingDues,
+    topCategoryId,
+    topCategoryAmount,
+  };
 }
 
 // ─── markBillPaid ─────────────────────────────────────────────────────────────
@@ -1485,13 +1366,13 @@ export async function markBillPaid(
   {
     source_id = null,
     date = null,
-    notes = 'Bill payment',
+    notes = "Bill payment",
     createTransaction: shouldCreateTx = true,
     existingTransactionId = null,
-  } = {}
+  } = {},
 ) {
   const bill = await getBillById(billId);
-  if (!bill) throw new Error('Bill not found');
+  if (!bill) throw new Error("Bill not found");
   if (bill.status === BILL_STATUS.PAID) return bill.linked_transaction_id;
 
   const paySource = source_id ?? bill.source_id;
@@ -1501,14 +1382,13 @@ export async function markBillPaid(
   let txId = existingTransactionId || bill.linked_transaction_id;
 
   if (!txId && shouldCreateTx) {
-
     // Check whether this bill belongs to a Credit Card
     const ccRes = await executeSql(
       `SELECT *
         FROM credit_cards
         WHERE payment_bill_id = ?
         LIMIT 1`,
-      [bill.parent_bill_id || bill.id]
+      [bill.parent_bill_id || bill.id],
     );
     const isCreditCardBill = ccRes.rows.length > 0;
     if (isCreditCardBill) {
@@ -1525,7 +1405,7 @@ export async function markBillPaid(
     } else {
       // Normal bill payment
       txId = await createTransaction({
-        type: 'expense',
+        type: "expense",
         amount: bill.amount,
         category_id: bill.category_id,
         source_id: paySource,
@@ -1538,7 +1418,7 @@ export async function markBillPaid(
 
   await executeSql(
     `UPDATE bills SET status=?, is_paid=?, paid_at=?, linked_transaction_id=?, updated_at=? WHERE id=?`,
-    [BILL_STATUS.PAID, 1, paidAt, txId, paidAt, billId]
+    [BILL_STATUS.PAID, 1, paidAt, txId, paidAt, billId],
   );
 
   // Record in junction table (idempotent)
@@ -1576,39 +1456,23 @@ async function _ensureNextOccurrence(templateId) {
   await ensureRecurringOccurrenceColumn();
   await ensureRecurringOccurrenceUniqueIndex();
   const template = await getBillById(templateId);
-  if (
-    !template ||
-    !template.is_recurring ||
-    !template.recurrence_type
-  ) {
+  if (!template || !template.is_recurring || !template.recurrence_type) {
     return;
   }
 
   await backfillMissingOccurrenceKeys(template);
-  const type = String(
-    template.recurrence_type || ''
-  ).toLowerCase();
+  const type = String(template.recurrence_type || "").toLowerCase();
 
   const effectiveDate =
-    template.recurrence_effective_date ||
-    template.due_date ||
-    todayStr();
+    template.recurrence_effective_date || template.due_date || todayStr();
 
-  const effectiveDateOnly =
-    String(effectiveDate).slice(0, 10);
+  const effectiveDateOnly = String(effectiveDate).slice(0, 10);
 
   const future = new Date();
 
-  if (
-    type === 'yearly' ||
-    type === 'year' ||
-    type === 'annual'
-  ) {
+  if (type === "yearly" || type === "year" || type === "annual") {
     future.setFullYear(future.getFullYear() + 10);
-  } else if (
-    type === 'monthly' ||
-    type === 'month'
-  ) {
+  } else if (type === "monthly" || type === "month") {
     future.setFullYear(future.getFullYear() + 2);
   } else {
     future.setFullYear(future.getFullYear() + 1);
@@ -1632,21 +1496,19 @@ async function _ensureNextOccurrence(templateId) {
        deleted_at
      FROM bills
      WHERE parent_bill_id = ?`,
-    [templateId]
+    [templateId],
   );
 
   const existingRows = rowsToArray(existingRes);
   const existingKeys = new Set();
   for (const row of existingRows) {
     if (row.recurrence_occurrence_key) {
-      existingKeys.add(
-        String(row.recurrence_occurrence_key)
-      );
+      existingKeys.add(String(row.recurrence_occurrence_key));
     } else if (row.due_date) {
       const key = getRecurrenceOccurrenceKey(
         template.recurrence_type,
         row.due_date,
-        template.recurrence_interval
+        template.recurrence_interval,
       );
       if (key) {
         existingKeys.add(String(key));
@@ -1654,9 +1516,7 @@ async function _ensureNextOccurrence(templateId) {
     }
   }
 
-  const sortedDates = [...allDates]
-    .map(d => String(d).slice(0, 10))
-    .sort();
+  const sortedDates = [...allDates].map((d) => String(d).slice(0, 10)).sort();
   for (const occurrenceDate of sortedDates) {
     if (!occurrenceDate) continue;
 
@@ -1666,7 +1526,7 @@ async function _ensureNextOccurrence(templateId) {
     const occurrenceKey = getRecurrenceOccurrenceKey(
       template.recurrence_type,
       occurrenceDate,
-      template.recurrence_interval
+      template.recurrence_interval,
     );
 
     if (!occurrenceKey) continue;
@@ -1698,18 +1558,21 @@ async function _ensureNextOccurrence(templateId) {
 
 async function ensureRecurringOccurrenceUniqueIndex() {
   try {
-    await executeSql(`
+    await executeSql(
+      `
       CREATE UNIQUE INDEX IF NOT EXISTS
       idx_bills_recurring_occurrence
       ON bills(parent_bill_id, recurrence_occurrence_key)
       WHERE parent_bill_id IS NOT NULL
         AND recurrence_occurrence_key IS NOT NULL
         AND deleted_at IS NULL
-    `, []);
+    `,
+      [],
+    );
   } catch (e) {
     console.warn(
-      '[Bills] Could not create recurring occurrence unique index:',
-      e
+      "[Bills] Could not create recurring occurrence unique index:",
+      e,
     );
   }
 }
@@ -1730,81 +1593,102 @@ export async function linkAdditionalTransaction(billId, transactionId) {
        linked_transaction_id = ?,
        updated_at = ?
      WHERE id = ?`,
-    [
-      BILL_STATUS.PAID,
-      nowIso(),
-      transactionId,
-      nowIso(),
-      billId,
-    ]
+    [BILL_STATUS.PAID, nowIso(), transactionId, nowIso(), billId],
   );
 
   emitBillsChanged();
 }
 
 // ─── getTransactionsForBillLink ───────────────────────────────────────────────
-
 export async function getTransactionsForBillLink(bill) {
   try {
-    // month prefix e.g. '2026-02' — used as the primary filter
-    const dueDatePrefix = bill.due_date ? bill.due_date.slice(0, 7) : null;
-
     let rows = [];
+    const billDate = bill?.due_date ? new Date(bill.due_date) : new Date();
+    // One month before the bill date
+    const fromDate = new Date(billDate);
+    fromDate.setMonth(fromDate.getMonth() - 1);
+    // Compare dates using the actual Date objects
+    const fromTime = fromDate.getTime();
+    const toTime = billDate.getTime();
 
-    if (Platform.OS === 'web') {
-      const txRes = await executeSql(`SELECT * FROM transactions WHERE type = 'expense' ORDER BY date DESC`, []);
+    if (Platform.OS === "web") {
+      const txRes = await executeSql(
+        `SELECT *
+         FROM transactions
+         WHERE type = 'expense'
+         ORDER BY date DESC`,
+        [],
+      );
       const sourceRes = await executeSql(`SELECT * FROM sources`, []);
       const catRes = await executeSql(`SELECT * FROM categories`, []);
-      const sourceMap = new Map(rowsToArray(sourceRes).map(s => [s.id, s]));
-      const catMap = new Map(rowsToArray(catRes).map(c => [c.id, c]));
-      rows = rowsToArray(txRes).map(t => ({
+      const sourceMap = new Map(rowsToArray(sourceRes).map((s) => [s.id, s]));
+      const catMap = new Map(rowsToArray(catRes).map((c) => [c.id, c]));
+      rows = rowsToArray(txRes).map((t) => ({
         ...t,
-        source_name: sourceMap.get(t.source_id)?.name || '',
-        category_name: catMap.get(t.category_id)?.name || '',
-        category_color: catMap.get(t.category_id)?.color || '',
-        category_icon: catMap.get(t.category_id)?.icon || '',
+        source_name: sourceMap.get(t.source_id)?.name || "",
+        category_name: catMap.get(t.category_id)?.name || "",
+        category_color: catMap.get(t.category_id)?.color || "",
+        category_icon: catMap.get(t.category_id)?.icon || "",
       }));
     } else {
       const res = await executeSql(
-        `SELECT t.*, s.name AS source_name, c.name AS category_name,
-                c.color AS category_color, c.icon AS category_icon
+        `SELECT
+           t.*,
+           s.name AS source_name,
+           c.name AS category_name,
+           c.color AS category_color,
+           c.icon AS category_icon
          FROM transactions t
-         LEFT JOIN sources s    ON s.id = t.source_id
+         LEFT JOIN sources s ON s.id = t.source_id
          LEFT JOIN categories c ON c.id = t.category_id
          WHERE t.type = 'expense'
          ORDER BY t.date DESC`,
-        []
+        [],
       );
       rows = rowsToArray(res);
     }
 
-    // Remove already-linked transactions for this bill
+    // ---------------------------------------------------------
+    // STRICT FILTER
+    // Only EXPENSE transactions within one month of bill date
+    // ---------------------------------------------------------
+    rows = rows.filter((tx) => {
+      if (String(tx.type).toLowerCase() !== "expense") {
+        return false;
+      }
+      if (!tx.date) {
+        return false;
+      }
+      const txDate = new Date(tx.date);
+      if (Number.isNaN(txDate.getTime())) {
+        return false;
+      }
+      const txTime = txDate.getTime();
+      return txTime >= fromTime && txTime <= toTime;
+    });
+
+    // Remove transactions already linked to this bill
     const linked = await getBillLinkedTransactions(bill.id);
-    const linkedIds = new Set(linked.map(l => l.id));
-    rows = rows.filter(t => !linkedIds.has(t.id));
-
-    // ── PRIMARY FILTER: always restrict to the occurrence's month ────────────
-    // This is the main fix — the user must see only transactions from the
-    // same month as the bill occurrence they are trying to link.
-    if (dueDatePrefix) {
-      rows = rows.filter(t => t.date && String(t.date).startsWith(dueDatePrefix));
-    }
-
-    // ── SORT: same-category & same-amount rows rise to the top ───────────────
+    const linkedIds = new Set(linked.map((l) => Number(l.id)));
+    rows = rows.filter((tx) => !linkedIds.has(Number(tx.id)));
+    // Same category + same amount first
     rows.sort((a, b) => {
       const aScore =
-        (a.category_id === bill.category_id ? 2 : 0) +
+        (Number(a.category_id) === Number(bill.category_id) ? 2 : 0) +
         (Number(a.amount) === Number(bill.amount) ? 1 : 0);
+
       const bScore =
-        (b.category_id === bill.category_id ? 2 : 0) +
+        (Number(b.category_id) === Number(bill.category_id) ? 2 : 0) +
         (Number(b.amount) === Number(bill.amount) ? 1 : 0);
-      if (bScore !== aScore) return bScore - aScore;
+      if (bScore !== aScore) {
+        return bScore - aScore;
+      }
       return new Date(b.date) - new Date(a.date);
     });
 
     return rows.slice(0, 50);
   } catch (e) {
-    console.warn('getTransactionsForBillLink error', e);
+    console.warn("getTransactionsForBillLink error", e);
     return [];
   }
 }
@@ -1813,11 +1697,12 @@ export async function getTransactionsForBillLink(bill) {
 
 export async function skipBill(billId) {
   const bill = await getBillById(billId);
-  if (!bill) throw new Error('Bill not found');
-  await executeSql(
-    `UPDATE bills SET status=?, updated_at=? WHERE id=?`,
-    [BILL_STATUS.SKIPPED, nowIso(), billId]
-  );
+  if (!bill) throw new Error("Bill not found");
+  await executeSql(`UPDATE bills SET status=?, updated_at=? WHERE id=?`, [
+    BILL_STATUS.SKIPPED,
+    nowIso(),
+    billId,
+  ]);
   // Ensure next occurrence exists so series continues
   const parentId = bill.parent_bill_id || (bill.is_recurring ? bill.id : null);
   if (parentId) await _ensureNextOccurrence(parentId);
@@ -1840,11 +1725,7 @@ export async function unskipBill(billId) {
        status = ?,
        updated_at = ?
      WHERE id = ?`,
-    [
-      status,
-      nowIso(),
-      billId,
-    ]
+    [status, nowIso(), billId],
   );
 
   emitBillsChanged();
@@ -1853,7 +1734,7 @@ export async function unskipBill(billId) {
 export async function updateBill(id, fields) {
   const existing = await getBillById(id);
   if (!existing) {
-    throw new Error('Bill not found');
+    throw new Error("Bill not found");
   }
 
   /*
@@ -1861,16 +1742,11 @@ export async function updateBill(id, fields) {
    */
   const recurrenceChanged =
     (fields.recurrence_type !== undefined &&
-      fields.recurrence_type !==
-      existing.recurrence_type) ||
-
+      fields.recurrence_type !== existing.recurrence_type) ||
     (fields.recurrence_interval !== undefined &&
-      fields.recurrence_interval !==
-      existing.recurrence_interval) ||
-
+      fields.recurrence_interval !== existing.recurrence_interval) ||
     (fields.recurrence_end_date !== undefined &&
-      fields.recurrence_end_date !==
-      existing.recurrence_end_date);
+      fields.recurrence_end_date !== existing.recurrence_end_date);
 
   /*
    * If the recurrence rule changes on the MAIN TEMPLATE,
@@ -1884,36 +1760,68 @@ export async function updateBill(id, fields) {
    * 2025 monthly  -> KEEP
    * 2026 onward   -> NEW yearly rule
    */
-  let recurrenceEffectiveDate =
-    existing.recurrence_effective_date || null;
+  let recurrenceEffectiveDate = existing.recurrence_effective_date || null;
 
-  if (
-    recurrenceChanged &&
-    existing.is_recurring &&
-    !existing.parent_bill_id
-  ) {
+  if (recurrenceChanged && existing.is_recurring && !existing.parent_bill_id) {
     recurrenceEffectiveDate = todayStr();
   }
 
   const merged = {
     name: fields.name ?? existing.name,
     amount: fields.amount ?? existing.amount,
-    due_date: fields.due_date !== undefined ? fields.due_date : existing.due_date,
+    due_date:
+      fields.due_date !== undefined ? fields.due_date : existing.due_date,
     status: fields.status ?? existing.status,
-    is_recurring: fields.is_recurring !== undefined ? (fields.is_recurring ? 1 : 0) : existing.is_recurring,
-    recurrence_type: fields.recurrence_type !== undefined ? fields.recurrence_type : existing.recurrence_type,
-    recurrence_interval: fields.recurrence_interval ?? existing.recurrence_interval ?? 1,
-    recurrence_end_date: fields.recurrence_end_date !== undefined ? fields.recurrence_end_date : existing.recurrence_end_date,
-    category_id: fields.category_id !== undefined ? fields.category_id : existing.category_id,
-    source_id: fields.source_id !== undefined ? fields.source_id : existing.source_id,
-    reminder_days_before: fields.reminder_days_before ?? existing.reminder_days_before ?? 2,
-    auto_pay: fields.auto_pay !== undefined ? (fields.auto_pay ? 1 : 0) : existing.auto_pay,
+    is_recurring:
+      fields.is_recurring !== undefined
+        ? fields.is_recurring
+          ? 1
+          : 0
+        : existing.is_recurring,
+    recurrence_type:
+      fields.recurrence_type !== undefined
+        ? fields.recurrence_type
+        : existing.recurrence_type,
+    recurrence_interval:
+      fields.recurrence_interval ?? existing.recurrence_interval ?? 1,
+    recurrence_end_date:
+      fields.recurrence_end_date !== undefined
+        ? fields.recurrence_end_date
+        : existing.recurrence_end_date,
+    category_id:
+      fields.category_id !== undefined
+        ? fields.category_id
+        : existing.category_id,
+    source_id:
+      fields.source_id !== undefined ? fields.source_id : existing.source_id,
+    reminder_days_before:
+      fields.reminder_days_before ?? existing.reminder_days_before ?? 2,
+    auto_pay:
+      fields.auto_pay !== undefined
+        ? fields.auto_pay
+          ? 1
+          : 0
+        : existing.auto_pay,
     notes: fields.notes !== undefined ? fields.notes : existing.notes,
-    attachment_url: fields.attachment_url !== undefined ? fields.attachment_url : existing.attachment_url,
-    is_paid: fields.is_paid !== undefined ? (fields.is_paid ? 1 : 0) : existing.is_paid,
+    attachment_url:
+      fields.attachment_url !== undefined
+        ? fields.attachment_url
+        : existing.attachment_url,
+    is_paid:
+      fields.is_paid !== undefined
+        ? fields.is_paid
+          ? 1
+          : 0
+        : existing.is_paid,
     paid_at: fields.paid_at !== undefined ? fields.paid_at : existing.paid_at,
-    last_reminded_at: fields.last_reminded_at !== undefined ? fields.last_reminded_at : existing.last_reminded_at,
-    linked_transaction_id: fields.linked_transaction_id !== undefined ? fields.linked_transaction_id : existing.linked_transaction_id,
+    last_reminded_at:
+      fields.last_reminded_at !== undefined
+        ? fields.last_reminded_at
+        : existing.last_reminded_at,
+    linked_transaction_id:
+      fields.linked_transaction_id !== undefined
+        ? fields.linked_transaction_id
+        : existing.linked_transaction_id,
   };
   await ensureRecurringOccurrenceColumn();
 
@@ -1962,18 +1870,14 @@ export async function updateBill(id, fields) {
       recurrenceEffectiveDate,
       nowIso(),
       id,
-    ]
+    ],
   );
   /*
    * Generate occurrences for the NEW recurrence only.
    *
    * Historical occurrences remain untouched.
    */
-  if (
-    existing.is_recurring &&
-    !existing.parent_bill_id &&
-    recurrenceChanged
-  ) {
+  if (existing.is_recurring && !existing.parent_bill_id && recurrenceChanged) {
     await backfillBillOccurrences(id);
   }
 
@@ -1982,10 +1886,11 @@ export async function updateBill(id, fields) {
 
 export async function deleteBill(id) {
   const ts = nowIso();
-  await executeSql(
-    `UPDATE bills SET deleted_at=?, updated_at=? WHERE id=?`,
-    [ts, ts, id]
-  );
+  await executeSql(`UPDATE bills SET deleted_at=?, updated_at=? WHERE id=?`, [
+    ts,
+    ts,
+    id,
+  ]);
   emitBillsChanged();
 }
 
@@ -1996,7 +1901,7 @@ export async function runRecurringScheduler() {
 }
 
 function padDateValue(value) {
-  return String(value).padStart(2, '0');
+  return String(value).padStart(2, "0");
 }
 
 function formatDate(date) {
@@ -2016,21 +1921,13 @@ function getStatementPeriod(statementDay, referenceDate) {
   const currentStatementDay = normalizeStatementDay(
     statementDay,
     year,
-    month + 1
+    month + 1,
   );
 
-  const statementDate = new Date(
-    year,
-    month,
-    currentStatementDay
-  );
+  const statementDate = new Date(year, month, currentStatementDay);
 
   // Previous month
-  const previousMonthDate = new Date(
-    year,
-    month - 1,
-    1
-  );
+  const previousMonthDate = new Date(year, month - 1, 1);
 
   const previousYear = previousMonthDate.getFullYear();
   const previousMonth = previousMonthDate.getMonth();
@@ -2038,13 +1935,13 @@ function getStatementPeriod(statementDay, referenceDate) {
   const previousStatementDay = normalizeStatementDay(
     statementDay,
     previousYear,
-    previousMonth + 1
+    previousMonth + 1,
   );
 
   const previousStatementDate = new Date(
     previousYear,
     previousMonth,
-    previousStatementDay
+    previousStatementDay,
   );
 
   // Billing cycle starts the day AFTER previous statement
@@ -2069,7 +1966,8 @@ export async function processReminders() {
   const due = [];
 
   for (const bill of rows) {
-    if (bill.status === BILL_STATUS.PAID || bill.status === BILL_STATUS.SKIPPED) continue;
+    if (bill.status === BILL_STATUS.PAID || bill.status === BILL_STATUS.SKIPPED)
+      continue;
     if (!bill.due_date) continue;
     const days = daysBetween(today, bill.due_date);
     const remindBefore = bill.reminder_days_before ?? 2;
@@ -2079,7 +1977,7 @@ export async function processReminders() {
     const remindedAt = nowIso();
     await executeSql(
       `UPDATE bills SET last_reminded_at=?, updated_at=? WHERE id=?`,
-      [remindedAt, remindedAt, bill.id]
+      [remindedAt, remindedAt, bill.id],
     );
     due.push({ bill, daysUntilDue: days });
   }
@@ -2094,14 +1992,28 @@ export async function runBillMaintenance() {
 }
 
 export default {
-  createBill, getBills, getBillById,
-  getBillSeries, getBillsForCurrentMonth, backfillBillOccurrences,
-  getBillsSummary, getBillInsights,
-  markBillPaid, linkAdditionalTransaction,
-  addTransactionToBill, removeTransactionFromBill,
-  getBillLinkedTransactions, getBillsForTransaction,
+  createBill,
+  getBills,
+  getBillById,
+  getBillSeries,
+  getBillsForCurrentMonth,
+  backfillBillOccurrences,
+  getBillsSummary,
+  getBillInsights,
+  markBillPaid,
+  linkAdditionalTransaction,
+  addTransactionToBill,
+  removeTransactionFromBill,
+  getBillLinkedTransactions,
+  getBillsForTransaction,
   getTransactionsForBillLink,
-  skipBill, unskipBill, updateBill, deleteBill,
-  runRecurringScheduler, processReminders, runBillMaintenance,
-  syncBillStatuses, createBillLinkedTransactionsTable,
+  skipBill,
+  unskipBill,
+  updateBill,
+  deleteBill,
+  runRecurringScheduler,
+  processReminders,
+  runBillMaintenance,
+  syncBillStatuses,
+  createBillLinkedTransactionsTable,
 };
