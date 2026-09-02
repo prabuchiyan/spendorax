@@ -402,6 +402,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 onPress={() =>
                   navigation.navigate("LoanPayment", {
                     id: loan.id,
+                    mode: "receive",
                   })
                 }
               />
