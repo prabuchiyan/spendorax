@@ -18,10 +18,10 @@
  *   - A statement is deleted (deleteStatement calls it immediately after deletion)
  */
 
-import { executeSql } from '../database/db';
-import { getBillById, deleteBill } from './bills';
-import { BILL_STATUS } from './billUtils';
-import { emit } from './events';
+import { executeSql } from "../database/db";
+import { getBillById, deleteBill } from "./bills";
+import { BILL_STATUS } from "./billUtils";
+import { emit } from "./events";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -36,7 +36,7 @@ function nowIso() {
 }
 
 function padTwo(v) {
-  return String(v).padStart(2, '0');
+  return String(v).padStart(2, "0");
 }
 
 function formatDate(date) {
@@ -64,7 +64,9 @@ function getStatementDate(statementDay, year, month) {
 // Add this function in creditCardScheduler.js
 
 async function repairMissingTemplate(card) {
-  console.log(`[CC Scheduler] Repairing missing template bill for card ${card.id} (${card.name})`);
+  console.log(
+    `[CC Scheduler] Repairing missing template bill for card ${card.id} (${card.name})`,
+  );
 
   const ts = nowIso();
 
@@ -78,20 +80,21 @@ async function repairMissingTemplate(card) {
     ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       card.name,
-      0,                          // template amount — overridden per statement
-      null,                       // no due date on template
-      'pending',
-      1,                          // is_recurring = 1 (marks it as a template)
-      'monthly',
+      0, // template amount — overridden per statement
+      null, // no due date on template
+      "pending",
+      1, // is_recurring = 1 (marks it as a template)
+      "monthly",
       1,
-      null,                       // category_id — none
+      null, // category_id — none
       card.source_id,
       2,
       0,
       `Recurring payment template for ${card.name}`,
       0,
-      ts, ts,
-    ]
+      ts,
+      ts,
+    ],
   );
 
   const newBillId = billRes.insertId;
@@ -99,10 +102,12 @@ async function repairMissingTemplate(card) {
   // Update the credit card to point to the new template
   await executeSql(
     `UPDATE credit_cards SET payment_bill_id = ?, updated_at = ? WHERE id = ?`,
-    [newBillId, ts, card.id]
+    [newBillId, ts, card.id],
   );
 
-  console.log(`[CC Scheduler] Repaired: card ${card.id} now has template bill ${newBillId}`);
+  console.log(
+    `[CC Scheduler] Repaired: card ${card.id} now has template bill ${newBillId}`,
+  );
 
   // Return the new template row
   return await getRawBillById(newBillId);
@@ -131,8 +136,12 @@ async function getRawBillById(id) {
  */
 function getCyclePeriod(statementDay, statementDate) {
   // Previous statement date: same day last month (clamped)
-  const prevYear = statementDate.getMonth() === 0 ? statementDate.getFullYear() - 1 : statementDate.getFullYear();
-  const prevMonth = statementDate.getMonth() === 0 ? 12 : statementDate.getMonth(); // getMonth() is 0-based, so this gives previous month 1-based
+  const prevYear =
+    statementDate.getMonth() === 0
+      ? statementDate.getFullYear() - 1
+      : statementDate.getFullYear();
+  const prevMonth =
+    statementDate.getMonth() === 0 ? 12 : statementDate.getMonth(); // getMonth() is 0-based, so this gives previous month 1-based
   const prevDay = clampDay(statementDay, prevYear, prevMonth);
   const prevStatementDate = new Date(prevYear, prevMonth - 1, prevDay);
 
@@ -163,11 +172,7 @@ function getAllCycles(statementDay, fromDate, todayDate) {
   let safety = 0;
 
   while (safety++ < 120) {
-    const statementDate = getStatementDate(
-      statementDay,
-      year,
-      month
-    );
+    const statementDate = getStatementDate(statementDay, year, month);
 
     // IMPORTANT:
     // Do NOT generate a statement until its statement date
@@ -182,12 +187,9 @@ function getAllCycles(statementDay, fromDate, todayDate) {
       break;
     }
 
-    const {
-      cycleStart,
-      cycleEnd
-    } = getCyclePeriod(
+    const { cycleStart, cycleEnd } = getCyclePeriod(
       statementDay,
-      statementDate
+      statementDate,
     );
 
     cycles.push({
@@ -212,7 +214,7 @@ function getAllCycles(statementDay, fromDate, todayDate) {
 
 async function processCard(card, allTransactions, allStatements, allBills) {
   // ── TEMPORARY DEBUG — remove after fixing ─────────────────────────────────
-  console.log('[CC Debug] Processing card:', {
+  console.log("[CC Debug] Processing card:", {
     id: card.id,
     name: card.name,
     payment_bill_id: card.payment_bill_id,
@@ -221,57 +223,83 @@ async function processCard(card, allTransactions, allStatements, allBills) {
     statement_day: card.statement_day,
   });
 
-  console.log('[CC Debug] Total bills loaded:', allBills.length);
-  console.log('[CC Debug] Bill ids in allBills:', allBills.map(b => b.id));
+  console.log("[CC Debug] Total bills loaded:", allBills.length);
+  console.log(
+    "[CC Debug] Bill ids in allBills:",
+    allBills.map((b) => b.id),
+  );
 
-  const templateInList = allBills.find(b => Number(b.id) === Number(card.payment_bill_id));
-  console.log('[CC Debug] Template found in allBills?', !!templateInList, templateInList ? {
-    id: templateInList.id,
-    name: templateInList.name,
-    deleted_at: templateInList.deleted_at,
-    notes: templateInList.notes,
-  } : 'NOT FOUND');
+  const templateInList = allBills.find(
+    (b) => Number(b.id) === Number(card.payment_bill_id),
+  );
+  console.log(
+    "[CC Debug] Template found in allBills?",
+    !!templateInList,
+    templateInList
+      ? {
+          id: templateInList.id,
+          name: templateInList.name,
+          deleted_at: templateInList.deleted_at,
+          notes: templateInList.notes,
+        }
+      : "NOT FOUND",
+  );
 
-  const cardTxsCheck = allTransactions.filter(t => Number(t.source_id) === Number(card.source_id));
-  console.log('[CC Debug] Transactions for this card source:', cardTxsCheck.length, cardTxsCheck.map(t => ({
-    id: t.id, date: t.date, type: t.type, amount: t.amount, source_id: t.source_id
-  })));
+  const cardTxsCheck = allTransactions.filter(
+    (t) => Number(t.source_id) === Number(card.source_id),
+  );
+  console.log(
+    "[CC Debug] Transactions for this card source:",
+    cardTxsCheck.length,
+    cardTxsCheck.map((t) => ({
+      id: t.id,
+      date: t.date,
+      type: t.type,
+      amount: t.amount,
+      source_id: t.source_id,
+    })),
+  );
   // ── END DEBUG ──────────────────────────────────────────────────────────────
 
   const today = new Date();
   const todayStr = formatDate(today);
 
   const statementDay = Number(card.statement_day);
-  if (!statementDay || card.status !== 'active') return;
+  if (!statementDay || card.status !== "active") return;
 
   if (!card.payment_bill_id) {
-    console.warn(`[CC Scheduler] Card ${card.id} (${card.name}) has no payment_bill_id — skipping`);
+    console.warn(
+      `[CC Scheduler] Card ${card.id} (${card.name}) has no payment_bill_id — skipping`,
+    );
     return;
   }
 
   // Load template directly from allBills (already fetched upfront),
   // ignoring deleted_at — the template must never be soft-deleted,
   // but even if it is we still need it to generate statement bills.
-  let template = allBills.find(b => Number(b.id) === Number(card.payment_bill_id))
-    || await getRawBillById(card.payment_bill_id);
+  let template =
+    allBills.find((b) => Number(b.id) === Number(card.payment_bill_id)) ||
+    (await getRawBillById(card.payment_bill_id));
 
   if (!template) {
     // Template bill was hard-deleted — recreate it and update the card reference
     template = await repairMissingTemplate(card);
     if (!template) {
-      console.warn(`[CC Scheduler] Could not repair template for card ${card.id} (${card.name}) — skipping`);
+      console.warn(
+        `[CC Scheduler] Could not repair template for card ${card.id} (${card.name}) — skipping`,
+      );
       return;
     }
   }
 
   const cardTxs = allTransactions.filter(
-    t => Number(t.source_id) === Number(card.source_id)
+    (t) => Number(t.source_id) === Number(card.source_id),
   );
 
   if (cardTxs.length === 0) return;
 
   const sortedDates = cardTxs
-    .map(t => String(t.date || '').slice(0, 10))
+    .map((t) => String(t.date || "").slice(0, 10))
     .filter(Boolean)
     .sort();
 
@@ -280,60 +308,158 @@ async function processCard(card, allTransactions, allStatements, allBills) {
   const cycles = getAllCycles(statementDay, fromDate, today);
 
   for (const cycle of cycles) {
-    await processCycle(card, cycle, cardTxs, allStatements, allBills, todayStr, template);
+    await processCycle(
+      card,
+      cycle,
+      cardTxs,
+      allStatements,
+      allBills,
+      todayStr,
+      template,
+    );
   }
 }
 
-async function processCycle(card, cycle, cardTxs, allStatements, allBills, todayStr, template) {
+async function processCycle(
+  card,
+  cycle,
+  cardTxs,
+  allStatements,
+  allBills,
+  todayStr,
+  template,
+) {
   const { statementDateStr, cycleStart, cycleEnd } = cycle;
 
   // ── TEMPORARY DEBUG ───────────────────────────────────────────────────────
-  console.log(`[CC Cycle Debug] Card ${card.id} | Statement: ${statementDateStr} | Cycle: ${cycleStart} → ${cycleEnd}`);
+  console.log(
+    `[CC Cycle Debug] Card ${card.id} | Statement: ${statementDateStr} | Cycle: ${cycleStart} → ${cycleEnd}`,
+  );
   // ── END DEBUG ──
 
   // ── Check existing statement for this cycle ───────────────────────────────
   const existingStatement = allStatements.find(
-    s =>
+    (s) =>
       Number(s.card_id) === Number(card.id) &&
-      String(s.statement_date || '').slice(0, 10) === statementDateStr
+      String(s.statement_date || "").slice(0, 10) === statementDateStr,
   );
 
   if (existingStatement) {
-    // Check if the linked bill is paid
+    // Bill currently linked to this statement
     const linkedBill = allBills.find(
-      b => Number(b.id) === Number(existingStatement.bill_id)
+      (b) => Number(b.id) === Number(existingStatement.bill_id),
     );
 
-    // A soft-deleted bill is treated as unpaid (statement can regenerate)
-    const isPaid =
+    // ─────────────────────────────────────────────────────────────
+    // Check the directly linked bill first
+    // ─────────────────────────────────────────────────────────────
+    const isLinkedBillPaid =
       !linkedBill?.deleted_at &&
       (linkedBill?.status === BILL_STATUS.PAID || linkedBill?.is_paid === 1);
 
-    if (isPaid) {
-      // Paid statement → do not touch it, skip this cycle
+    if (isLinkedBillPaid) {
+      // Paid statement → never modify it
       return;
     }
 
-    // Unpaid statement → recalculate and update (transactions may have changed)
+    // ─────────────────────────────────────────────────────────────
+    // IMPORTANT:
+    // The statement can sometimes point to an older/duplicate
+    // occurrence of the same credit-card bill.
+    //
+    // Example:
+    //   Bill 103 → parent 5 → PAID
+    //   Bill 172 → parent 5 → PENDING
+    //   Statement → bill 172
+    //
+    // If another child of the same template is already paid,
+    // associate the statement with that paid bill.
+    // ─────────────────────────────────────────────────────────────
+    if (linkedBill?.parent_bill_id) {
+      const paidSiblingBill = allBills.find(
+        (b) =>
+          Number(b.parent_bill_id) === Number(linkedBill.parent_bill_id) &&
+          Number(b.id) !== Number(linkedBill.id) &&
+          !b.deleted_at &&
+          (b.status === BILL_STATUS.PAID || b.is_paid === 1) &&
+          Number(b.amount || 0) === Number(linkedBill.amount || 0) &&
+          String(b.due_date || "").slice(0, 10) ===
+            String(linkedBill.due_date || "").slice(0, 10),
+      );
+
+      if (paidSiblingBill) {
+        console.log("[CC Scheduler] Found paid sibling bill:", {
+          statementId: existingStatement.id,
+          oldBillId: linkedBill.id,
+          paidBillId: paidSiblingBill.id,
+          parentBillId: linkedBill.parent_bill_id,
+        });
+
+        // Re-link the statement to the bill that is actually paid
+        await executeSql(
+          `UPDATE credit_card_statements
+         SET bill_id = ?, status = ?
+         WHERE id = ?`,
+          [paidSiblingBill.id, "paid", existingStatement.id],
+        );
+
+        console.log(
+          "[CC Scheduler] Statement re-linked to paid bill:",
+          existingStatement.id,
+          "→ bill",
+          paidSiblingBill.id,
+        );
+
+        return;
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // No paid bill found.
+    // Continue with the existing unpaid-statement logic.
+    // ─────────────────────────────────────────────────────────────
+
     const { openingBalance, purchases, payments } = calcCycleAmounts(
-      cardTxs, cycleStart, cycleEnd
+      cardTxs,
+      cycleStart,
+      cycleEnd,
     );
+
     const closingBalance = openingBalance + purchases - payments;
-    // ── TEMPORARY DEBUG ───────────────────────────────────────────────────────
-    console.log(`[CC Cycle Debug] Amounts | opening: ${openingBalance} | purchases: ${purchases} | payments: ${payments} | closing: ${closingBalance}`);
-    const txsInCycle = cardTxs.filter(t => {
-      const d = String(t.date || '').slice(0, 10);
+
+    console.log(
+      `[CC Cycle Debug] Amounts | opening: ${openingBalance} | purchases: ${purchases} | payments: ${payments} | closing: ${closingBalance}`,
+    );
+
+    const txsInCycle = cardTxs.filter((t) => {
+      const d = String(t.date || "").slice(0, 10);
       return d >= cycleStart && d <= cycleEnd;
     });
-    console.log(`[CC Cycle Debug] Txs in cycle:`, txsInCycle.map(t => ({ date: t.date?.slice(0, 10), type: t.type, amount: t.amount })));
-    // ── END DEBUG ────────────────────────────────
+
+    console.log(
+      `[CC Cycle Debug] Txs in cycle:`,
+      txsInCycle.map((t) => ({
+        date: t.date?.slice(0, 10),
+        type: t.type,
+        amount: t.amount,
+      })),
+    );
+
     if (closingBalance <= 0) {
-      // Balance dropped to zero (e.g. transaction deleted) → soft-delete statement + bill
+      // Balance dropped to zero → remove statement + bill
       await softDeleteStatement(existingStatement);
       return;
     }
 
-    await updateExistingStatement(existingStatement, closingBalance, purchases, payments, openingBalance, card);
+    await updateExistingStatement(
+      existingStatement,
+      closingBalance,
+      purchases,
+      payments,
+      openingBalance,
+      card,
+    );
+
     return;
   }
 
@@ -345,48 +471,33 @@ async function processCycle(card, cycle, cardTxs, allStatements, allBills, today
   // For the current/open cycle:
   //   cycleStart → today
   //
-  const effectiveCycleEnd =
-    cycle.isCurrent
-      ? todayStr
-      : cycleEnd;
+  const effectiveCycleEnd = cycle.isCurrent ? todayStr : cycleEnd;
 
-  const cycleHasTxs = cardTxs.some(
-    t => {
-      const d = String(t.date || '').slice(0, 10);
-      return d >= cycleStart && d <= cycleEnd;
-    }
-  );
+  const cycleHasTxs = cardTxs.some((t) => {
+    const d = String(t.date || "").slice(0, 10);
+    return d >= cycleStart && d <= cycleEnd;
+  });
 
   if (!cycleHasTxs) return;
 
-  const {
-    openingBalance,
-    purchases,
-    payments
-  } = calcCycleAmounts(
+  const { openingBalance, purchases, payments } = calcCycleAmounts(
     cardTxs,
     cycleStart,
-    cycleEnd
+    cycleEnd,
   );
 
-  const closingBalance =
-    openingBalance +
-    purchases -
-    payments;
+  const closingBalance = openingBalance + purchases - payments;
 
   if (closingBalance <= 0) return;
 
   // Calculate due date
-  const dueDate = new Date(
-    cycle.isCurrent
-      ? todayStr
-      : cycle.statementDate
-  );
+  const dueDate = new Date(cycle.isCurrent ? todayStr : cycle.statementDate);
   if (card.due_after_days != null) {
     dueDate.setDate(dueDate.getDate() + Number(card.due_after_days || 0));
   }
   const dueDateStr = formatDate(dueDate);
-  const minimumDue = closingBalance * (Number(card.minimum_due_percent || 0) / 100);
+  const minimumDue =
+    closingBalance * (Number(card.minimum_due_percent || 0) / 100);
   // Create the bill
   const ts = nowIso();
   const billRes = await executeSql(
@@ -402,17 +513,20 @@ async function processCycle(card, cycle, cardTxs, allStatements, allBills, today
       closingBalance,
       dueDateStr,
       BILL_STATUS.PENDING,
-      0, null, 1,
+      0,
+      null,
+      1,
       template.category_id,
       template.source_id,
       template.reminder_days_before,
       template.auto_pay,
-      `Statement ${statementDateStr}\n\n${template.notes || ''}`,
+      `Statement ${statementDateStr}\n\n${template.notes || ""}`,
       template.attachment_url,
       template.id,
       0,
-      ts, ts,
-    ]
+      ts,
+      ts,
+    ],
   );
 
   const billId = billRes.insertId;
@@ -427,12 +541,24 @@ async function processCycle(card, cycle, cardTxs, allStatements, allBills, today
       is_generated, generated_at, status, created_at
     ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))`,
     [
-      card.id, billId,
-      cycleStart, cycleEnd, statementDateStr, dueDateStr,
-      openingBalance, purchases, 0, 0, 0,
-      payments, closingBalance, minimumDue,
-      1, ts, 'generated',
-    ]
+      card.id,
+      billId,
+      cycleStart,
+      cycleEnd,
+      statementDateStr,
+      dueDateStr,
+      openingBalance,
+      purchases,
+      0,
+      0,
+      0,
+      payments,
+      closingBalance,
+      minimumDue,
+      1,
+      ts,
+      "generated",
+    ],
   );
 }
 
@@ -452,13 +578,13 @@ function calcCycleAmounts(cardTxs, cycleStart, cycleEnd) {
   let payments = 0;
 
   for (const tx of cardTxs) {
-    const d = String(tx.date || '').slice(0, 10);
+    const d = String(tx.date || "").slice(0, 10);
     const amount = Number(tx.amount || 0);
 
     if (d >= cycleStart && d <= cycleEnd) {
       // Within cycle — these are this statement's purchases/payments
-      if (tx.type === 'expense') purchases += amount;
-      else if (tx.type === 'income') payments += amount;
+      if (tx.type === "expense") purchases += amount;
+      else if (tx.type === "income") payments += amount;
     }
     // Transactions outside this cycle window are NOT included.
     // Each statement only shows what happened in its own cycle period.
@@ -469,8 +595,16 @@ function calcCycleAmounts(cardTxs, cycleStart, cycleEnd) {
   return { openingBalance, purchases, payments };
 }
 
-async function updateExistingStatement(statement, closingBalance, purchases, payments, openingBalance, card) {
-  const minimumDue = closingBalance * (Number(card.minimum_due_percent || 0) / 100);
+async function updateExistingStatement(
+  statement,
+  closingBalance,
+  purchases,
+  payments,
+  openingBalance,
+  card,
+) {
+  const minimumDue =
+    closingBalance * (Number(card.minimum_due_percent || 0) / 100);
   const ts = nowIso();
 
   // Update statement row
@@ -483,14 +617,22 @@ async function updateExistingStatement(statement, closingBalance, purchases, pay
        minimum_due     = ?,
        generated_at    = ?
      WHERE id = ?`,
-    [openingBalance, purchases, payments, closingBalance, minimumDue, ts, statement.id]
+    [
+      openingBalance,
+      purchases,
+      payments,
+      closingBalance,
+      minimumDue,
+      ts,
+      statement.id,
+    ],
   );
 
   // Update linked bill amount
   if (statement.bill_id) {
     await executeSql(
       `UPDATE bills SET amount = ?, updated_at = ? WHERE id = ?`,
-      [closingBalance, ts, statement.bill_id]
+      [closingBalance, ts, statement.bill_id],
     );
   }
 }
@@ -505,14 +647,13 @@ async function softDeleteStatement(statement) {
   if (statement.bill_id) {
     await executeSql(
       `UPDATE bills SET deleted_at = ?, updated_at = ? WHERE id = ?`,
-      [ts, ts, statement.bill_id]
+      [ts, ts, statement.bill_id],
     );
   }
 
-  await executeSql(
-    `DELETE FROM credit_card_statements WHERE id = ?`,
-    [statement.id]
-  );
+  await executeSql(`DELETE FROM credit_card_statements WHERE id = ?`, [
+    statement.id,
+  ]);
 }
 
 // ─── public: run scheduler for all active cards ───────────────────────────────
@@ -520,9 +661,13 @@ export async function runCreditCardStatementScheduler() {
   try {
     const cardsRes = await executeSql(`SELECT * FROM credit_cards`, []);
     const txRes = await executeSql(
-      `SELECT id, type, amount, date, source_id, is_counted FROM transactions`, []
+      `SELECT id, type, amount, date, source_id, is_counted FROM transactions`,
+      [],
     );
-    const statementsRes = await executeSql(`SELECT * FROM credit_card_statements`, []);
+    const statementsRes = await executeSql(
+      `SELECT * FROM credit_card_statements`,
+      [],
+    );
     const billsRes = await executeSql(`SELECT * FROM bills`, []);
 
     const cards = rowsToArray(cardsRes);
@@ -531,22 +676,38 @@ export async function runCreditCardStatementScheduler() {
     const bills = rowsToArray(billsRes);
 
     // ── TEMPORARY DEBUG — place AFTER variable declarations ──────────────────
-    console.log('[CC Debug] Scheduler started. Cards:', cards.length, 'Bills:', bills.length, 'Txs:', txs.length);
-    console.log('[CC Debug] All bill ids:', bills.map(b => b.id));
-    console.log('[CC Debug] Cards payment_bill_ids:', cards.map(c => ({ card: c.id, payment_bill_id: c.payment_bill_id })));
+    console.log(
+      "[CC Debug] Scheduler started. Cards:",
+      cards.length,
+      "Bills:",
+      bills.length,
+      "Txs:",
+      txs.length,
+    );
+    console.log(
+      "[CC Debug] All bill ids:",
+      bills.map((b) => b.id),
+    );
+    console.log(
+      "[CC Debug] Cards payment_bill_ids:",
+      cards.map((c) => ({ card: c.id, payment_bill_id: c.payment_bill_id })),
+    );
     // ── END DEBUG ─────────────────────────────────────────────────────────────
 
     for (const card of cards) {
       try {
         await processCard(card, txs, statements, bills);
       } catch (cardErr) {
-        console.error(`[CC Scheduler] Card ${card.id} (${card.name}) failed:`, cardErr);
+        console.error(
+          `[CC Scheduler] Card ${card.id} (${card.name}) failed:`,
+          cardErr,
+        );
       }
     }
 
-    emit('billsChanged');
+    emit("billsChanged");
   } catch (err) {
-    console.error('[CC Scheduler] Fatal error:', err);
+    console.error("[CC Scheduler] Fatal error:", err);
     throw err;
   }
 }
@@ -566,11 +727,13 @@ export async function runCreditCardStatementScheduler() {
 export async function deleteStatement(statementId) {
   const stmtRes = await executeSql(
     `SELECT * FROM credit_card_statements WHERE id = ?`,
-    [statementId]
+    [statementId],
   );
 
   if (!stmtRes.rows.length) {
-    console.warn(`[CC Scheduler] deleteStatement: statement ${statementId} not found`);
+    console.warn(
+      `[CC Scheduler] deleteStatement: statement ${statementId} not found`,
+    );
     return;
   }
 
@@ -578,16 +741,15 @@ export async function deleteStatement(statementId) {
   const ts = nowIso();
 
   // Hard-delete the statement row
-  await executeSql(
-    `DELETE FROM credit_card_statements WHERE id = ?`,
-    [statementId]
-  );
+  await executeSql(`DELETE FROM credit_card_statements WHERE id = ?`, [
+    statementId,
+  ]);
 
   // Soft-delete the linked bill (so it disappears from Bills screen)
   if (statement.bill_id) {
     await executeSql(
       `UPDATE bills SET deleted_at = ?, updated_at = ? WHERE id = ?`,
-      [ts, ts, statement.bill_id]
+      [ts, ts, statement.bill_id],
     );
   }
 
@@ -605,7 +767,7 @@ export async function onCardTransactionChanged(sourceId) {
   try {
     const cardsRes = await executeSql(
       `SELECT * FROM credit_cards WHERE source_id = ? AND status = 'active'`,
-      [sourceId]
+      [sourceId],
     );
 
     if (!cardsRes.rows.length) return; // Not a credit card source
@@ -613,7 +775,7 @@ export async function onCardTransactionChanged(sourceId) {
     // Full scheduler re-run (it loads fresh data)
     await runCreditCardStatementScheduler();
   } catch (err) {
-    console.error('[CC Scheduler] onCardTransactionChanged error:', err);
+    console.error("[CC Scheduler] onCardTransactionChanged error:", err);
   }
 }
 
@@ -627,6 +789,6 @@ export async function onStatementPaid(cardId) {
   try {
     await runCreditCardStatementScheduler();
   } catch (err) {
-    console.error('[CC Scheduler] onStatementPaid error:', err);
+    console.error("[CC Scheduler] onStatementPaid error:", err);
   }
 }

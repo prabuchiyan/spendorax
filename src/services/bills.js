@@ -67,13 +67,14 @@ export async function addTransactionToBill(billId, transactionId) {
 }
 
 export async function removeTransactionFromBill(billId, transactionId) {
+  // 1. Remove the bill ↔ transaction link
   await executeSql(
     `DELETE FROM bill_linked_transactions
      WHERE bill_id = ? AND transaction_id = ?`,
     [billId, transactionId],
   );
 
-  // Any links remaining?
+  // 2. Check whether any transactions are still linked
   const remaining = rowsToArray(
     await executeSql(
       `SELECT * FROM bill_linked_transactions
@@ -81,20 +82,41 @@ export async function removeTransactionFromBill(billId, transactionId) {
       [billId],
     ),
   );
-  // No linked transactions left -> reset bill status
+
+  // 3. If no transactions remain, the bill is no longer paid
   if (remaining.length === 0) {
+    const now = nowIso();
+
     await executeSql(
       `UPDATE bills
-     SET
-       status = ?,
-       is_paid = ?,
-       linked_transaction_id = NULL,
-       paid_at = NULL,
-       updated_at = ?
-     WHERE id = ?`,
-      [BILL_STATUS.PENDING, 0, nowIso(), billId],
+       SET
+         status = ?,
+         is_paid = ?,
+         linked_transaction_id = NULL,
+         paid_at = NULL,
+         updated_at = ?
+       WHERE id = ?`,
+      [BILL_STATUS.PENDING, 0, now, billId],
+    );
+
+    // 4. If this bill is linked to a credit-card statement,
+    //    reset that statement back to generated/unpaid.
+    await executeSql(
+      `UPDATE credit_card_statements
+       SET status = ?
+       WHERE bill_id = ?`,
+      ["generated", billId],
+    );
+
+    console.log("[removeTransactionFromBill] Bill reset to pending:", billId);
+
+    console.log(
+      "[removeTransactionFromBill] Credit card statement reset to generated:",
+      billId,
     );
   }
+
+  emitBillsChanged();
 }
 
 export async function getBillLinkedTransactions(billId) {
@@ -1421,6 +1443,33 @@ export async function markBillPaid(
     [BILL_STATUS.PAID, 1, paidAt, txId, paidAt, billId],
   );
 
+  // DEBUG: verify the actual DB value immediately after UPDATE
+  const paidBillCheck = await executeSql(
+    `SELECT id, status, is_paid, paid_at, linked_transaction_id
+   FROM bills
+   WHERE id = ?`,
+    [billId],
+  );
+
+  console.log(
+    "[markBillPaid] BILL AFTER UPDATE:",
+    paidBillCheck.rows.length ? paidBillCheck.rows.item(0) : "BILL NOT FOUND",
+  );
+
+  const statementCheck = await executeSql(
+    `SELECT id, card_id, bill_id, statement_date, status
+   FROM credit_card_statements
+   WHERE bill_id = ?`,
+    [billId],
+  );
+
+  console.log(
+    "[markBillPaid] statement linked to bill:",
+    statementCheck.rows.length
+      ? statementCheck.rows.item(0)
+      : "NO STATEMENT FOUND",
+  );
+
   // Record in junction table (idempotent)
   if (txId) await addTransactionToBill(billId, txId);
 
@@ -1429,6 +1478,21 @@ export async function markBillPaid(
   const parentId = bill.parent_bill_id || (bill.is_recurring ? bill.id : null);
   if (parentId) {
     await _ensureNextOccurrence(parentId);
+
+    // DEBUG: verify again after next-occurrence processing
+    const finalBillCheck = await executeSql(
+      `SELECT id, status, is_paid, paid_at, linked_transaction_id
+   FROM bills
+   WHERE id = ?`,
+      [billId],
+    );
+
+    console.log(
+      "[markBillPaid] BILL AFTER _ensureNextOccurrence:",
+      finalBillCheck.rows.length
+        ? finalBillCheck.rows.item(0)
+        : "BILL NOT FOUND",
+    );
   }
 
   emitBillsChanged();
@@ -1455,12 +1519,15 @@ export async function markBillPaid(
 async function _ensureNextOccurrence(templateId) {
   await ensureRecurringOccurrenceColumn();
   await ensureRecurringOccurrenceUniqueIndex();
+
   const template = await getBillById(templateId);
+
   if (!template || !template.is_recurring || !template.recurrence_type) {
     return;
   }
 
   await backfillMissingOccurrenceKeys(template);
+
   const type = String(template.recurrence_type || "").toLowerCase();
 
   const effectiveDate =
@@ -1477,30 +1544,36 @@ async function _ensureNextOccurrence(templateId) {
   } else {
     future.setFullYear(future.getFullYear() + 1);
   }
+
   let upTo = formatDate(future);
+
   if (
     template.recurrence_end_date &&
     template.recurrence_end_date.slice(0, 10) < upTo
   ) {
     upTo = template.recurrence_end_date.slice(0, 10);
   }
+
   const allDates = generateOccurrenceDates(template, upTo);
+
   if (!allDates || !allDates.length) {
     return;
   }
+
+  // Get existing child occurrences.
+  // Use SELECT * because the app's SQL parser does not support
+  // the previous multi-column SELECT format.
   const existingRes = await executeSql(
-    `SELECT
-       id,
-       due_date,
-       recurrence_occurrence_key,
-       deleted_at
+    `SELECT *
      FROM bills
      WHERE parent_bill_id = ?`,
     [templateId],
   );
 
   const existingRows = rowsToArray(existingRes);
+
   const existingKeys = new Set();
+
   for (const row of existingRows) {
     if (row.recurrence_occurrence_key) {
       existingKeys.add(String(row.recurrence_occurrence_key));
@@ -1510,6 +1583,7 @@ async function _ensureNextOccurrence(templateId) {
         row.due_date,
         template.recurrence_interval,
       );
+
       if (key) {
         existingKeys.add(String(key));
       }
@@ -1517,12 +1591,14 @@ async function _ensureNextOccurrence(templateId) {
   }
 
   const sortedDates = [...allDates].map((d) => String(d).slice(0, 10)).sort();
+
   for (const occurrenceDate of sortedDates) {
     if (!occurrenceDate) continue;
 
     if (occurrenceDate < effectiveDateOnly) {
       continue;
     }
+
     const occurrenceKey = getRecurrenceOccurrenceKey(
       template.recurrence_type,
       occurrenceDate,
@@ -1530,9 +1606,11 @@ async function _ensureNextOccurrence(templateId) {
     );
 
     if (!occurrenceKey) continue;
+
     if (existingKeys.has(String(occurrenceKey))) {
       continue;
     }
+
     const newId = await _insertBill({
       name: template.name,
       amount: template.amount,
@@ -1551,8 +1629,10 @@ async function _ensureNextOccurrence(templateId) {
       recurrence_occurrence_key: occurrenceKey,
       recurrence_effective_date: effectiveDateOnly,
     });
+
     return newId;
   }
+
   return null;
 }
 
@@ -1578,12 +1658,32 @@ async function ensureRecurringOccurrenceUniqueIndex() {
 }
 
 // ─── linkAdditionalTransaction ────────────────────────────────────────────────
-
 export async function linkAdditionalTransaction(billId, transactionId) {
-  // Create the bill ↔ transaction link
+  const now = nowIso();
+
+  const billDebug = await executeSql(`SELECT * FROM bills WHERE id = ?`, [
+    billId,
+  ]);
+
+  console.log(
+    "[linkAdditionalTransaction] BILL:",
+    billDebug.rows.length ? billDebug.rows.item(0) : "BILL NOT FOUND",
+  );
+
+  const statementDebug = await executeSql(
+    `SELECT * FROM credit_card_statements`,
+    [],
+  );
+
+  for (let i = 0; i < statementDebug.rows.length; i++) {
+    console.log(
+      "[linkAdditionalTransaction] STATEMENT:",
+      statementDebug.rows.item(i),
+    );
+  }
+
   await addTransactionToBill(billId, transactionId);
 
-  // Always update the bill
   await executeSql(
     `UPDATE bills
      SET
@@ -1593,8 +1693,26 @@ export async function linkAdditionalTransaction(billId, transactionId) {
        linked_transaction_id = ?,
        updated_at = ?
      WHERE id = ?`,
-    [BILL_STATUS.PAID, nowIso(), transactionId, nowIso(), billId],
+    [BILL_STATUS.PAID, now, transactionId, now, billId],
   );
+
+  const relatedBills = await executeSql(`SELECT * FROM bills`, []);
+
+  for (let i = 0; i < relatedBills.rows.length; i++) {
+    const b = relatedBills.rows.item(i);
+
+    if (
+      Number(b.id) === 103 ||
+      Number(b.id) === 172 ||
+      Number(b.parent_bill_id) === 103 ||
+      Number(b.parent_bill_id) === 172
+    ) {
+      console.log("[DEBUG] BILL ID:", b.id);
+      console.log("[DEBUG] BILL PARENT:", b.parent_bill_id);
+      console.log("[DEBUG] BILL STATUS:", b.status);
+      console.log("[DEBUG] BILL DUE:", b.due_date);
+    }
+  }
 
   emitBillsChanged();
 }
@@ -1694,18 +1812,41 @@ export async function getTransactionsForBillLink(bill) {
 }
 
 // ─── skip / update / delete ───────────────────────────────────────────────────
-
 export async function skipBill(billId) {
   const bill = await getBillById(billId);
-  if (!bill) throw new Error("Bill not found");
-  await executeSql(`UPDATE bills SET status=?, updated_at=? WHERE id=?`, [
-    BILL_STATUS.SKIPPED,
-    nowIso(),
-    billId,
-  ]);
-  // Ensure next occurrence exists so series continues
-  const parentId = bill.parent_bill_id || (bill.is_recurring ? bill.id : null);
-  if (parentId) await _ensureNextOccurrence(parentId);
+
+  if (!bill) {
+    throw new Error("Bill not found");
+  }
+
+  await executeSql(
+    `UPDATE bills
+     SET status = ?, updated_at = ?
+     WHERE id = ?`,
+    [BILL_STATUS.SKIPPED, nowIso(), billId],
+  );
+
+  /*
+   * Credit Card Statement bills are generated by the
+   * Credit Card Scheduler.
+   *
+   * Do NOT create the next occurrence here, otherwise
+   * skipping a statement can create an extra bill with
+   * the template amount instead of the future statement's
+   * actual transaction data.
+   */
+  const isCreditCardStatement =
+    typeof bill.notes === "string" && bill.notes.startsWith("Statement ");
+
+  if (!isCreditCardStatement) {
+    const parentId =
+      bill.parent_bill_id || (bill.is_recurring ? bill.id : null);
+
+    if (parentId) {
+      await _ensureNextOccurrence(parentId);
+    }
+  }
+
   emitBillsChanged();
 }
 
