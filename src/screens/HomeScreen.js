@@ -352,11 +352,17 @@ export default function HomeScreen({ navigation }) {
             if (!isSkipped) {
               summary.totalThisMonth += amount;
             }
-            /* Paid  */
+            /* Paid */
             if (isPaid) {
               summary.totalPaid += amount;
               return summary;
             }
+
+            /* Skipped bills should NOT be considered overdue */
+            if (isSkipped) {
+              return summary;
+            }
+
             /* Overdue */
             const dueDateOnly = new Date(
               dueDate.getFullYear(),
@@ -365,8 +371,8 @@ export default function HomeScreen({ navigation }) {
               0,
               0,
               0,
-              0,
             );
+
             if (dueDateOnly < todayStart) {
               summary.overdueAmount += amount;
             }
