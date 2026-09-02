@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Animated,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -53,22 +54,31 @@ function BudgetDonut({
   remaining = 0,
   daysLeft = 0,
   balanceVisible = true,
+  size = 220,
 }) {
   const percentRaw = limit > 0 ? spent / limit : 0;
   const percent = Math.max(0, percentRaw);
+
   const pct = limit > 0 ? Math.min(100, Math.round(percent * 100)) : 0;
+
   const progressPercentage = limit > 0 ? (spent / limit) * 100 : 0;
+
   const color = getBudgetProgressColor(progressPercentage);
+
   const innerColor = remaining < 0 ? "#D92D20" : color;
-  const size = 180;
-  const strokeWidth = 18;
+
+  const strokeWidth = Math.max(16, Math.round(size * 0.09));
+
   const radius = (size - strokeWidth) / 2;
+
   const circumference = 2 * Math.PI * radius;
+
   const safePercent = Number.isNaN(percent) ? 0 : percent;
-  // ANIMATED PROGRESS
+
   const anim = React.useRef(
     new Animated.Value(Math.min(1, safePercent)),
   ).current;
+
   React.useEffect(() => {
     Animated.timing(anim, {
       toValue: Math.min(1, percent),
@@ -76,22 +86,21 @@ function BudgetDonut({
       useNativeDriver: false,
     }).start();
   }, [percent]);
+
   const dashAnim = anim.interpolate({
     inputRange: [0, 1],
     outputRange: [circumference, 0],
   });
 
-  // FORMAT CURRENCY
   function fmt(value) {
     return `₹${Number(value || 0).toLocaleString("en-IN", {
       maximumFractionDigits: 2,
     })}`;
   }
 
-  // WEB
-  // react-native-web + AnimatedCircle can pass unsupported SVG props such as `collapsable`.
   const webDashOffset =
     circumference - circumference * Math.min(1, safePercent);
+
   return (
     <View
       style={{
@@ -107,10 +116,11 @@ function BudgetDonut({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="#eee"
+          stroke="#E8F0EB"
           strokeWidth={strokeWidth}
           fill="none"
         />
+
         {/* PROGRESS RING */}
         {Platform.OS === "web" ? (
           <Circle
@@ -149,48 +159,70 @@ function BudgetDonut({
       <View
         style={{
           position: "absolute",
-          width: size * 0.7,
+          width: size * 0.66,
           alignItems: "center",
           justifyContent: "center",
-          padding: 6,
         }}
       >
         <Text
           style={{
-            fontWeight: "700",
+            fontSize: Math.max(11, size * 0.065),
+            fontWeight: "800",
+            color: "#667085",
+            marginBottom: 4,
+          }}
+        >
+          {remaining >= 0 ? "SAFE TO SPEND" : "OVER BUDGET"}
+        </Text>
+
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+          style={{
+            fontSize: Math.max(17, size * 0.105),
+            fontWeight: "900",
             color: innerColor,
             textAlign: "center",
           }}
         >
-          {remaining >= 0
-            ? `Safe to Spend: ${balanceVisible ? fmt(remaining) : "••••••"}`
-            : `Overspent: ${
-                balanceVisible ? fmt(Math.abs(remaining)) : "••••••"
-              }`}
+          {balanceVisible
+            ? fmt(remaining >= 0 ? remaining : Math.abs(remaining))
+            : "••••••"}
         </Text>
 
         <Text
           style={{
-            fontSize: 13,
-            color: "#667085",
-            marginTop: 6,
-            textAlign: "center",
+            fontSize: Math.max(10, size * 0.055),
+            fontWeight: "700",
+            color: "#718078",
+            marginTop: 5,
           }}
         >
-          {daysLeft} {daysLeft === 1 ? "day" : "days"} left
+          {remaining >= 0 ? "remaining" : "overspent"}
         </Text>
 
-        {limit > 0 ? (
-          <Text
+        {limit > 0 && (
+          <View
             style={{
-              fontSize: 11,
-              color: "#999",
-              marginTop: 6,
+              marginTop: 8,
+              paddingHorizontal: 9,
+              paddingVertical: 4,
+              borderRadius: 8,
+              backgroundColor: color + "15",
             }}
           >
-            Used: {pct}%
-          </Text>
-        ) : null}
+            <Text
+              style={{
+                fontSize: Math.max(9, size * 0.05),
+                fontWeight: "900",
+                color,
+              }}
+            >
+              {pct}% INR
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -243,8 +275,17 @@ function CategoryDonut({ data = [], categoriesMap = {} }) {
   );
 }
 
+function getCurrentMonthYear() {
+  return new Date().toLocaleDateString("en-IN", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export default function HomeScreen({ navigation }) {
   const { balanceVisible } = useBalanceVisibility();
+  const { width: screenWidth } = useWindowDimensions();
+  const budgetDonutSize = Math.min(240, Math.max(190, screenWidth - 80));
   const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
   const [topCategories, setTopCategories] = useState([]);
   const [sources, setSources] = useState([]);
@@ -738,34 +779,423 @@ export default function HomeScreen({ navigation }) {
             <>
               {(() => {
                 const sel =
-                  budgets.find((x) => x?.budget?.id === selectedBudgetId) ||
-                  budgets[0];
-                if (!sel || !sel.budget) return null;
+                  budgets.find(
+                    (x) => String(x?.budget?.id) === String(selectedBudgetId),
+                  ) || budgets[0];
+
+                if (!sel || !sel.budget) {
+                  return null;
+                }
+
                 const limit = Number(sel.budget?.monthly_limit ?? 0);
+
                 const spent = Number(sel?.spent ?? 0);
+
                 const remaining = Number(sel?.remaining ?? 0);
+
                 const daysLeft = daysRemainingInMonth();
+
+                const percentage =
+                  limit > 0 ? Math.round((spent / limit) * 100) : 0;
+
+                const statusColor = getBudgetProgressColor(percentage);
+
+                const isOverBudget = remaining < 0;
+
+                const dailyAllowance =
+                  daysLeft > 0 && remaining > 0 ? remaining / daysLeft : 0;
+
+                const budgetName =
+                  sel.budget?.name || sel.budget?.title || "Monthly Budget";
+
+                const statusLabel = isOverBudget
+                  ? "Over budget"
+                  : percentage >= 70
+                    ? "Getting close"
+                    : "On track";
+
                 return (
                   <View
                     style={{
-                      alignItems: "center",
-                      justifyContent: "center",
-                      paddingVertical: 12,
+                      width: "100%",
+                      paddingVertical: 8,
                     }}
                   >
+                    {/* HEADER */}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: 4,
+                      }}
+                    >
+                      <View
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          paddingRight: 10,
+                        }}
+                      >
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <Text
+                            style={{
+                              fontWeight: "900",
+                              fontSize: 18,
+                              color: "#2F7355",
+                            }}
+                          >
+                            Budgets
+                          </Text>
+
+                          <Text
+                            style={{
+                              marginTop: 2,
+                              fontSize: 11,
+                              fontWeight: "600",
+                              color: "#718078",
+                            }}
+                          >
+                            {getCurrentMonthYear()} • Monthly spending
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 10,
+                          backgroundColor: statusColor + "15",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 10,
+                            fontWeight: "900",
+                            color: statusColor,
+                          }}
+                        >
+                          {statusLabel}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* DONUT */}
+                    <View
+                      style={{
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginTop: 4,
+                        marginBottom: 8,
+                      }}
+                    >
+                      <TouchableOpacity
+                        activeOpacity={0.9}
+                        onPress={() =>
+                          navigation.navigate("Budgets", {
+                            editId: sel.budget.id,
+                          })
+                        }
+                      >
+                        <BudgetDonut
+                          limit={limit}
+                          spent={spent}
+                          remaining={remaining}
+                          daysLeft={daysLeft}
+                          balanceVisible={balanceVisible}
+                          size={budgetDonutSize}
+                        />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* SUMMARY */}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        width: "100%",
+                        gap: 8,
+                      }}
+                    >
+                      {/* BUDGET */}
+                      <View
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          paddingVertical: 11,
+                          paddingHorizontal: 8,
+                          borderRadius: 14,
+                          backgroundColor: "#F8FCFA",
+                          borderWidth: 1,
+                          borderColor: "#E5F1EB",
+                          alignItems: "center",
+                        }}
+                      >
+                        <MaterialCommunityIcons
+                          name="wallet-outline"
+                          size={17}
+                          color="#3F8F6B"
+                        />
+
+                        <Text
+                          style={{
+                            fontSize: 9,
+                            fontWeight: "800",
+                            color: "#718078",
+                            marginTop: 4,
+                          }}
+                        >
+                          BUDGET
+                        </Text>
+
+                        <Text
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.7}
+                          style={{
+                            fontSize: 13,
+                            fontWeight: "900",
+                            color: "#25352D",
+                            marginTop: 2,
+                          }}
+                        >
+                          {balanceVisible
+                            ? `₹${limit.toLocaleString("en-IN")}`
+                            : "••••••"}
+                        </Text>
+                      </View>
+
+                      {/* SPENT */}
+                      <View
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          paddingVertical: 11,
+                          paddingHorizontal: 8,
+                          borderRadius: 14,
+                          backgroundColor: "#F8FCFA",
+                          borderWidth: 1,
+                          borderColor: "#E5F1EB",
+                          alignItems: "center",
+                        }}
+                      >
+                        <MaterialCommunityIcons
+                          name="arrow-up-circle-outline"
+                          size={17}
+                          color="#E35D6A"
+                        />
+
+                        <Text
+                          style={{
+                            fontSize: 9,
+                            fontWeight: "800",
+                            color: "#718078",
+                            marginTop: 4,
+                          }}
+                        >
+                          SPENT
+                        </Text>
+
+                        <Text
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.7}
+                          style={{
+                            fontSize: 13,
+                            fontWeight: "900",
+                            color: "#E35D6A",
+                            marginTop: 2,
+                          }}
+                        >
+                          {balanceVisible
+                            ? `₹${spent.toLocaleString("en-IN")}`
+                            : "••••••"}
+                        </Text>
+                      </View>
+
+                      {/* REMAINING */}
+                      <View
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          paddingVertical: 11,
+                          paddingHorizontal: 8,
+                          borderRadius: 14,
+                          backgroundColor: isOverBudget ? "#FFF5F5" : "#F8FCFA",
+                          borderWidth: 1,
+                          borderColor: isOverBudget ? "#FECACA" : "#E5F1EB",
+                          alignItems: "center",
+                        }}
+                      >
+                        <MaterialCommunityIcons
+                          name={
+                            isOverBudget
+                              ? "alert-circle-outline"
+                              : "shield-check-outline"
+                          }
+                          size={17}
+                          color={isOverBudget ? "#D92D20" : "#3F8F6B"}
+                        />
+
+                        <Text
+                          style={{
+                            fontSize: 9,
+                            fontWeight: "800",
+                            color: "#718078",
+                            marginTop: 4,
+                          }}
+                        >
+                          {isOverBudget ? "OVER" : "LEFT"}
+                        </Text>
+
+                        <Text
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.7}
+                          style={{
+                            fontSize: 13,
+                            fontWeight: "900",
+                            color: isOverBudget ? "#D92D20" : "#3F8F6B",
+                            marginTop: 2,
+                          }}
+                        >
+                          {balanceVisible
+                            ? `₹${Math.abs(remaining).toLocaleString("en-IN")}`
+                            : "••••••"}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* DAILY ALLOWANCE */}
+                    {!isOverBudget && daysLeft > 0 && (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          marginTop: 10,
+                          paddingHorizontal: 12,
+                          paddingVertical: 10,
+                          borderRadius: 13,
+                          backgroundColor: "#EEF8F2",
+                        }}
+                      >
+                        <MaterialCommunityIcons
+                          name="calendar-clock-outline"
+                          size={18}
+                          color="#3F8F6B"
+                        />
+
+                        <View
+                          style={{
+                            flex: 1,
+                            marginLeft: 8,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 10,
+                              fontWeight: "700",
+                              color: "#718078",
+                            }}
+                          >
+                            Suggested daily spending
+                          </Text>
+
+                          <Text
+                            style={{
+                              fontSize: 13,
+                              fontWeight: "900",
+                              color: "#2F7355",
+                              marginTop: 1,
+                            }}
+                          >
+                            {balanceVisible
+                              ? `₹${dailyAllowance.toLocaleString("en-IN", {
+                                  maximumFractionDigits: 0,
+                                })} / day`
+                              : "•••••• / day"}
+                          </Text>
+                        </View>
+
+                        <Text
+                          style={{
+                            fontSize: 10,
+                            fontWeight: "800",
+                            color: "#718078",
+                          }}
+                        >
+                          {daysLeft} {daysLeft === 1 ? "day" : "days"} left
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* OVER BUDGET MESSAGE */}
+                    {isOverBudget && (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          marginTop: 10,
+                          paddingHorizontal: 12,
+                          paddingVertical: 10,
+                          borderRadius: 13,
+                          backgroundColor: "#FFF1F1",
+                        }}
+                      >
+                        <MaterialCommunityIcons
+                          name="alert-outline"
+                          size={18}
+                          color="#D92D20"
+                        />
+
+                        <Text
+                          style={{
+                            flex: 1,
+                            marginLeft: 8,
+                            fontSize: 11,
+                            fontWeight: "700",
+                            color: "#B42318",
+                          }}
+                        >
+                          You have exceeded this month's budget by{" "}
+                          {balanceVisible
+                            ? `₹${Math.abs(remaining).toLocaleString("en-IN")}`
+                            : "••••••"}
+                          .
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* TAP HINT */}
                     <TouchableOpacity
+                      activeOpacity={0.7}
                       onPress={() =>
                         navigation.navigate("Budgets", {
                           editId: sel.budget.id,
                         })
                       }
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginTop: 12,
+                        paddingVertical: 3,
+                      }}
                     >
-                      <BudgetDonut
-                        limit={limit}
-                        spent={spent}
-                        remaining={remaining}
-                        daysLeft={daysLeft}
-                        balanceVisible={balanceVisible}
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: "800",
+                          color: "#3F8F6B",
+                        }}
+                      >
+                        Tap to manage budget
+                      </Text>
+
+                      <MaterialCommunityIcons
+                        name="chevron-right"
+                        size={15}
+                        color="#3F8F6B"
                       />
                     </TouchableOpacity>
                   </View>
@@ -773,6 +1203,7 @@ export default function HomeScreen({ navigation }) {
               })()}
             </>
           ) : (
+            /* KEEP YOUR EXISTING NO-BUDGET UI */
             <View
               style={{
                 flex: 1,
@@ -789,6 +1220,7 @@ export default function HomeScreen({ navigation }) {
                   remaining={0}
                   daysLeft={daysRemainingInMonth()}
                   balanceVisible={balanceVisible}
+                  size={budgetDonutSize}
                 />
               </TouchableOpacity>
 
@@ -2325,7 +2757,7 @@ export default function HomeScreen({ navigation }) {
                         <MaterialCommunityIcons
                           name={
                             categoriesMap[b.category_id]?.icon ||
-                            "receipt-text-outline"
+                            "credit-card-outline"
                           }
                           size={19}
                           color="#FFFFFF"
