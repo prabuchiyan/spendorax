@@ -1,73 +1,125 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import {
-  View, TouchableOpacity, ScrollView,
-  FlatList, Modal, Text,
-  Platform, BackHandler, ActivityIndicator
-} from 'react-native';
-import { createTransaction, createTransfer, getTransactions, getTransactionNoteSuggestions, updateTransaction, deleteTransaction } from '../services/transactions';
-import { getLoans, linkTransactionToLoan, unlinkTransactionFromLoan } from '../services/loans';
-import { getCategories } from '../services/categories';
-import { getSources } from '../services/sources';
-import { TextInput as PaperTextInput, Button as PaperButton, Chip, Snackbar } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import CategoryCreateModal from './CategoryCreateModal';
-import SourceCreateModal from './SourceCreateModal';
-import ConfirmDialog from './ConfirmDialog';
-import { Feather } from '@expo/vector-icons';
-import LinkedBillCard from './LinkedBillCard';
-import { usePageLoader } from '../context/PageLoaderContext';
-import { onCardTransactionChanged } from '../services/creditCardScheduler';
+  View,
+  TouchableOpacity,
+  ScrollView,
+  FlatList,
+  Modal,
+  Text,
+  Platform,
+  BackHandler,
+  ActivityIndicator,
+} from "react-native";
+import {
+  createTransaction,
+  createTransfer,
+  getTransactions,
+  getTransactionNoteSuggestions,
+  updateTransaction,
+  deleteTransaction,
+} from "../services/transactions";
+import {
+  getLoans,
+  linkTransactionToLoan,
+  unlinkTransactionFromLoan,
+} from "../services/loans";
+import { getCategories } from "../services/categories";
+import { getSources } from "../services/sources";
+import {
+  TextInput as PaperTextInput,
+  Button as PaperButton,
+  Chip,
+  Snackbar,
+} from "react-native-paper";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import CategoryCreateModal from "./CategoryCreateModal";
+import SourceCreateModal from "./SourceCreateModal";
+import ConfirmDialog from "./ConfirmDialog";
+import { Feather } from "@expo/vector-icons";
+import LinkedBillCard from "./LinkedBillCard";
+import { usePageLoader } from "../context/PageLoaderContext";
+import { onCardTransactionChanged } from "../services/creditCardScheduler";
 
-export default function TransactionForm({ onCreated, onCancel, transaction, isEdit, onPressBill, sourceId: initialSourceId, categoryId: initialCategoryId }) {
+export default function TransactionForm({
+  onCreated,
+  onCancel,
+  transaction,
+  isEdit,
+  onPressBill,
+  sourceId: initialSourceId,
+  categoryId: initialCategoryId,
+}) {
   const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
-  const [amount, setAmount] = useState(isEdit && transaction ? String(transaction.amount) : '');
+  const [amount, setAmount] = useState(
+    isEdit && transaction ? String(transaction.amount) : "",
+  );
   const [amountError, setAmountError] = useState(false);
-  const [type, setType] = useState(isEdit && transaction ? transaction.type : 'expense');
+  const [type, setType] = useState(
+    isEdit && transaction ? transaction.type : "expense",
+  );
   const [categories, setCategories] = useState([]);
   const [sources, setSources] = useState([]);
   const [categoryUsage, setCategoryUsage] = useState({});
   const [sourceUsage, setSourceUsage] = useState({});
-  const [categoryId, setCategoryId] = useState(isEdit && transaction ? transaction.category_id : initialCategoryId ?? null);
-  const [sourceId, setSourceId] = useState(isEdit && transaction ? transaction.source_id : initialSourceId ?? null);
-  const [date, setDate] = useState(isEdit && transaction ? transaction.date : new Date().toISOString());
-  const [notes, setNotes] = useState(isEdit && transaction ? transaction.notes : '');
-  const [transferGroupId, setTransferGroupId] = useState(isEdit && transaction ? transaction.transfer_group_id : '');
+  const [categoryId, setCategoryId] = useState(
+    isEdit && transaction
+      ? transaction.category_id
+      : (initialCategoryId ?? null),
+  );
+  const [sourceId, setSourceId] = useState(
+    isEdit && transaction ? transaction.source_id : (initialSourceId ?? null),
+  );
+  const [date, setDate] = useState(
+    isEdit && transaction ? transaction.date : new Date().toISOString(),
+  );
+  const [notes, setNotes] = useState(
+    isEdit && transaction ? transaction.notes : "",
+  );
+  const [transferGroupId, setTransferGroupId] = useState(
+    isEdit && transaction ? transaction.transfer_group_id : "",
+  );
   const [showDateTimePicker, setShowDateTimePicker] = useState(false);
   const [showCategoryCreateModal, setShowCategoryCreateModal] = useState(false);
-  const [pickerMode, setPickerMode] = useState('date');
+  const [pickerMode, setPickerMode] = useState("date");
   const [notesError, setNotesError] = useState(false);
   const [toAccount, setToAccount] = useState(null);
-  const [selectingFor, setSelectingFor] = useState('from');
+  const [selectingFor, setSelectingFor] = useState("from");
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [noteSuggestions, setNoteSuggestions] = useState([]);
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [showCategoryGrid, setShowCategoryGrid] = useState(!((isEdit && transaction?.category_id) || (!isEdit && initialCategoryId)));
+  const [showCategoryGrid, setShowCategoryGrid] = useState(
+    !((isEdit && transaction?.category_id) || (!isEdit && initialCategoryId)),
+  );
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [categorySearch, setCategorySearch] = useState('');
+  const [categorySearch, setCategorySearch] = useState("");
   const categorySearchRef = useRef(null);
-  const [showSourceGrid, setShowSourceGrid] = useState(!((isEdit && transaction?.source_id) || (!isEdit && initialSourceId)));
+  const [showSourceGrid, setShowSourceGrid] = useState(
+    !((isEdit && transaction?.source_id) || (!isEdit && initialSourceId)),
+  );
   const [showToAccountGrid, setShowToAccountGrid] = useState(true);
   const [showSourceModal, setShowSourceModal] = useState(false);
-  const [sourceSearch, setSourceSearch] = useState('');
+  const [sourceSearch, setSourceSearch] = useState("");
   const sourceSearchRef = useRef(null);
   const [showSourceCreateModal, setShowSourceCreateModal] = useState(false);
   const [loansList, setLoansList] = useState([]);
   const [showLoanModal, setShowLoanModal] = useState(false);
   const [selectedLoanId, setSelectedLoanId] = useState(
-    isEdit && transaction ? transaction.loan_id : null
+    isEdit && transaction ? transaction.loan_id : null,
   );
   const [linking, setLinking] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
-  const [snackbarMsg, setSnackbarMsg] = useState('');
+  const [snackbarMsg, setSnackbarMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [loanSearch, setLoanSearch] = useState('');
+  const [loanSearch, setLoanSearch] = useState("");
   const [isDirty, setIsDirty] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [isCounted, setIsCounted] = useState(
     isEdit && transaction
-      ? (transaction.is_counted !== undefined ? Boolean(transaction.is_counted) : true)
-      : true
+      ? transaction.is_counted !== undefined
+        ? Boolean(transaction.is_counted)
+        : true
+      : true,
   );
 
   function markDirty() {
@@ -76,7 +128,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
   useEffect(() => {
     let cancelled = false;
-
     async function loadInitialData() {
       try {
         /* Categories and sources are required for the initial form,
@@ -89,68 +140,76 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         setCategories(cats || []);
         setSources(src || []);
         /* Everything below is secondary data.
-         * It is intentionally loaded after the form's primary data has been rendered 
+         * It is intentionally loaded after the form's primary data has been rendered
          * so opening Add Transaction does not wait for transaction history, notes or loans. */
 
         // CATEGORY / SOURCE USAGE
-        getTransactions(1000000, 'Yes')
-          .then(transactions => {
+        getTransactions(1000000, "Yes")
+          .then((transactions) => {
             if (cancelled) return;
             const categoryCount = {};
             const sourceCount = {};
-            (transactions || []).forEach(txn => {
+            (transactions || []).forEach((txn) => {
               // Category usage
-              if (txn.category_id && txn.type !== 'transfer') {
-                const categoryKey = String(
-                  txn.category_id
-                );
-                categoryCount[categoryKey] = (categoryCount[categoryKey] || 0) + 1;
+              if (txn.category_id && txn.type !== "transfer") {
+                const categoryKey = String(txn.category_id);
+                categoryCount[categoryKey] =
+                  (categoryCount[categoryKey] || 0) + 1;
               }
               // Source usage
               if (txn.source_id) {
                 const sourceKey = String(txn.source_id);
-                sourceCount[sourceKey] =
-                  (sourceCount[sourceKey] || 0) + 1;
+                sourceCount[sourceKey] = (sourceCount[sourceKey] || 0) + 1;
               }
             });
             setCategoryUsage(categoryCount);
             setSourceUsage(sourceCount);
-          }).catch(usageError => {
-            console.warn('Unable to calculate category/source usage:', usageError);
+          })
+          .catch((usageError) => {
+            console.warn(
+              "Unable to calculate category/source usage:",
+              usageError,
+            );
             if (cancelled) return;
             setCategoryUsage({});
             setSourceUsage({});
           });
         //NOTE SUGGESTIONS
-        getTransactionNoteSuggestions().then(notes => {
-          if (cancelled) return;
-          setNoteSuggestions(notes || []);
-        }).catch(error => {
-          console.warn('Unable to load transaction note suggestions:', error);
-          if (cancelled) return;
-          setNoteSuggestions([]);
-        });
+        getTransactionNoteSuggestions()
+          .then((notes) => {
+            if (cancelled) return;
+            setNoteSuggestions(notes || []);
+          })
+          .catch((error) => {
+            console.warn("Unable to load transaction note suggestions:", error);
+            if (cancelled) return;
+            setNoteSuggestions([]);
+          });
         // LOANS
-        getLoans().then(lns => {
-          if (cancelled) return;
-          setLoansList(lns || []);
-        }).catch(error => {
-          console.warn('Unable to load loans:', error);
-          if (cancelled) return;
-          setLoansList([]);
-        });
+        getLoans()
+          .then((lns) => {
+            if (cancelled) return;
+            setLoansList(lns || []);
+          })
+          .catch((error) => {
+            console.warn("Unable to load loans:", error);
+            if (cancelled) return;
+            setLoansList([]);
+          });
       } catch (error) {
         if (cancelled) return;
-        console.warn('TransactionForm initial load failed:', error);
+        console.warn("TransactionForm initial load failed:", error);
       }
     }
     loadInitialData();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     if (categories.length === 0) return;
-    if (type === 'transfer') {
+    if (type === "transfer") {
       setCategoryId(null);
       return;
     }
@@ -158,7 +217,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
     // User can choose another category manually.
     if (isEdit) return;
     const exists = categories.some(
-      c => c.id === categoryId && c.type === type
+      (c) => c.id === categoryId && c.type === type,
     );
     if (!exists) {
       setCategoryId(null);
@@ -193,8 +252,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   }, [isEdit, transaction]);
 
   useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+    if (Platform.OS !== "android") return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       if (isDirty) {
         setShowUnsavedDialog(true);
         return true;
@@ -206,20 +265,19 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
   async function submit() {
     if (submitting) return; // guard against double taps while a save is in flight
-
     const val = parseFloat(amount);
     if (!amount || isNaN(val) || val === 0) {
       setAmountError(true);
       return;
     }
     // Category is mandatory only while creating a new transaction
-    if (!isEdit && !categoryId && type !== 'transfer') {
-      setSnackbarMsg('Please select a category.');
+    if (!isEdit && !categoryId && type !== "transfer") {
+      setSnackbarMsg("Please select a category.");
       setSnackbarVisible(true);
       return;
     }
     if (!sourceId) {
-      setSnackbarMsg('Please select a source.');
+      setSnackbarMsg("Please select a source.");
       setSnackbarVisible(true);
       return;
     }
@@ -230,23 +288,21 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
     setSubmitting(true);
     // Give React Native one frame to render the loading spinner
-    await new Promise(resolve => requestAnimationFrame(resolve));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
 
     let id;
     try {
-      if (type === 'transfer') {
+      if (type === "transfer") {
         if (!sourceId || !toAccount) {
-          setSnackbarMsg('Select both accounts');
+          setSnackbarMsg("Select both accounts");
           setSnackbarVisible(true);
           return;
         }
-
         if (sourceId === toAccount) {
-          setSnackbarMsg('Cannot transfer to same account');
+          setSnackbarMsg("Cannot transfer to same account");
           setSnackbarVisible(true);
           return;
         }
-
         try {
           await createTransfer({
             fromAccount: sourceId,
@@ -257,11 +313,11 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           });
         } catch (e) {
           console.log(e);
-          setSnackbarMsg(e?.message || 'Operation failed');
+          setSnackbarMsg(e?.message || "Operation failed");
           setSnackbarVisible(true);
           return;
         }
-        id = 'transfer';
+        id = "transfer";
       } else {
         const transactionData = {
           type,
@@ -274,10 +330,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         };
         try {
           if (isEdit && transaction && transaction.id) {
-            id = await updateTransaction(
-              transaction.id,
-              transactionData
-            );
+            id = await updateTransaction(transaction.id, transactionData);
 
             // Handle loan link changes
             if (selectedLoanId !== transaction.loan_id) {
@@ -285,32 +338,23 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                 if (transaction.loan_id && !selectedLoanId) {
                   await unlinkTransactionFromLoan(transaction.id);
                 } else if (selectedLoanId) {
-                  await linkTransactionToLoan(
-                    transaction.id,
-                    selectedLoanId,
-                    {
-                      paymentType: 'LINKED',
-                      linkedDate: date,
-                    }
-                  );
+                  await linkTransactionToLoan(transaction.id, selectedLoanId, {
+                    paymentType: "LINKED",
+                    linkedDate: date,
+                  });
                 }
               } catch (e) {
                 console.warn(e);
               }
-
             }
           } else {
             id = await createTransaction(transactionData);
             if (selectedLoanId) {
               try {
-                await linkTransactionToLoan(
-                  id,
-                  selectedLoanId,
-                  {
-                    paymentType: 'LINKED',
-                    linkedDate: date,
-                  }
-                );
+                await linkTransactionToLoan(id, selectedLoanId, {
+                  paymentType: "LINKED",
+                  linkedDate: date,
+                });
               } catch (e) {
                 console.warn(e);
               }
@@ -318,7 +362,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           }
         } catch (e) {
           console.log(e);
-          setSnackbarMsg(e?.message || 'Operation failed');
+          setSnackbarMsg(e?.message || "Operation failed");
           setSnackbarVisible(true);
           return;
         }
@@ -327,23 +371,24 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       // just before setIsDirty(false):
       // Notify credit card scheduler if this source belongs to a card
       try {
-        const affectedSourceId = type === 'transfer' ? sourceId : sourceId;
+        const affectedSourceId = type === "transfer" ? sourceId : sourceId;
         await onCardTransactionChanged(affectedSourceId);
         // For transfers, the destination may also be a credit card source
-        if (type === 'transfer' && toAccount) {
+        if (type === "transfer" && toAccount) {
           await onCardTransactionChanged(toAccount);
         }
       } catch (e) {
         // Non-critical — don't block save
-        console.warn('[TransactionForm] onCardTransactionChanged failed:', e);
+        console.warn("[TransactionForm] onCardTransactionChanged failed:", e);
       }
       setIsDirty(false);
       if (onCreated) onCreated(id);
-      if (!isEdit) { // Only reset form if it was a new transaction
-        setAmount('');
-        setNotes('');
+      if (!isEdit) {
+        // Only reset form if it was a new transaction
+        setAmount("");
+        setNotes("");
         setDate(new Date().toISOString());
-        setTransferGroupId('');
+        setTransferGroupId("");
       }
       setAmountError(false);
       setNotesError(false);
@@ -363,27 +408,25 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         await onCardTransactionChanged(transaction.source_id);
       }
     } catch (e) {
-      console.warn('[TransactionForm] onCardTransactionChanged on delete failed:', e);
+      console.warn(
+        "[TransactionForm] onCardTransactionChanged on delete failed:",
+        e,
+      );
     }
     setConfirmVisible(false);
     onCancel?.();
   };
 
   function formatDateTime(isoString) {
-    if (!isoString) return '';
-
+    if (!isoString) return "";
     const d = new Date(isoString);
-
     const day = d.getDate();
-    const month = d.toLocaleString('en-IN', { month: 'short' }); // Jun
+    const month = d.toLocaleString("en-IN", { month: "short" }); // Jun
     const year = d.getFullYear();
-
     let hours = d.getHours();
-    const minutes = d.getMinutes().toString().padStart(2, '0');
-
-    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const minutes = d.getMinutes().toString().padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
     hours = hours % 12 || 12;
-
     return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm}`;
   }
 
@@ -391,29 +434,22 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
     setNotes(text);
     setNotesError(false);
     markDirty();
-
     if (!text.trim()) {
       setFilteredSuggestions([]);
       setShowSuggestions(false);
       return;
     }
-
     const searchText = text.toLowerCase();
-
-    const matches = noteSuggestions.filter(item => {
-      const category = categories.find(c => c.id === item.category_id);
-
+    const matches = noteSuggestions.filter((item) => {
+      const category = categories.find((c) => c.id === item.category_id);
       return (
         item.notes.toLowerCase().includes(searchText) &&
-        (
-          // Match selected transaction type
-          category?.type === type ||
+        // Match selected transaction type
+        (category?.type === type ||
           // Include suggestions that don't have a category
-          !item.category_id
-        )
+          !item.category_id)
       );
     });
-
     setFilteredSuggestions(matches);
     setShowSuggestions(matches.length > 0);
   };
@@ -422,103 +458,69 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
   // Most-used categories come first.
   // Usage = number of transactions.
   const filteredCategories = categories
-    .filter(c => {
-      if (type === 'transfer') {
+    .filter((c) => {
+      if (type === "transfer") {
         return false;
       }
-
       return c.type === type;
     })
     .sort((a, b) => {
-      const usageA =
-        Number(categoryUsage[String(a.id)] || 0);
-
-      const usageB =
-        Number(categoryUsage[String(b.id)] || 0);
-
+      const usageA = Number(categoryUsage[String(a.id)] || 0);
+      const usageB = Number(categoryUsage[String(b.id)] || 0);
       // Most used first
       if (usageA !== usageB) {
         return usageB - usageA;
       }
-
       // If usage is same, keep original ID order
       return Number(a.id) - Number(b.id);
     });
 
-  const visibleCategories =
-    filteredCategories.slice(0, 8);
-
-  const searchedCategories =
-    filteredCategories.filter(c =>
-      c.name
-        .toLowerCase()
-        .includes(
-          categorySearch.toLowerCase()
-        )
-    );
+  const visibleCategories = filteredCategories.slice(0, 8);
+  const searchedCategories = filteredCategories.filter((c) =>
+    c.name.toLowerCase().includes(categorySearch.toLowerCase()),
+  );
 
   // SOURCES
   // Most-used sources come first.
   // Usage = number of transactions.
 
   const sortedSources = sources
-    .filter(
-      s =>
-        s.is_active === undefined ||
-        s.is_active
-    )
+    .filter((s) => s.is_active === undefined || s.is_active)
     .sort((a, b) => {
-      const usageA =
-        Number(sourceUsage[String(a.id)] || 0);
-
-      const usageB =
-        Number(sourceUsage[String(b.id)] || 0);
-
+      const usageA = Number(sourceUsage[String(a.id)] || 0);
+      const usageB = Number(sourceUsage[String(b.id)] || 0);
       // Most used first
       if (usageA !== usageB) {
         return usageB - usageA;
       }
-
       // If usage is same, keep original ID order
       return Number(a.id) - Number(b.id);
     });
 
-  const searchedSources =
-    sortedSources.filter(s =>
-      s.name
-        .toLowerCase()
-        .includes(
-          sourceSearch.toLowerCase()
-        )
-    );
+  const searchedSources = sortedSources.filter((s) =>
+    s.name.toLowerCase().includes(sourceSearch.toLowerCase()),
+  );
 
   // TO ACCOUNT SOURCES
   // Exclude the selected "From" source BEFORE taking
   // the first 4 sources.
   // This ensures To Account always shows 4 sources
   // whenever at least 4 valid alternatives exist.
-
-  const toAccountSources = searchedSources
-    .filter(s => s.id !== sourceId);
-
-  const visibleToAccountSources =
-    toAccountSources.slice(0, 4);
-
-  const visibleSources =
-    searchedSources.slice(0, 4);
-
-  const accent = type === 'expense' ? '#E46A6A' : type === 'income' ? '#36B37E' : '#000';
-
+  const toAccountSources = searchedSources.filter((s) => s.id !== sourceId);
+  const visibleToAccountSources = toAccountSources.slice(0, 4);
+  const visibleSources = searchedSources.slice(0, 4);
+  const accent = type === "expense" ? "#E46A6A" : type === "income" ? "#36B37E" : "#000";
   const activeLoans = loansList.filter(
-    loan => String(loan.status || '').toLowerCase() === 'active'
+    (loan) => String(loan.status || "").toLowerCase() === "active",
   );
 
   const filteredLoans = [...activeLoans]
     .sort((a, b) => b.id - a.id)
-    .filter(l =>
-      (l.loan_name || '').toLowerCase().includes(loanSearch.toLowerCase()) ||
-      (l.lender || '').toLowerCase().includes(loanSearch.toLowerCase()) ||
-      (l.loan_type || '').toLowerCase().includes(loanSearch.toLowerCase())
+    .filter(
+      (l) =>
+        (l.loan_name || "").toLowerCase().includes(loanSearch.toLowerCase()) ||
+        (l.lender || "").toLowerCase().includes(loanSearch.toLowerCase()) ||
+        (l.loan_type || "").toLowerCase().includes(loanSearch.toLowerCase()),
     );
 
   return (
@@ -528,26 +530,77 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       nestedScrollEnabled
       showsVerticalScrollIndicator={false}
     >
-
-      <View style={{ borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
-        <View style={{
-          backgroundColor:
-            type === 'expense' ? '#FFF2F2' :
-              type === 'income' ? '#F1FFF6' : '#F5F5F5',
-          padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
-        }}>
+      <View style={{ borderRadius: 12, overflow: "hidden", marginBottom: 12 }}>
+        <View
+          style={{
+            backgroundColor:
+              type === "expense"
+                ? "#FFF2F2"
+                : type === "income"
+                  ? "#F1FFF6"
+                  : "#F5F5F5",
+            padding: 14,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
           <View>
-            <Text style={{ color: accent, fontSize: 14, fontWeight: '700', textTransform: 'uppercase' }}>{type || 'expense'}</Text>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: accent }}>{amount ? (Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })) : '0.00'}</Text>
+            <Text
+              style={{
+                color: accent,
+                fontSize: 14,
+                fontWeight: "700",
+                textTransform: "uppercase",
+              }}
+            >
+              {type || "expense"}
+            </Text>
+            <Text style={{ fontSize: 22, fontWeight: "800", color: accent }}>
+              {amount
+                ? Number(amount).toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                  })
+                : "0.00"}
+            </Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ alignItems: 'center', marginRight: 12 }}>
-              <MaterialCommunityIcons name={type === 'transfer' ? 'currency-inr' : (categories.find(x => x.id === categoryId) || {}).icon || 'currency-inr'} size={26} color={(categories.find(x => x.id === categoryId) || {}).color || '#4B7CF3'} />
-              <Text style={{ fontSize: 12 }}>{type === 'transfer' ? 'Uncategorized' : (categories.find(x => x.id === categoryId) || {}).name || 'Uncategorized'}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <View style={{ alignItems: "center", marginRight: 12 }}>
+              <MaterialCommunityIcons
+                name={
+                  type === "transfer"
+                    ? "currency-inr"
+                    : (categories.find((x) => x.id === categoryId) || {})
+                        .icon || "currency-inr"
+                }
+                size={26}
+                color={
+                  (categories.find((x) => x.id === categoryId) || {}).color ||
+                  "#4B7CF3"
+                }
+              />
+              <Text style={{ fontSize: 12 }}>
+                {type === "transfer"
+                  ? "Uncategorized"
+                  : (categories.find((x) => x.id === categoryId) || {}).name ||
+                    "Uncategorized"}
+              </Text>
             </View>
-            <View style={{ alignItems: 'center' }}>
-              <MaterialCommunityIcons name={(sources.find(x => x.id === sourceId) || {}).icon || 'cash'} size={26} color={(sources.find(x => x.id === sourceId) || {}).color || '#4B7CF3'} />
-              <Text style={{ fontSize: 12 }}>{(sources.find(x => x.id === sourceId) || {}).name || 'Select Source'}</Text>
+            <View style={{ alignItems: "center" }}>
+              <MaterialCommunityIcons
+                name={
+                  (sources.find((x) => x.id === sourceId) || {}).icon || "cash"
+                }
+                size={26}
+                color={
+                  (sources.find((x) => x.id === sourceId) || {}).color ||
+                  "#4B7CF3"
+                }
+              />
+              <Text style={{ fontSize: 12 }}>
+                {(sources.find((x) => x.id === sourceId) || {}).name ||
+                  "Select Source"}
+              </Text>
             </View>
           </View>
         </View>
@@ -555,22 +608,25 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
       <View
         style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
           marginBottom: 12,
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
           <Chip
             mode="outlined"
-            selected={type === 'expense'}
+            selected={type === "expense"}
             showSelectedCheck={false}
-            onPress={() => { setType('expense'); markDirty(); }}
+            onPress={() => {
+              setType("expense");
+              markDirty();
+            }}
             disabled={submitting}
             style={{
               marginRight: 8,
-              borderColor: type === 'expense' ? accent : undefined,
+              borderColor: type === "expense" ? accent : undefined,
             }}
           >
             Expense
@@ -578,13 +634,16 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
           <Chip
             mode="outlined"
-            selected={type === 'income'}
+            selected={type === "income"}
             showSelectedCheck={false}
-            onPress={() => { setType('income'); markDirty(); }}
+            onPress={() => {
+              setType("income");
+              markDirty();
+            }}
             disabled={submitting}
             style={{
               marginRight: 8,
-              borderColor: type === 'income' ? accent : undefined,
+              borderColor: type === "income" ? accent : undefined,
             }}
           >
             Income
@@ -593,16 +652,19 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           {!isEdit && (
             <Chip
               mode="outlined"
-              selected={type === 'transfer'}
+              selected={type === "transfer"}
               showSelectedCheck={false}
-              onPress={() => { setType('transfer'); markDirty(); }}
+              onPress={() => {
+                setType("transfer");
+                markDirty();
+              }}
               disabled={submitting}
               style={{
-                borderColor: type === 'transfer' ? '#000' : undefined,
+                borderColor: type === "transfer" ? "#000" : undefined,
               }}
               textStyle={{
-                color: type === 'transfer' ? '#000' : undefined,
-                fontWeight: type === 'transfer' ? '700' : 'normal',
+                color: type === "transfer" ? "#000" : undefined,
+                fontWeight: type === "transfer" ? "700" : "normal",
               }}
             >
               Transfer
@@ -619,38 +681,52 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               height: 40,
               borderRadius: 20,
               borderWidth: 1,
-              borderColor: '#E46A6A',
-              justifyContent: 'center',
-              alignItems: 'center',
+              borderColor: "#E46A6A",
+              justifyContent: "center",
+              alignItems: "center",
               opacity: submitting ? 0.5 : 1,
             }}
           >
-            <Feather
-              name="trash-2"
-              size={20}
-              color="#E46A6A"
-            />
+            <Feather name="trash-2" size={20} color="#E46A6A" />
           </TouchableOpacity>
         )}
       </View>
 
-      <PaperTextInput label="Amount" value={amount} onChangeText={(t) => { setAmount(t); if (amountError) setAmountError(false); markDirty(); }} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} error={amountError} contentStyle={{ fontSize: 24 }} editable={!submitting} />
-      {amountError ? <Text style={{ color: '#E46A6A', marginBottom: 8 }}>Enter an amount greater than 0</Text> : null}
+      <PaperTextInput
+        label="Amount"
+        value={amount}
+        onChangeText={(t) => {
+          setAmount(t);
+          if (amountError) setAmountError(false);
+          markDirty();
+        }}
+        keyboardType="numeric"
+        mode="outlined"
+        style={{ marginBottom: 12 }}
+        error={amountError}
+        contentStyle={{ fontSize: 24 }}
+        editable={!submitting}
+      />
+      {amountError ? (
+        <Text style={{ color: "#E46A6A", marginBottom: 8 }}>
+          Enter an amount greater than 0
+        </Text>
+      ) : null}
 
       <View
         style={{
-          position: 'relative',
+          position: "relative",
           marginBottom: 12,
           zIndex: 999,
         }}
       >
         <PaperTextInput
           label={
-            type === 'expense'
-              ? 'Where did you spend?'
-              : type === 'income'
-                ? 'How did you get this money?'
-                : 'Where do you want to transfer?'
+            type === "expense"
+              ? "Where did you spend?"
+              : type === "income"
+                ? "How did you get this money?"
+                : "Where do you want to transfer?"
           }
           value={notes}
           onChangeText={handleNotesChange}
@@ -664,7 +740,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               <PaperTextInput.Icon
                 icon="close-circle-outline"
                 onPress={() => {
-                  setNotes('');
+                  setNotes("");
                   setFilteredSuggestions([]);
                   setShowSuggestions(false);
                   setNotesError(false);
@@ -678,14 +754,14 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         {showSuggestions && (
           <View
             style={{
-              position: 'absolute',
-              top: 62,          // Immediately below the TextInput
+              position: "absolute",
+              top: 62, // Immediately below the TextInput
               left: 0,
               right: 0,
-              backgroundColor: '#fff',
+              backgroundColor: "#fff",
               borderRadius: 12,
               borderWidth: 1,
-              borderColor: '#E6EAF2',
+              borderColor: "#E6EAF2",
               maxHeight: 220,
               zIndex: 9999,
               elevation: 10,
@@ -700,7 +776,9 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               persistentScrollbar
               style={{ maxHeight: 220 }}
               renderItem={({ item }) => {
-                const category = categories.find(c => c.id === item.category_id);
+                const category = categories.find(
+                  (c) => c.id === item.category_id,
+                );
                 return (
                   <TouchableOpacity
                     onPress={() => {
@@ -716,12 +794,12 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                       setNotesError(false);
                     }}
                     style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
+                      flexDirection: "row",
+                      alignItems: "center",
                       paddingHorizontal: 14,
                       paddingVertical: 12,
                       borderBottomWidth: 1,
-                      borderBottomColor: '#F2F2F2',
+                      borderBottomColor: "#F2F2F2",
                     }}
                   >
                     <View
@@ -729,14 +807,14 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                         width: 38,
                         height: 38,
                         borderRadius: 19,
-                        backgroundColor: category?.color || '#4B7CF3',
-                        justifyContent: 'center',
-                        alignItems: 'center',
+                        backgroundColor: category?.color || "#4B7CF3",
+                        justifyContent: "center",
+                        alignItems: "center",
                         marginRight: 12,
                       }}
                     >
                       <MaterialCommunityIcons
-                        name={category?.icon || 'tag'}
+                        name={category?.icon || "tag"}
                         size={18}
                         color="#fff"
                       />
@@ -746,8 +824,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                       <Text
                         style={{
                           fontSize: 15,
-                          fontWeight: '600',
-                          color: '#222',
+                          fontWeight: "600",
+                          color: "#222",
                         }}
                       >
                         {item.notes}
@@ -757,7 +835,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                         <Text
                           style={{
                             fontSize: 12,
-                            color: '#777',
+                            color: "#777",
                             marginTop: 2,
                           }}
                         >
@@ -778,7 +856,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           activeOpacity={0.8}
           disabled={submitting}
           onPress={() => {
-            setPickerMode('date');
+            setPickerMode("date");
             setShowDateTimePicker(true);
           }}
         >
@@ -793,7 +871,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               <PaperTextInput.Icon
                 icon="calendar"
                 onPress={() => {
-                  setPickerMode('date');
+                  setPickerMode("date");
                   setShowDateTimePicker(true);
                 }}
               />
@@ -802,24 +880,24 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         </TouchableOpacity>
       </View>
 
-      {type !== 'transfer' && (
+      {type !== "transfer" && (
         <View style={{ marginBottom: 12 }}>
           {!transferGroupId && (
             <>
-              <Text style={{ marginBottom: 6, color: '#666' }}>Category</Text>
+              <Text style={{ marginBottom: 6, color: "#666" }}>Category</Text>
 
               {showCategoryGrid ? (
                 <>
                   <View
                     style={{
-                      flexDirection: 'row',
-                      flexWrap: 'wrap',
-                      justifyContent: 'space-between',
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      justifyContent: "space-between",
                       rowGap: 8,
                       marginTop: 8,
                     }}
                   >
-                    {visibleCategories.map(c => (
+                    {visibleCategories.map((c) => (
                       <TouchableOpacity
                         key={c.id}
                         disabled={submitting}
@@ -827,24 +905,24 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                           setCategoryId(c.id);
                           setShowCategoryModal(false);
                           setShowCategoryGrid(false);
-                          setCategorySearch('');
+                          setCategorySearch("");
                           markDirty();
                         }}
                         style={{
-                          width: '23%',
+                          width: "23%",
                           height: 72,
                           borderRadius: 10,
                           marginBottom: 8,
-                          backgroundColor: c.color || '#4B7CF3',
-                          justifyContent: 'center',
-                          alignItems: 'center',
+                          backgroundColor: c.color || "#4B7CF3",
+                          justifyContent: "center",
+                          alignItems: "center",
                           paddingHorizontal: 4,
                           paddingVertical: 6,
-                          borderColor: '#111',
+                          borderColor: "#111",
                         }}
                       >
                         <MaterialCommunityIcons
-                          name={c.icon || 'tag'}
+                          name={c.icon || "tag"}
                           size={18}
                           color="#fff"
                         />
@@ -852,15 +930,15 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                         {categoryId === c.id && (
                           <View
                             style={{
-                              position: 'absolute',
+                              position: "absolute",
                               top: 4,
                               right: 4,
                               width: 18,
                               height: 18,
                               borderRadius: 9,
-                              backgroundColor: '#fff',
-                              justifyContent: 'center',
-                              alignItems: 'center',
+                              backgroundColor: "#fff",
+                              justifyContent: "center",
+                              alignItems: "center",
                             }}
                           >
                             <MaterialCommunityIcons
@@ -873,10 +951,10 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                         <Text
                           numberOfLines={2}
                           style={{
-                            color: '#fff',
-                            textAlign: 'center',
+                            color: "#fff",
+                            textAlign: "center",
                             marginTop: 6,
-                            fontWeight: '600',
+                            fontWeight: "600",
                             fontSize: 12,
                             lineHeight: 16,
                           }}
@@ -893,22 +971,22 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   activeOpacity={0.85}
                   disabled={submitting}
                   style={{
-                    backgroundColor: '#fff',
+                    backgroundColor: "#fff",
                     borderRadius: 14,
                     borderWidth: 1,
-                    borderColor: '#E6EAF2',
+                    borderColor: "#E6EAF2",
                     paddingHorizontal: 14,
                     paddingVertical: 12,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
                     elevation: 2,
                   }}
                 >
                   <View
                     style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
+                      flexDirection: "row",
+                      alignItems: "center",
                       flex: 1,
                     }}
                   >
@@ -918,14 +996,18 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                         height: 42,
                         borderRadius: 21,
                         backgroundColor:
-                          categories.find(x => x.id === categoryId)?.color || '#4B7CF3',
-                        justifyContent: 'center',
-                        alignItems: 'center',
+                          categories.find((x) => x.id === categoryId)?.color ||
+                          "#4B7CF3",
+                        justifyContent: "center",
+                        alignItems: "center",
                         marginRight: 12,
                       }}
                     >
                       <MaterialCommunityIcons
-                        name={categories.find(x => x.id === categoryId)?.icon || 'tag'}
+                        name={
+                          categories.find((x) => x.id === categoryId)?.icon ||
+                          "tag"
+                        }
                         size={22}
                         color="#fff"
                       />
@@ -935,7 +1017,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                       <Text
                         style={{
                           fontSize: 12,
-                          color: '#888',
+                          color: "#888",
                         }}
                       >
                         Selected Category
@@ -945,11 +1027,11 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                         numberOfLines={1}
                         style={{
                           fontSize: 16,
-                          fontWeight: '700',
-                          color: '#222',
+                          fontWeight: "700",
+                          color: "#222",
                         }}
                       >
-                        {categories.find(x => x.id === categoryId)?.name}
+                        {categories.find((x) => x.id === categoryId)?.name}
                       </Text>
                     </View>
 
@@ -966,18 +1048,18 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                 <TouchableOpacity
                   disabled={submitting}
                   onPress={() => {
-                    setCategorySearch('');
+                    setCategorySearch("");
                     setShowCategoryModal(true);
                   }}
                   style={{
-                    alignItems: 'center',
+                    alignItems: "center",
                     paddingVertical: 8,
                   }}
                 >
                   <Text
                     style={{
-                      color: '#4B7CF3',
-                      fontWeight: '700',
+                      color: "#4B7CF3",
+                      fontWeight: "700",
                     }}
                   >
                     See More
@@ -993,19 +1075,18 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         <Text
           style={{
             marginBottom: 8,
-            color: '#666'
+            color: "#666",
           }}
         >
           Payment Source
         </Text>
-
         {showSourceGrid ? (
           <>
             <View
               style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                justifyContent: 'flex-start',
+                flexDirection: "row",
+                flexWrap: "wrap",
+                justifyContent: "flex-start",
                 marginTop: 8,
               }}
             >
@@ -1016,21 +1097,21 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   onPress={() => {
                     setSourceId(s.id);
                     setShowSourceGrid(false);
-                    setSourceSearch('');
+                    setSourceSearch("");
                     markDirty();
                   }}
                   style={{
-                    width: '23%',
+                    width: "23%",
                     height: 72,
                     marginBottom: 8,
-                    marginRight: (index + 1) % 4 === 0 ? 0 : '2.66%',
+                    marginRight: (index + 1) % 4 === 0 ? 0 : "2.66%",
                     borderRadius: 10,
-                    backgroundColor: s.color || '#4B7CF3',
-                    justifyContent: 'center',
-                    alignItems: 'center',
+                    backgroundColor: s.color || "#4B7CF3",
+                    justifyContent: "center",
+                    alignItems: "center",
                     paddingHorizontal: 4,
                     paddingVertical: 6,
-                    borderColor: '#111',
+                    borderColor: "#111",
                     transform: [
                       {
                         scale: sourceId === s.id ? 1.05 : 1,
@@ -1039,23 +1120,22 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   }}
                 >
                   <MaterialCommunityIcons
-                    name={s.icon || 'cash'}
+                    name={s.icon || "cash"}
                     size={18}
                     color="#fff"
                   />
-
                   {sourceId === s.id && (
                     <View
                       style={{
-                        position: 'absolute',
+                        position: "absolute",
                         top: 4,
                         right: 4,
                         width: 18,
                         height: 18,
                         borderRadius: 9,
-                        backgroundColor: '#fff',
-                        justifyContent: 'center',
-                        alignItems: 'center',
+                        backgroundColor: "#fff",
+                        justifyContent: "center",
+                        alignItems: "center",
                       }}
                     >
                       <MaterialCommunityIcons
@@ -1069,10 +1149,10 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   <Text
                     numberOfLines={2}
                     style={{
-                      color: '#fff',
-                      textAlign: 'center',
+                      color: "#fff",
+                      textAlign: "center",
                       marginTop: 6,
-                      fontWeight: '600',
+                      fontWeight: "600",
                       fontSize: 12,
                       lineHeight: 16,
                     }}
@@ -1087,18 +1167,18 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               <TouchableOpacity
                 disabled={submitting}
                 onPress={() => {
-                  setSourceSearch('');
+                  setSourceSearch("");
                   setShowSourceModal(true);
                 }}
                 style={{
-                  alignItems: 'center',
+                  alignItems: "center",
                   paddingVertical: 8,
                 }}
               >
                 <Text
                   style={{
-                    color: '#4B7CF3',
-                    fontWeight: '700',
+                    color: "#4B7CF3",
+                    fontWeight: "700",
                   }}
                 >
                   See More
@@ -1107,31 +1187,30 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             )}
           </>
         ) : (
-
           <TouchableOpacity
             disabled={submitting}
             onPress={() => {
-              setSourceSearch('');
+              setSourceSearch("");
               setShowSourceModal(true);
             }}
             activeOpacity={0.85}
             style={{
-              backgroundColor: '#fff',
+              backgroundColor: "#fff",
               borderRadius: 14,
               borderWidth: 1,
-              borderColor: '#E6EAF2',
+              borderColor: "#E6EAF2",
               paddingHorizontal: 14,
               paddingVertical: 12,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
               elevation: 2,
             }}
           >
             <View
               style={{
-                flexDirection: 'row',
-                alignItems: 'center',
+                flexDirection: "row",
+                alignItems: "center",
                 flex: 1,
               }}
             >
@@ -1141,14 +1220,14 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   height: 42,
                   borderRadius: 21,
                   backgroundColor:
-                    sources.find(x => x.id === sourceId)?.color || '#4B7CF3',
-                  justifyContent: 'center',
-                  alignItems: 'center',
+                    sources.find((x) => x.id === sourceId)?.color || "#4B7CF3",
+                  justifyContent: "center",
+                  alignItems: "center",
                   marginRight: 12,
                 }}
               >
                 <MaterialCommunityIcons
-                  name={sources.find(x => x.id === sourceId)?.icon || 'cash'}
+                  name={sources.find((x) => x.id === sourceId)?.icon || "cash"}
                   size={22}
                   color="#fff"
                 />
@@ -1158,7 +1237,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                 <Text
                   style={{
                     fontSize: 12,
-                    color: '#888',
+                    color: "#888",
                   }}
                 >
                   Selected Source
@@ -1168,11 +1247,11 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   numberOfLines={1}
                   style={{
                     fontSize: 16,
-                    fontWeight: '700',
-                    color: '#222',
+                    fontWeight: "700",
+                    color: "#222",
                   }}
                 >
-                  {sources.find(x => x.id === sourceId)?.name}
+                  {sources.find((x) => x.id === sourceId)?.name}
                 </Text>
               </View>
 
@@ -1183,42 +1262,40 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               />
             </View>
           </TouchableOpacity>
-
         )}
       </View>
 
       {/* Loan Payment */}
-      {type === 'expense' && activeLoans.length > 0 && (
+      {type === "expense" && activeLoans.length > 0 && (
         <View style={{ marginBottom: 18 }}>
           <Text
             style={{
               marginBottom: 8,
-              color: '#666',
+              color: "#666",
             }}
           >
             Loan Payment (Optional)
           </Text>
-
           {!selectedLoanId ? (
             <TouchableOpacity
               disabled={submitting}
               activeOpacity={0.85}
               onPress={() => {
-                setLoanSearch('');
+                setLoanSearch("");
                 setShowLoanModal(true);
               }}
               style={{
-                backgroundColor: '#EEF4FF',
+                backgroundColor: "#EEF4FF",
                 borderRadius: 16,
                 borderWidth: 1,
-                borderColor: '#4B7CF3',
+                borderColor: "#4B7CF3",
                 padding: 16,
               }}
             >
               <View
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
+                  flexDirection: "row",
+                  alignItems: "center",
                 }}
               >
                 <View
@@ -1226,9 +1303,9 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                     width: 54,
                     height: 54,
                     borderRadius: 27,
-                    backgroundColor: '#4B7CF3',
-                    justifyContent: 'center',
-                    alignItems: 'center',
+                    backgroundColor: "#4B7CF3",
+                    justifyContent: "center",
+                    alignItems: "center",
                     marginRight: 14,
                   }}
                 >
@@ -1243,8 +1320,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   <Text
                     style={{
                       fontSize: 17,
-                      fontWeight: '700',
-                      color: '#222',
+                      fontWeight: "700",
+                      color: "#222",
                     }}
                   >
                     Link to Loan
@@ -1252,7 +1329,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
                   <Text
                     style={{
-                      color: '#666',
+                      color: "#666",
                       marginTop: 3,
                       lineHeight: 20,
                     }}
@@ -1270,32 +1347,27 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             </TouchableOpacity>
           ) : (
             (() => {
-              const loan = activeLoans.find(
-                l => l.id === selectedLoanId
-              );
-
+              const loan = activeLoans.find((l) => l.id === selectedLoanId);
               // Safety check:
-              // If the selected loan is no longer active,
-              // don't display the linked loan card.
+              // If the selected loan is no longer active, don't display the linked loan card.
               if (!loan) {
                 return null;
               }
-
               return (
                 <TouchableOpacity
                   activeOpacity={0.9}
                   style={{
-                    backgroundColor: '#F4FFF7',
+                    backgroundColor: "#F4FFF7",
                     borderRadius: 16,
                     borderWidth: 1,
-                    borderColor: '#36B37E',
+                    borderColor: "#36B37E",
                     padding: 16,
                   }}
                 >
                   <View
                     style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
+                      flexDirection: "row",
+                      alignItems: "center",
                     }}
                   >
                     <View
@@ -1303,9 +1375,9 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                         width: 54,
                         height: 54,
                         borderRadius: 27,
-                        backgroundColor: '#36B37E',
-                        justifyContent: 'center',
-                        alignItems: 'center',
+                        backgroundColor: "#36B37E",
+                        justifyContent: "center",
+                        alignItems: "center",
                         marginRight: 14,
                       }}
                     >
@@ -1320,8 +1392,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                       <Text
                         style={{
                           fontSize: 17,
-                          fontWeight: '700',
-                          color: '#222',
+                          fontWeight: "700",
+                          color: "#222",
                         }}
                       >
                         {loan?.loan_name}
@@ -1330,20 +1402,20 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                       <Text
                         style={{
                           marginTop: 3,
-                          color: '#666',
+                          color: "#666",
                         }}
                       >
                         Outstanding ₹
-                        {Number(
-                          loan?.outstanding_amount || 0
-                        ).toLocaleString('en-IN')}
+                        {Number(loan?.outstanding_amount || 0).toLocaleString(
+                          "en-IN",
+                        )}
                       </Text>
 
                       <Text
                         style={{
                           marginTop: 4,
-                          color: '#36B37E',
-                          fontWeight: '700',
+                          color: "#36B37E",
+                          fontWeight: "700",
                         }}
                       >
                         ✓ Linked
@@ -1353,15 +1425,15 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
                   <View
                     style={{
-                      flexDirection: 'row',
-                      justifyContent: 'flex-end',
+                      flexDirection: "row",
+                      justifyContent: "flex-end",
                       marginTop: 14,
                     }}
                   >
                     <PaperButton
                       compact
                       onPress={() => {
-                        setLoanSearch('');
+                        setLoanSearch("");
                         setShowLoanModal(true);
                       }}
                       disabled={submitting}
@@ -1376,36 +1448,25 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                         disabled={linking || submitting}
                         onPress={async () => {
                           if (linking || submitting || !transaction?.id) return;
-
                           try {
                             setLinking(true);
-
                             // Show global loader because Unlink is outside the loan modal
                             showPageLoader();
-
-                            await unlinkTransactionFromLoan(
-                              transaction.id
-                            );
-
+                            await unlinkTransactionFromLoan(transaction.id);
                             setSelectedLoanId(null);
-                            setLoanSearch('');
-
-                            setSnackbarMsg('Transaction unlinked');
+                            setLoanSearch("");
+                            setSnackbarMsg("Transaction unlinked");
                             setSnackbarVisible(true);
-
                           } catch (e) {
                             console.error(
-                              '[TransactionForm] Unlink loan failed:',
-                              e
+                              "[TransactionForm] Unlink loan failed:",
+                              e,
                             );
-
                             setSnackbarMsg(
                               e?.message ||
-                              'Failed to unlink transaction from loan'
+                                "Failed to unlink transaction from loan",
                             );
-
                             setSnackbarVisible(true);
-
                           } finally {
                             setLinking(false);
                             hidePageLoader();
@@ -1435,77 +1496,6 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         </View>
       )}
 
-      {/* is_counted toggle — only for expense and income, not transfer */}
-      {type !== 'transfer' && (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginTop: 10,
-            marginBottom: 4,
-            paddingHorizontal: 2,
-          }}
-        >
-          <TouchableOpacity
-            disabled={submitting}
-            onPress={() => { setIsCounted(v => !v); markDirty(); }}
-            activeOpacity={0.8}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: isCounted
-                ? (type === 'expense' ? '#FFF2F2' : '#F1FFF6')
-                : '#F3F4F6',
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: isCounted
-                ? (type === 'expense' ? '#E46A6A' : '#36B37E')
-                : '#D1D5DB',
-              paddingHorizontal: 12,
-              paddingVertical: 7,
-            }}
-          >
-            {/* Toggle track */}
-            <View
-              style={{
-                width: 36,
-                height: 20,
-                borderRadius: 10,
-                backgroundColor: isCounted
-                  ? (type === 'expense' ? '#E46A6A' : '#36B37E')
-                  : '#D1D5DB',
-                justifyContent: 'center',
-                paddingHorizontal: 2,
-                marginRight: 10,
-              }}
-            >
-              <View
-                style={{
-                  width: 16,
-                  height: 16,
-                  borderRadius: 8,
-                  backgroundColor: '#fff',
-                  alignSelf: isCounted ? 'flex-end' : 'flex-start',
-                }}
-              />
-            </View>
-
-            <View>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#222' }}>
-                {type === 'expense'
-                  ? (isCounted ? 'Spend' : 'Not a Spend')
-                  : (isCounted ? 'Income' : 'Not a Income')}
-              </Text>
-              <Text style={{ fontSize: 11, color: '#888', marginTop: 1 }}>
-                {isCounted
-                  ? 'Included in everywhere'
-                  : 'Excluded from everywhere'}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-      )}
-
       <Modal
         visible={showCategoryModal}
         transparent
@@ -1514,7 +1504,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       >
         <View
           style={{
-            alignItems: 'center',
+            alignItems: "center",
             marginBottom: 12,
           }}
         >
@@ -1523,52 +1513,45 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               width: 42,
               height: 5,
               borderRadius: 3,
-              backgroundColor: '#D8D8D8',
+              backgroundColor: "#D8D8D8",
             }}
           />
         </View>
         <View
           style={{
             flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.45)',
-            justifyContent: 'flex-end',
+            backgroundColor: "rgba(0,0,0,0.45)",
+            justifyContent: "flex-end",
           }}
         >
           <View
             style={{
-              backgroundColor: '#fff',
+              backgroundColor: "#fff",
               borderTopLeftRadius: 20,
               borderTopRightRadius: 20,
               padding: 16,
-              height: '85%',
+              height: "85%",
               paddingBottom: 20,
             }}
           >
             <View
               style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
                 marginBottom: 14,
               }}
             >
               <Text
                 style={{
                   fontSize: 20,
-                  fontWeight: '700',
+                  fontWeight: "700",
                 }}
               >
                 Select Category
               </Text>
-
-              <TouchableOpacity
-                onPress={() => setShowCategoryModal(false)}
-              >
-                <MaterialCommunityIcons
-                  name="close"
-                  size={24}
-                  color="#666"
-                />
+              <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
+                <MaterialCommunityIcons name="close" size={24} color="#666" />
               </TouchableOpacity>
             </View>
 
@@ -1585,7 +1568,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             <Text
               style={{
                 marginBottom: 10,
-                color: '#666',
+                color: "#666",
                 fontSize: 13,
               }}
             >
@@ -1598,12 +1581,11 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                 keyboardShouldPersistTaps="handled"
                 contentContainerStyle={{ paddingBottom: 90 }}
               >
-
                 <View
                   style={{
-                    flexDirection: 'row',
-                    flexWrap: 'wrap',
-                    justifyContent: 'flex-start',
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    justifyContent: "flex-start",
                   }}
                 >
                   {searchedCategories.map((c, index) => (
@@ -1611,44 +1593,43 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                       key={c.id}
                       onPress={() => {
                         setCategoryId(c.id);
-                        setCategorySearch('');
+                        setCategorySearch("");
                         setShowCategoryModal(false);
                         setShowCategoryGrid(false);
                         markDirty();
                       }}
                       activeOpacity={0.8}
                       style={{
-                        width: '23%',
+                        width: "23%",
                         height: 72,
                         marginBottom: 10,
-                        marginRight: (index + 1) % 4 === 0 ? 0 : '2.66%',
+                        marginRight: (index + 1) % 4 === 0 ? 0 : "2.66%",
                         borderRadius: 10,
-                        backgroundColor: c.color || '#4B7CF3',
-                        justifyContent: 'center',
-                        alignItems: 'center',
+                        backgroundColor: c.color || "#4B7CF3",
+                        justifyContent: "center",
+                        alignItems: "center",
                         paddingHorizontal: 4,
                         paddingVertical: 6,
-                        borderColor: '#111',
+                        borderColor: "#111",
                       }}
                     >
                       <MaterialCommunityIcons
-                        name={c.icon || 'tag'}
+                        name={c.icon || "tag"}
                         size={18}
                         color="#fff"
                       />
-
                       {categoryId === c.id && (
                         <View
                           style={{
-                            position: 'absolute',
+                            position: "absolute",
                             top: 4,
                             right: 4,
                             width: 18,
                             height: 18,
                             borderRadius: 9,
-                            backgroundColor: '#fff',
-                            justifyContent: 'center',
-                            alignItems: 'center',
+                            backgroundColor: "#fff",
+                            justifyContent: "center",
+                            alignItems: "center",
                           }}
                         >
                           <MaterialCommunityIcons
@@ -1662,10 +1643,10 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                       <Text
                         numberOfLines={2}
                         style={{
-                          color: '#fff',
+                          color: "#fff",
                           fontSize: 10,
-                          fontWeight: '600',
-                          textAlign: 'center',
+                          fontWeight: "600",
+                          textAlign: "center",
                           marginTop: 4,
                           lineHeight: 12,
                         }}
@@ -1679,8 +1660,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                 {searchedCategories.length === 0 && (
                   <Text
                     style={{
-                      textAlign: 'center',
-                      color: '#999',
+                      textAlign: "center",
+                      color: "#999",
                       marginVertical: 30,
                     }}
                   >
@@ -1688,30 +1669,28 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   </Text>
                 )}
               </ScrollView>
-
             </View>
-
           </View>
 
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => {
-              setCategorySearch('');
+              setCategorySearch("");
               setShowCategoryModal(false);
               setShowCategoryCreateModal(true);
             }}
             style={{
-              position: 'absolute',
+              position: "absolute",
               right: 20,
               bottom: 20,
               width: 58,
               height: 58,
               borderRadius: 29,
               backgroundColor: accent,
-              justifyContent: 'center',
-              alignItems: 'center',
+              justifyContent: "center",
+              alignItems: "center",
               elevation: 8,
-              shadowColor: '#000',
+              shadowColor: "#000",
               shadowOpacity: 0.25,
               shadowRadius: 6,
               shadowOffset: {
@@ -1720,13 +1699,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               },
             }}
           >
-            <MaterialCommunityIcons
-              name="plus"
-              size={30}
-              color="#fff"
-            />
+            <MaterialCommunityIcons name="plus" size={30} color="#fff" />
           </TouchableOpacity>
-
         </View>
       </Modal>
 
@@ -1739,45 +1713,37 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         <View
           style={{
             flex: 1,
-            backgroundColor: 'rgba(69, 48, 48, 0.45)',
-            justifyContent: 'flex-end',
+            backgroundColor: "rgba(69, 48, 48, 0.45)",
+            justifyContent: "flex-end",
           }}
         >
           <View
             style={{
-              backgroundColor: '#fff',
+              backgroundColor: "#fff",
               borderTopLeftRadius: 20,
               borderTopRightRadius: 20,
               padding: 16,
-              height: '85%',
+              height: "85%",
             }}
           >
-
             <View
               style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
                 marginBottom: 12,
               }}
             >
               <Text
                 style={{
                   fontSize: 20,
-                  fontWeight: '700'
+                  fontWeight: "700",
                 }}
               >
                 Select Payment Source
               </Text>
-
-              <TouchableOpacity
-                onPress={() => setShowSourceModal(false)}
-              >
-                <MaterialCommunityIcons
-                  name="close"
-                  size={24}
-                  color="#666"
-                />
+              <TouchableOpacity onPress={() => setShowSourceModal(false)}>
+                <MaterialCommunityIcons name="close" size={24} color="#666" />
               </TouchableOpacity>
             </View>
 
@@ -1794,7 +1760,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             <Text
               style={{
                 color: "#666",
-                marginBottom: 12
+                marginBottom: 12,
               }}
             >
               {searchedSources.length} Sources
@@ -1804,49 +1770,48 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               <ScrollView
                 keyboardShouldPersistTaps="handled"
                 contentContainerStyle={{
-                  paddingBottom: 100
+                  paddingBottom: 100,
                 }}
               >
-
                 <View
                   style={{
-                    flexDirection: 'row',
-                    flexWrap: 'wrap',
-                    justifyContent: 'flex-start',
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    justifyContent: "flex-start",
                   }}
                 >
                   {searchedSources.map((s, index) => (
                     <TouchableOpacity
                       key={s.id}
                       onPress={() => {
-                        if (selectingFor === 'from') {
+                        if (selectingFor === "from") {
                           setSourceId(s.id);
                           setShowSourceGrid(false);
                         } else {
                           setToAccount(s.id);
                           setShowToAccountGrid(false);
                         }
-                        setSourceSearch('');
+                        setSourceSearch("");
                         setShowSourceModal(false);
                         markDirty();
                       }}
                       activeOpacity={0.8}
                       style={{
-                        width: '23%',
+                        width: "23%",
                         height: 72,
                         marginBottom: 10,
-                        marginRight: (index + 1) % 4 === 0 ? 0 : '2.66%',
+                        marginRight: (index + 1) % 4 === 0 ? 0 : "2.66%",
                         borderRadius: 10,
                         backgroundColor: s.color || accent,
-                        justifyContent: 'center',
-                        alignItems: 'center',
+                        justifyContent: "center",
+                        alignItems: "center",
                         paddingHorizontal: 4,
                         paddingVertical: 6,
-                        borderColor: '#111',
+                        borderColor: "#111",
                       }}
                     >
                       <MaterialCommunityIcons
-                        name={s.icon || 'cash'}
+                        name={s.icon || "cash"}
                         size={18}
                         color="#fff"
                       />
@@ -1854,15 +1819,15 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                       {sourceId === s.id && (
                         <View
                           style={{
-                            position: 'absolute',
+                            position: "absolute",
                             top: 4,
                             right: 4,
                             width: 18,
                             height: 18,
                             borderRadius: 9,
-                            backgroundColor: '#fff',
-                            justifyContent: 'center',
-                            alignItems: 'center',
+                            backgroundColor: "#fff",
+                            justifyContent: "center",
+                            alignItems: "center",
                           }}
                         >
                           <MaterialCommunityIcons
@@ -1876,10 +1841,10 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                       <Text
                         numberOfLines={2}
                         style={{
-                          color: '#fff',
-                          textAlign: 'center',
+                          color: "#fff",
+                          textAlign: "center",
                           marginTop: 6,
-                          fontWeight: '600',
+                          fontWeight: "600",
                           fontSize: 12,
                           lineHeight: 16,
                         }}
@@ -1889,42 +1854,40 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                     </TouchableOpacity>
                   ))}
                 </View>
-
               </ScrollView>
               {searchedSources.length === 0 && (
                 <Text
                   style={{
                     textAlign: "center",
                     color: "#999",
-                    marginTop: 30
+                    marginTop: 30,
                   }}
                 >
                   No payment sources found
                 </Text>
               )}
             </View>
-
           </View>
         </View>
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={() => {
-            setSourceSearch('');
+            setSourceSearch("");
             setShowSourceModal(false);
             setShowSourceCreateModal(true);
           }}
           style={{
-            position: 'absolute',
+            position: "absolute",
             right: 20,
             bottom: 20,
             width: 58,
             height: 58,
             borderRadius: 29,
             backgroundColor: accent,
-            justifyContent: 'center',
-            alignItems: 'center',
+            justifyContent: "center",
+            alignItems: "center",
             elevation: 8,
-            shadowColor: '#000',
+            shadowColor: "#000",
             shadowOpacity: 0.25,
             shadowRadius: 6,
             shadowOffset: {
@@ -1933,20 +1896,16 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             },
           }}
         >
-          <MaterialCommunityIcons
-            name="plus"
-            size={30}
-            color="#fff"
-          />
+          <MaterialCommunityIcons name="plus" size={30} color="#fff" />
         </TouchableOpacity>
       </Modal>
 
-      {type === 'transfer' && (
+      {type === "transfer" && (
         <View style={{ marginBottom: 12 }}>
           <Text
             style={{
               marginBottom: 8,
-              color: '#666',
+              color: "#666",
             }}
           >
             To Account
@@ -1956,9 +1915,9 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             <>
               <View
                 style={{
-                  flexDirection: 'row',
-                  flexWrap: 'wrap',
-                  justifyContent: 'flex-start',
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  justifyContent: "flex-start",
                   marginTop: 8,
                 }}
               >
@@ -1969,36 +1928,29 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                     onPress={() => {
                       setToAccount(s.id);
                       setShowToAccountGrid(false);
-                      setSourceSearch('');
+                      setSourceSearch("");
                       markDirty();
                     }}
                     style={{
-                      width: '23%',
+                      width: "23%",
                       height: 72,
                       marginBottom: 8,
-                      marginRight:
-                        (index + 1) % 4 === 0
-                          ? 0
-                          : '2.66%',
+                      marginRight: (index + 1) % 4 === 0 ? 0 : "2.66%",
                       borderRadius: 10,
-                      backgroundColor:
-                        s.color || '#4B7CF3',
-                      justifyContent: 'center',
-                      alignItems: 'center',
+                      backgroundColor: s.color || "#4B7CF3",
+                      justifyContent: "center",
+                      alignItems: "center",
                       paddingHorizontal: 4,
                       paddingVertical: 6,
                       transform: [
                         {
-                          scale:
-                            toAccount === s.id
-                              ? 1.05
-                              : 1,
+                          scale: toAccount === s.id ? 1.05 : 1,
                         },
                       ],
                     }}
                   >
                     <MaterialCommunityIcons
-                      name={s.icon || 'cash'}
+                      name={s.icon || "cash"}
                       size={18}
                       color="#fff"
                     />
@@ -2006,15 +1958,15 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                     {toAccount === s.id && (
                       <View
                         style={{
-                          position: 'absolute',
+                          position: "absolute",
                           top: 4,
                           right: 4,
                           width: 18,
                           height: 18,
                           borderRadius: 9,
-                          backgroundColor: '#fff',
-                          justifyContent: 'center',
-                          alignItems: 'center',
+                          backgroundColor: "#fff",
+                          justifyContent: "center",
+                          alignItems: "center",
                         }}
                       >
                         <MaterialCommunityIcons
@@ -2028,10 +1980,10 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                     <Text
                       numberOfLines={2}
                       style={{
-                        color: '#fff',
-                        textAlign: 'center',
+                        color: "#fff",
+                        textAlign: "center",
                         marginTop: 6,
-                        fontWeight: '600',
+                        fontWeight: "600",
                         fontSize: 12,
                         lineHeight: 16,
                       }}
@@ -2046,19 +1998,19 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                 <TouchableOpacity
                   disabled={submitting}
                   onPress={() => {
-                    setSelectingFor('to');
-                    setSourceSearch('');
+                    setSelectingFor("to");
+                    setSourceSearch("");
                     setShowSourceModal(true);
                   }}
                   style={{
-                    alignItems: 'center',
+                    alignItems: "center",
                     paddingVertical: 8,
                   }}
                 >
                   <Text
                     style={{
-                      color: '#4B7CF3',
-                      fontWeight: '700',
+                      color: "#4B7CF3",
+                      fontWeight: "700",
                     }}
                   >
                     See More
@@ -2070,28 +2022,28 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             <TouchableOpacity
               disabled={submitting}
               onPress={() => {
-                setSelectingFor('to');
-                setSourceSearch('');
+                setSelectingFor("to");
+                setSourceSearch("");
                 setShowSourceModal(true);
               }}
               activeOpacity={0.85}
               style={{
-                backgroundColor: '#fff',
+                backgroundColor: "#fff",
                 borderRadius: 14,
                 borderWidth: 1,
-                borderColor: '#E6EAF2',
+                borderColor: "#E6EAF2",
                 paddingHorizontal: 14,
                 paddingVertical: 12,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
                 elevation: 2,
               }}
             >
               <View
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
+                  flexDirection: "row",
+                  alignItems: "center",
                   flex: 1,
                 }}
               >
@@ -2101,19 +2053,16 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                     height: 42,
                     borderRadius: 21,
                     backgroundColor:
-                      sources.find(
-                        x => x.id === toAccount
-                      )?.color || '#4B7CF3',
-                    justifyContent: 'center',
-                    alignItems: 'center',
+                      sources.find((x) => x.id === toAccount)?.color ||
+                      "#4B7CF3",
+                    justifyContent: "center",
+                    alignItems: "center",
                     marginRight: 12,
                   }}
                 >
                   <MaterialCommunityIcons
                     name={
-                      sources.find(
-                        x => x.id === toAccount
-                      )?.icon || 'cash'
+                      sources.find((x) => x.id === toAccount)?.icon || "cash"
                     }
                     size={22}
                     color="#fff"
@@ -2124,28 +2073,22 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   <Text
                     style={{
                       fontSize: 12,
-                      color: '#888',
+                      color: "#888",
                     }}
                   >
                     Destination Account
                   </Text>
-
                   <Text
                     numberOfLines={1}
                     style={{
                       fontSize: 16,
-                      fontWeight: '700',
-                      color: '#222',
+                      fontWeight: "700",
+                      color: "#222",
                     }}
                   >
-                    {
-                      sources.find(
-                        x => x.id === toAccount
-                      )?.name
-                    }
+                    {sources.find((x) => x.id === toAccount)?.name}
                   </Text>
                 </View>
-
                 <MaterialCommunityIcons
                   name="pencil-outline"
                   size={22}
@@ -2164,16 +2107,121 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         />
       )}
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+      {/* is_counted toggle — only for expense and income, not transfer */}
+      {type !== "transfer" && (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginTop: 10,
+            marginBottom: 4,
+            paddingHorizontal: 2,
+          }}
+        >
+          <TouchableOpacity
+            disabled={submitting}
+            onPress={() => {
+              setIsCounted((v) => !v);
+              markDirty();
+            }}
+            activeOpacity={0.8}
+            style={{
+              flex: 1,
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: isCounted
+                ? type === "expense"
+                  ? "#FFF2F2"
+                  : "#F1FFF6"
+                : "#F3F4F6",
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: isCounted
+                ? type === "expense"
+                  ? "#E46A6A"
+                  : "#36B37E"
+                : "#D1D5DB",
+              paddingHorizontal: 12,
+              paddingVertical: 7,
+            }}
+          >
+            {/* Toggle track */}
+            <View
+              style={{
+                width: 36,
+                height: 20,
+                borderRadius: 10,
+                backgroundColor: isCounted
+                  ? type === "expense"
+                    ? "#E46A6A"
+                    : "#36B37E"
+                  : "#D1D5DB",
+                justifyContent: "center",
+                paddingHorizontal: 2,
+                marginRight: 10,
+              }}
+            >
+              <View
+                style={{
+                  width: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  backgroundColor: "#fff",
+                  alignSelf: isCounted ? "flex-end" : "flex-start",
+                }}
+              />
+            </View>
+            {/* Full-width text area */}
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: "700",
+                  color: "#222",
+                }}
+              >
+                {type === "expense"
+                  ? isCounted
+                    ? "Spend"
+                    : "Not a Spend"
+                  : isCounted
+                    ? "Income"
+                    : "Not a Income"}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 11,
+                  color: "#888",
+                  marginTop: 1,
+                }}
+              >
+                {isCounted
+                  ? "Included in everywhere"
+                  : "Excluded from everywhere"}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <View
+        style={{ flexDirection: "row", alignItems: "center", marginTop: 12 }}
+      >
         <PaperButton
           mode="contained"
           onPress={submit}
           loading={submitting}
           disabled={submitting}
           style={{ backgroundColor: accent }}
-          labelStyle={{ color: '#fff' }}
+          labelStyle={{ color: "#fff" }}
         >
-          {submitting ? (isEdit ? 'Updating...' : 'Saving...') : (isEdit ? 'Update' : 'Save')}
+          {submitting
+            ? isEdit
+              ? "Updating..."
+              : "Saving..."
+            : isEdit
+              ? "Update"
+              : "Save"}
         </PaperButton>
         <View style={{ width: 12 }} />
         <PaperButton
@@ -2184,7 +2232,10 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               setShowUnsavedDialog(true);
             } else {
               if (onCancel) onCancel();
-              else { setAmount(''); setNotes(''); }
+              else {
+                setAmount("");
+                setNotes("");
+              }
             }
           }}
         >
@@ -2194,38 +2245,32 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
       </View>
 
       {/* Date & Time Picker */}
-      {showDateTimePicker && (
+      {showDateTimePicker &&
         (() => {
           // Native picker for Android / iOS
-          if (Platform.OS === 'android') {
+          if (Platform.OS === "android") {
             try {
               // eslint-disable-next-line global-require
-              const DateTimePicker = require('@react-native-community/datetimepicker').default;
+              const DateTimePicker =
+                require("@react-native-community/datetimepicker").default;
               return (
                 <DateTimePicker
                   value={new Date(date)}
                   mode={pickerMode}
-                  display={
-                    pickerMode === 'date'
-                      ? 'calendar'
-                      : 'clock'
-                  }
+                  display={pickerMode === "date" ? "calendar" : "clock"}
                   is24Hour={false}
                   onChange={(event, selected) => {
                     // User pressed Android Cancel
-                    if (event.type === 'dismissed') {
+                    if (event.type === "dismissed") {
                       setShowDateTimePicker(false);
-                      setPickerMode('date');
+                      setPickerMode("date");
                       return;
                     }
                     if (!selected) {
                       return;
                     }
-
-                    /*
-                     * DATE
-                     */
-                    if (pickerMode === 'date') {
+                    /* DATE */
+                    if (pickerMode === "date") {
                       const existingDate = new Date(date);
                       const newDate = new Date(selected);
                       // Preserve existing time
@@ -2233,37 +2278,31 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                         existingDate.getHours(),
                         existingDate.getMinutes(),
                         existingDate.getSeconds(),
-                        0
+                        0,
                       );
                       setDate(newDate.toISOString());
-                      /*
-                       * Close date picker.
-                       *
+                      /* Close date picker.
                        * Then open Android's native time picker.
-                       * No React Native Modal is involved.
-                       */
+                       * No React Native Modal is involved. */
                       setShowDateTimePicker(false);
                       setTimeout(() => {
-                        setPickerMode('time');
+                        setPickerMode("time");
                         setShowDateTimePicker(true);
                       }, 250);
                       return;
                     }
-
-                    /*
-                     * TIME
-                     */
-                    if (pickerMode === 'time') {
+                    /* TIME */
+                    if (pickerMode === "time") {
                       const newDate = new Date(date);
                       newDate.setHours(
                         selected.getHours(),
                         selected.getMinutes(),
                         0,
-                        0
+                        0,
                       );
                       setDate(newDate.toISOString());
                       setShowDateTimePicker(false);
-                      setPickerMode('date');
+                      setPickerMode("date");
                       markDirty();
                     }
                   }}
@@ -2271,23 +2310,19 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               );
             } catch (e) {
               console.warn(
-                '[TransactionForm] Android DateTimePicker unavailable:',
-                e
+                "[TransactionForm] Android DateTimePicker unavailable:",
+                e,
               );
               setShowDateTimePicker(false);
               return null;
             }
           }
-
-          /*
-           * IOS
-           *
-           * Keep the custom bottom-sheet design for iOS.
-           */
-          if (Platform.OS === 'ios') {
+          /* IOS Keep the custom bottom-sheet design for iOS.*/
+          if (Platform.OS === "ios") {
             try {
               // eslint-disable-next-line global-require
-              const DateTimePicker = require('@react-native-community/datetimepicker').default;
+              const DateTimePicker =
+                require("@react-native-community/datetimepicker").default;
               return (
                 <Modal
                   visible={showDateTimePicker}
@@ -2295,19 +2330,19 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   animationType="slide"
                   onRequestClose={() => {
                     setShowDateTimePicker(false);
-                    setPickerMode('date');
+                    setPickerMode("date");
                   }}
                 >
                   <View
                     style={{
                       flex: 1,
-                      justifyContent: 'flex-end',
-                      backgroundColor: 'rgba(15,23,42,0.45)',
+                      justifyContent: "flex-end",
+                      backgroundColor: "rgba(15,23,42,0.45)",
                     }}
                   >
                     <View
                       style={{
-                        backgroundColor: '#FFF',
+                        backgroundColor: "#FFF",
                         borderTopLeftRadius: 28,
                         borderTopRightRadius: 28,
                         padding: 24,
@@ -2320,8 +2355,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                           width: 42,
                           height: 5,
                           borderRadius: 3,
-                          backgroundColor: '#D6D6D6',
-                          alignSelf: 'center',
+                          backgroundColor: "#D6D6D6",
+                          alignSelf: "center",
                           marginBottom: 16,
                         }}
                       />
@@ -2330,21 +2365,19 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                       <Text
                         style={{
                           fontSize: 20,
-                          fontWeight: '800',
-                          color: '#111827',
+                          fontWeight: "800",
+                          color: "#111827",
                           marginBottom: 20,
-                          textAlign: 'center',
+                          textAlign: "center",
                         }}
                       >
-                        {pickerMode === 'date'
-                          ? 'Select Date'
-                          : 'Select Time'}
+                        {pickerMode === "date" ? "Select Date" : "Select Time"}
                       </Text>
 
                       <View
                         style={{
-                          alignItems: 'center',
-                          justifyContent: 'center',
+                          alignItems: "center",
+                          justifyContent: "center",
                           minHeight: 100,
                         }}
                       >
@@ -2355,8 +2388,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                           is24Hour={false}
                           onChange={(event, selected) => {
                             if (!selected) return;
-
-                            if (pickerMode === 'date') {
+                            if (pickerMode === "date") {
                               const existingDate = new Date(date);
                               const newDate = new Date(selected);
 
@@ -2364,7 +2396,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                                 existingDate.getHours(),
                                 existingDate.getMinutes(),
                                 existingDate.getSeconds(),
-                                0
+                                0,
                               );
                               setDate(newDate.toISOString());
                             } else {
@@ -2374,7 +2406,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                                 selected.getHours(),
                                 selected.getMinutes(),
                                 0,
-                                0
+                                0,
                               );
 
                               setDate(newDate.toISOString());
@@ -2385,7 +2417,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
                       <View
                         style={{
-                          flexDirection: 'row',
+                          flexDirection: "row",
                           marginTop: 24,
                         }}
                       >
@@ -2393,7 +2425,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                           mode="outlined"
                           onPress={() => {
                             setShowDateTimePicker(false);
-                            setPickerMode('date');
+                            setPickerMode("date");
                           }}
                           style={{
                             flex: 1,
@@ -2406,11 +2438,11 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                         <PaperButton
                           mode="contained"
                           onPress={() => {
-                            if (pickerMode === 'date') {
-                              setPickerMode('time');
+                            if (pickerMode === "date") {
+                              setPickerMode("time");
                             } else {
                               setShowDateTimePicker(false);
-                              setPickerMode('date');
+                              setPickerMode("date");
                               markDirty();
                             }
                           }}
@@ -2418,9 +2450,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                             flex: 1,
                           }}
                         >
-                          {pickerMode === 'date'
-                            ? 'Next'
-                            : 'Done'}
+                          {pickerMode === "date" ? "Next" : "Done"}
                         </PaperButton>
                       </View>
                     </View>
@@ -2429,8 +2459,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               );
             } catch (e) {
               console.warn(
-                '[TransactionForm] iOS DateTimePicker unavailable:',
-                e
+                "[TransactionForm] iOS DateTimePicker unavailable:",
+                e,
               );
               setShowDateTimePicker(false);
               return null;
@@ -2445,27 +2475,27 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               animationType="slide"
               onRequestClose={() => {
                 setShowDateTimePicker(false);
-                setPickerMode('date');
+                setPickerMode("date");
               }}
             >
               <View
                 style={{
                   flex: 1,
-                  backgroundColor: 'rgba(0,0,0,0.4)',
-                  justifyContent: 'center',
+                  backgroundColor: "rgba(0,0,0,0.4)",
+                  justifyContent: "center",
                   padding: 20,
                 }}
               >
                 <View
                   style={{
-                    backgroundColor: '#fff',
+                    backgroundColor: "#fff",
                     padding: 12,
                     borderRadius: 8,
                   }}
                 >
                   <Text
                     style={{
-                      fontWeight: '600',
+                      fontWeight: "600",
                       marginBottom: 8,
                     }}
                   >
@@ -2473,27 +2503,15 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   </Text>
 
                   {(() => {
-                    const dt = new Date(
-                      date || new Date().toISOString()
-                    );
-
-                    const [
-                      y,
-                      m,
-                      d,
-                      h,
-                      min,
-                    ] = [
-                        dt.getFullYear(),
-                        dt.getMonth() + 1,
-                        dt.getDate(),
-                        dt.getHours(),
-                        dt.getMinutes(),
-                      ];
-
-                    const Manual =
-                      require('../components/ManualDateTimePicker').default;
-
+                    const dt = new Date(date || new Date().toISOString());
+                    const [y, m, d, h, min] = [
+                      dt.getFullYear(),
+                      dt.getMonth() + 1,
+                      dt.getDate(),
+                      dt.getHours(),
+                      dt.getMinutes(),
+                    ];
+                    const Manual =require("../components/ManualDateTimePicker").default;
                     return (
                       <Manual
                         year={y}
@@ -2501,27 +2519,14 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                         day={d}
                         hour={h}
                         minute={min}
-                        onChange={(
-                          ny,
-                          nm,
-                          nd,
-                          nh,
-                          nmin
-                        ) => {
-                          const ndt = new Date(
-                            ny,
-                            nm - 1,
-                            nd,
-                            nh,
-                            nmin
-                          );
-
+                        onChange={(ny, nm, nd, nh, nmin) => {
+                          const ndt = new Date(ny, nm - 1, nd, nh, nmin);
                           setDate(ndt.toISOString());
                           markDirty();
                         }}
                         onClose={() => {
                           setShowDateTimePicker(false);
-                          setPickerMode('date');
+                          setPickerMode("date");
                         }}
                       />
                     );
@@ -2530,8 +2535,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               </View>
             </Modal>
           );
-        })()
-      )}
+        })()}
 
       <ConfirmDialog
         visible={confirmVisible}
@@ -2556,7 +2560,10 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
           setShowUnsavedDialog(false);
           setIsDirty(false);
           if (onCancel) onCancel();
-          else { setAmount(''); setNotes(''); }
+          else {
+            setAmount("");
+            setNotes("");
+          }
         }}
       />
 
@@ -2573,25 +2580,25 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         <View
           style={{
             flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.45)',
-            justifyContent: 'flex-end',
+            backgroundColor: "rgba(0,0,0,0.45)",
+            justifyContent: "flex-end",
           }}
         >
           <View
             style={{
-              backgroundColor: '#fff',
+              backgroundColor: "#fff",
               borderTopLeftRadius: 22,
               borderTopRightRadius: 22,
-              height: '82%',
+              height: "82%",
               padding: 16,
             }}
           >
             {/* HEADER */}
             <View
               style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
                 marginBottom: 14,
               }}
             >
@@ -2599,8 +2606,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                 <Text
                   style={{
                     fontSize: 20,
-                    fontWeight: '800',
-                    color: '#222',
+                    fontWeight: "800",
+                    color: "#222",
                   }}
                 >
                   Link to Loan
@@ -2609,7 +2616,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                 <Text
                   style={{
                     marginTop: 3,
-                    color: '#777',
+                    color: "#777",
                     fontSize: 13,
                   }}
                 >
@@ -2624,16 +2631,12 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   width: 38,
                   height: 38,
                   borderRadius: 19,
-                  backgroundColor: '#F3F4F6',
-                  justifyContent: 'center',
-                  alignItems: 'center',
+                  backgroundColor: "#F3F4F6",
+                  justifyContent: "center",
+                  alignItems: "center",
                 }}
               >
-                <MaterialCommunityIcons
-                  name="close"
-                  size={22}
-                  color="#555"
-                />
+                <MaterialCommunityIcons name="close" size={22} color="#555" />
               </TouchableOpacity>
             </View>
 
@@ -2644,16 +2647,12 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
               onChangeText={setLoanSearch}
               mode="outlined"
               disabled={linking}
-              left={
-                <PaperTextInput.Icon
-                  icon="magnify"
-                />
-              }
+              left={<PaperTextInput.Icon icon="magnify" />}
               right={
                 loanSearch.length > 0 ? (
                   <PaperTextInput.Icon
                     icon="close-circle-outline"
-                    onPress={() => setLoanSearch('')}
+                    onPress={() => setLoanSearch("")}
                   />
                 ) : null
               }
@@ -2665,12 +2664,13 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             {/* COUNT */}
             <Text
               style={{
-                color: '#777',
+                color: "#777",
                 fontSize: 13,
                 marginBottom: 10,
               }}
             >
-              {filteredLoans.length} {filteredLoans.length === 1 ? 'Loan' : 'Loans'}
+              {filteredLoans.length}{" "}
+              {filteredLoans.length === 1 ? "Loan" : "Loans"}
             </Text>
 
             {/* LOAN LIST */}
@@ -2679,8 +2679,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                 <View
                   style={{
                     flex: 1,
-                    justifyContent: 'center',
-                    alignItems: 'center',
+                    justifyContent: "center",
+                    alignItems: "center",
                     paddingBottom: 40,
                   }}
                 >
@@ -2689,9 +2689,9 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                       width: 64,
                       height: 64,
                       borderRadius: 32,
-                      backgroundColor: '#EEF4FF',
-                      justifyContent: 'center',
-                      alignItems: 'center',
+                      backgroundColor: "#EEF4FF",
+                      justifyContent: "center",
+                      alignItems: "center",
                       marginBottom: 14,
                     }}
                   >
@@ -2701,22 +2701,20 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                       color="#4B7CF3"
                     />
                   </View>
-
                   <Text
                     style={{
                       fontSize: 16,
-                      fontWeight: '700',
-                      color: '#333',
+                      fontWeight: "700",
+                      color: "#333",
                     }}
                   >
                     No loans found
                   </Text>
-
                   <Text
                     style={{
-                      color: '#888',
+                      color: "#888",
                       marginTop: 5,
-                      textAlign: 'center',
+                      textAlign: "center",
                     }}
                   >
                     Try a different loan name or lender.
@@ -2733,60 +2731,47 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   }}
                   renderItem={({ item }) => {
                     const isSelected = selectedLoanId === item.id;
-
                     return (
                       <TouchableOpacity
                         activeOpacity={0.85}
                         disabled={linking || submitting}
                         onPress={async () => {
                           if (linking || submitting) return;
-
                           try {
                             setLinking(true);
-
-                            /*
-                             * Existing transaction:
-                             * Link immediately because the transaction
-                             * already exists in DB.
-                             */
+                            /* Existing transaction:
+                             * Link immediately because the transaction  already exists in DB. */
                             if (isEdit && transaction?.id) {
                               await linkTransactionToLoan(
                                 transaction.id,
                                 item.id,
                                 {
-                                  paymentType: 'LINKED',
+                                  paymentType: "LINKED",
                                   linkedDate: transaction.date || date,
-                                }
+                                },
                               );
                             }
-
-                            /*
-                             * New transaction:
+                            /* New transaction:
                              * Do not link yet.
-                             * submit() will create the transaction first
-                             * and then link it.
-                             */
+                             * submit() will create the transaction first and then link it. */
                             setSelectedLoanId(item.id);
-                            setLoanSearch('');
+                            setLoanSearch("");
                             setShowLoanModal(false);
                             markDirty();
 
                             if (isEdit) {
-                              setSnackbarMsg(
-                                `Linked to ${item.loan_name}`
-                              );
+                              setSnackbarMsg(`Linked to ${item.loan_name}`);
                               setSnackbarVisible(true);
                             }
-
                           } catch (e) {
                             console.error(
-                              '[TransactionForm] Link loan failed:',
-                              e
+                              "[TransactionForm] Link loan failed:",
+                              e,
                             );
 
                             setSnackbarMsg(
                               e?.message ||
-                              'Failed to link transaction to loan'
+                                "Failed to link transaction to loan",
                             );
 
                             setSnackbarVisible(true);
@@ -2795,24 +2780,19 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                           }
                         }}
                         style={{
-                          backgroundColor: isSelected
-                            ? '#F0FFF6'
-                            : '#fff',
+                          backgroundColor: isSelected ? "#F0FFF6" : "#fff",
                           borderRadius: 16,
                           borderWidth: 1,
-                          borderColor: isSelected
-                            ? '#36B37E'
-                            : '#E6EAF2',
+                          borderColor: isSelected ? "#36B37E" : "#E6EAF2",
                           padding: 14,
                           marginBottom: 10,
-                          opacity:
-                            linking || submitting ? 0.65 : 1,
+                          opacity: linking || submitting ? 0.65 : 1,
                         }}
                       >
                         <View
                           style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
+                            flexDirection: "row",
+                            alignItems: "center",
                           }}
                         >
                           {/* ICON */}
@@ -2821,21 +2801,16 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                               width: 48,
                               height: 48,
                               borderRadius: 24,
-                              backgroundColor:
-                                isSelected
-                                  ? '#36B37E'
-                                  : '#4B7CF3',
-                              justifyContent: 'center',
-                              alignItems: 'center',
+                              backgroundColor: isSelected
+                                ? "#36B37E"
+                                : "#4B7CF3",
+                              justifyContent: "center",
+                              alignItems: "center",
                               marginRight: 12,
                             }}
                           >
                             <MaterialCommunityIcons
-                              name={
-                                isSelected
-                                  ? 'bank-check'
-                                  : 'bank-outline'
-                              }
+                              name={isSelected ? "bank-check" : "bank-outline"}
                               size={24}
                               color="#fff"
                             />
@@ -2847,8 +2822,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                               numberOfLines={1}
                               style={{
                                 fontSize: 16,
-                                fontWeight: '800',
-                                color: '#222',
+                                fontWeight: "800",
+                                color: "#222",
                               }}
                             >
                               {item.loan_name}
@@ -2860,7 +2835,7 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                                 style={{
                                   marginTop: 3,
                                   fontSize: 13,
-                                  color: '#777',
+                                  color: "#777",
                                 }}
                               >
                                 {item.lender}
@@ -2869,15 +2844,15 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
 
                             <View
                               style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
+                                flexDirection: "row",
+                                alignItems: "center",
                                 marginTop: 6,
                               }}
                             >
                               <Text
                                 style={{
                                   fontSize: 12,
-                                  color: '#666',
+                                  color: "#666",
                                 }}
                               >
                                 Outstanding
@@ -2887,14 +2862,14 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                                 style={{
                                   marginLeft: 5,
                                   fontSize: 13,
-                                  fontWeight: '800',
-                                  color: '#333',
+                                  fontWeight: "800",
+                                  color: "#333",
                                 }}
                               >
                                 ₹
                                 {Number(
-                                  item.outstanding_amount || 0
-                                ).toLocaleString('en-IN')}
+                                  item.outstanding_amount || 0,
+                                ).toLocaleString("en-IN")}
                               </Text>
                             </View>
                           </View>
@@ -2903,8 +2878,8 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                           <View
                             style={{
                               marginLeft: 8,
-                              alignItems: 'center',
-                              justifyContent: 'center',
+                              alignItems: "center",
+                              justifyContent: "center",
                             }}
                           >
                             {isSelected ? (
@@ -2913,9 +2888,9 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                                   width: 30,
                                   height: 30,
                                   borderRadius: 15,
-                                  backgroundColor: '#36B37E',
-                                  justifyContent: 'center',
-                                  alignItems: 'center',
+                                  backgroundColor: "#36B37E",
+                                  justifyContent: "center",
+                                  alignItems: "center",
                                 }}
                               >
                                 <MaterialCommunityIcons
@@ -2941,21 +2916,19 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
             </View>
           </View>
 
-          {/* ================================
-        LOADER — ABOVE THE LOAN POPUP
-       ================================= */}
+          {/* LOADER — ABOVE THE LOAN POPUP */}
           {linking && (
             <View
               pointerEvents="auto"
               style={{
-                position: 'absolute',
+                position: "absolute",
                 top: 0,
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: 'rgba(255,255,255,0.72)',
-                alignItems: 'center',
-                justifyContent: 'center',
+                backgroundColor: "rgba(255,255,255,0.72)",
+                alignItems: "center",
+                justifyContent: "center",
                 zIndex: 999999,
                 elevation: 999999,
               }}
@@ -2965,12 +2938,12 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   width: 170,
                   height: 170,
                   borderRadius: 36,
-                  backgroundColor: 'rgba(255,255,255,0.97)',
+                  backgroundColor: "rgba(255,255,255,0.97)",
                   borderWidth: 1,
-                  borderColor: 'rgba(255,255,255,0.95)',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  shadowColor: '#000',
+                  borderColor: "rgba(255,255,255,0.95)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  shadowColor: "#000",
                   shadowOffset: {
                     width: 0,
                     height: 18,
@@ -2980,17 +2953,14 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
                   elevation: 30,
                 }}
               >
-                <ActivityIndicator
-                  size="large"
-                  color="#4B7CF3"
-                />
+                <ActivityIndicator size="large" color="#4B7CF3" />
 
                 <Text
                   style={{
                     marginTop: 14,
                     fontSize: 14,
-                    fontWeight: '700',
-                    color: '#333',
+                    fontWeight: "700",
+                    color: "#333",
                   }}
                 >
                   Linking loan...
@@ -3006,15 +2976,13 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         onClose={() => setShowCategoryCreateModal(false)}
         onCategoryCreated={async (newCategory) => {
           const cats = await getCategories(true);
-
           setCategories(cats);
           setCategoryId(newCategory.id);
-
           requestAnimationFrame(() => {
             setShowCategoryCreateModal(false);
             setShowCategoryModal(false);
             setShowCategoryGrid(false);
-            setCategorySearch('');
+            setCategorySearch("");
           });
         }}
         currentType={type}
@@ -3025,29 +2993,30 @@ export default function TransactionForm({ onCreated, onCancel, transaction, isEd
         onClose={() => setShowSourceCreateModal(false)}
         onSourceCreated={async () => {
           const updatedSources = await getSources(true);
-
           setSources(updatedSources);
-
-          const newestSource = [...updatedSources].sort((a, b) => b.id - a.id)[0];
-
+          const newestSource = [...updatedSources].sort(
+            (a, b) => b.id - a.id,
+          )[0];
           requestAnimationFrame(() => {
             if (newestSource) {
               setSourceId(newestSource.id);
             }
-
             setShowSourceGrid(false);
-            setSourceSearch('');
-
+            setSourceSearch("");
             setShowSourceCreateModal(false);
             setShowSourceModal(false);
           });
         }}
       />
 
-      <Snackbar visible={snackbarVisible} onDismiss={() => setSnackbarVisible(false)} duration={3000} action={{ label: 'OK', onPress: () => setSnackbarVisible(false) }}>
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+        action={{ label: "OK", onPress: () => setSnackbarVisible(false) }}
+      >
         {snackbarMsg}
       </Snackbar>
-
     </ScrollView>
   );
 }
