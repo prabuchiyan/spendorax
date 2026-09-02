@@ -175,53 +175,6 @@ function formatDateTime(value) {
   });
 }
 
-function closeDatePicker() {
-  setShowDatePicker(false);
-  setDatePickerMode("date");
-}
-
-function openDatePicker() {
-  setDatePickerMode("date");
-  setShowDatePicker(true);
-}
-
-function handleNativeDateTimeChange(event, selectedDate) {
-  if (event?.type === "dismissed") {
-    closeDatePicker();
-    return;
-  }
-  if (!selectedDate) {
-    return;
-  }
-
-  const current = safeDate(transactionDate);
-  const next = new Date(current);
-  if (datePickerMode === "date") {
-    // Change only the date and preserve the existing time
-    next.setFullYear(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
-      selectedDate.getDate(),
-    );
-  } else {
-    // Change only the time and preserve the existing date
-    next.setHours(selectedDate.getHours(), selectedDate.getMinutes(), 0, 0);
-  }
-  setTransactionDate(next.toISOString());
-  // Android: date picker → time picker
-  if (Platform.OS === "android") {
-    if (datePickerMode === "date") {
-      setDatePickerMode("time");
-
-      setTimeout(() => {
-        setShowDatePicker(true);
-      }, 150);
-    } else {
-      closeDatePicker();
-    }
-  }
-}
-
 export default function LendMoreScreen({ route, navigation }) {
   const loanId = route?.params?.id ? Number(route.params.id) : null;
   const [loan, setLoan] = useState(null);
@@ -239,8 +192,66 @@ export default function LendMoreScreen({ route, navigation }) {
   const [categoryId, setCategoryId] = useState(null);
   const [showSourcePicker, setShowSourcePicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+
+  // ── DATE & TIME PICKER HANDLERS ──
+  const closeDatePicker = () => {
+    setShowDatePicker(false);
+    setDatePickerMode("date");
+  };
+
+  const openDatePicker = () => {
+    setDatePickerMode("date");
+    setShowDatePicker(true);
+  };
+
+  const handleNativeDateTimeChange = (event, selectedDate) => {
+    // Android dismiss
+    if (event?.type === "dismissed") {
+      closeDatePicker();
+      return;
+    }
+
+    if (!selectedDate) {
+      return;
+    }
+
+    const current = safeDate(transactionDate);
+    const next = new Date(current);
+
+    if (datePickerMode === "date") {
+      // Update only the date.
+      // Keep the existing time.
+      next.setFullYear(
+        selectedDate.getFullYear(),
+        selectedDate.getMonth(),
+        selectedDate.getDate(),
+      );
+    } else {
+      // Update only the time.
+      // Keep the existing date.
+      next.setHours(selectedDate.getHours(), selectedDate.getMinutes(), 0, 0);
+    }
+
+    setTransactionDate(next.toISOString());
+
+    // Android shows date first, then time.
+    if (Platform.OS === "android") {
+      if (datePickerMode === "date") {
+        setDatePickerMode("time");
+
+        // Give the native picker a moment to close
+        // before reopening it in time mode.
+        setTimeout(() => {
+          setShowDatePicker(true);
+        }, 150);
+      } else {
+        closeDatePicker();
+      }
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -272,6 +283,16 @@ export default function LendMoreScreen({ route, navigation }) {
 
   const selectedSource = sources.find((s) => s.id === sourceId);
   const selectedCategory = categories.find((c) => c.id === categoryId);
+
+  const expenseCategories = categories.filter(
+    (category) => String(category.type || "").toLowerCase() === "expense",
+  );
+
+  const filteredExpenseCategories = expenseCategories.filter((category) =>
+    String(category.name || "")
+      .toLowerCase()
+      .includes(categorySearch.trim().toLowerCase()),
+  );
 
   function validate() {
     const nextErrors = {};
@@ -660,18 +681,34 @@ export default function LendMoreScreen({ route, navigation }) {
       </Modal>
 
       {/* ── CATEGORY PICKER MODAL ── */}
-      <Modal visible={showCategoryPicker} transparent animationType="slide">
+      <Modal
+        visible={showCategoryPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setCategorySearch("");
+          setShowCategoryPicker(false);
+        }}
+      >
         <View style={styles.pickerOverlay}>
           <View style={styles.pickerSheet}>
             <View style={styles.pickerHandle} />
+
             <View style={styles.pickerHeader}>
               <View>
-                <Text style={styles.pickerTitle}>Select Category</Text>
+                <Text style={styles.pickerTitle}>Select Expense Category</Text>
+
                 <Text style={styles.pickerSubtitle}>
-                  Choose the expense category
+                  Choose the expense category for this lending
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => setShowCategoryPicker(false)}>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setCategorySearch("");
+                  setShowCategoryPicker(false);
+                }}
+              >
                 <MaterialCommunityIcons
                   name="close-circle"
                   size={28}
@@ -679,8 +716,41 @@ export default function LendMoreScreen({ route, navigation }) {
                 />
               </TouchableOpacity>
             </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {categories.map((category) => (
+
+            {/* CATEGORY SEARCH */}
+            <View style={styles.categorySearchContainer}>
+              <MaterialCommunityIcons
+                name="magnify"
+                size={21}
+                color="#64748B"
+              />
+
+              <TextInput
+                value={categorySearch}
+                onChangeText={setCategorySearch}
+                placeholder="Search category..."
+                placeholderTextColor="#94A3B8"
+                style={styles.categorySearchInput}
+                autoCorrect={false}
+                returnKeyType="search"
+              />
+
+              {!!categorySearch && (
+                <TouchableOpacity onPress={() => setCategorySearch("")}>
+                  <MaterialCommunityIcons
+                    name="close-circle"
+                    size={20}
+                    color="#94A3B8"
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {filteredExpenseCategories.map((category) => (
                 <PickerItem
                   key={category.id}
                   icon={category.icon || "shape-outline"}
@@ -688,23 +758,52 @@ export default function LendMoreScreen({ route, navigation }) {
                   iconBg={(category.color || "#EA580C") + "20"}
                   selected={category.id === categoryId}
                   title={category.name}
-                  subtitle={
-                    category.type
-                      ? `${category.type} Category`
-                      : "Loan Category"
-                  }
+                  subtitle="Expense Category"
                   onPress={() => {
                     setCategoryId(category.id);
+                    setCategorySearch("");
                     setShowCategoryPicker(false);
+
+                    setErrors((prev) => ({
+                      ...prev,
+                      category: undefined,
+                    }));
                   }}
                 />
               ))}
+
+              {!filteredExpenseCategories.length && (
+                <View style={styles.emptyPicker}>
+                  <View style={styles.emptyPickerIcon}>
+                    <MaterialCommunityIcons
+                      name="shape-outline"
+                      size={30}
+                      color="#94A3B8"
+                    />
+                  </View>
+
+                  <Text style={styles.emptyPickerTitle}>
+                    No expense category found
+                  </Text>
+
+                  <Text style={styles.emptyPickerText}>
+                    {categorySearch
+                      ? `No expense category matches "${categorySearch}".`
+                      : "No expense categories are available."}
+                  </Text>
+                </View>
+              )}
+
               <View style={{ height: 10 }} />
             </ScrollView>
+
             <PaperButton
               mode="outlined"
               style={{ marginTop: 12, borderRadius: 14 }}
-              onPress={() => setShowCategoryPicker(false)}
+              onPress={() => {
+                setCategorySearch("");
+                setShowCategoryPicker(false);
+              }}
             >
               Close
             </PaperButton>
@@ -713,9 +812,9 @@ export default function LendMoreScreen({ route, navigation }) {
       </Modal>
 
       {/* ── DATE & TIME PICKER ── */}
-
       {showDatePicker && Platform.OS === "android" && (
         <DateTimePicker
+          key={datePickerMode}
           value={safeDate(transactionDate)}
           mode={datePickerMode}
           display={datePickerMode === "date" ? "calendar" : "clock"}
@@ -1052,5 +1151,49 @@ const styles = StyleSheet.create({
   },
   amountInputTextError: {
     color: "#B91C1C",
+  },
+  categorySearchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    minHeight: 48,
+    marginBottom: 14,
+  },
+  categorySearchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 15,
+    color: "#111827",
+    paddingVertical: 10,
+  },
+  emptyPicker: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  emptyPickerIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  emptyPickerTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#334155",
+  },
+  emptyPickerText: {
+    marginTop: 6,
+    fontSize: 13,
+    color: "#64748B",
+    textAlign: "center",
   },
 });
