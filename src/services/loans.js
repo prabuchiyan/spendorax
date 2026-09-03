@@ -113,7 +113,7 @@ export async function createLoan(loan) {
 
   try {
     events.emit("loansChanged", { action: "create", id: loanId });
-  } catch (e) {}
+  } catch (e) { }
   return loanId;
 }
 
@@ -132,7 +132,7 @@ export async function updateLoan(id, fields) {
   );
   try {
     events.emit("loansChanged", { action: "update", id, fields });
-  } catch (e) {}
+  } catch (e) { }
 }
 
 export async function getLoans() {
@@ -244,21 +244,21 @@ export async function deleteLoan(loanId) {
         action: "delete",
         loanId,
       });
-    } catch (e) {}
+    } catch (e) { }
 
     try {
       events.emit("loanPaymentsChanged", {
         action: "delete",
         loanId,
       });
-    } catch (e) {}
+    } catch (e) { }
 
     try {
       events.emit("loansChanged", {
         action: "delete",
         id: loanId,
       });
-    } catch (e) {}
+    } catch (e) { }
 
     return true;
   } catch (error) {
@@ -391,10 +391,10 @@ export async function recordPayment({
       id: pRes.insertId,
       loanId,
     });
-  } catch (e) {}
+  } catch (e) { }
   try {
     events.emit("loansChanged", { action: "update", id: loanId });
-  } catch (e) {}
+  } catch (e) { }
 
   return pRes.insertId;
 }
@@ -526,10 +526,10 @@ export async function recordPrepayment({
       id: pRes.insertId,
       loanId,
     });
-  } catch (e) {}
+  } catch (e) { }
   try {
     events.emit("loansChanged", { action: "update", id: loanId });
-  } catch (e) {}
+  } catch (e) { }
 
   return pRes.insertId;
 }
@@ -642,10 +642,10 @@ export async function forecloseLoan({
       id: pRes.insertId,
       loanId,
     });
-  } catch (e) {}
+  } catch (e) { }
   try {
     events.emit("loansChanged", { action: "update", id: loanId });
-  } catch (e) {}
+  } catch (e) { }
 
   return pRes.insertId;
 }
@@ -733,10 +733,10 @@ export async function recordAdvance({
       id: pRes.insertId,
       loanId,
     });
-  } catch (e) {}
+  } catch (e) { }
   try {
     events.emit("loansChanged", { action: "update", id: loanId });
-  } catch (e) {}
+  } catch (e) { }
 
   return pRes.insertId;
 }
@@ -860,14 +860,14 @@ export async function recordTopUp({
       id: pRes.insertId,
       loanId,
     });
-  } catch (e) {}
+  } catch (e) { }
 
   try {
     events.emit("loansChanged", {
       action: "update",
       id: loanId,
     });
-  } catch (e) {}
+  } catch (e) { }
 
   return pRes.insertId;
 }
@@ -895,145 +895,137 @@ export async function hasDuplicatePayment(loanId, date, amount, paymentType) {
   return res.rows.length > 0;
 }
 
+// Guard to prevent re-entrant recalculation triggering event loops
+let _isRecalculating = false;
 export async function recalculateLoanFromLinkedTransactions(loanId) {
   const loan = await getLoanById(loanId);
   if (!loan) throw new Error("Loan not found");
 
   const initialLoanTransactionId = Number(loan.transaction_id || 0);
 
+  // Fetch only the columns we need — avoids pulling large text/blob fields
   const res = await executeSql(
-    `SELECT * FROM transactions WHERE loan_id = ? AND IFNULL(is_counted, 1) = 1 ORDER BY date ASC, id ASC`,
+    "SELECT * FROM transactions WHERE loan_id = ? ORDER BY date ASC, id ASC",
     [loanId],
   );
 
-  const txs = [];
-  for (let i = 0; i < res.rows.length; i++) {
-    const tx = res.rows.item(i);
-    // Exclude the initial loan creation transaction — it's already
-    // represented by loan.principal_amount at creation time
-    if (
-      initialLoanTransactionId > 0 &&
-      Number(tx.id) === initialLoanTransactionId
-    ) {
-      continue;
-    }
-    txs.push(tx);
+  const allTxs = [];
+  for (let i = 0; i < res.rows.length; i++) allTxs.push(res.rows.item(i));
+
+  // ── Seed: derive creation principal from the initial transaction ──
+  let creationPrincipal = 0;
+  if (initialLoanTransactionId > 0) {
+    const initTx = allTxs.find(
+      (tx) => Number(tx.id) === initialLoanTransactionId,
+    );
+    creationPrincipal = initTx ? Number(initTx.amount || 0) : 0;
+  }
+  if (creationPrincipal === 0) {
+    const additionSum = allTxs
+      .filter((tx) => {
+        if (Number(tx.id) === initialLoanTransactionId) return false;
+        const pt = (tx.loan_payment_type || "").toUpperCase();
+        return pt === "TOP_UP" || pt === "ADVANCE";
+      })
+      .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    creationPrincipal = Math.max(
+      0,
+      +(Number(loan.principal_amount || 0) - additionSum).toFixed(2),
+    );
   }
 
-  // ── Reconstruct principal from scratch ──
-  // Start with the original principal at loan creation time.
-  // We derive this by taking the CURRENT principal_amount and
-  // subtracting all TOP_UP/ADVANCE transactions we're about to process,
-  // so we don't double-count them.
-  const additionTxs = txs.filter((tx) => {
-    const pt = tx.loan_payment_type || "";
-    return pt === "TOP_UP" || pt === "ADVANCE";
-  });
-  const additionSum = additionTxs.reduce(
-    (sum, tx) => sum + Number(tx.amount || 0),
-    0,
+  // Exclude initial transaction from replay
+  const txs = allTxs.filter(
+    (tx) =>
+      !(
+        initialLoanTransactionId > 0 &&
+        Number(tx.id) === initialLoanTransactionId
+      ),
   );
 
-  // The true creation-time principal = current stored principal minus
-  // all top-ups/advances that came after (which recordTopUp already added).
-  // If this ever goes negative (shouldn't happen), fall back to 0.
-  const creationPrincipal = Math.max(
-    0,
-    +(Number(loan.principal_amount || 0) - additionSum).toFixed(2),
-  );
-
+  // ── Pure JS replay — ZERO DB calls inside the loop ──
   let outstanding = creationPrincipal;
-  let computedPrincipalAmount = creationPrincipal; // will grow with top-ups
+  let computedPrincipalAmount = creationPrincipal;
   let principalPaid = 0;
   let interestPaid = 0;
   let totalPaid = 0;
+
+  // We build the loan_payments data in memory
+  // key = transaction id, value = computed payment row
+  const lpMap = {};
 
   for (const tx of txs) {
     const amount = Number(tx.amount || 0);
     if (amount <= 0) continue;
 
-    const paymentType = tx.loan_payment_type || "";
+    const paymentType = (tx.loan_payment_type || "").toUpperCase();
     const isAddition = paymentType === "TOP_UP" || paymentType === "ADVANCE";
 
     if (isAddition) {
-      // Increases the loan balance — not a repayment
       outstanding = +(outstanding + amount).toFixed(2);
       computedPrincipalAmount = +(computedPrincipalAmount + amount).toFixed(2);
 
-      await executeSql(
-        `UPDATE transactions
-                 SET principal_component = ?,
-                     interest_component = ?,
-                     outstanding_after_payment = ?,
-                     linked_date = ?
-                 WHERE id = ?`,
-        [
-          amount,
-          0,
-          outstanding,
-          tx.linked_date || tx.date || new Date().toISOString(),
-          tx.id,
-        ],
-      );
-
-      const exists = await executeSql(
-        "SELECT id FROM loan_payments WHERE transaction_id = ? LIMIT 1",
-        [tx.id],
-      );
-
-      if (exists.rows.length > 0) {
-        await executeSql(
-          `UPDATE loan_payments
-                     SET payment_date = ?,
-                         payment_amount = ?,
-                         principal_component = ?,
-                         interest_component = ?,
-                         remaining_balance = ?,
-                         payment_type = ?,
-                         payment_source_id = ?,
-                         payment_category_id = ?,
-                         remarks = ?
-                     WHERE id = ?`,
-          [
-            tx.date || new Date().toISOString(),
-            amount,
-            amount,
-            0,
-            outstanding,
-            paymentType,
-            tx.source_id || null,
-            tx.category_id || null,
-            tx.notes || null,
-            exists.rows.item(0).id,
-          ],
-        );
-      } else {
-        await executeSql(
-          `INSERT INTO loan_payments
-                     (loan_id, payment_date, payment_amount, principal_component,
-                      interest_component, remaining_balance, payment_type,
-                      payment_source_id, payment_category_id, transaction_id, remarks)
-                     VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-          [
-            loanId,
-            tx.date || new Date().toISOString(),
-            amount,
-            amount,
-            0,
-            outstanding,
-            paymentType,
-            tx.source_id || null,
-            tx.category_id || null,
-            tx.id,
-            tx.notes || null,
-          ],
-        );
-      }
-
-      continue; // don't touch paid totals
+      lpMap[tx.id] = {
+        txId: tx.id,
+        date: tx.date,
+        amount,
+        principalComponent: amount,
+        interestComponent: 0,
+        remainingBalance: outstanding,
+        paymentType,
+        sourceId: tx.source_id || null,
+        categoryId: tx.category_id || null,
+        notes: tx.notes || null,
+      };
+      continue;
     }
 
-    // ── Repayment (EMI, PREPAYMENT, FORECLOSURE, LINKED expense) ──
+    // ── Determine if this transaction increases or decreases outstanding ──
+    //
+    // Rules:
+    //   BORROWED loan + expense  → payment (reduces outstanding)  e.g. EMI paid
+    //   BORROWED loan + income   → addition (increases outstanding) e.g. top-up
+    //   LENT loan    + expense   → addition (increases outstanding) e.g. lend more
+    //   LENT loan    + income    → payment (reduces outstanding)  e.g. repayment received
+    //
+    // loan_payment_type overrides this logic when it is a known explicit type.
+    // Only LINKED (manually linked) transactions need direction inference.
+
+    const isLent = (loan.loan_direction || "BORROWED") === "LENT";
+    const txType = (tx.type || "").toLowerCase();
+    const txDirection = (tx.direction || "").toLowerCase();
+
+    // Treat as addition if:
+    // - BORROWED + income/credit
+    // - LENT + expense/debit
+    const isInferredAddition =
+      paymentType === "LINKED" &&
+      (
+        (!isLent && (txType === "income" || txDirection === "credit")) ||
+        (isLent && (txType === "expense" || txDirection === "debit"))
+      );
+
+    if (isInferredAddition) {
+      // Treat the same as TOP_UP / ADVANCE — increases outstanding
+      outstanding = +(outstanding + amount).toFixed(2);
+      computedPrincipalAmount = +(computedPrincipalAmount + amount).toFixed(2);
+
+      lpMap[tx.id] = {
+        txId: tx.id,
+        date: tx.date,
+        amount,
+        principalComponent: amount,
+        interestComponent: 0,
+        remainingBalance: outstanding,
+        paymentType: isLent ? "ADVANCE" : "TOP_UP",
+        sourceId: tx.source_id || null,
+        categoryId: tx.category_id || null,
+        notes: tx.notes || null,
+      };
+      continue;
+    }
+
+    // ── Repayment — reduces outstanding ──
     const interestComponent = calc.calculateInterestComponent(
       outstanding,
       loan.interest_rate,
@@ -1046,76 +1038,18 @@ export async function recalculateLoanFromLinkedTransactions(loanId) {
       +(outstanding - principalComponent).toFixed(2),
     );
 
-    await executeSql(
-      `UPDATE transactions
-             SET principal_component = ?,
-                 interest_component = ?,
-                 outstanding_after_payment = ?,
-                 linked_date = ?
-             WHERE id = ?`,
-      [
-        principalComponent,
-        interestComponent,
-        safeOutstanding,
-        tx.linked_date || tx.date || new Date().toISOString(),
-        tx.id,
-      ],
-    );
-
-    const exists = await executeSql(
-      "SELECT id FROM loan_payments WHERE transaction_id = ? LIMIT 1",
-      [tx.id],
-    );
-
-    if (exists.rows.length > 0) {
-      const lpId = exists.rows.item(0).id;
-      await executeSql(
-        `UPDATE loan_payments
-                 SET payment_date = ?,
-                     payment_amount = ?,
-                     principal_component = ?,
-                     interest_component = ?,
-                     remaining_balance = ?,
-                     payment_type = ?,
-                     payment_source_id = ?,
-                     payment_category_id = ?,
-                     remarks = ?
-                 WHERE id = ?`,
-        [
-          tx.date || new Date().toISOString(),
-          amount,
-          principalComponent,
-          interestComponent,
-          safeOutstanding,
-          tx.loan_payment_type || "LINKED",
-          tx.source_id || null,
-          tx.category_id || null,
-          tx.notes || null,
-          lpId,
-        ],
-      );
-    } else {
-      await executeSql(
-        `INSERT INTO loan_payments
-                 (loan_id, payment_date, payment_amount, principal_component,
-                  interest_component, remaining_balance, payment_type,
-                  payment_source_id, payment_category_id, transaction_id, remarks)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-        [
-          loanId,
-          tx.date || new Date().toISOString(),
-          amount,
-          principalComponent,
-          interestComponent,
-          safeOutstanding,
-          tx.loan_payment_type || "LINKED",
-          tx.source_id || null,
-          tx.category_id || null,
-          tx.id,
-          tx.notes || null,
-        ],
-      );
-    }
+    lpMap[tx.id] = {
+      txId: tx.id,
+      date: tx.date,
+      amount,
+      principalComponent,
+      interestComponent,
+      remainingBalance: safeOutstanding,
+      paymentType: paymentType || "LINKED",
+      sourceId: tx.source_id || null,
+      categoryId: tx.category_id || null,
+      notes: tx.notes || null,
+    };
 
     outstanding = safeOutstanding;
     principalPaid = +(principalPaid + principalComponent).toFixed(2);
@@ -1123,6 +1057,36 @@ export async function recalculateLoanFromLinkedTransactions(loanId) {
     totalPaid = +(totalPaid + amount).toFixed(2);
   }
 
+  // ── DB writes: loan_payments only ──
+  // Delete all existing loan_payment rows for this loan in ONE query,
+  // then bulk-insert the recomputed ones. Much faster than per-row upsert.
+  await executeSql(`DELETE FROM loan_payments WHERE loan_id = ?`, [loanId]);
+
+  const lpRows = Object.values(lpMap);
+  for (const lp of lpRows) {
+    await executeSql(
+      `INSERT INTO loan_payments
+         (loan_id, payment_date, payment_amount, principal_component,
+          interest_component, remaining_balance, payment_type,
+          payment_source_id, payment_category_id, transaction_id, remarks)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      [
+        loanId,
+        lp.date || new Date().toISOString(),
+        lp.amount,
+        lp.principalComponent,
+        lp.interestComponent,
+        lp.remainingBalance,
+        lp.paymentType,
+        lp.sourceId,
+        lp.categoryId,
+        lp.txId,
+        lp.notes,
+      ],
+    );
+  }
+
+  // ── Single loan row update ──
   const newStatus = outstanding <= 0 ? "Closed" : "Active";
   const remainingMonths = calc.calculateRemainingMonths(
     outstanding,
@@ -1132,15 +1096,15 @@ export async function recalculateLoanFromLinkedTransactions(loanId) {
 
   await executeSql(
     `UPDATE loans
-         SET outstanding_amount = ?,
-             principal_amount = ?,
-             principal_paid = ?,
-             interest_paid = ?,
-             total_paid = ?,
-             remaining_months = ?,
-             status = ?,
-             updated_at = datetime('now')
-         WHERE id = ?`,
+     SET outstanding_amount = ?,
+         principal_amount   = ?,
+         principal_paid     = ?,
+         interest_paid      = ?,
+         total_paid         = ?,
+         remaining_months   = ?,
+         status             = ?,
+         updated_at         = datetime('now')
+     WHERE id = ?`,
     [
       Math.max(0, outstanding),
       computedPrincipalAmount,
@@ -1153,12 +1117,14 @@ export async function recalculateLoanFromLinkedTransactions(loanId) {
     ],
   );
 
+  // ── Emit with guard so listeners don't re-trigger ──
+  _isRecalculating = true;
   try {
     events.emit("loanPaymentsChanged", { action: "recalculate", loanId });
-  } catch (e) {}
-  try {
     events.emit("loansChanged", { action: "recalculate", id: loanId });
-  } catch (e) {}
+  } catch (e) { }
+  // Small timeout so all sync event handlers finish before clearing guard
+  setTimeout(() => { _isRecalculating = false; }, 100);
 
   return {
     outstanding: Math.max(0, outstanding),
@@ -1201,59 +1167,41 @@ export async function linkTransactionToLoan(transactionId, loanId, opts = {}) {
       id: transactionId,
       loanId,
     });
-  } catch (e) {}
+  } catch (e) { }
 }
 
 export async function unlinkTransactionFromLoan(transactionId) {
   if (!transactionId) throw new Error("Missing transactionId");
+
   const tx = await getTransactionById(transactionId);
   if (!tx) throw new Error("Transaction not found");
+
   const loanId = Number(tx.loan_id);
-  if (!loanId) {
-    throw new Error("Transaction is not linked to any loan");
-  }
-  // Remove loan fields from transaction
+  if (!loanId) throw new Error("Transaction is not linked to any loan");
+
+  // 1. Clear loan fields from the transaction
   await executeSql(
     `UPDATE transactions
-     SET loan_id = NULL,
-         loan_payment_type = NULL,
-         principal_component = NULL,
-         interest_component = NULL,
+     SET loan_id                   = NULL,
+         loan_payment_type         = NULL,
+         principal_component       = NULL,
+         interest_component        = NULL,
          outstanding_after_payment = NULL,
-         linked_date = NULL
+         linked_date               = NULL
      WHERE id = ?`,
     [transactionId],
   );
-  // Remove linked payment record
-  await executeSql(
-    `DELETE FROM loan_payments
-         WHERE transaction_id = ?`,
-    [transactionId],
-  );
 
-  // Recalculate loan
+  // 2. Recalculate — this deletes and rebuilds loan_payments from scratch
   await recalculateLoanFromLinkedTransactions(loanId);
 
   try {
-    events.emit("transactionsChanged", {
-      action: "unlink",
-      id: transactionId,
-      loanId,
-    });
-
-    events.emit("loanPaymentsChanged", {
-      action: "unlink",
-      transactionId,
-      loanId,
-    });
-
-    events.emit("loansChanged", {
-      action: "update",
-      id: loanId,
-    });
+    events.emit("transactionsChanged", { action: "unlink", id: transactionId, loanId });
+    events.emit("loansChanged", { action: "update", id: loanId });
   } catch (e) {
     console.warn(e);
   }
+
   return true;
 }
 

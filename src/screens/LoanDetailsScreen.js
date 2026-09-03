@@ -112,16 +112,27 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
   useEffect(() => {
     loadLinkedTransactions();
-    const offTx = events.on("transactionsChanged", () =>
-      loadLinkedTransactions(),
-    );
-    const offLoans = events.on("loansChanged", () => {
+
+    const offTx = events.on("transactionsChanged", (payload) => {
+      if (payload?.action === "recalculate" || payload?.action === "unlink") return;
+      loadLinkedTransactions();
+    });
+
+    const offLoans = events.on("loansChanged", (payload) => {
+      if (payload?.action === "recalculate") return;
       refresh();
       loadLinkedTransactions();
     });
+
+    const offPayments = events.on("loanPaymentsChanged", (payload) => {
+      if (payload?.action === "recalculate") return;
+      loadLinkedTransactions();
+    });
+
     return () => {
       offTx && offTx();
       offLoans && offLoans();
+      offPayments && offPayments();
     };
   }, [id]);
 
@@ -153,12 +164,12 @@ export default function LoanDetailsScreen({ route, navigation }) {
   const interestToPay =
     remainingAmount > 0 && remainingMonths > 0 && loan.emi_amount > 0
       ? calc
-          .generateAmortizationSchedule(
-            remainingAmount,
-            loan.interest_rate,
-            remainingMonths,
-          )
-          .reduce((sum, item) => sum + Number(item.interest || 0), 0)
+        .generateAmortizationSchedule(
+          remainingAmount,
+          loan.interest_rate,
+          remainingMonths,
+        )
+        .reduce((sum, item) => sum + Number(item.interest || 0), 0)
       : 0;
 
   return (
@@ -277,10 +288,10 @@ export default function LoanDetailsScreen({ route, navigation }) {
             >
               {originalPrincipal > 0
                 ? Math.round(
-                    ((originalPrincipal - remainingAmount) /
-                      originalPrincipal) *
-                      100,
-                  )
+                  ((originalPrincipal - remainingAmount) /
+                    originalPrincipal) *
+                  100,
+                )
                 : 0}
               %
             </Text>
@@ -296,15 +307,14 @@ export default function LoanDetailsScreen({ route, navigation }) {
           >
             <View
               style={{
-                width: `${
-                  originalPrincipal > 0
-                    ? Math.round(
-                        ((originalPrincipal - remainingAmount) /
-                          originalPrincipal) *
-                          100,
-                      )
-                    : 0
-                }%`,
+                width: `${originalPrincipal > 0
+                  ? Math.round(
+                    ((originalPrincipal - remainingAmount) /
+                      originalPrincipal) *
+                    100,
+                  )
+                  : 0
+                  }%`,
                 height: 10,
                 backgroundColor: "#22C55E",
                 borderRadius: 10,
@@ -659,17 +669,17 @@ export default function LoanDetailsScreen({ route, navigation }) {
               const formattedDate = Number.isNaN(transactionDate.getTime())
                 ? "Date unavailable"
                 : transactionDate.toLocaleDateString("en-IN", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  });
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                });
 
               const formattedTime = Number.isNaN(transactionDate.getTime())
                 ? ""
                 : transactionDate.toLocaleTimeString("en-IN", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  });
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
 
               return (
                 <View
@@ -991,7 +1001,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
                               setSnackbarMsg(
                                 e?.message ||
-                                  "Unable to remove this transaction.",
+                                "Unable to remove this transaction.",
                               );
                             }
 
