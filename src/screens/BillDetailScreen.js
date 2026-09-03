@@ -1476,7 +1476,7 @@ export default function BillDetailScreen({ route, navigation }) {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.actionButton}
           onPress={() => {
             setConfirmAction("delete_occ");
@@ -1489,7 +1489,7 @@ export default function BillDetailScreen({ route, navigation }) {
             size={22}
           />
           <Text style={styles.actionText}>Delete</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       <Modal

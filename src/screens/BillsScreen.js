@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   View, Text, FlatList, Modal,
-  TouchableOpacity, TextInput, ScrollView
+  TouchableOpacity, TextInput, ScrollView, Alert
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Searchbar } from 'react-native-paper';
@@ -573,6 +573,77 @@ export default function BillsScreen({ navigation }) {
     setConfirmVisible(true);
   }
 
+  function handleDeleteBill(bill) {
+    console.log(
+      '[BillsScreen] DELETE CLICKED - DISPLAY BILL:',
+      bill
+    );
+
+    if (!bill?.id) {
+      Alert.alert(
+        'Delete Bill',
+        'Unable to identify this bill.'
+      );
+      return;
+    }
+
+    // ---------------------------------------------------------
+    // IMPORTANT:
+    // For recurring bills, the card may display an occurrence
+    // while `bill.id` is still the recurring template ID.
+    //
+    // Always delete the ACTUAL displayed occurrence.
+    // ---------------------------------------------------------
+
+    const actualBill =
+      bill._displayOccurrence?.id
+        ? bill._displayOccurrence
+        : bill;
+
+    console.log(
+      '[BillsScreen] DELETE ACTUAL TARGET:',
+      {
+        displayId: bill.id,
+        occurrenceId: bill._displayOccurrenceId,
+        actualId: actualBill.id,
+        actualParentId: actualBill.parent_bill_id,
+        actualDueDate: actualBill.due_date,
+        actualName: actualBill.name,
+      }
+    );
+
+    if (!actualBill?.id) {
+      Alert.alert(
+        'Delete Bill',
+        'Unable to identify the actual bill occurrence.'
+      );
+      return;
+    }
+
+    setConfirmTarget(actualBill);
+    setConfirmAction('delete');
+
+    const isRecurringOccurrence =
+      !!actualBill.parent_bill_id;
+
+    setConfirmMessage(
+      isRecurringOccurrence
+        ? `Delete "${actualBill.name}" for this period permanently?\n\n` +
+        `• This bill occurrence will be permanently removed.\n` +
+        `• Other recurring occurrences will remain.\n` +
+        `• Linked transactions will NOT be deleted.\n` +
+        `• Linked transactions will simply be unlinked.\n\n` +
+        `This action cannot be undone.`
+        : `Delete "${actualBill.name}" permanently?\n\n` +
+        `• The bill will be permanently removed.\n` +
+        `• Linked transactions will NOT be deleted.\n` +
+        `• Linked transactions will simply be unlinked.\n\n` +
+        `This action cannot be undone.`
+    );
+
+    setConfirmVisible(true);
+  }
+
   const now = new Date();
   const monthLabel = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
   const renderBill = ({ item }) => {
@@ -608,9 +679,7 @@ export default function BillsScreen({ navigation }) {
                 item.children &&
                 item.children.length > 0
               ) {
-                openDetail(
-                  item.children[0]
-                );
+                openDetail(item.children[0]);
               } else {
                 openDetail(item);
               }
@@ -620,11 +689,14 @@ export default function BillsScreen({ navigation }) {
             }}
             onSkip={null}
             onEdit={null}
+
+            // IMPORTANT:
+            // Allow deleting the credit-card parent bill.
+            onDelete={handleDeleteBill}
+
             showExpandButton={true}
             expanded={isExpanded}
-            onToggleExpand={
-              toggleStatements
-            }
+            onToggleExpand={toggleStatements}
           />
 
           {/* STATEMENT CHILDREN */}
@@ -803,6 +875,19 @@ export default function BillsScreen({ navigation }) {
             ? null
             : openEdit
         }
+        onDelete={(bill) => {
+          console.log(
+            '[BillsScreen] DELETE PROP REACHED:',
+            {
+              id: bill?.id,
+              occurrenceId: bill?._displayOccurrenceId,
+              occurrence: bill?._displayOccurrence,
+              parentId: bill?.parent_bill_id,
+            }
+          );
+
+          handleDeleteBill(bill);
+        }}
       />
     );
   };
@@ -1375,15 +1460,57 @@ export default function BillsScreen({ navigation }) {
 
       <ConfirmDialog
         visible={confirmVisible}
+        title={
+          confirmAction === 'delete'
+            ? 'Delete Bill?'
+            : 'Skip Bill?'
+        }
         message={confirmMessage}
-        onCancel={() => setConfirmVisible(false)}
-        onConfirm={async () => {
-          if (confirmTarget) {
-            if (confirmAction === 'delete') await deleteBill(confirmTarget.id);
-            else await skipBill(confirmTarget.id);
-            load();
-          }
+        confirmLabel={
+          confirmAction === 'delete'
+            ? 'Delete Bill'
+            : 'Skip'
+        }
+        cancelLabel="Cancel"
+        onCancel={() => {
           setConfirmVisible(false);
+          setConfirmTarget(null);
+        }}
+        onConfirm={async () => {
+          if (!confirmTarget?.id) {
+            setConfirmVisible(false);
+            setConfirmTarget(null);
+            return;
+          }
+
+          try {
+            if (confirmAction === 'delete') {
+              await deleteBill(confirmTarget.id);
+            } else {
+              await skipBill(confirmTarget.id);
+            }
+
+            setConfirmVisible(false);
+            setConfirmTarget(null);
+
+            await load();
+
+          } catch (error) {
+            console.error(
+              '[BillsScreen] confirm action failed:',
+              error
+            );
+
+            setConfirmVisible(false);
+            setConfirmTarget(null);
+
+            Alert.alert(
+              'Error',
+              confirmAction === 'delete'
+                ? 'Unable to delete this bill.'
+                : 'Unable to skip this bill.'
+            );
+          }
         }}
       />
     </View>

@@ -1,5 +1,9 @@
 import React, { memo } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Chip } from 'react-native-paper';
 import Card from './Card';
@@ -17,40 +21,70 @@ function BillCard({
   onMarkPaid,
   onSkip,
   onEdit,
+  onDelete,
 
-  // ==========================================================
   // CREDIT CARD EXPAND / COLLAPSE
-  // ==========================================================
-
   showExpandButton = false,
   expanded = false,
   onToggleExpand,
 }) {
-  const display =
-    getBillDisplayStatus(bill);
+  const display = getBillDisplayStatus(bill);
+  const borderColor = display.color;
 
-  const borderColor =
-    display.color;
+  /*
+   * IMPORTANT:
+   *
+   * Do NOT show another Alert here.
+   *
+   * BillsScreen already handles confirmation
+   * using ConfirmDialog.
+   *
+   * Calling onDelete directly also guarantees
+   * that the callback reaches BillsScreen.
+   */
+  const handleDelete = () => {
+    console.log(
+      '[BillCard] DELETE BUTTON PRESSED:',
+      bill
+    );
+
+    if (typeof onDelete === 'function') {
+      console.log(
+        '[BillCard] CALLING onDelete:',
+        bill
+      );
+
+      onDelete(bill);
+    } else {
+      console.warn(
+        '[BillCard] onDelete is missing:',
+        bill?.id
+      );
+    }
+  };
+
+  const handleCardPress = () => {
+    if (typeof onPress === 'function') {
+      onPress(bill);
+    }
+  };
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.85}
-      onPress={() =>
-        onPress &&
-        onPress(bill)
-      }
+    <Card
+      style={{
+        marginBottom: Spacing.s,
+        borderLeftWidth: 4,
+        borderLeftColor: borderColor,
+      }}
     >
-      <Card
-        style={{
-          marginBottom: Spacing.s,
-          borderLeftWidth: 4,
-          borderLeftColor: borderColor,
-        }}
-      >
-        {/* ====================================================
-            BILL HEADER
-            ==================================================== */}
+      {/* ====================================================
+          CARD BODY
+          ==================================================== */}
 
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={handleCardPress}
+      >
         <View
           style={{
             flexDirection: 'row',
@@ -77,8 +111,7 @@ function BillCard({
                     width: 10,
                     height: 10,
                     borderRadius: 5,
-                    backgroundColor:
-                      category.color,
+                    backgroundColor: category.color,
                     marginRight: 8,
                   }}
                 />
@@ -96,7 +129,9 @@ function BillCard({
                 {bill.name}
               </Text>
             </View>
+
             {/* DUE DATE */}
+
             <Text
               style={{
                 color: Colors.muted,
@@ -110,9 +145,7 @@ function BillCard({
                 <>
                   Due {formatDueDate(bill.due_date)}
                   {bill.is_recurring
-                    ? ` · ${bill.recurrence_type ||
-                    'recurring'
-                    }`
+                    ? ` · ${bill.recurrence_type || 'recurring'}`
                     : ''}
                 </>
               )}
@@ -122,8 +155,7 @@ function BillCard({
               compact
               style={{
                 alignSelf: 'flex-start',
-                backgroundColor:
-                  `${display.color}22`,
+                backgroundColor: `${display.color}22`,
               }}
               textStyle={{
                 color: display.color,
@@ -142,168 +174,164 @@ function BillCard({
               color: borderColor,
             }}
           >
-            {formatCurrency(
-              bill.amount
-            )}
+            {formatCurrency(bill.amount)}
           </Text>
         </View>
+      </TouchableOpacity>
 
-        {/* ====================================================
-            ACTIONS
-            ==================================================== */}
+      {/* ====================================================
+          ACTIONS
+          ==================================================== */}
 
-        <View
-          style={{
-            flexDirection: 'row',
-            marginTop: Spacing.s,
-            flexWrap: 'wrap',
-            gap: 4,
-            alignItems: 'center',
-          }}
-        >
+      <View
+        style={{
+          flexDirection: 'row',
+          marginTop: Spacing.s,
+          flexWrap: 'wrap',
+          gap: 4,
+          alignItems: 'center',
+        }}
+      >
+        {/* EXPAND / COLLAPSE */}
 
-          {/* ==================================================
-              EXPAND / COLLAPSE
-              ONLY FOR CREDIT CARD PARENT
-              ================================================== */}
-
-          {showExpandButton ? (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() =>
-                onToggleExpand &&
-                onToggleExpand()
-              }
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: '#EAF5EF',
-                paddingHorizontal: 9,
-                paddingVertical: 6,
-                borderRadius: 8,
-                marginRight: 4,
-              }}
-            >
-              <MaterialCommunityIcons
-                name={
-                  expanded
-                    ? 'chevron-up'
-                    : 'chevron-down'
-                }
-                size={19}
-                color="#3F8F6B"
-              />
-
-              <Text
-                style={{
-                  color: '#3F8F6B',
-                  fontWeight: '600',
-                  marginLeft: 2,
-                  fontSize: 13,
-                }}
-              >
-                {expanded
-                  ? 'Hide'
-                  : 'Statements'}
-              </Text>
-            </TouchableOpacity>
-          ) : null}
-
-          {/* MARK PAID */}
-
-          {bill.status !== 'paid' &&
-            bill.status !== 'skipped' ? (
-            <TouchableOpacity
-              onPress={() =>
-                onMarkPaid &&
-                onMarkPaid(bill)
-              }
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor:
-                  '#E8F8F0',
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-                borderRadius: 8,
-                marginRight: 8,
-              }}
-            >
-              <MaterialCommunityIcons
-                name="check-circle-outline"
-                size={16}
-                color="#36B37E"
-              />
-
-              <Text
-                style={{
-                  color: '#36B37E',
-                  fontWeight: '600',
-                  marginLeft: 4,
-                  fontSize: 13,
-                }}
-              >
-                Mark Paid
-              </Text>
-            </TouchableOpacity>
-          ) : null}
-
-          {/*  SKIP */}
-
-          {bill.status !== 'paid' &&
-            bill.status !== 'skipped' ? (
-            <TouchableOpacity
-              onPress={() =>
-                onSkip &&
-                onSkip(bill)
-              }
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor:
-                  '#F0F2F5',
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-                borderRadius: 8,
-                marginRight: 8,
-              }}
-            >
-              <MaterialCommunityIcons
-                name="skip-next-outline"
-                size={16}
-                color={Colors.muted}
-              />
-
-              <Text
-                style={{
-                  color: Colors.muted,
-                  fontWeight: '600',
-                  marginLeft: 4,
-                  fontSize: 13,
-                }}
-              >
-                Skip
-              </Text>
-            </TouchableOpacity>
-          ) : null}
-
-          {/* ==================================================
-              EDIT
-              ================================================== */}
-
+        {showExpandButton ? (
           <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => {
+              console.log(
+                '[BillCard] EXPAND PRESSED:',
+                bill?.id
+              );
+
+              onToggleExpand?.();
+            }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#EAF5EF',
+              paddingHorizontal: 9,
+              paddingVertical: 6,
+              borderRadius: 8,
+              marginRight: 4,
+            }}
+          >
+            <MaterialCommunityIcons
+              name={
+                expanded
+                  ? 'chevron-up'
+                  : 'chevron-down'
+              }
+              size={19}
+              color="#3F8F6B"
+            />
+
+            <Text
+              style={{
+                color: '#3F8F6B',
+                fontWeight: '600',
+                marginLeft: 2,
+                fontSize: 13,
+              }}
+            >
+              {expanded
+                ? 'Hide'
+                : 'Statements'}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {/* MARK PAID */}
+
+        {bill.status !== 'paid' &&
+        bill.status !== 'skipped' ? (
+          <TouchableOpacity
+            activeOpacity={0.7}
             onPress={() =>
-              onEdit &&
+              onMarkPaid?.(bill)
+            }
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#E8F8F0',
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: 8,
+              marginRight: 8,
+            }}
+          >
+            <MaterialCommunityIcons
+              name="check-circle-outline"
+              size={16}
+              color="#36B37E"
+            />
+
+            <Text
+              style={{
+                color: '#36B37E',
+                fontWeight: '600',
+                marginLeft: 4,
+                fontSize: 13,
+              }}
+            >
+              Mark Paid
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {/* SKIP */}
+
+        {bill.status !== 'paid' &&
+        bill.status !== 'skipped' ? (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() =>
+              onSkip?.(bill)
+            }
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#F0F2F5',
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: 8,
+              marginRight: 8,
+            }}
+          >
+            <MaterialCommunityIcons
+              name="skip-next-outline"
+              size={16}
+              color={Colors.muted}
+            />
+
+            <Text
+              style={{
+                color: Colors.muted,
+                fontWeight: '600',
+                marginLeft: 4,
+                fontSize: 13,
+              }}
+            >
+              Skip
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {/* EDIT */}
+
+        {typeof onEdit === 'function' ? (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() =>
               onEdit(bill)
             }
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              backgroundColor:
-                '#EEF3FF',
+              backgroundColor: '#EEF3FF',
               paddingHorizontal: 10,
               paddingVertical: 6,
               borderRadius: 8,
+              marginRight: 4,
             }}
           >
             <MaterialCommunityIcons
@@ -323,9 +351,45 @@ function BillCard({
               Edit
             </Text>
           </TouchableOpacity>
-        </View>
-      </Card>
-    </TouchableOpacity>
+        ) : null}
+
+        {/* ==================================================
+            DELETE
+            ================================================== */}
+
+        {typeof onDelete === 'function' ? (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleDelete}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#FFF0F0',
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: 8,
+            }}
+          >
+            <MaterialCommunityIcons
+              name="trash-can-outline"
+              size={16}
+              color="#D64545"
+            />
+
+            <Text
+              style={{
+                color: '#D64545',
+                fontWeight: '600',
+                marginLeft: 4,
+                fontSize: 13,
+              }}
+            >
+              Delete
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    </Card>
   );
 }
 
