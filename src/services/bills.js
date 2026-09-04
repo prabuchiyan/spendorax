@@ -1815,18 +1815,39 @@ export async function markBillPaid(
   {
     source_id = null,
     date = null,
-    notes = "Bill payment",
+    notes = null,
     createTransaction: shouldCreateTx = true,
     existingTransactionId = null,
   } = {},
 ) {
   const bill = await getBillById(billId);
   if (!bill) throw new Error("Bill not found");
-  if (bill.status === BILL_STATUS.PAID) return bill.linked_transaction_id;
+  if (bill.status === BILL_STATUS.PAID) {
+    return bill.linked_transaction_id;
+  }
 
   const paySource = source_id ?? bill.source_id;
   const payDate = date || nowIso();
   const paidAt = nowIso();
+
+  // Build automatic transaction note
+  // Example: "Netflix September 2026"
+  const paymentDate = new Date(payDate);
+
+  const payingMonthYear = paymentDate.toLocaleDateString("en-IN", {
+    month: "long",
+    year: "numeric",
+  });
+
+  const defaultTransactionNote =
+    `${bill.name} ${payingMonthYear}`.trim();
+
+  // If caller explicitly provides notes, keep it.
+  // Otherwise use: Bill Name + Paying Month + Year
+  const transactionNote =
+    notes && String(notes).trim()
+      ? String(notes).trim()
+      : defaultTransactionNote;
 
   let txId = existingTransactionId || bill.linked_transaction_id;
 
@@ -1834,9 +1855,9 @@ export async function markBillPaid(
     // Check whether this bill belongs to a Credit Card
     const ccRes = await executeSql(
       `SELECT *
-        FROM credit_cards
-        WHERE payment_bill_id = ?
-        LIMIT 1`,
+       FROM credit_cards
+       WHERE payment_bill_id = ?
+       LIMIT 1`,
       [bill.parent_bill_id || bill.id],
     );
     const isCreditCardBill = ccRes.rows.length > 0;
@@ -1846,7 +1867,10 @@ export async function markBillPaid(
         fromAccount: paySource,
         toAccount: card.source_id,
         amount: bill.amount,
-        note: notes || `Credit Card Payment - ${card.name}`,
+        note:
+          notes && String(notes).trim()
+            ? String(notes).trim()
+            : `${bill.name} ${payingMonthYear}`,
         date: payDate,
       });
       // Link the debit transaction with the bill
@@ -1859,100 +1883,82 @@ export async function markBillPaid(
         category_id: bill.category_id,
         source_id: paySource,
         date: payDate,
-        notes: notes || `Paid: ${bill.name}`,
+        notes: transactionNote,
         bill_id: billId,
       });
     }
   }
 
   await executeSql(
-    `UPDATE bills SET status=?, is_paid=?, paid_at=?, linked_transaction_id=?, updated_at=? WHERE id=?`,
-    [BILL_STATUS.PAID, 1, paidAt, txId, paidAt, billId],
-  );
-
-  // DEBUG: verify the actual DB value immediately after UPDATE
-  const paidBillCheck = await executeSql(
-    `SELECT id, status, is_paid, paid_at, linked_transaction_id
-   FROM bills
-   WHERE id = ?`,
-    [billId],
-  );
-
-  console.log(
-    "[markBillPaid] BILL AFTER UPDATE:",
-    paidBillCheck.rows.length ? paidBillCheck.rows.item(0) : "BILL NOT FOUND",
-  );
-
-  const statementCheck = await executeSql(
-    `SELECT id, card_id, bill_id, statement_date, status
-   FROM credit_card_statements
-   WHERE bill_id = ?`,
-    [billId],
-  );
-
-  console.log(
-    "[markBillPaid] statement linked to bill:",
-    statementCheck.rows.length
-      ? statementCheck.rows.item(0)
-      : "NO STATEMENT FOUND",
+    `UPDATE bills
+     SET status=?,
+         is_paid=?,
+         paid_at=?,
+         linked_transaction_id=?,
+         updated_at=?
+     WHERE id=?`,
+    [
+      BILL_STATUS.PAID,
+      1,
+      paidAt,
+      txId,
+      paidAt,
+      billId,
+    ],
   );
 
   // Record in junction table (idempotent)
-  if (txId) await addTransactionToBill(billId, txId);
-
-  // Next-month occurrence: create on-demand when current month is paid
-  // (replaces old generateNextRecurringBill — targeted, not bulk)
-  const parentId = bill.parent_bill_id || (bill.is_recurring ? bill.id : null);
-  if (parentId) {
-    await _ensureNextOccurrence(parentId);
-
-    // DEBUG: verify again after next-occurrence processing
-    const finalBillCheck = await executeSql(
-      `SELECT id, status, is_paid, paid_at, linked_transaction_id
-   FROM bills
-   WHERE id = ?`,
-      [billId],
-    );
-
-    console.log(
-      "[markBillPaid] BILL AFTER _ensureNextOccurrence:",
-      finalBillCheck.rows.length
-        ? finalBillCheck.rows.item(0)
-        : "BILL NOT FOUND",
-    );
+  if (txId) {
+    await addTransactionToBill(billId, txId);
   }
+
+  // IMPORTANT:
+  // Marking a bill as paid must NOT create the next recurring occurrence.
+  // The recurring scheduler handles future occurrences.
 
   emitBillsChanged();
   return txId;
 }
 
 /**
- * When a bill is paid, ensure exactly one future occurrence exists (next month).
- * This is the only place future bills are created — never in bulk.
- */
-/**
- * Ensure the next recurring occurrence exists.
+ * Ensure the NEXT recurring occurrence exists only when it is
+ * within 7 days of its due date.
  *
  * IMPORTANT:
- * This works for:
  *
- *   Daily
- *   Weekly
- *   Monthly
- *   Yearly
+ * Marking a bill as paid does NOT call this function anymore.
  *
- * It does NOT assume "next month".
+ * This function is intended to be called by the recurring scheduler.
+ *
+ * Example:
+ *
+ *   Today:      Sep 1
+ *   Next due:   Sep 10
+ *
+ *   9 days away
+ *   → DO NOT CREATE
+ *
+ *   Today:      Sep 3
+ *   Next due:   Sep 10
+ *
+ *   7 days away
+ *   → CREATE
+ *
+ *   Today:      Sep 10
+ *   Next due:   Sep 10
+ *
+ *   0 days away
+ *   → CREATE
  */
 async function _ensureNextOccurrence(templateId) {
   await ensureRecurringOccurrenceColumn();
   await ensureRecurringOccurrenceUniqueIndex();
-  await ensureRecurringDeletionTable();
 
   const template = await getBillById(templateId);
 
   if (
     !template ||
-    !template.is_recurring ||
+    Number(template.is_recurring) !== 1 ||
     !template.recurrence_type
   ) {
     return;
@@ -1961,7 +1967,7 @@ async function _ensureNextOccurrence(templateId) {
   await backfillMissingOccurrenceKeys(template);
 
   const type = String(
-    template.recurrence_type || ""
+    template.recurrence_type || ''
   ).toLowerCase();
 
   const effectiveDate =
@@ -1972,205 +1978,257 @@ async function _ensureNextOccurrence(templateId) {
   const effectiveDateOnly =
     String(effectiveDate).slice(0, 10);
 
-  const future = new Date();
+  const today = todayStr();
+  // NEXT 7 DAYS
+  const todayDate = new Date(`${today}T00:00:00`);
+  const sevenDaysFromToday = new Date(todayDate);
+  sevenDaysFromToday.setDate(
+    sevenDaysFromToday.getDate() + 7
+  );
+  const sevenDaysDate =
+    formatDate(sevenDaysFromToday);
 
+  // ---------------------------------------------------------
+  // GENERATE ONLY ENOUGH DATES TO FIND THE NEXT OCCURRENCE
+  //
+  // We do NOT generate years of future rows.
+  // ---------------------------------------------------------
+  let probeDate = new Date(`${today}T00:00:00`);
   if (
-    type === "yearly" ||
-    type === "year" ||
-    type === "annual"
+    type === 'yearly' ||
+    type === 'year' ||
+    type === 'annual'
   ) {
-    future.setFullYear(
-      future.getFullYear() + 10
+    probeDate.setFullYear(
+      probeDate.getFullYear() + 2
     );
   } else if (
-    type === "monthly" ||
-    type === "month"
+    type === 'monthly' ||
+    type === 'month'
   ) {
-    future.setFullYear(
-      future.getFullYear() + 2
+    probeDate.setFullYear(
+      probeDate.getFullYear() + 1
+    );
+  } else if (
+    type === 'weekly' ||
+    type === 'week'
+  ) {
+    probeDate.setMonth(
+      probeDate.getMonth() + 3
     );
   } else {
-    future.setFullYear(
-      future.getFullYear() + 1
+    // Daily / other recurrence
+    probeDate.setMonth(
+      probeDate.getMonth() + 1
     );
   }
 
-  let upTo = formatDate(future);
-
+  let upTo = formatDate(probeDate);
+  // Respect recurrence end date.
   if (
     template.recurrence_end_date &&
-    template.recurrence_end_date.slice(0, 10) < upTo
+    String(template.recurrence_end_date).slice(0, 10) < upTo
   ) {
     upTo =
-      template.recurrence_end_date.slice(0, 10);
+      String(template.recurrence_end_date).slice(0, 10);
   }
-
-  const allDates = generateOccurrenceDates(
-    template,
-    upTo
-  );
-
-  if (!allDates || !allDates.length) {
-    return null;
+  const allDates =
+    generateOccurrenceDates(
+      template,
+      upTo
+    );
+  if (
+    !allDates ||
+    !allDates.length
+  ) {
+    return;
   }
+  // ---------------------------------------------------------
+  // LOAD EXISTING OCCURRENCES
+  // ---------------------------------------------------------
 
-  // ==========================================================
-  // LOAD INTENTIONALLY DELETED OCCURRENCES
-  // ==========================================================
-
-  const deletedOccurrenceKeys =
-    await getDeletedOccurrenceKeys(
-      Number(templateId)
+  const existingRes =
+    await executeSql(
+      `SELECT
+         id,
+         due_date,
+         recurrence_occurrence_key,
+         deleted_at
+       FROM bills
+       WHERE parent_bill_id = ?`,
+      [templateId]
     );
 
-  console.log(
-    "[_ensureNextOccurrence] Deleted occurrence keys:",
-    {
-      templateId,
-      keys: Array.from(deletedOccurrenceKeys),
+  const existingRows =
+    rowsToArray(existingRes);
+
+  const existingKeys =
+    new Set();
+  for (
+    const row of existingRows
+  ) {
+    if (row.deleted_at) {
+      continue;
     }
-  );
 
-  // ==========================================================
-  // LOAD EXISTING CHILD OCCURRENCES
-  // ==========================================================
-
-  const existingRes = await executeSql(
-    `SELECT *
-     FROM bills
-     WHERE parent_bill_id = ?`,
-    [Number(templateId)]
-  );
-
-  const existingRows = rowsToArray(existingRes);
-
-  const existingKeys = new Set();
-
-  for (const row of existingRows) {
-    if (row.recurrence_occurrence_key) {
+    if (
+      row.recurrence_occurrence_key
+    ) {
       existingKeys.add(
-        String(row.recurrence_occurrence_key)
+        String(
+          row.recurrence_occurrence_key
+        )
       );
-    } else if (row.due_date) {
+    } else if (
+      row.due_date
+    ) {
       const key =
         getRecurrenceOccurrenceKey(
           template.recurrence_type,
           row.due_date,
           template.recurrence_interval
         );
-
       if (key) {
-        existingKeys.add(String(key));
+        existingKeys.add(
+          String(key)
+        );
       }
     }
   }
 
-  console.log(
-    "[_ensureNextOccurrence] Existing keys:",
-    Array.from(existingKeys)
-  );
+  // ---------------------------------------------------------
+  // FIND FIRST MISSING FUTURE OCCURRENCE
+  // ---------------------------------------------------------
 
-  // ==========================================================
-  // FIND FIRST FUTURE OCCURRENCE
-  // ==========================================================
+  let nextDueDate = null;
 
-  const sortedDates = [...allDates]
-    .map((d) => String(d).slice(0, 10))
-    .sort();
+  for (
+    const dueDate of allDates
+  ) {
+    const dueDateOnly =
+      String(dueDate).slice(0, 10);
 
-  for (const occurrenceDate of sortedDates) {
-    if (!occurrenceDate) {
+    // Do not use dates before the effective recurrence date.
+    if (
+      dueDateOnly <
+      effectiveDateOnly
+    ) {
       continue;
     }
-
-    if (occurrenceDate < effectiveDateOnly) {
+    // Template's own date already exists.
+    if (
+      dueDateOnly ===
+      String(template.due_date || '').slice(0, 10)
+    ) {
       continue;
     }
 
     const occurrenceKey =
       getRecurrenceOccurrenceKey(
         template.recurrence_type,
-        occurrenceDate,
+        dueDateOnly,
         template.recurrence_interval
       );
-
-    if (!occurrenceKey) {
+    // Already exists.
+    if (
+      occurrenceKey &&
+      existingKeys.has(
+        String(occurrenceKey)
+      )
+    ) {
       continue;
     }
 
-    const key = String(occurrenceKey);
-
-    // ========================================================
-    // CRITICAL:
-    // NEVER recreate intentionally deleted occurrence.
-    // ========================================================
-
-    if (deletedOccurrenceKeys.has(key)) {
-      console.log(
-        "[_ensureNextOccurrence] SKIPPING DELETED OCCURRENCE:",
-        {
-          templateId,
-          occurrenceDate,
-          occurrenceKey: key,
-        }
+    // Also check by actual due date.
+    const alreadyExists =
+      existingRows.some(row =>
+        !row.deleted_at &&
+        row.due_date &&
+        String(row.due_date).slice(0, 10) ===
+        dueDateOnly
       );
 
+    if (alreadyExists) {
       continue;
     }
+    nextDueDate =
+      dueDateOnly;
 
-    // Already exists.
-    if (existingKeys.has(key)) {
-      continue;
-    }
-
-    console.log(
-      "[_ensureNextOccurrence] CREATING:",
-      {
-        templateId,
-        occurrenceDate,
-        occurrenceKey: key,
-      }
-    );
-
-    const newId = await _insertBill({
-      name: template.name,
-      amount: template.amount,
-      due_date: occurrenceDate,
-
-      is_recurring: 0,
-      recurrence_type: null,
-      recurrence_interval: 1,
-      recurrence_end_date: null,
-
-      category_id: template.category_id,
-      source_id: template.source_id,
-
-      reminder_days_before:
-        template.reminder_days_before,
-
-      auto_pay:
-        template.auto_pay,
-
-      notes:
-        template.notes,
-
-      attachment_url:
-        template.attachment_url,
-
-      parent_bill_id:
-        template.id,
-
-      recurrence_occurrence_key:
-        key,
-
-      recurrence_effective_date:
-        effectiveDateOnly,
-    });
-
-    return newId;
+    break;
   }
 
-  return null;
+  if (!nextDueDate) {
+    return;
+  }
+
+  // ---------------------------------------------------------
+  // CRITICAL 7-DAY CHECK
+  // ---------------------------------------------------------
+
+  if (
+    nextDueDate >
+    sevenDaysDate
+  ) {
+    console.log(
+      '[RecurringScheduler] Next occurrence is more than 7 days away. Not creating.',
+      {
+        templateId,
+        nextDueDate,
+        today,
+        createAfter: sevenDaysDate,
+      }
+    );
+    return;
+  }
+  // ---------------------------------------------------------
+  // RESPECT END DATE
+  // ---------------------------------------------------------
+  if (
+    template.recurrence_end_date &&
+    nextDueDate >
+    String(
+      template.recurrence_end_date
+    ).slice(0, 10)
+  ) {
+    return;
+  }
+  // ---------------------------------------------------------
+  // CREATE ONLY THIS ONE OCCURRENCE
+  // ---------------------------------------------------------
+  await _insertBill({
+    name: template.name,
+    amount: template.amount,
+    due_date: nextDueDate,
+    status: BILL_STATUS.PENDING,
+    is_recurring: 0,
+    recurrence_type: null,
+    recurrence_interval: 1,
+    recurrence_end_date: null,
+    category_id: template.category_id,
+    source_id: template.source_id,
+    reminder_days_before: template.reminder_days_before,
+    auto_pay: template.auto_pay,
+    notes: template.notes,
+    attachment_url: template.attachment_url,
+    paid_at: null,
+    is_paid: 0,
+    linked_transaction_id: null,
+    parent_bill_id: templateId,
+  });
+
+  console.log(
+    '[RecurringScheduler] Created next occurrence:',
+    {
+      templateId,
+      dueDate: nextDueDate,
+      today,
+      daysUntilDue:
+        daysBetween(
+          today,
+          nextDueDate
+        ),
+    }
+  );
 }
 
 async function ensureRecurringOccurrenceUniqueIndex() {
@@ -2257,14 +2315,183 @@ export async function linkAdditionalTransaction(billId, transactionId) {
 // ─── getTransactionsForBillLink ───────────────────────────────────────────────
 export async function getTransactionsForBillLink(bill) {
   try {
+    if (!bill) {
+      return [];
+    }
+    // =========================================================
+    // 1. CURRENT BILL DATE
+    // =========================================================
+    const currentDueDate = bill?.due_date
+      ? String(bill.due_date).slice(0, 10)
+      : null;
+    if (!currentDueDate) {
+      return [];
+    }
+    const currentDate = new Date(`${currentDueDate}T00:00:00`);
+    if (Number.isNaN(currentDate.getTime())) {
+      return [];
+    }
+    // =========================================================
+    // 2. CURRENT DATE
+    // IMPORTANT:
+    // Do NOT use bill due date as the filter end.
+    // We want transactions that have actually happened
+    // up to TODAY.
+    // =========================================================
+    const filterEndDate = todayStr();
+
+    // =========================================================
+    // 3. FIND PREVIOUS CALENDAR MONTH
+    //
+    // Example:
+    //
+    // Current bill = Sep 10, 2026
+    //
+    // Previous month:
+    // Aug 1, 2026 -> Aug 31, 2026
+    // =========================================================
+
+    const previousMonthStart = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() - 1,
+      1,
+    );
+
+    const previousMonthEnd = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      0,
+    );
+
+    const previousMonthStartStr =
+      `${previousMonthStart.getFullYear()}-${String(
+        previousMonthStart.getMonth() + 1,
+      ).padStart(2, "0")}-01`;
+
+    const previousMonthEndStr =
+      `${previousMonthEnd.getFullYear()}-${String(
+        previousMonthEnd.getMonth() + 1,
+      ).padStart(2, "0")}-${String(
+        previousMonthEnd.getDate(),
+      ).padStart(2, "0")}`;
+
+    // =========================================================
+    // 4. DETERMINE BILL SERIES
+    // =========================================================
+
+    const parentId =
+      bill.parent_bill_id ||
+      (Number(bill.is_recurring) === 1 ? bill.id : null);
+
+    let previousBill = null;
+
+    // =========================================================
+    // 5. FIND LAST MONTH'S BILL
+    // =========================================================
+
+    if (parentId) {
+      const previousBillRes = await executeSql(
+        `SELECT *
+         FROM bills
+         WHERE parent_bill_id = ?
+           AND due_date >= ?
+           AND due_date <= ?
+           AND deleted_at IS NULL
+         ORDER BY due_date DESC
+         LIMIT 1`,
+        [
+          parentId,
+          previousMonthStartStr,
+          previousMonthEndStr,
+        ],
+      );
+
+      if (previousBillRes.rows.length) {
+        previousBill = previousBillRes.rows.item(0);
+      }
+    }
+
+    // =========================================================
+    // 6. DETERMINE FILTER START DATE
+    //
+    // RULE 1:
+    // Previous month bill exists + PAID
+    //     -> paid_at
+    //
+    // RULE 2:
+    // Previous month bill exists + NOT PAID
+    //     -> previous bill due_date
+    //
+    // RULE 3:
+    // No previous month bill
+    //     -> previous month's 1st day
+    // =========================================================
+
+    let filterStartDate = null;
+
+    if (previousBill) {
+      const previousBillIsPaid =
+        Number(previousBill.is_paid) === 1 ||
+        previousBill.status === BILL_STATUS.PAID;
+
+      if (
+        previousBillIsPaid &&
+        previousBill.paid_at
+      ) {
+        filterStartDate =
+          String(previousBill.paid_at).slice(0, 10);
+
+        console.log(
+          "[getTransactionsForBillLink] Previous bill PAID:",
+          {
+            currentBillId: bill.id,
+            previousBillId: previousBill.id,
+            paidAt: previousBill.paid_at,
+            filterStartDate,
+            filterEndDate,
+          },
+        );
+      } else if (previousBill.due_date) {
+        filterStartDate =
+          String(previousBill.due_date).slice(0, 10);
+
+        console.log(
+          "[getTransactionsForBillLink] Previous bill NOT PAID:",
+          {
+            currentBillId: bill.id,
+            previousBillId: previousBill.id,
+            dueDate: previousBill.due_date,
+            filterStartDate,
+            filterEndDate,
+          },
+        );
+      }
+    } else {
+      filterStartDate = previousMonthStartStr;
+
+      console.log(
+        "[getTransactionsForBillLink] No previous month bill:",
+        {
+          currentBillId: bill.id,
+          filterStartDate,
+          filterEndDate,
+        },
+      );
+    }
+
+    // =========================================================
+    // SAFETY
+    // =========================================================
+
+    if (!filterStartDate) {
+      filterStartDate = previousMonthStartStr;
+    }
+
+    // =========================================================
+    // 7. LOAD EXPENSE TRANSACTIONS
+    // =========================================================
+
     let rows = [];
-    const billDate = bill?.due_date ? new Date(bill.due_date) : new Date();
-    // One month before the bill date
-    const fromDate = new Date(billDate);
-    fromDate.setMonth(fromDate.getMonth() - 1);
-    // Compare dates using the actual Date objects
-    const fromTime = fromDate.getTime();
-    const toTime = billDate.getTime();
 
     if (Platform.OS === "web") {
       const txRes = await executeSql(
@@ -2276,8 +2503,18 @@ export async function getTransactionsForBillLink(bill) {
       );
       const sourceRes = await executeSql(`SELECT * FROM sources`, []);
       const catRes = await executeSql(`SELECT * FROM categories`, []);
-      const sourceMap = new Map(rowsToArray(sourceRes).map((s) => [s.id, s]));
-      const catMap = new Map(rowsToArray(catRes).map((c) => [c.id, c]));
+      const sourceMap = new Map(
+        rowsToArray(sourceRes).map((s) => [
+          s.id,
+          s,
+        ]),
+      );
+      const catMap = new Map(
+        rowsToArray(catRes).map((c) => [
+          c.id,
+          c,
+        ]),
+      );
       rows = rowsToArray(txRes).map((t) => ({
         ...t,
         source_name: sourceMap.get(t.source_id)?.name || "",
@@ -2294,56 +2531,117 @@ export async function getTransactionsForBillLink(bill) {
            c.color AS category_color,
            c.icon AS category_icon
          FROM transactions t
-         LEFT JOIN sources s ON s.id = t.source_id
-         LEFT JOIN categories c ON c.id = t.category_id
+         LEFT JOIN sources s
+           ON s.id = t.source_id
+         LEFT JOIN categories c
+           ON c.id = t.category_id
          WHERE t.type = 'expense'
          ORDER BY t.date DESC`,
         [],
       );
+
       rows = rowsToArray(res);
     }
 
-    // ---------------------------------------------------------
-    // STRICT FILTER
-    // Only EXPENSE transactions within one month of bill date
-    // ---------------------------------------------------------
+    // =========================================================
+    // 8. DATE FILTER
+    //
+    // START = calculated based on previous bill
+    // END   = TODAY
+    //
+    // This is the important fix.
+    // =========================================================
+
     rows = rows.filter((tx) => {
-      if (String(tx.type).toLowerCase() !== "expense") {
+      if (
+        String(tx.type).toLowerCase() !==
+        "expense"
+      ) {
         return false;
       }
       if (!tx.date) {
         return false;
       }
-      const txDate = new Date(tx.date);
-      if (Number.isNaN(txDate.getTime())) {
-        return false;
-      }
-      const txTime = txDate.getTime();
-      return txTime >= fromTime && txTime <= toTime;
+      const txDateOnly =
+        String(tx.date).slice(0, 10);
+
+      return (
+        txDateOnly >= filterStartDate &&
+        txDateOnly <= filterEndDate
+      );
     });
 
-    // Remove transactions already linked to this bill
+    // =========================================================
+    // 9. REMOVE ALREADY LINKED TRANSACTIONS
+    // =========================================================
     const linked = await getBillLinkedTransactions(bill.id);
-    const linkedIds = new Set(linked.map((l) => Number(l.id)));
-    rows = rows.filter((tx) => !linkedIds.has(Number(tx.id)));
-    // Same category + same amount first
+    const linkedIds = new Set(
+      linked.map((l) => Number(l.id)),
+    );
+    rows = rows.filter(
+      (tx) =>
+        !linkedIds.has(Number(tx.id)),
+    );
+    // =========================================================
+    // 10. PRIORITIZE MATCHES
+    //
+    // Same category + same amount first.
+    // Then newest transaction.
+    // =========================================================
     rows.sort((a, b) => {
       const aScore =
-        (Number(a.category_id) === Number(bill.category_id) ? 2 : 0) +
-        (Number(a.amount) === Number(bill.amount) ? 1 : 0);
+        (Number(a.category_id) ===
+          Number(bill.category_id)
+          ? 2
+          : 0) +
+        (Number(a.amount) ===
+          Number(bill.amount)
+          ? 1
+          : 0);
 
       const bScore =
-        (Number(b.category_id) === Number(bill.category_id) ? 2 : 0) +
-        (Number(b.amount) === Number(bill.amount) ? 1 : 0);
+        (Number(b.category_id) ===
+          Number(bill.category_id)
+          ? 2
+          : 0) +
+        (Number(b.amount) ===
+          Number(bill.amount)
+          ? 1
+          : 0);
+
       if (bScore !== aScore) {
         return bScore - aScore;
       }
-      return new Date(b.date) - new Date(a.date);
+      return (
+        new Date(b.date) -
+        new Date(a.date)
+      );
     });
+
+    console.log(
+      "[getTransactionsForBillLink] FINAL FILTER:",
+      {
+        billId: bill.id,
+        currentBillDueDate: currentDueDate,
+        previousBillId:
+          previousBill?.id || null,
+        previousBillDueDate:
+          previousBill?.due_date || null,
+        previousBillPaidAt:
+          previousBill?.paid_at || null,
+        filterStartDate,
+        filterEndDate,
+        transactionCount: rows.length,
+      },
+    );
 
     return rows.slice(0, 50);
   } catch (e) {
-    console.warn("getTransactionsForBillLink error", e);
+    console.warn(
+      "getTransactionsForBillLink error",
+      e,
+    );
+
     return [];
   }
 }
@@ -3195,6 +3493,35 @@ export async function deleteBill(id) {
 
 export async function runRecurringScheduler() {
   await syncBillStatuses();
+  const rows =
+    (await fetchAllBillsRaw())
+      .map(normalizeBill)
+      .filter(Boolean);
+
+  // Only recurring templates.
+  const templates =
+    rows.filter(bill =>
+      Number(bill.is_recurring) === 1 &&
+      !bill.parent_bill_id &&
+      bill.recurrence_type &&
+      !bill.deleted_at
+    );
+
+  for (
+    const template of templates
+  ) {
+    try {
+      await _ensureNextOccurrence(
+        template.id
+      );
+    } catch (error) {
+      console.error(
+        '[runRecurringScheduler] Failed for template:',
+        template.id,
+        error
+      );
+    }
+  }
 }
 
 function padDateValue(value) {

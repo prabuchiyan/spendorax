@@ -200,10 +200,10 @@ function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
                 >
                   {tx.date
                     ? new Date(tx.date).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })
                     : "—"}
                   {tx.source_name ? ` • ${tx.source_name}` : ""}
                 </Text>
@@ -380,15 +380,44 @@ function OccurrenceList({ series, selectedId, onSelect }) {
 function LinkTransactionModal({ visible, bill, onLink, onClose }) {
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!visible || !bill) return;
+    setSearch("");
     setLoading(true);
     Promise.all([getTransactionsForBillLink(bill), getSources(true)])
       .then(([txs]) => setCandidates(txs))
       .catch(() => setCandidates([]))
       .finally(() => setLoading(false));
   }, [visible, bill?.id]);
+
+  const filteredCandidates = React.useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return candidates;
+    return candidates.filter((tx) => {
+      const notes = String(tx.notes || "").toLowerCase();
+      const source = String(tx.source_name || "").toLowerCase();
+      const category = String(tx.category_name || "").toLowerCase();
+      const amount = String(tx.amount || "").toLowerCase();
+      const date = tx.date
+        ? new Date(tx.date)
+          .toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          })
+          .toLowerCase()
+        : "";
+      return (
+        notes.includes(query) ||
+        source.includes(query) ||
+        category.includes(query) ||
+        amount.includes(query) ||
+        date.includes(query)
+      );
+    });
+  }, [candidates, search]);
 
   return (
     <Modal
@@ -409,10 +438,11 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
             backgroundColor: "#fff",
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
-            maxHeight: "72%",
+            maxHeight: "78%",
             padding: 16,
           }}
         >
+          {/* Header */}
           <View
             style={{
               flexDirection: "row",
@@ -421,12 +451,38 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
               marginBottom: 4,
             }}
           >
-            <Text
-              style={{ fontWeight: "700", fontSize: 16, color: Colors.text }}
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontWeight: "800",
+                  fontSize: 17,
+                  color: Colors.text,
+                }}
+              >
+                Link Transaction
+              </Text>
+              <Text
+                style={{
+                  color: Colors.muted,
+                  fontSize: 12,
+                  marginTop: 2,
+                }}
+              >
+                {filteredCandidates.length} transaction
+                {filteredCandidates.length !== 1 ? "s" : ""} available
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={onClose}
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 19,
+                backgroundColor: "#F4F5F8",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
             >
-              Link Transaction
-            </Text>
-            <TouchableOpacity onPress={onClose}>
               <MaterialCommunityIcons
                 name="close"
                 size={22}
@@ -434,47 +490,129 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
               />
             </TouchableOpacity>
           </View>
-          <Text style={{ color: Colors.muted, fontSize: 13, marginBottom: 12 }}>
-            Showing expense transactions from the last month for "{bill?.name}"
+
+          {/* Info */}
+          <Text
+            style={{
+              color: Colors.muted,
+              fontSize: 13,
+              marginTop: 8,
+              marginBottom: 12,
+            }}
+          >
+            Select an expense transaction to link with "{bill?.name}"
           </Text>
+
+          {/* Search */}
+          <PaperTextInput
+            mode="outlined"
+            placeholder="Search transactions..."
+            value={search}
+            onChangeText={setSearch}
+            left={
+              <PaperTextInput.Icon
+                icon="magnify"
+              />
+            }
+            right={
+              search ? (
+                <PaperTextInput.Icon
+                  icon="close-circle"
+                  onPress={() => setSearch("")}
+                />
+              ) : null
+            }
+            style={{
+              backgroundColor: "#fff",
+              marginBottom: 12,
+            }}
+            outlineColor="#E4E7EC"
+            activeOutlineColor={Colors.primary}
+          />
+
+          {/* Transaction list */}
           {loading ? (
             <ActivityIndicator
               size="large"
               color={Colors.primary}
               style={{ marginVertical: 30 }}
             />
-          ) : candidates.length === 0 ? (
-            <Text
+          ) : filteredCandidates.length === 0 ? (
+            <View
               style={{
-                color: Colors.muted,
-                textAlign: "center",
-                marginVertical: 30,
+                alignItems: "center",
+                justifyContent: "center",
+                paddingVertical: 35,
               }}
             >
-              No matching transactions found.
-            </Text>
+              <MaterialCommunityIcons
+                name={search ? "magnify-close" : "receipt-text-remove-outline"}
+                size={46}
+                color="#CFCFCF"
+              />
+
+              <Text
+                style={{
+                  color: Colors.muted,
+                  textAlign: "center",
+                  marginTop: 10,
+                  fontWeight: "600",
+                }}
+              >
+                {search
+                  ? "No transactions match your search."
+                  : "No matching transactions found."}
+              </Text>
+
+              {search && (
+                <TouchableOpacity
+                  onPress={() => setSearch("")}
+                  style={{
+                    marginTop: 12,
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    borderRadius: 18,
+                    backgroundColor: `${Colors.primary}12`,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: Colors.primary,
+                      fontWeight: "700",
+                      fontSize: 13,
+                    }}
+                  >
+                    Clear Search
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
           ) : (
             <FlatList
-              data={candidates}
+              data={filteredCandidates}
               keyExtractor={(t) => String(t.id)}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
               renderItem={({ item: tx }) => (
                 <TouchableOpacity
                   onPress={() => onLink(tx)}
+                  activeOpacity={0.7}
                   style={{
                     flexDirection: "row",
-                    justifyContent: "space-between",
                     alignItems: "center",
                     paddingVertical: 12,
                     borderBottomWidth: 1,
                     borderBottomColor: "#EEF1F6",
                   }}
                 >
+                  {/* Icon */}
                   <View
                     style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 18,
-                      backgroundColor: `${tx.category_color || Colors.primary}20`,
+                      width: 42,
+                      height: 42,
+                      borderRadius: 21,
+                      backgroundColor: `${tx.category_color || Colors.primary
+                        }20`,
                       alignItems: "center",
                       justifyContent: "center",
                       marginRight: 10,
@@ -482,14 +620,16 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
                   >
                     <MaterialCommunityIcons
                       name={tx.category_icon || "cash"}
-                      size={18}
+                      size={19}
                       color={tx.category_color || Colors.primary}
                     />
                   </View>
+
+                  {/* Details */}
                   <View style={{ flex: 1 }}>
                     <Text
                       style={{
-                        fontWeight: "600",
+                        fontWeight: "700",
                         color: Colors.text,
                         fontSize: 14,
                       }}
@@ -497,23 +637,31 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
                     >
                       {tx.notes || "(no notes)"}
                     </Text>
+
                     <Text
                       style={{
                         color: Colors.muted,
                         fontSize: 12,
-                        marginTop: 2,
+                        marginTop: 3,
                       }}
+                      numberOfLines={1}
                     >
                       {tx.date
                         ? new Date(tx.date).toLocaleDateString("en-IN", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })
                         : "—"}
+
                       {tx.source_name ? ` · ${tx.source_name}` : ""}
+
+                      {tx.category_name
+                        ? ` · ${tx.category_name}`
+                        : ""}
                     </Text>
                   </View>
+                  {/* Amount */}
                   <Text
                     style={{
                       fontWeight: "800",
@@ -528,10 +676,11 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
               )}
             />
           )}
+          {/* Cancel */}
           <PaperButton
             mode="outlined"
             onPress={onClose}
-            style={{ marginTop: 8 }}
+            style={{ marginTop: 10 }}
           >
             Cancel
           </PaperButton>
