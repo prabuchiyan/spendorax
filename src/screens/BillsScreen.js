@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   View, Text, FlatList, Modal,
-  TouchableOpacity, TextInput, ScrollView
+  TouchableOpacity, TextInput, ScrollView, Alert
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Searchbar } from 'react-native-paper';
@@ -14,6 +14,7 @@ import {
   getBillsForCurrentMonth,
   getBillsSummary,
   getBillById,
+  getBillSeries,
   markBillPaid,
   skipBill,
   deleteBill,
@@ -48,8 +49,149 @@ function isCreditCardBill(bill) {
     );
 }
 
+function getPreferredBillOccurrence(bill, allBills) {
+  if (
+    !bill.is_recurring &&
+    !bill._isRecurringSeries
+  ) {
+    return bill;
+  }
+  const templateId = Number(
+    bill._templateId ||
+    bill.parent_bill_id ||
+    bill.id
+  );
+  if (!templateId) {
+    return bill;
+  }
+  const today = new Date();
+  const todayString = today.toISOString().slice(0, 10);
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
+  const currentMonthPrefix = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+  const occurrences = allBills
+    .filter(row => {
+      const rowTemplateId = Number(
+        row.parent_bill_id ||
+        row._templateId ||
+        row.id
+      );
+      return (
+        rowTemplateId === templateId &&
+        !row.deleted_at
+      );
+    })
+    // IMPORTANT:
+    // Occurrences without a due date are not
+    // considered when determining the preferred due.
+    .filter(row => Boolean(row.due_date))
+    .sort((a, b) =>
+      (b.due_date || '').localeCompare(
+        a.due_date || ''
+      )
+    );
+
+  if (!occurrences.length) {
+    return {
+      ...bill,
+      // Explicitly tell the card that there is
+      // no actual due date.
+      due_date: null,
+      _noDueDate: true,
+    };
+  }
+
+  // 1. CURRENT MONTH
+  const currentMonthBill =
+    occurrences.find(row =>
+      row.due_date.startsWith(
+        currentMonthPrefix
+      )
+    );
+
+  if (currentMonthBill) {
+    // Current month is still unpaid.
+    if (
+      currentMonthBill.status !== 'paid' &&
+      currentMonthBill.status !== 'skipped'
+    ) {
+      return currentMonthBill;
+    }
+
+    // Current month is paid.
+    // Find latest previous pending/overdue.
+    const previousPending =
+      occurrences.find(row => {
+        return (
+          row.due_date <
+          currentMonthBill.due_date &&
+          row.status !== 'paid' &&
+          row.status !== 'skipped'
+        );
+      });
+
+    if (previousPending) {
+      return previousPending;
+    }
+
+    // No previous pending.
+    // Find nearest upcoming.
+    const upcoming =
+      occurrences
+        .filter(row =>
+          row.due_date >
+          currentMonthBill.due_date
+        )
+        .sort((a, b) =>
+          a.due_date.localeCompare(
+            b.due_date
+          )
+        )[0];
+    return upcoming || currentMonthBill;
+  }
+
+  // 2. NO CURRENT-MONTH DUE
+  const previousPending =
+    occurrences.find(row => {
+      return (
+        row.due_date <= todayString &&
+        row.status !== 'paid' &&
+        row.status !== 'skipped'
+      );
+    });
+
+  if (previousPending) {
+    return previousPending;
+  }
+
+  // 3. NO PREVIOUS PENDING
+  // Find nearest future due.
+  const upcoming =
+    occurrences
+      .filter(row =>
+        row.due_date > todayString
+      )
+      .sort((a, b) =>
+        a.due_date.localeCompare(
+          b.due_date
+        )
+      )[0];
+
+  if (upcoming) {
+    return upcoming;
+  }
+
+  // 4. NOTHING TO DISPLAY
+  return {
+    ...bill,
+    due_date: null,
+    _noDueDate: true,
+  };
+}
+
 export default function BillsScreen({ navigation }) {
   const [items, setItems] = useState([]);
+  const [preferredOccurrences, setPreferredOccurrences] = useState({});
   const [summary, setSummary] = useState(null);
   const [categories, setCategories] = useState([]);
   const [categoriesMap, setCategoriesMap] = useState({});
@@ -74,6 +216,7 @@ export default function BillsScreen({ navigation }) {
   const [paymentSourceSearch, setPaymentSourceSearch] = useState('');
   const [selectedPaymentBill, setSelectedPaymentBill] = useState(null);
   const [selectedCreditCard, setSelectedCreditCard] = useState(null);
+  const [expandedCreditCards, setExpandedCreditCards] = useState({});
 
   // ── data load ──────────────────────────────────────────────────────────────
   async function load() {
@@ -88,6 +231,45 @@ export default function BillsScreen({ navigation }) {
       getCategories(true),
     ]);
     setItems(rows);
+    const preferredMap = {};
+    await Promise.all(
+      rows.map(async bill => {
+        if (
+          !bill.is_recurring &&
+          !bill._isRecurringSeries
+        ) {
+          return;
+        }
+
+        // Do not interfere with credit-card statements.
+        if (bill._isCreditCardStatement) {
+          return;
+        }
+        try {
+          const templateId =
+            bill._templateId ||
+            bill.parent_bill_id ||
+            bill.id;
+
+          const series =
+            await getBillSeries(templateId);
+
+          preferredMap[
+            String(templateId)
+          ] = getPreferredBillOccurrence(
+            bill,
+            series
+          );
+        } catch (e) {
+          console.warn(
+            'Preferred bill occurrence error:',
+            templateId,
+            e
+          );
+        }
+      })
+    );
+    setPreferredOccurrences(preferredMap);
     setSummary(sum);
     const expCats = cats.filter(c => c.type === 'expense');
     setCategories(expCats);
@@ -102,9 +284,228 @@ export default function BillsScreen({ navigation }) {
 
   // ── derived lists ──────────────────────────────────────────────────────────
   const filteredItems = useMemo(() => {
-    if (!search.trim()) return items;
-    return items.filter(b => b.name?.toLowerCase().includes(search.toLowerCase()));
-  }, [items, search]);
+    const query = search.trim().toLowerCase();
+    const displayItems = items.map(bill => {
+      const templateId = bill._templateId || bill.parent_bill_id || bill.id;
+      const preferred = preferredOccurrences[String(templateId)];
+      if (
+        preferred &&
+        !bill._isCreditCardParent &&
+        !bill._isCreditCardStatement
+      ) {
+        return {
+          ...bill,
+          // Display the preferred recurring occurrence.
+          due_date: preferred.due_date,
+          status: preferred.status,
+          amount: preferred.amount,
+          // Preserve the no-due-date state.
+          _noDueDate: preferred._noDueDate === true,
+          // Preserve the recurring template identity.
+          _templateId: bill._templateId || templateId,
+          _displayOccurrenceId: preferred.id,
+          _displayOccurrence: preferred,
+        };
+      }
+      return bill;
+    });
+    // SEARCH FILTER
+    const sourceItems = query
+      ? displayItems.filter(bill =>
+        bill.name
+          ?.toLowerCase()
+          .includes(query)
+      )
+      : displayItems;
+    // GROUP CREDIT-CARD STATEMENTS
+    // Credit-card statements are different from normal recurring bills.
+    // We group all statements belonging to the same credit card,
+    // but the parent Bill Card uses ONLY the current month's statements for:
+    //   - amount
+    //   - due date
+    //   - status
+    // All actual statements remain inside `children`.
+    const groups = new Map();
+    const normalBills = [];
+    sourceItems.forEach(bill => {
+      const parentId =
+        Number(
+          bill.parent_bill_id || 0
+        );
+      const isStatement =
+        bill._isCreditCardStatement === true ||
+        (
+          typeof bill.notes === 'string' &&
+          bill.notes.startsWith(
+            'Statement '
+          )
+        );
+      if (
+        isStatement &&
+        parentId > 0
+      ) {
+        if (!groups.has(parentId)) {
+          groups.set(
+            parentId,
+            []
+          );
+        }
+        groups
+          .get(parentId)
+          .push(bill);
+      } else {
+        normalBills.push(bill);
+      }
+    });
+    // CURRENT MONTH
+    // Current month is determined using DUE DATE.
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const currentMonthPrefix =
+      `${currentYear}-${String(
+        currentMonth + 1
+      ).padStart(2, '0')}`;
+    // BUILD ONE BILL-CARD PARENT FOR EACH CREDIT CARD
+    const groupedCreditCards = [];
+    groups.forEach(
+      (statements, parentId) => {
+        if (
+          !statements.length
+        ) {
+          return;
+        }
+        // SORT ALL STATEMENTS BY DUE DATE
+        // Due date is preferred because this screen represents bills that need to be paid.
+        statements.sort(
+          (a, b) => {
+            const ad =
+              a.due_date ||
+              a.statement_date ||
+              '9999-12-31';
+            const bd =
+              b.due_date ||
+              b.statement_date ||
+              '9999-12-31';
+
+            return ad.localeCompare(
+              bd
+            );
+          }
+        );
+
+        // CURRENT MONTH STATEMENTS
+        // ONLY these statements are used to calculate the amount displayed on the Bill Card.
+        const currentMonthStatements =
+          statements.filter(
+            statement => {
+              const dueDate = statement.due_date || '';
+              return dueDate.startsWith(
+                currentMonthPrefix
+              );
+            }
+          );
+        // DETERMINE WHAT THE CARD SHOULD DISPLAY
+        // Normal case:
+        //     Current month statement exists
+        // Fallback:
+        //     No current-month statement exists.
+        //     Use the latest statement on/before today.
+        // This fallback prevents the credit card from disappearing
+        // completely when there is no current-month statement.
+        let displayStatements = [];
+        if (
+          currentMonthStatements.length > 0
+        ) {
+          displayStatements = currentMonthStatements;
+        } else {
+          const todayString = now.toISOString().slice(0, 10);
+          const previousStatements =
+            statements.filter(statement => {
+              const dueDate = statement.due_date || '';
+              return (dueDate && dueDate <= todayString);
+            })
+              .sort(
+                (a, b) =>
+                  (
+                    b.due_date ||
+                    ''
+                  ).localeCompare(
+                    a.due_date ||
+                    ''
+                  )
+              );
+          if (
+            previousStatements.length > 0
+          ) {
+            displayStatements = [previousStatements[0],];
+          } else {
+            // No current or previous statement.
+            // Use the nearest upcoming statement if available.
+            const upcomingStatements = statements.filter(
+              statement => {
+                const dueDate = statement.due_date || '';
+                return (dueDate > todayString);
+              }
+            ).sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''));
+            if (upcomingStatements.length > 0) {
+              displayStatements = [upcomingStatements[0],];
+            }
+          }
+        }
+        // IF THERE IS NOTHING TO DISPLAY
+        if (!displayStatements.length) {
+          return;
+        }
+        // PARENT AMOUNT
+        // Sum ONLY the statements represented by the Bill Card.
+        const totalAmount =
+          displayStatements.reduce(
+            (sum, statement) =>
+              sum +
+              Number(
+                statement.amount || 0
+              ),
+            0
+          );
+        const latestDisplayStatement = displayStatements[displayStatements.length - 1];
+        // BUILD CREDIT-CARD PARENT
+        groupedCreditCards.push({
+          ...latestDisplayStatement,
+          id: `cc-${parentId}`,
+          parent_bill_id: parentId,
+          name: latestDisplayStatement.name || 'Credit Card',
+          // Amount is ONLY for the current/displayed statement.
+          amount: totalAmount,
+          // ALL ACTUAL STATEMENTS
+          // Keep every generated statement here so the  Statements expansion continues to work.
+          children: statements,
+          // STATEMENTS REPRESENTED BY THE CARD
+          _displayStatements: displayStatements,
+          // CREDIT-CARD FLAGS
+          _isCreditCardParent: true,
+          _isCreditCardStatement: false,
+          _isRecurringSeries: false,
+          _templateId: parentId,
+          // COUNTS
+          _statementCount: statements.length,
+          _currentMonthStatementCount: currentMonthStatements.length,
+          _isCurrentMonthCreditCard: currentMonthStatements.length > 0,
+          // NO DUE DATE STATE
+          _noDueDate: !latestDisplayStatement.due_date,
+        });
+      }
+    );
+    // RETURN NORMAL BILLS + CREDIT-CARD PARENTS
+    return [
+      ...normalBills,
+      ...groupedCreditCards,
+    ];
+  }, [
+    items,
+    search,
+    preferredOccurrences,
+  ]);
 
   const filteredCategories = useMemo(() => {
     if (!categorySearch.trim()) return categories;
@@ -130,32 +531,37 @@ export default function BillsScreen({ navigation }) {
 
   const handleMarkPaid = async (bill) => {
     try {
-      // Check whether this bill belongs to a Credit Card
+      // FIND CREDIT CARD
       const cards = await getCreditCards(false);
-      const card = cards.find(
-        c =>
-          Number(c.payment_bill_id) === Number(bill.parent_bill_id || bill.id)
-      );
-      // Normal bill → existing flow
+      const parentBillId =
+        Number(bill.parent_bill_id || bill._templateId || bill.id);
+      const card = cards.find(c => Number(c.payment_bill_id) === parentBillId);
+      // NORMAL BILL
       if (!card) {
-        await markBillPaid(bill.id, {
-          source_id: bill.source_id,
-        });
+        await markBillPaid(
+          bill.id,
+          {
+            source_id:
+              bill.source_id,
+          }
+        );
         await load();
         return;
       }
-      // Credit Card bill → ask user to choose payment source
+      // CREDIT CARD BILL
+      // Do NOT change the statement amount here.
+      // We only open the payment-source picker.
+      // The actual statement bill remains unchanged until the payment is explicitly recorded.
       const sources = await getSources(true);
-      const availableSources = sources.filter(
-        s => Number(s.id) !== Number(card.source_id)
-      );
+      const availableSources = sources.filter(s => Number(s.id) !== Number(card.source_id));
       setPaymentSources(availableSources);
+      // Keep the actual bill that initiated  the payment action.
       setSelectedPaymentBill(bill);
       setSelectedCreditCard(card);
       setPaymentSourceSearch('');
       setShowPaymentSourcePicker(true);
     } catch (e) {
-      console.error(e);
+      console.error('handleMarkPaid error:', e);
       Alert.alert('Error', 'Unable to mark bill as paid.');
     }
   };
@@ -167,107 +573,678 @@ export default function BillsScreen({ navigation }) {
     setConfirmVisible(true);
   }
 
-  // ── render ─────────────────────────────────────────────────────────────────
+  function handleDeleteBill(bill) {
+    console.log(
+      '[BillsScreen] DELETE CLICKED - DISPLAY BILL:',
+      bill
+    );
+
+    if (!bill?.id) {
+      Alert.alert(
+        'Delete Bill',
+        'Unable to identify this bill.'
+      );
+      return;
+    }
+
+    // ---------------------------------------------------------
+    // IMPORTANT:
+    // For recurring bills, the card may display an occurrence
+    // while `bill.id` is still the recurring template ID.
+    //
+    // Always delete the ACTUAL displayed occurrence.
+    // ---------------------------------------------------------
+
+    const actualBill =
+      bill._displayOccurrence?.id
+        ? bill._displayOccurrence
+        : bill;
+
+    console.log(
+      '[BillsScreen] DELETE ACTUAL TARGET:',
+      {
+        displayId: bill.id,
+        occurrenceId: bill._displayOccurrenceId,
+        actualId: actualBill.id,
+        actualParentId: actualBill.parent_bill_id,
+        actualDueDate: actualBill.due_date,
+        actualName: actualBill.name,
+      }
+    );
+
+    if (!actualBill?.id) {
+      Alert.alert(
+        'Delete Bill',
+        'Unable to identify the actual bill occurrence.'
+      );
+      return;
+    }
+
+    setConfirmTarget(actualBill);
+    setConfirmAction('delete');
+
+    const isRecurringOccurrence =
+      !!actualBill.parent_bill_id;
+
+    setConfirmMessage(
+      isRecurringOccurrence
+        ? `Delete "${actualBill.name}" for this period permanently?\n\n` +
+        `• This bill occurrence will be permanently removed.\n` +
+        `• Other recurring occurrences will remain.\n` +
+        `• Linked transactions will NOT be deleted.\n` +
+        `• Linked transactions will simply be unlinked.\n\n` +
+        `This action cannot be undone.`
+        : `Delete "${actualBill.name}" permanently?\n\n` +
+        `• The bill will be permanently removed.\n` +
+        `• Linked transactions will NOT be deleted.\n` +
+        `• Linked transactions will simply be unlinked.\n\n` +
+        `This action cannot be undone.`
+    );
+
+    setConfirmVisible(true);
+  }
+
   const now = new Date();
   const monthLabel = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  const renderBill = ({ item }) => {
+    // CREDIT CARD PARENT
+    if (item._isCreditCardParent) {
+      const parentKey = String(
+        item.parent_bill_id ||
+        item._templateId ||
+        item.id
+      );
+      const isExpanded = expandedCreditCards[parentKey] === true;
+      const toggleStatements = () => {
+        setExpandedCreditCards(prev => ({
+          ...prev,
+          [parentKey]:
+            !prev[parentKey],
+        }));
+      };
+      return (
+        <View
+          style={{
+            marginBottom: 8,
+          }}
+        >
+          {/* PARENT CREDIT CARD BILL */}
+          <SwipeableBillCard
+            bill={item}
+            category={
+              categoriesMap[item.category_id]
+            }
+            onPress={() => {
+              if (
+                item.children &&
+                item.children.length > 0
+              ) {
+                openDetail(item.children[0]);
+              } else {
+                openDetail(item);
+              }
+            }}
+            onMarkPaid={() => {
+              handleMarkPaid(item);
+            }}
+            onSkip={null}
+            onEdit={null}
 
-  const renderBill = ({ item }) => (
-    <SwipeableBillCard
-      bill={item}
-      category={categoriesMap[item.category_id]}
-      onPress={openDetail}
-      onMarkPaid={handleMarkPaid}
-      onSkip={handleSkip}
-      onEdit={isCreditCardBill(item) ? null : openEdit}
-    />
-  );
+            // IMPORTANT:
+            // Allow deleting the credit-card parent bill.
+            onDelete={handleDeleteBill}
 
+            showExpandButton={true}
+            expanded={isExpanded}
+            onToggleExpand={toggleStatements}
+          />
+
+          {/* STATEMENT CHILDREN */}
+          {isExpanded &&
+            item.children &&
+            item.children.length > 0 && (
+              <View
+                style={{
+                  marginLeft: 22,
+                  marginTop: -2,
+                  marginBottom: 4,
+                  borderLeftWidth: 2,
+                  borderLeftColor: '#DCEBE2',
+                  paddingLeft: 12,
+                  paddingTop: 4,
+                }}
+              >
+                {item.children.map(
+                  (statement, index) => (
+                    <View
+                      key={String(
+                        statement.id
+                      )}
+                      style={{
+                        backgroundColor: '#F8FBF9',
+                        borderRadius: 12,
+                        padding: 10,
+                        marginBottom: index === item.children.length - 1 ? 0 : 7,
+                        borderWidth: 1,
+                        borderColor: '#E5F1EB',
+                      }}
+                    >
+                      {/* STATEMENT HEADER */}
+                      <View
+                        style={{
+                          flexDirection:
+                            'row',
+                          alignItems:
+                            'center',
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: 30,
+                            height: 30,
+                            borderRadius: 10,
+                            backgroundColor: '#EAF5EF',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <MaterialCommunityIcons
+                            name="credit-card-outline"
+                            size={17}
+                            color="#3F8F6B"
+                          />
+                        </View>
+                        <View
+                          style={{
+                            flex: 1,
+                            marginLeft: 9,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              fontWeight: '800',
+                              color: '#25352D',
+                            }}
+                          >
+                            Statement
+                          </Text>
+                          <Text
+                            style={{
+                              fontSize: 10,
+                              color: '#718078',
+                              marginTop: 2,
+                            }}
+                          >
+                            {statement.statement_date || statement.due_date || '-'}
+                          </Text>
+                        </View>
+
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            fontWeight: '800',
+                            color: '#25352D',
+                          }}
+                        >
+                          {formatCurrency(Number(statement.amount || 0))}
+                        </Text>
+                      </View>
+
+                      {/* STATEMENT FOOTER  */}
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginTop: 8,
+                          paddingTop: 7,
+                          borderTopWidth: 1,
+                          borderTopColor: '#E5F1EB',
+                        }}
+                      >
+                        <View
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <MaterialCommunityIcons
+                            name="calendar-clock-outline"
+                            size={14}
+                            color="#8A958F"
+                          />
+
+                          <Text
+                            style={{
+                              fontSize: 9,
+                              color: '#8A958F',
+                              marginLeft: 4,
+                            }}
+                          >
+                            Due{' '}{statement.due_date || '-'}
+                          </Text>
+                        </View>
+
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={() =>
+                            openDetail(
+                              statement
+                            )
+                          }
+                          style={{
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            borderRadius: 7,
+                            backgroundColor: '#EAF5EF',
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 9,
+                              fontWeight: '800',
+                              color: '#3F8F6B',
+                            }}
+                          >
+                            View
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )
+                )}
+              </View>
+            )}
+        </View>
+      );
+    }
+
+    // NORMAL BILL
+    return (
+      <SwipeableBillCard
+        bill={item}
+        category={
+          categoriesMap[item.category_id]
+        }
+        onPress={openDetail}
+        onMarkPaid={handleMarkPaid}
+        onSkip={handleSkip}
+        onEdit={
+          isCreditCardBill(item)
+            ? null
+            : openEdit
+        }
+        onDelete={(bill) => {
+          console.log(
+            '[BillsScreen] DELETE PROP REACHED:',
+            {
+              id: bill?.id,
+              occurrenceId: bill?._displayOccurrenceId,
+              occurrence: bill?._displayOccurrence,
+              parentId: bill?.parent_bill_id,
+            }
+          );
+
+          handleDeleteBill(bill);
+        }}
+      />
+    );
+  };
   const listHeader = (
     <View>
-      <BillSummaryBar summary={summary} />
+      {/* SUMMARY */}
+      <View style={{ marginBottom: 12 }}>
+        <BillSummaryBar summary={summary} />
+      </View>
+      {/* STATUS FILTERS */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingRight: 8,
+          marginBottom: 12,
+        }}
+      >
+        {STATUS_FILTERS.map(filter => {
+          const active = statusFilter === filter.key;
+          const statusColor =
+            filter.key === BILL_STATUS.OVERDUE
+              ? '#E46A6A'
+              : filter.key === BILL_STATUS.PAID
+                ? '#3F8F6B'
+                : filter.key === BILL_STATUS.PENDING
+                  ? '#FFB020'
+                  : '#2F7355';
+          return (
+            <TouchableOpacity
+              key={filter.key}
+              activeOpacity={0.8}
+              onPress={() =>
+                setStatusFilter(filter.key)
+              }
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 13,
+                paddingVertical: 8,
+                borderRadius: 20,
+                marginRight: 7,
+                backgroundColor: active ? '#EAF5EF' : '#FFFFFF',
+                borderWidth: 1,
+                borderColor: active ? '#CFE6D9' : '#E6EEE9',
+              }}
+            >
+              {filter.key !== 'all' && (
+                <View
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: statusColor,
+                    marginRight: 6,
+                  }}
+                />
+              )}
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: active ? '800' : '600',
+                  color: active ? '#2F7355' : '#718078',
+                }}
+              >
+                {filter.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
-      {summary?.overdueCount > 0 && (
-        <View style={{
-          backgroundColor: '#FFF0F0', padding: 12, borderRadius: 10, marginBottom: Spacing.xs,
-        }}>
-          <Text style={{ color: '#E46A6A', fontWeight: '700' }}>
-            {summary.overdueCount} overdue — {formatCurrency(summary.overdueAmount)}
-          </Text>
+      {/* SEARCH + FILTER */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginBottom: 10,
+        }}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: '#FFFFFF',
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: '#E5F1EB',
+            height: 46,
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 12,
+          }}
+        >
+          <MaterialCommunityIcons
+            name="magnify"
+            size={20}
+            color="#8A958F"
+          />
+
+          <TextInput
+            placeholder="Search bills"
+            placeholderTextColor="#A0AAA4"
+            value={search}
+            onChangeText={setSearch}
+            style={{
+              flex: 1,
+              marginLeft: 8,
+              fontSize: 13,
+              color: '#25352D',
+            }}
+          />
+
+          {search.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearch('')}
+            >
+              <MaterialCommunityIcons
+                name="close-circle"
+                size={18}
+                color="#A0AAA4"
+              />
+            </TouchableOpacity>
+          )}
         </View>
-      )}
 
-      {/* Current-month label */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-        <MaterialCommunityIcons name="calendar-month" size={15} color={Colors.muted} />
-        <Text style={{ marginLeft: 5, color: Colors.muted, fontSize: 13, fontWeight: '600' }}>
-          Due this month · {monthLabel}
-        </Text>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => setShowCategoryDD(true)}
+          style={{
+            width: 46,
+            height: 46,
+            marginLeft: 8,
+            borderRadius: 14,
+            backgroundColor: categoryFilter ? '#EAF5EF' : '#FFFFFF',
+            borderWidth: 1,
+            borderColor: categoryFilter ? '#CFE6D9' : '#E5F1EB',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <MaterialCommunityIcons
+            name="tune-variant"
+            size={20}
+            color={
+              categoryFilter
+                ? '#3F8F6B'
+                : '#718078'
+            }
+          />
+        </TouchableOpacity>
       </View>
 
-      {/* View-mode toggle */}
-      <View style={{ flexDirection: 'row', marginBottom: 8 }}>
-        {['list', 'calendar'].map(mode => (
-          <TouchableOpacity
-            key={mode}
-            onPress={() => setViewMode(mode)}
+      {/* SORT + MONTH */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 10,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
+          <MaterialCommunityIcons
+            name="calendar-month-outline"
+            size={15}
+            color="#718078"
+          />
+
+          <Text
             style={{
-              flexDirection: 'row', alignItems: 'center',
-              marginRight: 12, paddingBottom: 4,
-              borderBottomWidth: 2,
-              borderBottomColor: viewMode === mode ? Colors.primary : 'transparent',
+              marginLeft: 5,
+              color: '#718078',
+              fontSize: 11,
+              fontWeight: '700',
+            }}
+          >
+            {monthLabel}
+          </Text>
+        </View>
+
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
+          <MaterialCommunityIcons
+            name="sort"
+            size={15}
+            color="#718078"
+          />
+          {[
+            ['due_date', 'Due'],
+            ['amount', 'Amount'],
+          ].map(([key, label]) => (
+            <TouchableOpacity
+              key={key}
+              onPress={() => setSortBy(key)}
+              style={{
+                marginLeft: 10,
+                paddingHorizontal: 8,
+                paddingVertical: 5,
+                borderRadius: 8,
+                backgroundColor:
+                  sortBy === key
+                    ? '#EAF5EF'
+                    : 'transparent',
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 10,
+                  fontWeight: '800',
+                  color:
+                    sortBy === key
+                      ? '#3F8F6B'
+                      : '#718078',
+                }}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* LIST / CALENDAR */}
+      <View
+        style={{
+          flexDirection: 'row',
+          backgroundColor: '#EAF5EF',
+          borderRadius: 12,
+          padding: 3,
+          marginBottom: 12,
+        }}
+      >
+        {[
+          ['list', 'format-list-bulleted', 'List'],
+          ['calendar', 'calendar-month-outline', 'Calendar'],
+        ].map(([mode, icon, label]) => {
+          const active = viewMode === mode;
+
+          return (
+            <TouchableOpacity
+              key={mode}
+              onPress={() => setViewMode(mode)}
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingVertical: 8,
+                borderRadius: 9,
+                backgroundColor: active
+                  ? '#FFFFFF'
+                  : 'transparent',
+              }}
+            >
+              <MaterialCommunityIcons
+                name={icon}
+                size={15}
+                color={
+                  active
+                    ? '#3F8F6B'
+                    : '#718078'
+                }
+              />
+              <Text
+                style={{
+                  marginLeft: 5,
+                  fontSize: 11,
+                  fontWeight: '800',
+                  color: active
+                    ? '#3F8F6B'
+                    : '#718078',
+                }}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {summary?.overdueCount > 0 && (
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#FFF5F5',
+            borderRadius: 13,
+            borderWidth: 1,
+            borderColor: '#F5DCDC',
+            paddingHorizontal: 11,
+            paddingVertical: 9,
+            marginBottom: 10,
+          }}
+        >
+          <View
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 10,
+              backgroundColor: '#FFE5E5',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
             <MaterialCommunityIcons
-              name={mode === 'list' ? 'format-list-bulleted' : 'calendar-month-outline'}
-              size={16}
-              color={viewMode === mode ? Colors.primary : Colors.muted}
+              name="alert-outline"
+              size={17}
+              color="#E46A6A"
             />
-            <Text style={{
-              marginLeft: 4, fontSize: 13, fontWeight: '600',
-              color: viewMode === mode ? Colors.primary : Colors.muted,
-            }}>
-              {mode === 'list' ? 'List' : 'Calendar'}
+          </View>
+          <View
+            style={{
+              flex: 1,
+              marginLeft: 9,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: '800',
+                color: '#A85E5E',
+              }}
+            >
+              Payment attention needed
             </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
 
-      {/* Status dropdown */}
-      <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowStatusDD(true)}>
-        <View>
-          <Text style={styles.label}>Status</Text>
-          <Text style={styles.value}>{STATUS_FILTERS.find(f => f.key === statusFilter)?.label}</Text>
-        </View>
-        <MaterialCommunityIcons name="chevron-down" size={20} color={Colors.muted} />
-      </TouchableOpacity>
-
-      {/* Category dropdown */}
-      <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowCategoryDD(true)}>
-        <View>
-          <Text style={styles.label}>Category</Text>
-          <Text style={styles.value}>
-            {categoryFilter ? categories.find(c => c.id === categoryFilter)?.name : 'All categories'}
-          </Text>
-        </View>
-        <MaterialCommunityIcons name="chevron-down" size={20} color={Colors.muted} />
-      </TouchableOpacity>
-
-      <Searchbar
-        placeholder="Search bills"
-        value={search}
-        onChangeText={setSearch}
-        style={{ marginBottom: Spacing.xs }}
-      />
-
-      <View style={{ flexDirection: 'row', marginBottom: Spacing.xs }}>
-        {[['due_date', 'Due date'], ['amount', 'Amount']].map(([key, label]) => (
-          <TouchableOpacity key={key} onPress={() => setSortBy(key)} style={{ marginRight: 16 }}>
-            <Text style={{ color: sortBy === key ? Colors.primary : Colors.muted, fontWeight: '600', fontSize: 13 }}>
-              Sort: {label}
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: '600',
+                color: '#9A7777',
+                marginTop: 2,
+              }}
+            >
+              {summary.overdueCount} overdue ·{' '}
+              {formatCurrency(
+                summary.overdueAmount
+              )}
             </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+          </View>
+          <MaterialCommunityIcons
+            name="chevron-right"
+            size={18}
+            color="#D98A8A"
+          />
+        </TouchableOpacity>
+      )}
 
       {viewMode === 'calendar' && (
         <BillCalendarView
@@ -275,7 +1252,10 @@ export default function BillsScreen({ navigation }) {
           month={calMonth}
           year={calYear}
           onSelectBill={openDetail}
-          onMonthChange={(y, m) => { setCalYear(y); setCalMonth(m); }}
+          onMonthChange={(y, m) => {
+            setCalYear(y);
+            setCalMonth(m);
+          }}
         />
       )}
     </View>
@@ -480,15 +1460,57 @@ export default function BillsScreen({ navigation }) {
 
       <ConfirmDialog
         visible={confirmVisible}
+        title={
+          confirmAction === 'delete'
+            ? 'Delete Bill?'
+            : 'Skip Bill?'
+        }
         message={confirmMessage}
-        onCancel={() => setConfirmVisible(false)}
-        onConfirm={async () => {
-          if (confirmTarget) {
-            if (confirmAction === 'delete') await deleteBill(confirmTarget.id);
-            else await skipBill(confirmTarget.id);
-            load();
-          }
+        confirmLabel={
+          confirmAction === 'delete'
+            ? 'Delete Bill'
+            : 'Skip'
+        }
+        cancelLabel="Cancel"
+        onCancel={() => {
           setConfirmVisible(false);
+          setConfirmTarget(null);
+        }}
+        onConfirm={async () => {
+          if (!confirmTarget?.id) {
+            setConfirmVisible(false);
+            setConfirmTarget(null);
+            return;
+          }
+
+          try {
+            if (confirmAction === 'delete') {
+              await deleteBill(confirmTarget.id);
+            } else {
+              await skipBill(confirmTarget.id);
+            }
+
+            setConfirmVisible(false);
+            setConfirmTarget(null);
+
+            await load();
+
+          } catch (error) {
+            console.error(
+              '[BillsScreen] confirm action failed:',
+              error
+            );
+
+            setConfirmVisible(false);
+            setConfirmTarget(null);
+
+            Alert.alert(
+              'Error',
+              confirmAction === 'delete'
+                ? 'Unable to delete this bill.'
+                : 'Unable to skip this bill.'
+            );
+          }
         }}
       />
     </View>

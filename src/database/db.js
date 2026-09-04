@@ -102,13 +102,13 @@ function createWebExecuteSql() {
     if (whereIndex === -1) throw new Error('UPDATE missing WHERE: ' + normalized);
 
     const beforeWhere = normalized.slice(0, whereIndex);
-    const afterWhere  = normalized.slice(whereIndex).replace(/^\s+where\s+/i, '').trim();
+    const afterWhere = normalized.slice(whereIndex).replace(/^\s+where\s+/i, '').trim();
 
     // Extract table and SET clause
     const prefixMatch = beforeWhere.match(/^update\s+([a-zA-Z0-9_]+)\s+set\s+([\s\S]+)$/i);
     if (!prefixMatch) throw new Error('Unsupported UPDATE SQL: ' + normalized);
 
-    const table     = prefixMatch[1];
+    const table = prefixMatch[1];
     const setClause = prefixMatch[2].trim();
 
     // Split SET clause on commas that are NOT inside parentheses
@@ -122,9 +122,9 @@ function createWebExecuteSql() {
       const eqIdx = token.indexOf('=');
       if (eqIdx === -1) continue;
 
-      const col       = token.slice(0, eqIdx).trim();
+      const col = token.slice(0, eqIdx).trim();
       const valueExpr = token.slice(eqIdx + 1).trim();
-      const valLower  = valueExpr.toLowerCase();
+      const valLower = valueExpr.toLowerCase();
 
       if (valueExpr === '?') {
         // Plain placeholder
@@ -191,20 +191,20 @@ function createWebExecuteSql() {
       if (val && typeof val === 'object' && val.__expr !== undefined) {
         // Resolve expression: only COALESCE(col,0)+? and similar patterns
         const paramVal = params[val.__paramIndex];
-        const current  = Number(row[col] || 0);
+        const current = Number(row[col] || 0);
         // Try to evaluate simple arithmetic: expr is like "COALESCE(col,0) + ?"
         const arithMatch = val.__expr.match(/coalesce\s*\(\s*[^,]+,\s*(\d+)\s*\)\s*([+\-*\/])\s*\?/i);
         if (arithMatch) {
           const fallback = Number(arithMatch[1]);
-          const op       = arithMatch[2];
-          const base     = row[col] != null ? Number(row[col]) : fallback;
-          const operand  = Number(paramVal);
+          const op = arithMatch[2];
+          const base = row[col] != null ? Number(row[col]) : fallback;
+          const operand = Number(paramVal);
           switch (op) {
             case '+': row[col] = base + operand; break;
             case '-': row[col] = base - operand; break;
             case '*': row[col] = base * operand; break;
             case '/': row[col] = base / operand; break;
-            default:  row[col] = paramVal;
+            default: row[col] = paramVal;
           }
         } else {
           // Fallback: just set the param value
@@ -234,13 +234,13 @@ function createWebExecuteSql() {
       const m = s.match(/^insert(?:\s+or\s+(?:ignore|replace|abort|fail|rollback))?\s+into\s+([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*values\s*\(([^)]+)\)/i);
       if (!m) throw new Error('Unsupported INSERT SQL: ' + sql);
 
-      const table    = m[1];
-      const cols     = m[2].split(',').map(c => c.trim());
-      const rows     = readTable(table);
-      const metaKey  = prefix + table + '_meta';
-      const meta     = JSON.parse(localStorage.getItem(metaKey) || '{"nextId":1}');
+      const table = m[1];
+      const cols = m[2].split(',').map(c => c.trim());
+      const rows = readTable(table);
+      const metaKey = prefix + table + '_meta';
+      const meta = JSON.parse(localStorage.getItem(metaKey) || '{"nextId":1}');
       const isIgnore = /insert\s+or\s+ignore/i.test(s);
-      const obj      = {};
+      const obj = {};
 
       for (let i = 0; i < cols.length; i++) {
         obj[cols[i]] = params[i] !== undefined ? params[i] : null;
@@ -259,7 +259,7 @@ function createWebExecuteSql() {
         if (table === 'bill_linked_transactions') {
           const exists = rows.some(
             r => String(r.bill_id) === String(obj.bill_id) &&
-                 String(r.transaction_id) === String(obj.transaction_id)
+              String(r.transaction_id) === String(obj.transaction_id)
           );
           if (exists) return { insertId: null, rows: makeRows([]) };
         }
@@ -272,139 +272,347 @@ function createWebExecuteSql() {
     }
 
     // ── SELECT ────────────────────────────────────────────────────────────────
+    // ── SELECT ────────────────────────────────────────────────────────────────
     if (l.startsWith('select')) {
-      const customRows = executeCustomSelect(s, l, [...params], readTable);
-      if (customRows) return { rows: customRows };
+      const customRows = executeCustomSelect(
+        s,
+        l,
+        [...params],
+        readTable
+      );
 
-      const m = s.match(/select\s+(.+?)\s+from\s+([a-zA-Z0-9_]+)/i);
-      if (!m) throw new Error('Unsupported SELECT SQL: ' + sql);
+      if (customRows) {
+        return {
+          rows: customRows,
+          rowsAffected: 0,
+          insertId: undefined,
+        };
+      }
 
-      const colsStr = m[1].trim();
-      const table   = m[2];
-      let rows      = readTable(table);
+      // ---------------------------------------------------------
+      // Parse SELECT
+      //
+      // Supported:
+      //   SELECT * FROM table
+      //   SELECT id, name FROM table
+      //   SELECT id, name FROM table WHERE id = ?
+      //   SELECT ... WHERE col = ? LIMIT 1
+      //   SELECT ... WHERE col >= ? AND col <= ?
+      //   SELECT ... WHERE col IN (?, ?, ?)
+      // ---------------------------------------------------------
 
-      // WHERE
-      const whereMatch = s.match(/where\s+(.+?)(order by|limit|$)/i);
+      const selectMatch = s.match(
+        /^select\s+(.+?)\s+from\s+([a-zA-Z0-9_]+)([\s\S]*)$/i
+      );
+
+      if (!selectMatch) {
+        throw new Error(
+          'Unsupported SELECT SQL: ' + sql
+        );
+      }
+
+      const colsStr = selectMatch[1].trim();
+      const table = selectMatch[2].trim();
+      const remainder = selectMatch[3] || '';
+
+      let rows = readTable(table);
+
+      // ---------------------------------------------------------
+      // Parse WHERE
+      // ---------------------------------------------------------
+
+      let paramIndex = 0;
+
+      const whereMatch = remainder.match(
+        /\bwhere\b([\s\S]*?)(?=\border\s+by\b|\blimit\b|$)/i
+      );
+
       if (whereMatch) {
-        const cond  = whereMatch[1].trim();
-        const parts = cond.split(/\s+and\s+/i).map(p => p.trim()).filter(Boolean);
-        let paramIndex = 0;
+        const whereClause = whereMatch[1].trim();
 
-        for (const p of parts) {
-          // col = ?
-          const eqMatch = p.match(/^\s*([a-zA-Z0-9_]+)\s*=\s*\?\s*$/i);
-          if (eqMatch) {
-            const col = eqMatch[1];
-            const val = params[paramIndex++];
-            rows = rows.filter(r => String(r[col]) === String(val));
-            continue;
-          }
-          // col = 'literal' or col = literal
-          const litMatch = p.match(/^\s*([a-zA-Z0-9_]+)\s*=\s*['"]?([^'"]+)['"]?\s*$/i);
-          if (litMatch) {
-            const col = litMatch[1];
-            const val = litMatch[2];
-            rows = rows.filter(r => String(r[col]) === String(val));
-            continue;
-          }
-          // col IS NULL
-          const isNullMatch = p.match(/^\s*([a-zA-Z0-9_]+)\s+is\s+null\s*$/i);
-          if (isNullMatch) {
-            const col = isNullMatch[1];
-            rows = rows.filter(r => r[col] == null);
-            continue;
-          }
-          // col IS NOT NULL
-          const isNotNullMatch = p.match(/^\s*([a-zA-Z0-9_]+)\s+is\s+not\s+null\s*$/i);
-          if (isNotNullMatch) {
-            const col = isNotNullMatch[1];
-            rows = rows.filter(r => r[col] != null);
-            continue;
-          }
-          // col >= ? and col <= ?  (date range in _ensureNextOccurrence)
-          const geMatch = p.match(/^\s*([a-zA-Z0-9_]+)\s*>=\s*\?\s*$/i);
-          if (geMatch) {
-            const col = geMatch[1];
-            const val = params[paramIndex++];
-            rows = rows.filter(r => String(r[col]) >= String(val));
-            continue;
-          }
-          const leMatch = p.match(/^\s*([a-zA-Z0-9_]+)\s*<=\s*\?\s*$/i);
-          if (leMatch) {
-            const col = leMatch[1];
-            const val = params[paramIndex++];
-            rows = rows.filter(r => String(r[col]) <= String(val));
-            continue;
-          }
-          // col IN (?,?,?)
-          const inMatch = p.match(/^\s*([a-zA-Z0-9_]+)\s+in\s*\(([^)]+)\)\s*$/i);
-          if (inMatch) {
-            const col      = inMatch[1];
-            const slots    = inMatch[2].split(',').map(x => x.trim());
-            const inValues = slots.map(() => params[paramIndex++]);
-            rows = rows.filter(r => inValues.some(v => String(r[col]) === String(v)));
-            continue;
+        if (whereClause) {
+          const parts = whereClause
+            .split(/\s+and\s+/i)
+            .map(p => p.trim())
+            .filter(Boolean);
+
+          for (const part of parts) {
+
+            // ---------------------------------------------------
+            // col = ?
+            // ---------------------------------------------------
+
+            const eqParamMatch = part.match(
+              /^([a-zA-Z0-9_]+)\s*=\s*\?\s*$/i
+            );
+
+            if (eqParamMatch) {
+              const col = eqParamMatch[1];
+              const value = params[paramIndex++];
+
+              rows = rows.filter(
+                row =>
+                  String(row[col]) === String(value)
+              );
+
+              continue;
+            }
+
+            // ---------------------------------------------------
+            // col >= ?
+            // ---------------------------------------------------
+
+            const geMatch = part.match(
+              /^([a-zA-Z0-9_]+)\s*>=\s*\?\s*$/i
+            );
+
+            if (geMatch) {
+              const col = geMatch[1];
+              const value = params[paramIndex++];
+
+              rows = rows.filter(
+                row =>
+                  String(row[col]) >= String(value)
+              );
+
+              continue;
+            }
+
+            // ---------------------------------------------------
+            // col <= ?
+            // ---------------------------------------------------
+
+            const leMatch = part.match(
+              /^([a-zA-Z0-9_]+)\s*<=\s*\?\s*$/i
+            );
+
+            if (leMatch) {
+              const col = leMatch[1];
+              const value = params[paramIndex++];
+
+              rows = rows.filter(
+                row =>
+                  String(row[col]) <= String(value)
+              );
+
+              continue;
+            }
+
+            // ---------------------------------------------------
+            // col IN (?, ?, ?)
+            // ---------------------------------------------------
+
+            const inMatch = part.match(
+              /^([a-zA-Z0-9_]+)\s+in\s*\(([^)]+)\)\s*$/i
+            );
+
+            if (inMatch) {
+              const col = inMatch[1];
+
+              const slots = inMatch[2]
+                .split(',')
+                .map(x => x.trim());
+
+              const values = slots.map(
+                () => params[paramIndex++]
+              );
+
+              rows = rows.filter(
+                row =>
+                  values.some(
+                    value =>
+                      String(row[col]) === String(value)
+                  )
+              );
+
+              continue;
+            }
+
+            // ---------------------------------------------------
+            // col IS NULL
+            // ---------------------------------------------------
+
+            const isNullMatch = part.match(
+              /^([a-zA-Z0-9_]+)\s+is\s+null\s*$/i
+            );
+
+            if (isNullMatch) {
+              const col = isNullMatch[1];
+
+              rows = rows.filter(
+                row => row[col] == null
+              );
+
+              continue;
+            }
+
+            // ---------------------------------------------------
+            // col IS NOT NULL
+            // ---------------------------------------------------
+
+            const isNotNullMatch = part.match(
+              /^([a-zA-Z0-9_]+)\s+is\s+not\s+null\s*$/i
+            );
+
+            if (isNotNullMatch) {
+              const col = isNotNullMatch[1];
+
+              rows = rows.filter(
+                row => row[col] != null
+              );
+
+              continue;
+            }
+
+            console.warn(
+              '[WebSQLite] Unsupported WHERE condition:',
+              part,
+              'SQL:',
+              sql
+            );
           }
         }
       }
 
-      // Projection
-      if (colsStr !== '*') {
-        const cols = colsStr.split(',').map(c => c.trim());
-        rows = rows.map(r => {
-          const projected = {};
-          cols.forEach(col => {
-            if (col === '*') { Object.assign(projected, r); return; }
-            if (/\.\*$/.test(col)) { Object.assign(projected, r); return; }
-            const aliasMatch = col.match(/^(.+?)\s+as\s+([a-zA-Z0-9_]+)$/i);
-            if (aliasMatch) {
-              const src = aliasMatch[1].trim();
-              const alias = aliasMatch[2];
-              projected[alias] = r[src.includes('.') ? src.split('.').pop() : src];
-              return;
-            }
-            const sourceCol = col.includes('.') ? col.split('.').pop() : col;
-            projected[sourceCol] = r[sourceCol];
-          });
-          return projected;
-        });
-      }
-
+      // ---------------------------------------------------------
       // ORDER BY
-      const orderMatch = s.match(/order by\s+([a-zA-Z0-9_\.\s,]+)(limit|$)/i);
+      // ---------------------------------------------------------
+
+      const orderMatch = remainder.match(
+        /\border\s+by\s+([a-zA-Z0-9_\.\s,]+?)(?=\blimit\b|$)/i
+      );
+
       if (orderMatch) {
-        const parts = orderMatch[1].trim().split(',').map(p => p.trim());
+        const orderParts = orderMatch[1]
+          .trim()
+          .split(',')
+          .map(p => p.trim());
+
         rows.sort((a, b) => {
-          for (const p of parts) {
-            const seg = p.split(/\s+/);
-            const col = seg[0];
-            const dir = (seg[1] || '').toLowerCase();
-            const A = a[col]; const B = b[col];
+          for (const orderPart of orderParts) {
+            const segments = orderPart.split(/\s+/);
+
+            const rawCol = segments[0];
+            const direction =
+              (segments[1] || '').toLowerCase();
+
+            const col = rawCol.includes('.')
+              ? rawCol.split('.').pop()
+              : rawCol;
+
+            const A = a[col];
+            const B = b[col];
+
             if (A == null && B != null) return 1;
             if (A != null && B == null) return -1;
             if (A == null && B == null) continue;
-            if (A < B) return dir === 'desc' ? 1 : -1;
-            if (A > B) return dir === 'desc' ? -1 : 1;
+
+            if (A < B) {
+              return direction === 'desc' ? 1 : -1;
+            }
+
+            if (A > B) {
+              return direction === 'desc' ? -1 : 1;
+            }
           }
+
           return 0;
         });
       }
 
+      // ---------------------------------------------------------
       // LIMIT
-      const limitMatch = s.match(/limit\s+\?/i);
-      if (limitMatch) {
-        const whereParamCount = whereMatch
-          ? (whereMatch[1].match(/\?/g) || []).length
-          : 0;
-        const lim = Number(params[whereParamCount]);
-        if (!Number.isNaN(lim)) rows = rows.slice(0, lim);
-      }
-      const limitLiteralMatch = s.match(/limit\s+(\d+)/i);
-      if (limitLiteralMatch && !limitMatch) {
-        rows = rows.slice(0, Number(limitLiteralMatch[1]));
+      // ---------------------------------------------------------
+
+      const limitParamMatch = remainder.match(
+        /\blimit\s+\?\s*$/i
+      );
+
+      if (limitParamMatch) {
+        const limit = Number(params[paramIndex++]);
+
+        if (!Number.isNaN(limit)) {
+          rows = rows.slice(0, limit);
+        }
+      } else {
+        const limitLiteralMatch = remainder.match(
+          /\blimit\s+(\d+)\s*$/i
+        );
+
+        if (limitLiteralMatch) {
+          rows = rows.slice(
+            0,
+            Number(limitLiteralMatch[1])
+          );
+        }
       }
 
-      return { rows: makeRows(rows) };
+      // ---------------------------------------------------------
+      // Projection
+      // ---------------------------------------------------------
+
+      if (colsStr !== '*') {
+        const cols = colsStr
+          .split(',')
+          .map(c => c.trim());
+
+        rows = rows.map(row => {
+          const projected = {};
+
+          for (const col of cols) {
+
+            // table.*
+            if (/\.\*$/.test(col)) {
+              Object.assign(projected, row);
+              continue;
+            }
+
+            // alias:
+            // column AS alias
+            const aliasMatch = col.match(
+              /^(.+?)\s+as\s+([a-zA-Z0-9_]+)$/i
+            );
+
+            if (aliasMatch) {
+              const source = aliasMatch[1].trim();
+              const alias = aliasMatch[2];
+
+              const sourceCol = source.includes('.')
+                ? source.split('.').pop()
+                : source;
+
+              projected[alias] = row[sourceCol];
+
+              continue;
+            }
+
+            const sourceCol = col.includes('.')
+              ? col.split('.').pop()
+              : col;
+
+            projected[sourceCol] = row[sourceCol];
+          }
+
+          return projected;
+        });
+      }
+
+      console.log(
+        '[WebSQLite SELECT]',
+        {
+          sql,
+          params,
+          table,
+          resultCount: rows.length,
+          firstRow: rows[0] || null,
+        }
+      );
+
+      return {
+        rows: makeRows(rows),
+        rowsAffected: 0,
+        insertId: undefined,
+      };
     }
 
     // ── UPDATE ────────────────────────────────────────────────────────────────
@@ -438,7 +646,7 @@ function createWebExecuteSql() {
 
       const table = m[1];
       const where = m[3];
-      let rows    = readTable(table);
+      let rows = readTable(table);
 
       if (!where) {
         writeTable(table, []);
@@ -446,7 +654,7 @@ function createWebExecuteSql() {
       }
 
       const conditions = where.split(/\s+and\s+/i).map(c => c.trim());
-      let paramIndex   = 0;
+      let paramIndex = 0;
 
       const filtered = rows.filter(row => {
         const localParamStart = paramIndex;
@@ -454,7 +662,7 @@ function createWebExecuteSql() {
           const match = cond.match(/([a-zA-Z0-9_]+)\s*=\s*\?/i);
           if (!match) throw new Error('Unsupported DELETE WHERE: ' + cond);
           const column = match[1];
-          const value  = params[paramIndex++];
+          const value = params[paramIndex++];
           if (String(row[column]) !== String(value)) {
             paramIndex = localParamStart;
             return true; // keep row (does NOT match all conditions)

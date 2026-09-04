@@ -22,11 +22,13 @@ import BillsScreen from './src/screens/BillsScreen';
 import BillDetailScreen from './src/screens/BillDetailScreen';
 import BackupScreen from './src/screens/BackupScreen';
 import DrawerNavigator from './navigation/DrawerNavigator';
+import LoanDashboardScreen from './src/screens/LoanDashboardScreen';
 import LoanFormScreen from './src/screens/LoanFormScreen';
 import LoanDetailsScreen from './src/screens/LoanDetailsScreen';
 import LoanPaymentScreen from './src/screens/LoanPaymentScreen';
 import LoanForeclosureScreen from './src/screens/LoanForeclosureScreen';
 import LendMoreScreen from './src/screens/LendMoreScreen';
+import TopUpScreen from './src/screens/TopUpScreen';
 import LoanListScreen from './src/screens/LoanListScreen';
 import CreditCardStatementsScreen from './src/screens/CreditCardStatementsScreen';
 import { initDB } from './src/database/init';
@@ -135,11 +137,13 @@ export default function App() {
               <Stack.Screen name="Bills" component={BillsScreen} options={{ title: 'Bills' }} />
               <Stack.Screen name="BillDetail" component={BillDetailScreen} options={{ title: 'Bill Details' }} />
               <Stack.Screen name="Backup" component={BackupScreen} options={{ title: 'Backup & Restore' }} />
+              <Stack.Screen name="LoanDashboard" component={LoanDashboardScreen} />
               <Stack.Screen name="LoanForm" component={LoanFormScreen} options={{ title: 'Add / Edit Loan' }} />
               <Stack.Screen name="LoanDetails" component={LoanDetailsScreen} options={{ title: 'Loan Details' }} />
               <Stack.Screen name="LoanPayment" component={LoanPaymentScreen} options={{ title: 'Record Payment' }} />
               <Stack.Screen name="LoanForeclose" component={LoanForeclosureScreen} options={{ title: 'Loan Foreclose' }} />
               <Stack.Screen name="LendMore" component={LendMoreScreen} options={{ title: 'Lend More' }} />
+              <Stack.Screen name="TopUp" component={TopUpScreen} options={{ title: 'Top Up' }} />
               <Stack.Screen name="LoanList" component={LoanListScreen} options={{ title: 'All Loans' }} />
               <Stack.Screen name="CreditCardStatements" component={CreditCardStatementsScreen} options={{ title: 'Credit Card Statements' }} />
               <Stack.Screen name="LoanHistory" component={require('./src/screens/LoanHistoryScreen').default} options={{ title: 'Loan History' }} />

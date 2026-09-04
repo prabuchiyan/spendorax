@@ -46,7 +46,7 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
         </View>
         <View style={styles.headerTextContainer}>
           <Text style={styles.appName}>SpendoraX</Text>
-          <Text style={styles.appVersion}>v3.9.2</Text>
+          <Text style={styles.appVersion}>v4.1.7</Text>
         </View>
       </View>
 
@@ -168,7 +168,7 @@ export default function DrawerNavigator() {
         })}
       />
       <Drawer.Screen name="Transactions" component={TransactionsScreen} />
-      <Drawer.Screen name="Loans" component={LoanDashboardScreen} />
+      <Drawer.Screen name="Loans" component={LoanDashboardScreen} options={{ title: "Loans" }} />
       <Drawer.Screen name="CreditCards" component={CreditCardsScreen} options={{ title: 'Credit Cards' }} />
       <Drawer.Screen name="CreditCardStatements" component={CreditCardStatementsScreen} options={{ title: 'Credit Card Statements' }} />
       <Drawer.Screen name="Budgets" component={BudgetsScreen} />

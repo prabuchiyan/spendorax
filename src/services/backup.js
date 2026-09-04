@@ -546,8 +546,8 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       // Restore transactions
       for (const tx of originalData.transactions) {
         await executeSql(
-          `INSERT INTO transactions (id, type, amount, category_id, source_id, date, notes, bill_id, created_at) VALUES (?,?,?,?,?,?,?,?,?)`,
-          [tx.id, tx.type, tx.amount, tx.category_id, tx.source_id, tx.date, tx.notes, tx.bill_id, tx.created_at]
+          `INSERT INTO transactions (id, type, amount, category_id, source_id, date, notes, bill_id, is_counted, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+          [tx.id, tx.type, tx.amount, tx.category_id, tx.source_id, tx.date, tx.notes, tx.bill_id, tx.is_counted !== undefined ? tx.is_counted : 1, tx.created_at]
         );
       }
 
@@ -1155,13 +1155,19 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
 
           // Preserve transfer metadata
           transfer_group_id: tx.transfer_group_id || null,
-          direction: tx.direction || null
+          direction: tx.direction || null,
+
+          // Preserve counted/excluded flag — default to 1 if missing (old backups)
+          is_counted: tx.is_counted !== undefined ? tx.is_counted : 1,
         };
 
-        const newTransactionId = await createTransaction(txToCreate);
-
-        // Backup transaction id -> restored transaction id
-        transactionMap[tx.id] = newTransactionId;
+        try {
+          const newTransactionId = await createTransaction(txToCreate);
+          console.log(`[Restore] INSERTED tx: ${tx.notes} → new id=${newTransactionId}`);
+          transactionMap[tx.id] = newTransactionId;
+        } catch (e) {
+          console.error(`[Restore] FAILED tx: ${tx.notes}`, e);
+        }
       },
       (count) => {
         updateProgress(count, 'Importing transactions...');
@@ -1533,16 +1539,22 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
     if (restoredNotifications.length > 0) {
       for (const ns of restoredNotifications) {
         try {
-          // Match by type — don't create new rows, just update existing seeded ones
+          const isHourCorrupted = typeof ns.hour === 'string';
+          const isMinuteCorrupted = typeof ns.minute === 'string';
+
+          // If corrupted, use safe defaults instead of skipping
+          const safeHour = isHourCorrupted ? 9 : (Number(ns.hour) || 0);
+          const safeMinute = isMinuteCorrupted ? 0 : (Number(ns.minute) || 0);
+          const safeEnabled = (ns.enabled === 1 || ns.enabled === true) ? 1 : 0;
+
           const existing = await getNotificationByType(ns.type);
           if (existing) {
             await updateNotification(existing.id, {
-              enabled: ns.enabled,
-              hour: ns.hour,
-              minute: ns.minute,
-              title: ns.title,
-              body: ns.body,
-              // Never restore notification_identifier
+              enabled: safeEnabled,
+              hour: safeHour,
+              minute: safeMinute,
+              title: ns.title || existing.title,
+              body: ns.body || existing.body,
             });
           }
         } catch (e) {
@@ -1550,7 +1562,6 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         }
       }
 
-      // Reschedule all enabled notifications with restored times
       try {
         await rescheduleAll();
       } catch (e) {

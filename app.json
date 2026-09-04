@@ -2,8 +2,8 @@
   "expo": {
     "name": "SpendoraX",
     "slug": "spendorax",
-    "version": "3.9.2",
-    "runtimeVersion": "3.9.2",
+    "version": "4.1.7",
+    "runtimeVersion": "4.1.7",
     "icon": "./assets/logo.png",
     "platforms": [
       "ios",
@@ -32,7 +32,7 @@
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#0B1F3A"
       },
-      "versionCode": 3,
+      "versionCode": 4,
       "statusBar": {
         "backgroundColor": "#0B1F3A",
         "barStyle": "light-content"
@@ -40,7 +40,7 @@
     },
     "ios": {
       "icon": "./assets/logo.png",
-      "buildNumber": "3.9.2"
+      "buildNumber": "4.1.7"
     },
     "extra": {
       "eas": {

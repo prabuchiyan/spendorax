@@ -14,22 +14,14 @@ import {
   Animated,
   Easing,
 } from 'react-native';
+import FAB from '../components/FAB';
 import { getTransactions } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
-import {
-  Colors,
-  Spacing,
-} from '../components/Theme';
-import {
-  MaterialCommunityIcons,
-} from '@expo/vector-icons';
-import {
-  useFocusEffect,
-} from '@react-navigation/native';
-import {
-  useBalanceVisibility,
-} from '../context/BalanceVisibilityContext';
+import { Colors, Spacing } from '../components/Theme';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 
 function PageLoader({
   message = 'Loading transactions...',
@@ -992,45 +984,42 @@ export default function SourcesDetails({
                   <Text
                     numberOfLines={1}
                     adjustsFontSizeToFit
-                    minimumFontScale={
-                      0.72
-                    }
+                    minimumFontScale={0.72}
                     style={{
-                      width:
-                        '100%',
-
-                      textAlign:
-                        'right',
-
-                      fontSize:
-                        15,
-
-                      fontWeight:
-                        '900',
-
-                      color:
-                        amountColor,
-
-                      letterSpacing:
-                        -0.35,
+                      width: '100%',
+                      textAlign: 'right',
+                      fontSize: 15,
+                      fontWeight: '900',
+                      color: item.is_counted === 0 ? '#9CA3AF' : amountColor,
+                      letterSpacing: -0.35,
+                      textDecorationLine: item.is_counted === 0 ? 'line-through' : 'none',
                     }}
                   >
                     {balanceVisible
-                      ? `${amountPrefix}₹${Number(
-                        item.amount ||
-                        0
-                      ).toLocaleString(
-                        'en-IN',
-                        {
-                          minimumFractionDigits:
-                            2,
-
-                          maximumFractionDigits:
-                            2,
-                        }
-                      )}`
+                      ? `${amountPrefix}₹${Number(item.amount || 0).toLocaleString('en-IN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}`
                       : '••••••'}
                   </Text>
+
+                  {/* NOT COUNTED BADGE */}
+                  {item.is_counted === 0 && (
+                    <View
+                      style={{
+                        backgroundColor: '#F3F4F6',
+                        borderRadius: 4,
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        marginTop: 3,
+                        alignSelf: 'flex-end',
+                      }}
+                    >
+                      <Text style={{ fontSize: 9, color: '#9CA3AF', fontWeight: '700', letterSpacing: 0.3 }}>
+                        {item.type === 'expense' ? 'NOT SPEND' : 'NOT INCOME'}
+                      </Text>
+                    </View>
+                  )}
 
                   {/* DATE */}
                   <View
@@ -1529,6 +1518,22 @@ export default function SourcesDetails({
           )}
         />
       )}
+
+      <FAB
+        onPress={() =>
+          navigation.navigate('TransactionAdd', {
+            sourceId: Number(sourceId),
+          })
+        }
+        style={{
+          position: 'absolute',
+          bottom: 70,
+          right: 20,
+          zIndex: 20,
+          elevation: 20,
+        }}
+      />
+
     </View>
   );
 }

@@ -11,7 +11,8 @@ export async function getTotalBalance() {
   const sources = await getSources(true);
   const initial = sources.reduce((s, src) => s + (parseFloat(src.initial_balance) || 0), 0);
 
-  const tx = await getTransactions(1000000);
+  // onlyCounted = true — excluded transactions don't affect balance
+  const tx = await getTransactions(1000000, 'No', null, null, null, new Date(), true);
   const income = tx.filter(t => t.type === 'income').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
   const expense = tx.filter(t => t.type === 'expense').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
 
@@ -19,7 +20,8 @@ export async function getTotalBalance() {
 }
 
 export async function getCategorySpending(period = null, mode = 'monthly') {
-  const tx = await getTransactions(1000000);
+  // onlyCounted = true — excluded transactions don't show in spending breakdown
+  const tx = await getTransactions(1000000, 'No', null, null, null, new Date(), true);
   const cats = await getCategories(true);
   const byId = {};
 
@@ -51,36 +53,58 @@ export async function getCategorySpending(period = null, mode = 'monthly') {
 
   const result = Object.keys(byId).map(k => {
     const cat = cats.find(c => String(c.id) === String(k));
-    return { category_id: k, category_name: cat ? cat.name : 'Uncategorized', amount: byId[k] };
-  }).sort((a,b) => b.amount - a.amount);
+    return {
+      category_id: k,
+      category_name: cat ? cat.name : 'Uncategorized',
+      amount: byId[k]
+    };
+  }).sort((a, b) => b.amount - a.amount);
 
   return result;
 }
 
 export async function getMonthlyTrends(months = 6) {
-  const tx = await getTransactions(1000000);
+  // onlyCounted = true — excluded transactions don't skew trend charts
+  const tx = await getTransactions(1000000, 'No', null, null, null, new Date(), true);
   const trends = [];
   const now = new Date();
+
   for (let i = months - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const m = d.toISOString().slice(0, 7);
     const monthTx = tx.filter(t => t.date && String(t.date).startsWith(m));
-    const income = monthTx.filter(t => t.type === 'income').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
-    const expense = monthTx.filter(t => t.type === 'expense').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+    const income = monthTx
+      .filter(t => t.type === 'income')
+      .reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+    const expense = monthTx
+      .filter(t => t.type === 'expense')
+      .reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
     trends.push({ month: m, income, expense });
   }
+
   return trends;
 }
 
 export async function getSourceBalances() {
   const sources = await getSources(true);
-  const tx = await getTransactions(1000000);
+  // onlyCounted = true — excluded transactions don't affect source balances
+  const tx = await getTransactions(1000000, 'No', null, null, null, new Date(), true);
+
   const result = sources.map(s => {
     const initial = parseFloat(s.initial_balance) || 0;
-    const income = tx.filter(t => String(t.source_id) === String(s.id) && t.type === 'income').reduce((a,b)=>a + (parseFloat(b.amount)||0), 0);
-    const expense = tx.filter(t => String(t.source_id) === String(s.id) && t.type === 'expense').reduce((a,b)=>a + (parseFloat(b.amount)||0), 0);
-    return { source_id: s.id, name: s.name, balance: initial + income - expense };
+    const income = tx
+      .filter(t => String(t.source_id) === String(s.id) && t.type === 'income')
+      .reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
+    const expense = tx
+      .filter(t => String(t.source_id) === String(s.id) && t.type === 'expense')
+      .reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
+    return {
+      source_id: s.id,
+      name: s.name,
+      balance: initial + income - expense
+    };
   });
+
   return result;
 }
 
@@ -89,6 +113,9 @@ export function groupTransactions(transactions, mode) {
   const groups = {};
 
   transactions.forEach(tx => {
+    // Skip uncounted transactions in all grouped views
+    if (tx.is_counted === 0) return;
+
     const amount = Number(tx.amount) || 0;
     const rawDate = tx.date ? String(tx.date) : '';
     const dateStr = rawDate.replace(' ', 'T');
@@ -129,7 +156,6 @@ export function groupTransactions(transactions, mode) {
 
   const result = Object.values(groups);
   result.sort((a, b) => b.label.localeCompare(a.label));
-  
   return result;
 }
 

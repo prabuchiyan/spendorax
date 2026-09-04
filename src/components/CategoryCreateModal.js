@@ -9,7 +9,14 @@ import formModalStyles from './formModalStyles';
 import { createCategory, updateCategory } from '../services/categories';
 import { suggestIconForText } from '../utils/iconSuggest';
 
-export default function CategoryCreateModal({ visible, onClose, onCategoryCreated, onSave, editData, currentType = 'expense' }) {
+export default function CategoryCreateModal({
+  visible,
+  onClose,
+  onCategoryCreated,
+  onSave,
+  editData,
+  currentType = 'expense',
+}) {
   const [action, setAction] = useState('');
   const [submitText, setSubmitText] = useState('');
   const [name, setName] = useState('');
@@ -19,6 +26,7 @@ export default function CategoryCreateModal({ visible, onClose, onCategoryCreate
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [nameError, setNameError] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -38,6 +46,7 @@ export default function CategoryCreateModal({ visible, onClose, onCategoryCreate
         setSelectedColor('#4B7CF3');
       }
       setNameError(false);
+      setSaving(false);
     }
   }, [visible, editData, currentType]);
 
@@ -48,11 +57,16 @@ export default function CategoryCreateModal({ visible, onClose, onCategoryCreate
   }, [name, editData]);
 
   const handleCreateCategory = async () => {
+    // Prevent duplicate taps while saving
+    if (saving) {
+      return;
+    }
     if (!name.trim()) {
       setNameError(true);
       return;
     }
     setNameError(false);
+    setSaving(true);
 
     try {
       if (editData && editData.id) {
@@ -63,8 +77,24 @@ export default function CategoryCreateModal({ visible, onClose, onCategoryCreate
           color: selectedColor,
           is_active: editData.is_active !== undefined ? editData.is_active : 1,
         });
-        if (onSave) onSave({ id: editData.id, name: name.trim(), type, icon: selectedIcon, color: selectedColor });
-        if (onCategoryCreated) onCategoryCreated({ id: editData.id, name: name.trim(), type, icon: selectedIcon, color: selectedColor });
+        if (onSave) {
+          onSave({
+            id: editData.id,
+            name: name.trim(),
+            type,
+            icon: selectedIcon,
+            color: selectedColor,
+          });
+        }
+        if (onCategoryCreated) {
+          onCategoryCreated({
+            id: editData.id,
+            name: name.trim(),
+            type,
+            icon: selectedIcon,
+            color: selectedColor,
+          });
+        }
       } else {
         const newCategory = await createCategory({
           name: name.trim(),
@@ -72,32 +102,54 @@ export default function CategoryCreateModal({ visible, onClose, onCategoryCreate
           icon: selectedIcon,
           color: selectedColor,
         });
-        const categoryResult = { id: newCategory, name: name.trim(), type, icon: selectedIcon, color: selectedColor };
-        if (onCategoryCreated) onCategoryCreated(categoryResult);
-        if (onSave) onSave(categoryResult);
+        const categoryResult = {
+          id: newCategory,
+          name: name.trim(),
+          type,
+          icon: selectedIcon,
+          color: selectedColor,
+        };
+        if (onCategoryCreated) {
+          onCategoryCreated(categoryResult);
+        }
+        if (onSave) {
+          onSave(categoryResult);
+        }
       }
       onClose();
     } catch (error) {
       console.error('Error saving category:', error);
       alert('Failed to save category. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
     <FormModalShell
       visible={visible}
-      onClose={onClose}
+      onClose={saving ? undefined : onClose}
       icon={selectedIcon}
       iconColor={selectedColor}
       title={action}
       subtitle="Manage your category"
       actions={
         <>
-          <PaperButton mode="outlined" onPress={onClose} style={{ marginRight: 8 }}>
+          <PaperButton
+            mode="outlined"
+            onPress={onClose}
+            disabled={saving}
+            style={{ marginRight: 8 }}
+          >
             Cancel
           </PaperButton>
-          <PaperButton mode="contained" onPress={handleCreateCategory}>
-            {submitText}
+          <PaperButton
+            mode="contained"
+            onPress={handleCreateCategory}
+            loading={saving}
+            disabled={saving}
+          >
+            {saving ? '' : submitText}
           </PaperButton>
         </>
       }
@@ -120,10 +172,14 @@ export default function CategoryCreateModal({ visible, onClose, onCategoryCreate
       <PaperInput
         label="Category Name"
         value={name}
-        onChangeText={(text) => { setName(text); setNameError(false); }}
+        onChangeText={(text) => {
+          setName(text);
+          setNameError(false);
+        }}
         mode="outlined"
         style={formModalStyles.input}
         error={nameError}
+        disabled={saving}
       />
 
       {nameError && (
@@ -136,6 +192,7 @@ export default function CategoryCreateModal({ visible, onClose, onCategoryCreate
         <PaperButton
           mode={type === 'income' ? 'contained' : 'outlined'}
           onPress={() => setType('income')}
+          disabled={saving}
           style={{ marginRight: 8 }}
         >
           Income
@@ -143,14 +200,23 @@ export default function CategoryCreateModal({ visible, onClose, onCategoryCreate
         <PaperButton
           mode={type === 'expense' ? 'contained' : 'outlined'}
           onPress={() => setType('expense')}
+          disabled={saving}
         >
           Expense
         </PaperButton>
       </View>
 
       <View style={formModalStyles.controls}>
-        <FormControlButton icon="image" label="Icon" onPress={() => setShowIconPicker(true)} />
-        <FormControlButton icon="palette" label="Color" onPress={() => setShowColorPicker(true)} />
+        <FormControlButton
+          icon="image"
+          label="Icon"
+          onPress={() => setShowIconPicker(true)}
+        />
+        <FormControlButton
+          icon="palette"
+          label="Color"
+          onPress={() => setShowColorPicker(true)}
+        />
       </View>
     </FormModalShell>
   );

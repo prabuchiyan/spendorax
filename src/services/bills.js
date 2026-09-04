@@ -1,7 +1,7 @@
-import { Platform } from 'react-native';
-import { executeSql } from '../database/db';
-import { createTransaction, createTransfer } from './transactions';
-import { emit } from './events';
+import { Platform } from "react-native";
+import { executeSql } from "../database/db";
+import { createTransaction, createTransfer } from "./transactions";
+import { emit } from "./events";
 import {
   BILL_STATUS,
   computeBillStatus,
@@ -9,10 +9,10 @@ import {
   daysBetween,
   monthKey,
   generateOccurrenceDates,
-} from './billUtils';
+} from "./billUtils";
+import { runCreditCardStatementScheduler } from "./creditCardScheduler";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
-
 function rowsToArray(res) {
   const rows = [];
   for (let i = 0; i < res.rows.length; i++) rows.push(res.rows.item(i));
@@ -25,16 +25,19 @@ function normalizeBill(row) {
   return { ...row, status, is_paid: status === BILL_STATUS.PAID ? 1 : 0 };
 }
 
-function nowIso() { return new Date().toISOString(); }
-function emitBillsChanged() { emit('billsChanged'); }
+function nowIso() {
+  return new Date().toISOString();
+}
+function emitBillsChanged() {
+  emit("billsChanged");
+}
 
 async function fetchAllBillsRaw() {
   const res = await executeSql(`SELECT * FROM bills`, []);
-  return rowsToArray(res).filter(r => !r.deleted_at);
+  return rowsToArray(res).filter((r) => !r.deleted_at);
 }
 
 // ─── bill_linked_transactions ─────────────────────────────────────────────────
-
 export async function createBillLinkedTransactionsTable() {
   await executeSql(`
     CREATE TABLE IF NOT EXISTS bill_linked_transactions (
@@ -51,12 +54,12 @@ export async function addTransactionToBill(billId, transactionId) {
   try {
     await executeSql(
       `INSERT OR IGNORE INTO bill_linked_transactions (bill_id, transaction_id) VALUES (?, ?)`,
-      [billId, transactionId]
+      [billId, transactionId],
     );
 
     const res = await executeSql(
       `SELECT * FROM bill_linked_transactions WHERE bill_id = ?`,
-      [billId]
+      [billId],
     );
   } catch (e) {
     console.log(e);
@@ -64,39 +67,56 @@ export async function addTransactionToBill(billId, transactionId) {
 }
 
 export async function removeTransactionFromBill(billId, transactionId) {
+  // 1. Remove the bill ↔ transaction link
   await executeSql(
     `DELETE FROM bill_linked_transactions
      WHERE bill_id = ? AND transaction_id = ?`,
-    [billId, transactionId]
+    [billId, transactionId],
   );
 
-  // Any links remaining?
+  // 2. Check whether any transactions are still linked
   const remaining = rowsToArray(
     await executeSql(
       `SELECT * FROM bill_linked_transactions
        WHERE bill_id = ?`,
-      [billId]
-    )
+      [billId],
+    ),
   );
-  // No linked transactions left -> reset bill status
+
+  // 3. If no transactions remain, the bill is no longer paid
   if (remaining.length === 0) {
+    const now = nowIso();
+
     await executeSql(
       `UPDATE bills
-     SET
-       status = ?,
-       is_paid = ?,
-       linked_transaction_id = NULL,
-       paid_at = NULL,
-       updated_at = ?
-     WHERE id = ?`,
-      [
-        BILL_STATUS.PENDING,
-        0,
-        nowIso(),
-        billId,
-      ]
+       SET
+         status = ?,
+         is_paid = ?,
+         linked_transaction_id = NULL,
+         paid_at = NULL,
+         updated_at = ?
+       WHERE id = ?`,
+      [BILL_STATUS.PENDING, 0, now, billId],
+    );
+
+    // 4. If this bill is linked to a credit-card statement,
+    //    reset that statement back to generated/unpaid.
+    await executeSql(
+      `UPDATE credit_card_statements
+       SET status = ?
+       WHERE bill_id = ?`,
+      ["generated", billId],
+    );
+
+    console.log("[removeTransactionFromBill] Bill reset to pending:", billId);
+
+    console.log(
+      "[removeTransactionFromBill] Credit card statement reset to generated:",
+      billId,
     );
   }
+
+  emitBillsChanged();
 }
 
 export async function getBillLinkedTransactions(billId) {
@@ -110,7 +130,7 @@ export async function getBillLinkedTransactions(billId) {
        LEFT JOIN categories c ON c.id = t.category_id
        WHERE blt.bill_id = ?
        ORDER BY t.date DESC`,
-      [billId]
+      [billId],
     );
     return rowsToArray(res);
   } catch (e) {
@@ -118,33 +138,31 @@ export async function getBillLinkedTransactions(billId) {
     const links = rowsToArray(
       await executeSql(
         `SELECT * FROM bill_linked_transactions WHERE bill_id = ?`,
-        [billId]
-      )
+        [billId],
+      ),
     );
 
     const transactions = rowsToArray(
-      await executeSql(`SELECT * FROM transactions`, [])
+      await executeSql(`SELECT * FROM transactions`, []),
     );
 
-    const sources = rowsToArray(
-      await executeSql(`SELECT * FROM sources`, [])
-    );
+    const sources = rowsToArray(await executeSql(`SELECT * FROM sources`, []));
 
     const categories = rowsToArray(
-      await executeSql(`SELECT * FROM categories`, [])
+      await executeSql(`SELECT * FROM categories`, []),
     );
 
     return links
-      .map(link => {
-        const tx = transactions.find(t => t.id == link.transaction_id);
+      .map((link) => {
+        const tx = transactions.find((t) => t.id == link.transaction_id);
         if (!tx) return null;
 
         return {
           ...tx,
-          source_name: sources.find(s => s.id == tx.source_id)?.name,
-          category_name: categories.find(c => c.id == tx.category_id)?.name,
-          category_icon: categories.find(c => c.id == tx.category_id)?.icon,
-          category_color: categories.find(c => c.id == tx.category_id)?.color,
+          source_name: sources.find((s) => s.id == tx.source_id)?.name,
+          category_name: categories.find((c) => c.id == tx.category_id)?.name,
+          category_icon: categories.find((c) => c.id == tx.category_id)?.icon,
+          category_color: categories.find((c) => c.id == tx.category_id)?.color,
         };
       })
       .filter(Boolean)
@@ -177,7 +195,7 @@ export async function getBillsForTransaction(transactionId) {
        FROM bill_linked_transactions blt
        JOIN bills b ON b.id = blt.bill_id
        WHERE blt.transaction_id = ? AND b.deleted_at IS NULL`,
-      [transactionId]
+      [transactionId],
     );
     return rowsToArray(res).map(normalizeBill).filter(Boolean);
   } catch (e) {
@@ -277,7 +295,7 @@ async function _insertBill({
       recurrence_effective_date,
       ts,
       ts,
-    ]
+    ],
   );
   return res.insertId;
 }
@@ -292,7 +310,7 @@ async function ensureRecurringOccurrenceColumn() {
     await executeSql(
       `ALTER TABLE bills
        ADD COLUMN recurrence_occurrence_key TEXT`,
-      []
+      [],
     );
   } catch (e) {
     // Column already exists.
@@ -310,13 +328,106 @@ async function ensureRecurringOccurrenceColumn() {
     await executeSql(
       `ALTER TABLE bills
        ADD COLUMN recurrence_effective_date TEXT`,
-      []
+      [],
     );
   } catch (e) {
     // Column already exists.
   }
 
   recurrenceColumnReady = true;
+}
+
+// ─── recurring occurrence deletion exclusions ────────────────────────────────
+
+let recurrenceDeletionTableReady = false;
+
+/**
+ * Stores recurrence occurrences that the user intentionally deleted.
+ *
+ * IMPORTANT:
+ * We cannot store this information in `bills` because the bill row is
+ * permanently deleted.
+ *
+ * Example:
+ * parent_bill_id = 172
+ * recurrence_occurrence_key = "2026-09"
+ *
+ * This tells the recurrence engine:
+ * "September 2026 was intentionally deleted — do not recreate it."
+ */
+async function ensureRecurringDeletionTable() {
+  if (recurrenceDeletionTableReady) return;
+
+  await executeSql(
+    `CREATE TABLE IF NOT EXISTS bill_deleted_occurrences (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      parent_bill_id INTEGER NOT NULL,
+      recurrence_occurrence_key TEXT NOT NULL,
+      deleted_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(parent_bill_id, recurrence_occurrence_key)
+    )`,
+    [],
+  );
+
+  recurrenceDeletionTableReady = true;
+}
+
+/**
+ * Remember that a recurring occurrence was intentionally deleted.
+ */
+async function markRecurringOccurrenceDeleted(
+  parentBillId,
+  recurrenceOccurrenceKey,
+) {
+  if (!parentBillId || !recurrenceOccurrenceKey) {
+    return;
+  }
+
+  await ensureRecurringDeletionTable();
+
+  await executeSql(
+    `INSERT OR IGNORE INTO bill_deleted_occurrences (
+      parent_bill_id,
+      recurrence_occurrence_key,
+      deleted_at
+    )
+    VALUES (?, ?, ?)`,
+    [
+      Number(parentBillId),
+      String(recurrenceOccurrenceKey),
+      nowIso(),
+    ],
+  );
+}
+
+/**
+ * Get all intentionally deleted occurrence keys for a recurrence series.
+ */
+async function getDeletedOccurrenceKeys(parentBillId) {
+  if (!parentBillId) {
+    return new Set();
+  }
+
+  await ensureRecurringDeletionTable();
+
+  const result = await executeSql(
+    `SELECT recurrence_occurrence_key
+     FROM bill_deleted_occurrences
+     WHERE parent_bill_id = ?`,
+    [Number(parentBillId)],
+  );
+
+  const keys = new Set();
+
+  for (let i = 0; i < result.rows.length; i++) {
+    const row = result.rows.item(i);
+
+    if (row?.recurrence_occurrence_key) {
+      keys.add(String(row.recurrence_occurrence_key));
+    }
+  }
+
+  return keys;
 }
 
 /**
@@ -340,7 +451,7 @@ async function ensureRecurringOccurrenceColumn() {
 function getRecurrenceOccurrenceKey(
   recurrenceType,
   occurrenceDate,
-  recurrenceInterval = 1
+  recurrenceInterval = 1,
 ) {
   if (!occurrenceDate) return null;
 
@@ -348,43 +459,30 @@ function getRecurrenceOccurrenceKey(
 
   if (!date || date.length < 10) return null;
 
-  const type = String(recurrenceType || '').toLowerCase();
+  const type = String(recurrenceType || "").toLowerCase();
 
   const year = date.slice(0, 4);
   const month = date.slice(0, 7);
 
-  if (
-    type === 'yearly' ||
-    type === 'year' ||
-    type === 'annual'
-  ) {
+  if (type === "yearly" || type === "year" || type === "annual") {
     return year;
   }
 
-  if (
-    type === 'monthly' ||
-    type === 'month'
-  ) {
+  if (type === "monthly" || type === "month") {
     return month;
   }
 
-  if (
-    type === 'weekly' ||
-    type === 'week'
-  ) {
+  if (type === "weekly" || type === "week") {
     // Generated date is the occurrence identity.
     return `W:${date}`;
   }
 
-  if (
-    type === 'daily' ||
-    type === 'day'
-  ) {
+  if (type === "daily" || type === "day") {
     return date;
   }
 
   // Fallback for custom recurrence types.
-  return `${type || 'custom'}:${date}:${recurrenceInterval || 1}`;
+  return `${type || "custom"}:${date}:${recurrenceInterval || 1}`;
 }
 
 /**
@@ -408,7 +506,7 @@ async function backfillMissingOccurrenceKeys(template) {
      FROM bills
      WHERE parent_bill_id = ?
        AND deleted_at IS NULL`,
-    [template.id]
+    [template.id],
   );
 
   const children = rowsToArray(childrenRes);
@@ -418,7 +516,7 @@ async function backfillMissingOccurrenceKeys(template) {
     const key = getRecurrenceOccurrenceKey(
       template.recurrence_type,
       child.due_date,
-      template.recurrence_interval
+      template.recurrence_interval,
     );
     if (!key) continue;
     await executeSql(
@@ -426,7 +524,7 @@ async function backfillMissingOccurrenceKeys(template) {
        SET recurrence_occurrence_key = ?,
            updated_at = ?
        WHERE id = ?`,
-      [key, nowIso(), child.id]
+      [key, nowIso(), child.id],
     );
   }
 }
@@ -459,137 +557,213 @@ async function backfillMissingOccurrenceKeys(template) {
 export async function backfillBillOccurrences(templateId) {
   await ensureRecurringOccurrenceColumn();
   await ensureRecurringOccurrenceUniqueIndex();
+  await ensureRecurringDeletionTable();
 
-  const template = await getBillById(templateId);
+  const numericTemplateId = Number(templateId);
 
-  if (
-    !template ||
-    !template.is_recurring ||
-    !template.recurrence_type
-  ) {
+  if (!Number.isInteger(numericTemplateId) || numericTemplateId <= 0) {
+    console.warn(
+      "[backfillBillOccurrences] Invalid template ID:",
+      templateId
+    );
     return;
   }
 
-  // Make sure old occurrences have their permanent keys.
-  await backfillMissingOccurrenceKeys(template);
+  // =========================================================
+  // 1. LOAD RECURRING TEMPLATE
+  // =========================================================
+
+  const template = await getBillById(numericTemplateId);
+
+  if (
+    !template ||
+    Number(template.is_recurring) !== 1 ||
+    !template.recurrence_type ||
+    !template.due_date
+  ) {
+    console.log(
+      "[backfillBillOccurrences] Not a valid recurring template:",
+      {
+        templateId: numericTemplateId,
+      }
+    );
+    return;
+  }
+
+  const templateDate =
+    String(template.due_date).slice(0, 10);
 
   const today = todayStr();
 
-  /*
-   * IMPORTANT:
-   *
-   * recurrence_effective_date tells us when the CURRENT
-   * recurrence rule started.
-   *
-   * Example:
-   *
-   * 2024-01 -> Monthly
-   * 2025-01 -> Monthly
-   * 2025-12 -> Monthly
-   *
-   * Changed to Yearly on:
-   *
-   * 2026-01-01
-   *
-   * Therefore we MUST NOT generate yearly occurrences
-   * for 2024 or 2025.
-   */
+  // =========================================================
+  // 2. DETERMINE EFFECTIVE START DATE
+  // =========================================================
+  //
+  // For a bill created on:
+  //
+  //   2025-09-10
+  //
+  // monthly recurrence should generate:
+  //
+  //   2025-09-10  template
+  //   2025-10-10
+  //   2025-11-10
+  //   ...
+  //   2026-08-10
+  //
+  // September 2026 is NOT generated until its due date arrives.
+  // =========================================================
+
   const effectiveDate =
     template.recurrence_effective_date ||
-    template.due_date ||
-    today;
+    template.due_date;
 
   const effectiveDateOnly =
     String(effectiveDate).slice(0, 10);
 
-  const upTo = template.recurrence_end_date
-    ? template.recurrence_end_date.slice(0, 10)
-    : today;
+  // =========================================================
+  // 3. DETERMINE END DATE
+  // =========================================================
 
-  const expectedDates = generateOccurrenceDates(
-    template,
-    upTo
-  );
+  let upTo = today;
 
-  const existingRes = await executeSql(
-    `SELECT
-       id,
-       parent_bill_id,
-       due_date,
-       recurrence_occurrence_key,
-       deleted_at
-     FROM bills
-     WHERE id = ?
-        OR parent_bill_id = ?`,
-    [templateId, templateId]
-  );
+  if (template.recurrence_end_date) {
+    const recurrenceEndDate =
+      String(template.recurrence_end_date).slice(0, 10);
 
-  const existingRows = rowsToArray(existingRes);
-
-  const existingOccurrenceKeys = new Set();
-
-  for (const row of existingRows) {
-    if (row.deleted_at) continue;
-
-    if (Number(row.id) === Number(templateId)) {
-      if (row.due_date) {
-        const key = getRecurrenceOccurrenceKey(
-          template.recurrence_type,
-          row.due_date,
-          template.recurrence_interval
-        );
-        if (key) {
-          existingOccurrenceKeys.add(String(key));
-        }
-      }
-      continue;
-    }
-
-    if (row.recurrence_occurrence_key) {
-      existingOccurrenceKeys.add(
-        String(row.recurrence_occurrence_key)
-      );
-      continue;
-    }
-
-    // Old occurrence without a key.
-    if (row.due_date) {
-      const key = getRecurrenceOccurrenceKey(
-        template.recurrence_type,
-        row.due_date,
-        template.recurrence_interval
-      );
-      if (key) {
-        existingOccurrenceKeys.add(String(key));
-      }
+    if (recurrenceEndDate < upTo) {
+      upTo = recurrenceEndDate;
     }
   }
 
-  for (const dueDate of expectedDates) {
-    if (!dueDate) continue;
+  // Nothing to generate yet.
+  if (effectiveDateOnly > upTo) {
+    console.log(
+      "[backfillBillOccurrences] Effective date is after today:",
+      {
+        templateId: numericTemplateId,
+        effectiveDateOnly,
+        upTo,
+      }
+    );
+    return;
+  }
+
+  // =========================================================
+  // 4. GENERATE EXPECTED DATES
+  // =========================================================
+
+  const expectedDates =
+    generateOccurrenceDates(template, upTo);
+
+  console.log(
+    "[backfillBillOccurrences] EXPECTED DATES:",
+    {
+      templateId: numericTemplateId,
+      templateDate,
+      effectiveDateOnly,
+      upTo,
+      count: expectedDates.length,
+      dates: expectedDates,
+    }
+  );
+
+  // =========================================================
+  // 5. LOAD DELETED OCCURRENCE KEYS
+  // =========================================================
+
+  const deletedOccurrenceKeys =
+    await getDeletedOccurrenceKeys(
+      numericTemplateId
+    );
+
+  // =========================================================
+  // 6. LOAD ALL EXISTING CHILDREN
+  // =========================================================
+  // Keep this SELECT simple because the Web SQLite shim
+  // supports basic SELECT/WHERE queries more reliably.
+  // Filter deleted rows in JavaScript.
+
+  const existingResult = await executeSql(
+    `SELECT * FROM bills WHERE parent_bill_id = ?`,
+    [numericTemplateId]
+  );
+
+  const existingChildren = rowsToArray(existingResult)
+    .filter((row) => !row.deleted_at);
+
+  const existingOccurrenceKeys = new Set();
+
+  for (const child of existingChildren) {
+    let key =
+      child.recurrence_occurrence_key;
+
+    // Backward compatibility:
+    // old occurrence rows may not have a key.
+    if (!key && child.due_date) {
+      key = getRecurrenceOccurrenceKey(
+        template.recurrence_type,
+        child.due_date,
+        template.recurrence_interval
+      );
+
+      // Permanently save the recovered key.
+      if (key) {
+        await executeSql(
+          `UPDATE bills
+           SET recurrence_occurrence_key = ?,
+               updated_at = ?
+           WHERE id = ?`,
+          [
+            String(key),
+            nowIso(),
+            child.id,
+          ]
+        );
+      }
+    }
+
+    if (key) {
+      existingOccurrenceKeys.add(
+        String(key)
+      );
+    }
+  }
+
+  console.log(
+    "[backfillBillOccurrences] EXISTING CHILD KEYS:",
+    Array.from(existingOccurrenceKeys)
+  );
+
+  console.log(
+    "[backfillBillOccurrences] DELETED KEYS:",
+    Array.from(deletedOccurrenceKeys)
+  );
+
+  // =========================================================
+  // 7. CREATE ONLY MISSING OCCURRENCES
+  // =========================================================
+
+  let createdCount = 0;
+
+  for (const generatedDate of expectedDates) {
+    if (!generatedDate) continue;
 
     const dueDateOnly =
-      String(dueDate).slice(0, 10);
-    /*
-     * IMPORTANT:
-     *
-     * Never generate the NEW recurrence before
-     * recurrence_effective_date.
-     *
-     * This protects historical monthly bills.
-     */
+      String(generatedDate).slice(0, 10);
+
+    // Never generate anything before effective date.
     if (dueDateOnly < effectiveDateOnly) {
       continue;
     }
 
-    /*
-     * The template itself already represents its
-     * original occurrence.
-     */
-    if (
-      template.due_date &&
-      template.due_date.slice(0, 10) === dueDateOnly
-    ) {
+    // Never create a child for the template's own date.
+    if (dueDateOnly === templateDate) {
+      continue;
+    }
+
+    // Safety: never create future bills.
+    if (dueDateOnly > today) {
       continue;
     }
 
@@ -600,50 +774,122 @@ export async function backfillBillOccurrences(templateId) {
         template.recurrence_interval
       );
 
-    if (!occurrenceKey) continue;
+    if (!occurrenceKey) {
+      continue;
+    }
 
-    /*
-     * Already exists.
-     */
+    const key =
+      String(occurrenceKey);
+
+    // -------------------------------------------------------
+    // User explicitly deleted this occurrence.
+    // -------------------------------------------------------
+
     if (
-      existingOccurrenceKeys.has(
-        String(occurrenceKey)
-      )
+      deletedOccurrenceKeys.has(key)
+    ) {
+      console.log(
+        "[backfillBillOccurrences] SKIP DELETED:",
+        {
+          templateId: numericTemplateId,
+          dueDate: dueDateOnly,
+          key,
+        }
+      );
+
+      continue;
+    }
+
+    // -------------------------------------------------------
+    // Already exists.
+    // -------------------------------------------------------
+
+    if (
+      existingOccurrenceKeys.has(key)
     ) {
       continue;
     }
 
+    // -------------------------------------------------------
+    // Create occurrence.
+    // -------------------------------------------------------
+
+    console.log(
+      "[backfillBillOccurrences] CREATE:",
+      {
+        templateId: numericTemplateId,
+        dueDate: dueDateOnly,
+        key,
+      }
+    );
+
     await _insertBill({
       name: template.name,
       amount: template.amount,
+
       due_date: dueDateOnly,
+
       is_recurring: 0,
       recurrence_type: null,
       recurrence_interval: 1,
       recurrence_end_date: null,
+
       category_id: template.category_id,
       source_id: template.source_id,
-      reminder_days_before: template.reminder_days_before,
-      auto_pay: template.auto_pay,
-      notes: template.notes,
-      attachment_url: template.attachment_url,
-      parent_bill_id: templateId,
-      recurrence_occurrence_key: occurrenceKey,
-      /*
-       * Child keeps the recurrence version
-       * that created it.
-       */
-      recurrence_effective_date: effectiveDateOnly,
+
+      reminder_days_before:
+        template.reminder_days_before,
+
+      auto_pay:
+        template.auto_pay,
+
+      notes:
+        template.notes,
+
+      attachment_url:
+        template.attachment_url,
+
+      paid_at: null,
+      is_paid: 0,
+      linked_transaction_id: null,
+
+      parent_bill_id:
+        numericTemplateId,
+
+      recurrence_occurrence_key:
+        key,
+
+      recurrence_effective_date:
+        effectiveDateOnly,
     });
 
-    existingOccurrenceKeys.add(
-      String(occurrenceKey)
-    );
+    // Important:
+    // Prevent another occurrence with the same key
+    // during THIS execution.
+    existingOccurrenceKeys.add(key);
+
+    createdCount++;
   }
+
+  // =========================================================
+  // 8. FINAL LOG
+  // =========================================================
+
+  console.log(
+    "[backfillBillOccurrences] COMPLETE:",
+    {
+      templateId: numericTemplateId,
+      expectedCount: expectedDates.length,
+      existingCount:
+        existingOccurrenceKeys.size,
+      createdCount,
+      deletedCount:
+        deletedOccurrenceKeys.size,
+    }
+  );
 }
 
 // ─── public createBill ────────────────────────────────────────────────────────
-
 export async function createBill(fields) {
   await ensureRecurringOccurrenceColumn();
   await ensureRecurringOccurrenceUniqueIndex();
@@ -680,63 +926,91 @@ export async function getBillSeries(templateId) {
   const template = await getBillById(templateId);
   if (!template) return [];
 
-  if (!template.is_recurring || !template.recurrence_type) {
+  // CC payment templates: is_recurring=1 but recurrence_type=null
+  // Fetch children directly by parent_bill_id
+  const isCCTemplate =
+    template.is_recurring &&
+    typeof template.notes === "string" &&
+    template.notes.startsWith("Recurring payment template for");
+
+  if (!template.is_recurring && !isCCTemplate) {
     return [template];
   }
 
+  // For CC templates with no recurrence_type, skip the normal recurring logic
+  // and just return all non-deleted children sorted by due_date
+  if (isCCTemplate || !template.recurrence_type) {
+    const allChildren = (await fetchAllBillsRaw())
+      .filter((r) => Number(r.parent_bill_id) === Number(templateId))
+      .map(normalizeBill)
+      .filter(Boolean);
+
+    const links = rowsToArray(
+      await executeSql(`SELECT * FROM bill_linked_transactions`, []),
+    );
+    const transactions = rowsToArray(
+      await executeSql(`SELECT * FROM transactions`, []),
+    );
+
+    const enriched = allChildren.map((bill) => {
+      const billLinks = links.filter(
+        (l) => Number(l.bill_id) === Number(bill.id),
+      );
+      const paidAmount = billLinks.reduce((sum, link) => {
+        const tx = transactions.find(
+          (t) => Number(t.id) === Number(link.transaction_id),
+        );
+        return sum + Number(tx?.amount || 0);
+      }, 0);
+      return { ...bill, paid_amount: paidAmount };
+    });
+
+    return enriched.sort((a, b) =>
+      (a.due_date || "").localeCompare(b.due_date || ""),
+    );
+  }
+
+  // Normal recurring bill — existing logic below
   const allChildren = (await fetchAllBillsRaw())
-    .filter(r => Number(r.parent_bill_id) === Number(templateId))
+    .filter((r) => Number(r.parent_bill_id) === Number(templateId))
     .map(normalizeBill)
     .filter(Boolean);
 
-  const children = allChildren.filter(c => !c.deleted_at);
+  const children = allChildren.filter((c) => !c.deleted_at);
 
-  // If a child row exists (even if deleted) for the exact same month as the template's due_date,
-  // it acts as an override for the template. We should replace the template with the child row
-  // for that month.
   let activeTemplate = template;
   if (template.due_date) {
     const templateMonth = template.due_date.slice(0, 7);
-    const overrideChild = allChildren.find(c => c.due_date && c.due_date.slice(0, 7) === templateMonth);
-    if (overrideChild) {
-      // The child overrides the template for this month. 
-      // We don't need to show the template occurrence.
-      activeTemplate = null;
-    }
+    const overrideChild = allChildren.find(
+      (c) => c.due_date && c.due_date.slice(0, 7) === templateMonth,
+    );
+    if (overrideChild) activeTemplate = null;
   }
 
-  // Combine and sort newest first
   const series = activeTemplate ? [activeTemplate, ...children] : [...children];
 
   const links = rowsToArray(
-    await executeSql(`SELECT * FROM bill_linked_transactions`, [])
+    await executeSql(`SELECT * FROM bill_linked_transactions`, []),
   );
-
   const transactions = rowsToArray(
-    await executeSql(`SELECT * FROM transactions`, [])
+    await executeSql(`SELECT * FROM transactions`, []),
   );
 
-  const enriched = series.map(bill => {
-
+  const enriched = series.map((bill) => {
     const billLinks = links.filter(
-      l => Number(l.bill_id) === Number(bill.id)
+      (l) => Number(l.bill_id) === Number(bill.id),
     );
-
     const paidAmount = billLinks.reduce((sum, link) => {
       const tx = transactions.find(
-        t => Number(t.id) === Number(link.transaction_id)
+        (t) => Number(t.id) === Number(link.transaction_id),
       );
       return sum + Number(tx?.amount || 0);
     }, 0);
-
-    return {
-      ...bill,
-      paid_amount: paidAmount,
-    };
+    return { ...bill, paid_amount: paidAmount };
   });
 
   return enriched.sort((a, b) =>
-    (a.due_date || '').localeCompare(b.due_date || '')
+    (a.due_date || "").localeCompare(b.due_date || ""),
   );
 }
 
@@ -762,238 +1036,568 @@ export async function getBillsForCurrentMonth(options = {}) {
   const year = now.getFullYear();
   const month = now.getMonth();
   const today = todayStr();
-  const currentMonthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+
+  const currentMonthPrefix = `${year}-${String(month + 1).padStart(2, "0")}`;
+
+  // ============================================================
+  // LOAD ALL BILLS
+  // ============================================================
 
   const allRaw = await fetchAllBillsRaw();
 
-  // ── Deduplicate recurring series ──────────────────────────────────────────
+  // ============================================================
+  // LOAD CREDIT CARD PAYMENT TEMPLATE IDS
+  // ============================================================
+  //
+  // credit_cards.payment_bill_id points to the recurring
+  // credit-card payment template.
+  //
+  // Example:
+  //
+  // payment_bill_id = 5
+  //
+  // bills:
+  //   id 5   -> CC template
+  //   id 191 -> statement 1
+  //   id 192 -> statement 2
+  //
+  // The template is hidden.
+  // Statements are displayed individually.
+  // ============================================================
+
+  let creditCardPaymentBillIds = new Set();
+
+  try {
+    const ccRes = await executeSql(
+      `SELECT payment_bill_id
+       FROM credit_cards
+       WHERE payment_bill_id IS NOT NULL`,
+      [],
+    );
+
+    creditCardPaymentBillIds = new Set(
+      rowsToArray(ccRes)
+        .map((row) => Number(row.payment_bill_id))
+        .filter(Boolean),
+    );
+  } catch (e) {
+    console.warn(
+      "getBillsForCurrentMonth: unable to load credit card payment bill IDs",
+      e,
+    );
+  }
+
+  // ============================================================
+  // CLASSIFY BILLS
+  // ============================================================
+
   const recurringGroups = {};
   const nonRecurring = [];
 
   for (const row of allRaw) {
+    const rowId = Number(row.id);
 
-    // ============================================================
+    const parentBillId = Number(row.parent_bill_id || 0);
+
+    // ==========================================================
     // CREDIT CARD PAYMENT TEMPLATE
-    // ============================================================
+    // ==========================================================
     //
-    // Credit-card templates are recurring bills used ONLY as a
-    // template by runCreditCardStatementScheduler().
+    // Never show the recurring CC payment template.
     //
-    // They must NEVER appear in the Bills list and must NEVER
-    // generate a normal recurring occurrence here.
-    //
-    // The actual bill displayed to the user is the generated
-    // statement child:
-    //
-    //   parent_bill_id = template.id
-    //   is_recurring   = 0
-    //   notes          = "Statement YYYY-MM-DD..."
-    //
+
     const isCreditCardTemplate =
-      !row.parent_bill_id && row.is_recurring &&
-      typeof row.notes === 'string' && row.notes.startsWith('Recurring payment template for');
+      parentBillId === 0 &&
+      Number(row.is_recurring) === 1 &&
+      creditCardPaymentBillIds.has(rowId);
 
     if (isCreditCardTemplate) {
-      // IMPORTANT:
-      // Do not add this to recurringGroups.
-      // Credit-card scheduler owns these bills.
       continue;
     }
 
-    // ============================================================
-    // CREDIT CARD GENERATED STATEMENT BILL
-    // ============================================================
+    // ==========================================================
+    // CREDIT CARD GENERATED STATEMENT
+    // ==========================================================
     //
-    // This is the real bill that should appear in the Bills list.
+    // Every generated statement is an independent bill.
     //
-    const isCreditCardStatementBill = Number(row.parent_bill_id) > 0 && Number(row.is_recurring) === 0 &&
-      typeof row.notes === 'string' && row.notes.startsWith('Statement ');
+    // IMPORTANT:
+    // Do NOT put these into recurringGroups.
+    //
 
-    if (isCreditCardStatementBill) {
+    const isCreditCardStatement =
+      parentBillId > 0 &&
+      Number(row.is_recurring) === 0 &&
+      creditCardPaymentBillIds.has(parentBillId);
+
+    if (isCreditCardStatement) {
       nonRecurring.push(row);
       continue;
     }
 
-    // ============================================================
+    // ==========================================================
     // NORMAL NON-RECURRING BILL
-    // ============================================================
+    // ==========================================================
 
     if (!row.is_recurring || !row.recurrence_type) {
       if (!row.parent_bill_id) {
         nonRecurring.push(row);
       }
+
       continue;
     }
 
-    // ============================================================
+    // ==========================================================
     // NORMAL RECURRING BILL
-    // ============================================================
+    // ==========================================================
 
     const templateId = row.parent_bill_id || row.id;
+
     if (!recurringGroups[templateId] || row.parent_bill_id === null) {
       recurringGroups[templateId] = row;
     }
   }
+
   const result = [];
 
-  // ── Non-recurring bills ───────────────────────────────────────────────────
+  // ============================================================
+  // NON-RECURRING BILLS
+  // ============================================================
+
   for (const row of nonRecurring) {
-    // Hide Credit Card template bills.
-    // Their generated statement child bill will be displayed instead.
-    const isCreditCardTemplate = !row.parent_bill_id && row.is_recurring &&
-      typeof row.notes === 'string' && row.notes.startsWith('Recurring payment template for');
-    if (isCreditCardTemplate) {
-      continue;
-    }
-    const n = normalizeBill(row);
-    if (n) { result.push(n); }
-  }
+    const parentBillId = Number(row.parent_bill_id || 0);
 
-  // ── Recurring series ──────────────────────────────────────────────────────
-  for (const template of Object.values(recurringGroups)) {
-    // Determine this month's expected due date via string arithmetic
-    const endOfMonth = new Date(year, month + 1, 0).toISOString().slice(0, 10);
-    const upTo = template.recurrence_end_date ? [template.recurrence_end_date.slice(0, 10), endOfMonth].sort()[0] : endOfMonth;
-    const allDates = generateOccurrenceDates(template, upTo);
+    // ==========================================================
+    // CREDIT CARD STATEMENT
+    // ==========================================================
 
-    // Find this month's date purely by string prefix — no Date parsing,
-    // no timezone risk.
-    const thisMonthDate = allDates.find(d => d.startsWith(currentMonthPrefix));
-    if (!thisMonthDate) {
-      // Series has no occurrence this month
-      const n = normalizeBill(template);
-      if (n) result.push({ ...n, _templateId: template.id, _isRecurringSeries: true });
-      continue;
-    }
+    const isCCStatement =
+      parentBillId > 0 &&
+      Number(row.is_recurring) === 0 &&
+      creditCardPaymentBillIds.has(parentBillId);
 
-    // Always check latest DB state (avoids duplicate occurrence creation)
-    const allBills = await fetchAllBillsRaw();
-    // ============================================================
-    // FIND CURRENT RECURRING OCCURRENCE
-    // ============================================================
-    //
-    // IMPORTANT:
-    // Always check recurrence_occurrence_key FIRST.
-    //
-    // Example:
-    // Expected recurring bill = September 2026
-    // User moved bill to = August 2026
-    //
-    // occurrence_key is still:
-    // 2026
-    //
-    // Therefore August bill is already the September occurrence.
-    // DO NOT create another September bill.
-    //
+    if (isCCStatement) {
+      // --------------------------------------------------------
+      // READ STATEMENT DATE FROM NOTES
+      // --------------------------------------------------------
+      //
+      // Scheduler creates notes similar to:
+      //
+      // Statement 2026-08-13
+      //
+      // We use the statement date to decide whether the
+      // statement has actually been generated/reached.
+      //
 
-    const occurrenceKey = getRecurrenceOccurrenceKey(
-      template.recurrence_type,
-      thisMonthDate,
-      template.recurrence_interval
-    );
+      const notes = String(row.notes || "");
 
-    let occurrenceRow = allBills.find(
-      b =>
-        Number(b.parent_bill_id) === Number(template.id) &&
-        !b.deleted_at &&
-        String(b.recurrence_occurrence_key || '') ===
-        String(occurrenceKey)
-    );
+      const statementMatch = notes.match(/Statement\s+(\d{4}-\d{2}-\d{2})/);
 
-    if (occurrenceRow) {
-      // Existing occurrence found by stable recurrence key.
-      occurrenceRow = normalizeBill(occurrenceRow);
-    } else if (
-      template.due_date &&
-      template.due_date.slice(0, 10) === thisMonthDate
-    ) {
-      // Template itself represents this occurrence.
-      occurrenceRow = normalizeBill(template);
+      const statementDate = statementMatch ? statementMatch[1] : null;
 
-    } else {
-      // Backward compatibility for old bills created
-      // before recurrence_occurrence_key was added.
-      occurrenceRow = allBills.find(
-        b =>
-          Number(b.parent_bill_id) === Number(template.id) &&
-          !b.deleted_at &&
-          b.due_date?.slice(0, 10) === thisMonthDate
-      );
+      // --------------------------------------------------------
+      // FUTURE STATEMENT
+      // --------------------------------------------------------
+      //
+      // Example:
+      //
+      // Today          = 2026-08-30
+      // Statement date = 2026-09-13
+      //
+      // Do NOT display it yet.
+      //
 
-      if (occurrenceRow) {
-        occurrenceRow = normalizeBill(occurrenceRow);
-      } else {
-        // No existing occurrence -> create exactly ONE.
-        const newId = await _insertBill({
-          name: template.name,
-          amount: template.amount,
-          due_date: thisMonthDate,
-          is_recurring: 0,
-          recurrence_type: null,
-          recurrence_interval: 1,
-          recurrence_end_date: null,
-          category_id: template.category_id,
-          source_id: template.source_id,
-          reminder_days_before: template.reminder_days_before,
-          auto_pay: template.auto_pay,
-          notes: template.notes,
-          attachment_url: template.attachment_url,
-          parent_bill_id: template.id,
-          recurrence_occurrence_key: occurrenceKey,
-        });
-
-        occurrenceRow = normalizeBill(
-          await getBillById(newId)
-        );
-      }
-    }
-
-    if (!occurrenceRow) continue;
-    if (occurrenceRow) {
-      // Hide Credit Card template bills from Bills screen.
-      // Only show the generated statement (child) bill.
-      const isCreditCardTemplate =
-        !template.parent_bill_id &&
-        template.is_recurring &&
-        typeof template.notes === 'string' &&
-        template.notes.startsWith('Recurring payment template for');
-
-      // If we're still pointing at the template itself, don't display it.
-      if (
-        isCreditCardTemplate &&
-        Number(occurrenceRow.id) === Number(template.id)
-      ) {
+      if (statementDate && statementDate > today) {
         continue;
       }
 
+      // --------------------------------------------------------
+      // NORMALIZE
+      // --------------------------------------------------------
+
+      const n = normalizeBill(row);
+
+      if (!n) {
+        continue;
+      }
+
+      // --------------------------------------------------------
+      // IMPORTANT
+      // --------------------------------------------------------
+      //
+      // This is an INDIVIDUAL bill.
+      //
+      // Do NOT set:
+      //
+      // _templateId
+      // _isRecurringSeries: true
+      //
+      // Otherwise the Bills UI can treat multiple CC
+      // statements as one recurring series and combine
+      // their amounts.
+      //
+
       result.push({
-        ...occurrenceRow,
-        _templateId: template.id,
-        _isRecurringSeries: true,
+        ...n,
+
+        _isCreditCardStatement: true,
+
+        _isRecurringSeries: false,
+
+        _templateId: null,
+
+        statement_date: statementDate,
+
+        closing_balance: Number(n.amount || 0),
       });
+
+      continue;
+    }
+
+    // ==========================================================
+    // NORMAL NON-RECURRING BILL
+    // ==========================================================
+
+    const n = normalizeBill(row);
+
+    if (n) {
+      result.push(n);
     }
   }
 
-  // ── Filter & sort ─────────────────────────────────────────────────────────
+  // ============================================================
+  // NORMAL RECURRING SERIES
+  // ============================================================
+
+  for (const template of Object.values(recurringGroups)) {
+    const endOfMonth = new Date(year, month + 1, 0).toISOString().slice(0, 10);
+
+    const upTo = template.recurrence_end_date
+      ? [template.recurrence_end_date.slice(0, 10), endOfMonth].sort()[0]
+      : endOfMonth;
+
+    const allDates = generateOccurrenceDates(template, upTo);
+
+    const thisMonthDate = allDates.find((d) =>
+      d.startsWith(currentMonthPrefix),
+    );
+
+    // ----------------------------------------------------------
+    // NO OCCURRENCE THIS MONTH
+    // ----------------------------------------------------------
+
+    if (!thisMonthDate) {
+      const n = normalizeBill(template);
+
+      if (n) {
+        result.push({
+          ...n,
+
+          _templateId: template.id,
+
+          _isRecurringSeries: true,
+        });
+      }
+
+      continue;
+    }
+
+    // ----------------------------------------------------------
+    // LOAD LATEST BILLS
+    // ----------------------------------------------------------
+
+    const allBills = await fetchAllBillsRaw();
+
+    // ----------------------------------------------------------
+    // OCCURRENCE KEY
+    // ----------------------------------------------------------
+    const occurrenceKey = getRecurrenceOccurrenceKey(
+      template.recurrence_type,
+      thisMonthDate,
+      template.recurrence_interval,
+    );
+
+    // ==========================================================
+    // IMPORTANT:
+    // Check permanent deletion marker FIRST.
+    // ==========================================================
+
+    let occurrenceRow = null;
+    let wasIntentionallyDeleted = false;
+
+    try {
+      await ensureRecurringDeletionTable();
+
+      const deletedKeys = await getDeletedOccurrenceKeys(
+        Number(template.id),
+      );
+
+      wasIntentionallyDeleted =
+        occurrenceKey &&
+        deletedKeys.has(String(occurrenceKey));
+
+      console.log(
+        "[getBillsForCurrentMonth] DELETION CHECK:",
+        {
+          templateId: template.id,
+          dueDate: thisMonthDate,
+          occurrenceKey,
+          wasIntentionallyDeleted,
+          deletedKeys: Array.from(deletedKeys),
+        },
+      );
+    } catch (e) {
+      console.warn(
+        "[getBillsForCurrentMonth] Deletion check failed:",
+        e,
+      );
+    }
+
+    // ==========================================================
+    // USER DELETED THIS OCCURRENCE
+    // ==========================================================
+
+    if (wasIntentionallyDeleted) {
+      console.log(
+        "[getBillsForCurrentMonth] DELETED OCCURRENCE FOUND:",
+        {
+          templateId: template.id,
+          dueDate: thisMonthDate,
+          occurrenceKey,
+        },
+      );
+
+      // Remove any stale/recreated occurrence from DB.
+      const staleResult = await executeSql(
+        `DELETE FROM bills
+         WHERE parent_bill_id = ?
+           AND (
+             recurrence_occurrence_key = ?
+             OR due_date = ?
+           )`,
+        [
+          Number(template.id),
+          String(occurrenceKey),
+          thisMonthDate,
+        ],
+      );
+
+      console.log(
+        "[getBillsForCurrentMonth] STALE DELETED OCCURRENCE REMOVED:",
+        {
+          rowsAffected: staleResult.rowsAffected,
+          templateId: template.id,
+          occurrenceKey,
+          dueDate: thisMonthDate,
+        },
+      );
+
+      occurrenceRow = null;
+    } else {
+      // ========================================================
+      // NORMAL OCCURRENCE LOOKUP
+      // ========================================================
+
+      occurrenceRow = allBills.find(
+        (b) =>
+          Number(b.parent_bill_id) === Number(template.id) &&
+          !b.deleted_at &&
+          String(b.recurrence_occurrence_key || "") ===
+          String(occurrenceKey),
+      );
+
+      // ========================================================
+      // EXISTING OCCURRENCE
+      // ========================================================
+
+      if (occurrenceRow) {
+        occurrenceRow = normalizeBill(occurrenceRow);
+      }
+
+      // ========================================================
+      // TEMPLATE ITSELF IS THIS MONTH
+      // ========================================================
+
+      else if (
+        template.due_date &&
+        template.due_date.slice(0, 10) === thisMonthDate
+      ) {
+        occurrenceRow = normalizeBill(template);
+      }
+
+      // ========================================================
+      // OLD OCCURRENCE WITHOUT KEY
+      // ========================================================
+
+      else {
+        occurrenceRow = allBills.find(
+          (b) =>
+            Number(b.parent_bill_id) === Number(template.id) &&
+            !b.deleted_at &&
+            b.due_date?.slice(0, 10) === thisMonthDate,
+        );
+
+        if (occurrenceRow) {
+          occurrenceRow = normalizeBill(occurrenceRow);
+
+          // Give old occurrence its permanent key.
+          if (
+            occurrenceRow &&
+            !occurrenceRow.recurrence_occurrence_key &&
+            occurrenceKey
+          ) {
+            await executeSql(
+              `UPDATE bills
+               SET recurrence_occurrence_key = ?,
+                   updated_at = ?
+               WHERE id = ?`,
+              [
+                String(occurrenceKey),
+                nowIso(),
+                occurrenceRow.id,
+              ],
+            );
+
+            occurrenceRow.recurrence_occurrence_key =
+              String(occurrenceKey);
+          }
+        } else {
+          // ======================================================
+          // CREATE ONLY IF NOT INTENTIONALLY DELETED
+          // ======================================================
+
+          console.log(
+            "[getBillsForCurrentMonth] CREATING MISSING OCCURRENCE:",
+            {
+              templateId: template.id,
+              occurrenceKey,
+              dueDate: thisMonthDate,
+            },
+          );
+
+          const newId = await _insertBill({
+            name: template.name,
+            amount: template.amount,
+            due_date: thisMonthDate,
+
+            is_recurring: 0,
+            recurrence_type: null,
+            recurrence_interval: 1,
+            recurrence_end_date: null,
+
+            category_id: template.category_id,
+            source_id: template.source_id,
+
+            reminder_days_before:
+              template.reminder_days_before,
+
+            auto_pay:
+              template.auto_pay,
+
+            notes:
+              template.notes,
+
+            attachment_url:
+              template.attachment_url,
+
+            parent_bill_id:
+              template.id,
+
+            recurrence_occurrence_key:
+              occurrenceKey,
+
+            recurrence_effective_date:
+              template.recurrence_effective_date ||
+              template.due_date ||
+              todayStr(),
+          });
+
+          occurrenceRow = normalizeBill(
+            await getBillById(newId),
+          );
+        }
+      }
+    }
+
+    if (!occurrenceRow) {
+      continue;
+    }
+
+    // ----------------------------------------------------------
+    // NEVER SHOW CREDIT CARD TEMPLATE
+    // ----------------------------------------------------------
+
+    const isCreditCardTemplate =
+      !template.parent_bill_id &&
+      Number(template.is_recurring) === 1 &&
+      creditCardPaymentBillIds.has(Number(template.id));
+
+    if (
+      isCreditCardTemplate &&
+      Number(occurrenceRow.id) === Number(template.id)
+    ) {
+      continue;
+    }
+
+    // ----------------------------------------------------------
+    // NORMAL RECURRING BILL
+    // ----------------------------------------------------------
+
+    result.push({
+      ...occurrenceRow,
+
+      _templateId: template.id,
+
+      _isRecurringSeries: true,
+    });
+  }
+
+  // ============================================================
+  // FILTERS
+  // ============================================================
+
   let filtered = result.filter(Boolean);
 
-  if (options.status && options.status !== 'all') {
-    const statuses = Array.isArray(options.status) ? options.status : [options.status];
-    filtered = filtered.filter(b => statuses.includes(b.status));
-  }
-  if (options.category_id) {
-    filtered = filtered.filter(b => b.category_id === options.category_id);
+  if (options.status && options.status !== "all") {
+    const statuses = Array.isArray(options.status)
+      ? options.status
+      : [options.status];
+
+    filtered = filtered.filter((bill) => statuses.includes(bill.status));
   }
 
-  const sortBy = options.sortBy || 'due_date';
-  const dir = options.sortDir === 'desc' ? -1 : 1;
+  if (options.category_id) {
+    filtered = filtered.filter(
+      (bill) => bill.category_id === options.category_id,
+    );
+  }
+
+  // ============================================================
+  // SORT
+  // ============================================================
+
+  const sortBy = options.sortBy || "due_date";
+
+  const dir = options.sortDir === "desc" ? -1 : 1;
+
   filtered.sort((a, b) => {
-    if (sortBy === 'amount') return (Number(a.amount) - Number(b.amount)) * dir;
-    const ad = a.due_date || '9999-12-31';
-    const bd = b.due_date || '9999-12-31';
-    if (ad < bd) return -1 * dir;
-    if (ad > bd) return 1 * dir;
-    return (a.name || '').localeCompare(b.name || '') * dir;
+    if (sortBy === "amount") {
+      return (Number(a.amount) - Number(b.amount)) * dir;
+    }
+
+    const ad = a.due_date || "9999-12-31";
+
+    const bd = b.due_date || "9999-12-31";
+
+    if (ad < bd) {
+      return -1 * dir;
+    }
+
+    if (ad > bd) {
+      return 1 * dir;
+    }
+
+    return (a.name || "").localeCompare(b.name || "") * dir;
   });
 
   return filtered;
@@ -1002,25 +1606,29 @@ export async function getBillsForCurrentMonth(options = {}) {
 // ─── getBills (legacy, unchanged) ────────────────────────────────────────────
 
 export async function getBills({
-  status = null, category_id = null,
-  sortBy = 'due_date', sortDir = 'asc', includeSkipped = true,
+  status = null,
+  category_id = null,
+  sortBy = "due_date",
+  sortDir = "asc",
+  includeSkipped = true,
 } = {}) {
   await syncBillStatuses();
   let rows = (await fetchAllBillsRaw()).map(normalizeBill).filter(Boolean);
   if (status) {
     const statuses = Array.isArray(status) ? status : [status];
-    rows = rows.filter(b => statuses.includes(b.status));
+    rows = rows.filter((b) => statuses.includes(b.status));
   }
-  if (category_id) rows = rows.filter(b => b.category_id === category_id);
-  if (!includeSkipped) rows = rows.filter(b => b.status !== BILL_STATUS.SKIPPED);
-  const dir = sortDir === 'desc' ? -1 : 1;
+  if (category_id) rows = rows.filter((b) => b.category_id === category_id);
+  if (!includeSkipped)
+    rows = rows.filter((b) => b.status !== BILL_STATUS.SKIPPED);
+  const dir = sortDir === "desc" ? -1 : 1;
   rows.sort((a, b) => {
-    if (sortBy === 'amount') return (Number(a.amount) - Number(b.amount)) * dir;
-    const ad = a.due_date || '9999-12-31';
-    const bd = b.due_date || '9999-12-31';
+    if (sortBy === "amount") return (Number(a.amount) - Number(b.amount)) * dir;
+    const ad = a.due_date || "9999-12-31";
+    const bd = b.due_date || "9999-12-31";
     if (ad < bd) return -1 * dir;
     if (ad > bd) return 1 * dir;
-    return (a.name || '').localeCompare(b.name || '') * dir;
+    return (a.name || "").localeCompare(b.name || "") * dir;
   });
   return rows;
 }
@@ -1039,7 +1647,7 @@ export async function syncBillStatuses() {
     ) {
       await executeSql(
         `UPDATE bills SET status = ?, updated_at = ? WHERE id = ?`,
-        [status, nowIso(), bill.id]
+        [status, nowIso(), bill.id],
       );
     }
   }
@@ -1058,11 +1666,9 @@ export async function getBillsSummary() {
 
   // Hide Credit Card template bills from all dashboard statistics.
   // Only the generated statement (child) bill should be counted.
-  const rows = (await fetchAllBillsRaw())
-    .map(normalizeBill)
-    .filter(Boolean);
+  const rows = (await fetchAllBillsRaw()).map(normalizeBill).filter(Boolean);
 
-  const active = rows.filter(b => {
+  const active = rows.filter((b) => {
     if (b.status === BILL_STATUS.SKIPPED) {
       return false;
     }
@@ -1070,42 +1676,49 @@ export async function getBillsSummary() {
     const isCreditCardTemplate =
       !b.parent_bill_id &&
       b.is_recurring &&
-      typeof b.notes === 'string' &&
-      b.notes.startsWith('Recurring payment template for');
+      typeof b.notes === "string" &&
+      b.notes.startsWith("Recurring payment template for");
 
     return !isCreditCardTemplate;
   });
 
-  const thisMonth = active.filter(b => {
+  const thisMonth = active.filter((b) => {
     if (!b.due_date) return false;
     const d = new Date(b.due_date.slice(0, 10));
     return d.getFullYear() === year && d.getMonth() === month;
   });
 
-  const totalThisMonth = thisMonth.reduce((s, b) => s + Number(b.amount || 0), 0);
+  const totalThisMonth = thisMonth.reduce(
+    (s, b) => s + Number(b.amount || 0),
+    0,
+  );
   const totalPaid = thisMonth
-    .filter(b => b.status === BILL_STATUS.PAID)
+    .filter((b) => b.status === BILL_STATUS.PAID)
     .reduce((s, b) => s + Number(b.amount || 0), 0);
   const overdueAmount = active
-    .filter(b => b.status === BILL_STATUS.OVERDUE)
+    .filter((b) => b.status === BILL_STATUS.OVERDUE)
     .reduce((s, b) => s + Number(b.amount || 0), 0);
-  const overdueCount = active.filter(b => b.status === BILL_STATUS.OVERDUE).length;
+  const overdueCount = active.filter(
+    (b) => b.status === BILL_STATUS.OVERDUE,
+  ).length;
 
   const upcoming7 = active
-    .filter(b => {
-      if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED) return false;
+    .filter((b) => {
+      if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED)
+        return false;
       const days = daysBetween(today, b.due_date);
       return days !== null && days >= 0 && days <= 7;
     })
     .reduce((s, b) => s + Number(b.amount || 0), 0);
 
-  const upcoming3 = active.filter(b => {
-    if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED) return false;
+  const upcoming3 = active.filter((b) => {
+    if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED)
+      return false;
     const days = daysBetween(today, b.due_date);
     return days !== null && days >= 0 && days <= 3;
   });
 
-  const inThisCalMonth = b => {
+  const inThisCalMonth = (b) => {
     if (!b.due_date) return false;
     const d = new Date(b.due_date);
     return (
@@ -1115,28 +1728,44 @@ export async function getBillsSummary() {
     );
   };
 
-  const dueThisMonthCount = active.filter(b =>
-    b.status !== BILL_STATUS.PAID && b.status !== BILL_STATUS.SKIPPED && inThisCalMonth(b)
+  const dueThisMonthCount = active.filter(
+    (b) =>
+      b.status !== BILL_STATUS.PAID &&
+      b.status !== BILL_STATUS.SKIPPED &&
+      inThisCalMonth(b),
   ).length;
 
   const dueThisMonthAmount = active
-    .filter(b => b.status !== BILL_STATUS.PAID && b.status !== BILL_STATUS.SKIPPED && inThisCalMonth(b))
+    .filter(
+      (b) =>
+        b.status !== BILL_STATUS.PAID &&
+        b.status !== BILL_STATUS.SKIPPED &&
+        inThisCalMonth(b),
+    )
     .reduce((s, b) => s + Number(b.amount || 0), 0);
 
   const upcomingAndPendingDueAmt = active
-    .filter(b => !b.is_paid && inThisCalMonth(b))
-    .reduce((acc, b) => {
-      acc.totalAmount += Number(b.amount || 0);
-      acc.count += 1;
-      return acc;
-    }, { totalAmount: 0, count: 0 });
+    .filter((b) => !b.is_paid && inThisCalMonth(b))
+    .reduce(
+      (acc, b) => {
+        acc.totalAmount += Number(b.amount || 0);
+        acc.count += 1;
+        return acc;
+      },
+      { totalAmount: 0, count: 0 },
+    );
 
   return {
-    month: mk, totalThisMonth, totalPaid,
-    overdueAmount, overdueCount,
-    upcoming7, upcoming3Count: upcoming3.length,
-    dueThisMonthCount, dueThisMonthAmount,
-    pendingCount: active.filter(b => b.status === BILL_STATUS.PENDING).length,
+    month: mk,
+    totalThisMonth,
+    totalPaid,
+    overdueAmount,
+    overdueCount,
+    upcoming7,
+    upcoming3Count: upcoming3.length,
+    dueThisMonthCount,
+    dueThisMonthAmount,
+    pendingCount: active.filter((b) => b.status === BILL_STATUS.PENDING).length,
     upcomingAndPendingDueAmt,
   };
 }
@@ -1145,13 +1774,13 @@ export async function getBillInsights() {
   await syncBillStatuses();
   const today = todayStr();
   const rows = (await fetchAllBillsRaw()).map(normalizeBill).filter(Boolean);
-  const active = rows.filter(b => b.status !== BILL_STATUS.SKIPPED);
+  const active = rows.filter((b) => b.status !== BILL_STATUS.SKIPPED);
 
   const recurringMonthly = active
-    .filter(b => b.is_recurring)
+    .filter((b) => b.is_recurring)
     .reduce((s, b) => s + Number(b.amount || 0), 0);
 
-  const upcomingDues = active.filter(b => {
+  const upcomingDues = active.filter((b) => {
     if (b.status === BILL_STATUS.PAID) return false;
     const days = daysBetween(today, b.due_date);
     return days !== null && days >= 0 && days <= 7;
@@ -1162,12 +1791,21 @@ export async function getBillInsights() {
     const cid = b.category_id || 0;
     byCategory[cid] = (byCategory[cid] || 0) + Number(b.amount || 0);
   }
-  let topCategoryId = null, topCategoryAmount = 0;
+  let topCategoryId = null,
+    topCategoryAmount = 0;
   for (const [cid, amt] of Object.entries(byCategory)) {
-    if (amt > topCategoryAmount) { topCategoryId = Number(cid); topCategoryAmount = amt; }
+    if (amt > topCategoryAmount) {
+      topCategoryId = Number(cid);
+      topCategoryAmount = amt;
+    }
   }
 
-  return { recurringMonthlyTotal: recurringMonthly, upcomingDues, topCategoryId, topCategoryAmount };
+  return {
+    recurringMonthlyTotal: recurringMonthly,
+    upcomingDues,
+    topCategoryId,
+    topCategoryAmount,
+  };
 }
 
 // ─── markBillPaid ─────────────────────────────────────────────────────────────
@@ -1177,30 +1815,50 @@ export async function markBillPaid(
   {
     source_id = null,
     date = null,
-    notes = 'Bill payment',
+    notes = null,
     createTransaction: shouldCreateTx = true,
     existingTransactionId = null,
-  } = {}
+  } = {},
 ) {
   const bill = await getBillById(billId);
-  if (!bill) throw new Error('Bill not found');
-  if (bill.status === BILL_STATUS.PAID) return bill.linked_transaction_id;
+  if (!bill) throw new Error("Bill not found");
+  if (bill.status === BILL_STATUS.PAID) {
+    return bill.linked_transaction_id;
+  }
 
   const paySource = source_id ?? bill.source_id;
   const payDate = date || nowIso();
   const paidAt = nowIso();
 
+  // Build automatic transaction note
+  // Example: "Netflix September 2026"
+  const paymentDate = new Date(payDate);
+
+  const payingMonthYear = paymentDate.toLocaleDateString("en-IN", {
+    month: "long",
+    year: "numeric",
+  });
+
+  const defaultTransactionNote =
+    `${bill.name} ${payingMonthYear}`.trim();
+
+  // If caller explicitly provides notes, keep it.
+  // Otherwise use: Bill Name + Paying Month + Year
+  const transactionNote =
+    notes && String(notes).trim()
+      ? String(notes).trim()
+      : defaultTransactionNote;
+
   let txId = existingTransactionId || bill.linked_transaction_id;
 
   if (!txId && shouldCreateTx) {
-
     // Check whether this bill belongs to a Credit Card
     const ccRes = await executeSql(
       `SELECT *
-        FROM credit_cards
-        WHERE payment_bill_id = ?
-        LIMIT 1`,
-      [bill.parent_bill_id || bill.id]
+       FROM credit_cards
+       WHERE payment_bill_id = ?
+       LIMIT 1`,
+      [bill.parent_bill_id || bill.id],
     );
     const isCreditCardBill = ccRes.rows.length > 0;
     if (isCreditCardBill) {
@@ -1209,7 +1867,10 @@ export async function markBillPaid(
         fromAccount: paySource,
         toAccount: card.source_id,
         amount: bill.amount,
-        note: notes || `Credit Card Payment - ${card.name}`,
+        note:
+          notes && String(notes).trim()
+            ? String(notes).trim()
+            : `${bill.name} ${payingMonthYear}`,
         date: payDate,
       });
       // Link the debit transaction with the bill
@@ -1217,73 +1878,98 @@ export async function markBillPaid(
     } else {
       // Normal bill payment
       txId = await createTransaction({
-        type: 'expense',
+        type: "expense",
         amount: bill.amount,
         category_id: bill.category_id,
         source_id: paySource,
         date: payDate,
-        notes: notes || `Paid: ${bill.name}`,
+        notes: transactionNote,
         bill_id: billId,
       });
     }
   }
 
   await executeSql(
-    `UPDATE bills SET status=?, is_paid=?, paid_at=?, linked_transaction_id=?, updated_at=? WHERE id=?`,
-    [BILL_STATUS.PAID, 1, paidAt, txId, paidAt, billId]
+    `UPDATE bills
+     SET status=?,
+         is_paid=?,
+         paid_at=?,
+         linked_transaction_id=?,
+         updated_at=?
+     WHERE id=?`,
+    [
+      BILL_STATUS.PAID,
+      1,
+      paidAt,
+      txId,
+      paidAt,
+      billId,
+    ],
   );
 
   // Record in junction table (idempotent)
-  if (txId) await addTransactionToBill(billId, txId);
-
-  // Next-month occurrence: create on-demand when current month is paid
-  // (replaces old generateNextRecurringBill — targeted, not bulk)
-  const parentId = bill.parent_bill_id || (bill.is_recurring ? bill.id : null);
-  if (parentId) {
-    await _ensureNextOccurrence(parentId);
+  if (txId) {
+    await addTransactionToBill(billId, txId);
   }
+
+  // IMPORTANT:
+  // Marking a bill as paid must NOT create the next recurring occurrence.
+  // The recurring scheduler handles future occurrences.
 
   emitBillsChanged();
   return txId;
 }
 
 /**
- * When a bill is paid, ensure exactly one future occurrence exists (next month).
- * This is the only place future bills are created — never in bulk.
- */
-/**
- * Ensure the next recurring occurrence exists.
+ * Ensure the NEXT recurring occurrence exists only when it is
+ * within 7 days of its due date.
  *
  * IMPORTANT:
- * This works for:
  *
- *   Daily
- *   Weekly
- *   Monthly
- *   Yearly
+ * Marking a bill as paid does NOT call this function anymore.
  *
- * It does NOT assume "next month".
+ * This function is intended to be called by the recurring scheduler.
+ *
+ * Example:
+ *
+ *   Today:      Sep 1
+ *   Next due:   Sep 10
+ *
+ *   9 days away
+ *   → DO NOT CREATE
+ *
+ *   Today:      Sep 3
+ *   Next due:   Sep 10
+ *
+ *   7 days away
+ *   → CREATE
+ *
+ *   Today:      Sep 10
+ *   Next due:   Sep 10
+ *
+ *   0 days away
+ *   → CREATE
  */
 async function _ensureNextOccurrence(templateId) {
   await ensureRecurringOccurrenceColumn();
   await ensureRecurringOccurrenceUniqueIndex();
+
   const template = await getBillById(templateId);
+
   if (
     !template ||
-    !template.is_recurring ||
+    Number(template.is_recurring) !== 1 ||
     !template.recurrence_type
   ) {
     return;
   }
 
   await backfillMissingOccurrenceKeys(template);
+
   const type = String(
     template.recurrence_type || ''
   ).toLowerCase();
 
-  /*
-   * Current recurrence becomes valid from this date.
-   */
   const effectiveDate =
     template.recurrence_effective_date ||
     template.due_date ||
@@ -1292,69 +1978,110 @@ async function _ensureNextOccurrence(templateId) {
   const effectiveDateOnly =
     String(effectiveDate).slice(0, 10);
 
-  /*
-   * Generate enough future dates.
-   */
-  const future = new Date();
+  const today = todayStr();
+  // NEXT 7 DAYS
+  const todayDate = new Date(`${today}T00:00:00`);
+  const sevenDaysFromToday = new Date(todayDate);
+  sevenDaysFromToday.setDate(
+    sevenDaysFromToday.getDate() + 7
+  );
+  const sevenDaysDate =
+    formatDate(sevenDaysFromToday);
 
+  // ---------------------------------------------------------
+  // GENERATE ONLY ENOUGH DATES TO FIND THE NEXT OCCURRENCE
+  //
+  // We do NOT generate years of future rows.
+  // ---------------------------------------------------------
+  let probeDate = new Date(`${today}T00:00:00`);
   if (
     type === 'yearly' ||
     type === 'year' ||
     type === 'annual'
   ) {
-    future.setFullYear(
-      future.getFullYear() + 10
+    probeDate.setFullYear(
+      probeDate.getFullYear() + 2
     );
   } else if (
     type === 'monthly' ||
     type === 'month'
   ) {
-    future.setFullYear(
-      future.getFullYear() + 2
+    probeDate.setFullYear(
+      probeDate.getFullYear() + 1
+    );
+  } else if (
+    type === 'weekly' ||
+    type === 'week'
+  ) {
+    probeDate.setMonth(
+      probeDate.getMonth() + 3
     );
   } else {
-    future.setFullYear(
-      future.getFullYear() + 1
+    // Daily / other recurrence
+    probeDate.setMonth(
+      probeDate.getMonth() + 1
     );
   }
-  let upTo = formatDate(future);
+
+  let upTo = formatDate(probeDate);
+  // Respect recurrence end date.
   if (
     template.recurrence_end_date &&
-    template.recurrence_end_date.slice(0, 10) < upTo
+    String(template.recurrence_end_date).slice(0, 10) < upTo
   ) {
     upTo =
-      template.recurrence_end_date.slice(0, 10);
+      String(template.recurrence_end_date).slice(0, 10);
   }
   const allDates =
     generateOccurrenceDates(
       template,
       upTo
     );
-  if (!allDates || !allDates.length) {
+  if (
+    !allDates ||
+    !allDates.length
+  ) {
     return;
   }
-  const existingRes = await executeSql(
-    `SELECT
-       id,
-       due_date,
-       recurrence_occurrence_key,
-       deleted_at
-     FROM bills
-     WHERE parent_bill_id = ?`,
-    [templateId]
-  );
+  // ---------------------------------------------------------
+  // LOAD EXISTING OCCURRENCES
+  // ---------------------------------------------------------
 
-  const existingRows = rowsToArray(existingRes);
-  const existingKeys = new Set();
-  for (const row of existingRows) {
-    if (row.deleted_at) continue;
-    if (row.recurrence_occurrence_key) {
+  const existingRes =
+    await executeSql(
+      `SELECT
+         id,
+         due_date,
+         recurrence_occurrence_key,
+         deleted_at
+       FROM bills
+       WHERE parent_bill_id = ?`,
+      [templateId]
+    );
+
+  const existingRows =
+    rowsToArray(existingRes);
+
+  const existingKeys =
+    new Set();
+  for (
+    const row of existingRows
+  ) {
+    if (row.deleted_at) {
+      continue;
+    }
+
+    if (
+      row.recurrence_occurrence_key
+    ) {
       existingKeys.add(
         String(
           row.recurrence_occurrence_key
         )
       );
-    } else if (row.due_date) {
+    } else if (
+      row.due_date
+    ) {
       const key =
         getRecurrenceOccurrenceKey(
           template.recurrence_type,
@@ -1362,92 +2089,196 @@ async function _ensureNextOccurrence(templateId) {
           template.recurrence_interval
         );
       if (key) {
-        existingKeys.add(String(key));
+        existingKeys.add(
+          String(key)
+        );
       }
     }
   }
 
-  const sortedDates = [...allDates]
-    .map(d => String(d).slice(0, 10))
-    .sort();
-  for (const occurrenceDate of sortedDates) {
-    if (!occurrenceDate) continue;
+  // ---------------------------------------------------------
+  // FIND FIRST MISSING FUTURE OCCURRENCE
+  // ---------------------------------------------------------
 
-    /*
-     * NEVER create an occurrence belonging to the
-     * previous recurrence rule.
-     */
+  let nextDueDate = null;
+
+  for (
+    const dueDate of allDates
+  ) {
+    const dueDateOnly =
+      String(dueDate).slice(0, 10);
+
+    // Do not use dates before the effective recurrence date.
     if (
-      occurrenceDate < effectiveDateOnly
+      dueDateOnly <
+      effectiveDateOnly
     ) {
       continue;
     }
+    // Template's own date already exists.
+    if (
+      dueDateOnly ===
+      String(template.due_date || '').slice(0, 10)
+    ) {
+      continue;
+    }
+
     const occurrenceKey =
       getRecurrenceOccurrenceKey(
         template.recurrence_type,
-        occurrenceDate,
+        dueDateOnly,
         template.recurrence_interval
       );
-
-    if (!occurrenceKey) continue;
-    /*
-     * Already exists.
-     */
+    // Already exists.
     if (
+      occurrenceKey &&
       existingKeys.has(
         String(occurrenceKey)
       )
     ) {
       continue;
     }
-    const newId = await _insertBill({
-      name: template.name,
-      amount: template.amount,
-      due_date: occurrenceDate,
-      is_recurring: 0,
-      recurrence_type: null,
-      recurrence_interval: 1,
-      recurrence_end_date: null,
-      category_id: template.category_id,
-      source_id: template.source_id,
-      reminder_days_before: template.reminder_days_before,
-      auto_pay: template.auto_pay,
-      notes: template.notes,
-      attachment_url: template.attachment_url,
-      parent_bill_id: template.id,
-      recurrence_occurrence_key: occurrenceKey,
-      recurrence_effective_date: effectiveDateOnly,
-    });
-    return newId;
+
+    // Also check by actual due date.
+    const alreadyExists =
+      existingRows.some(row =>
+        !row.deleted_at &&
+        row.due_date &&
+        String(row.due_date).slice(0, 10) ===
+        dueDateOnly
+      );
+
+    if (alreadyExists) {
+      continue;
+    }
+    nextDueDate =
+      dueDateOnly;
+
+    break;
   }
-  return null;
+
+  if (!nextDueDate) {
+    return;
+  }
+
+  // ---------------------------------------------------------
+  // CRITICAL 7-DAY CHECK
+  // ---------------------------------------------------------
+
+  if (
+    nextDueDate >
+    sevenDaysDate
+  ) {
+    console.log(
+      '[RecurringScheduler] Next occurrence is more than 7 days away. Not creating.',
+      {
+        templateId,
+        nextDueDate,
+        today,
+        createAfter: sevenDaysDate,
+      }
+    );
+    return;
+  }
+  // ---------------------------------------------------------
+  // RESPECT END DATE
+  // ---------------------------------------------------------
+  if (
+    template.recurrence_end_date &&
+    nextDueDate >
+    String(
+      template.recurrence_end_date
+    ).slice(0, 10)
+  ) {
+    return;
+  }
+  // ---------------------------------------------------------
+  // CREATE ONLY THIS ONE OCCURRENCE
+  // ---------------------------------------------------------
+  await _insertBill({
+    name: template.name,
+    amount: template.amount,
+    due_date: nextDueDate,
+    status: BILL_STATUS.PENDING,
+    is_recurring: 0,
+    recurrence_type: null,
+    recurrence_interval: 1,
+    recurrence_end_date: null,
+    category_id: template.category_id,
+    source_id: template.source_id,
+    reminder_days_before: template.reminder_days_before,
+    auto_pay: template.auto_pay,
+    notes: template.notes,
+    attachment_url: template.attachment_url,
+    paid_at: null,
+    is_paid: 0,
+    linked_transaction_id: null,
+    parent_bill_id: templateId,
+  });
+
+  console.log(
+    '[RecurringScheduler] Created next occurrence:',
+    {
+      templateId,
+      dueDate: nextDueDate,
+      today,
+      daysUntilDue:
+        daysBetween(
+          today,
+          nextDueDate
+        ),
+    }
+  );
 }
 
 async function ensureRecurringOccurrenceUniqueIndex() {
   try {
-    await executeSql(`
+    await executeSql(
+      `
       CREATE UNIQUE INDEX IF NOT EXISTS
       idx_bills_recurring_occurrence
       ON bills(parent_bill_id, recurrence_occurrence_key)
       WHERE parent_bill_id IS NOT NULL
         AND recurrence_occurrence_key IS NOT NULL
         AND deleted_at IS NULL
-    `, []);
+    `,
+      [],
+    );
   } catch (e) {
     console.warn(
-      '[Bills] Could not create recurring occurrence unique index:',
-      e
+      "[Bills] Could not create recurring occurrence unique index:",
+      e,
     );
   }
 }
 
 // ─── linkAdditionalTransaction ────────────────────────────────────────────────
-
 export async function linkAdditionalTransaction(billId, transactionId) {
-  // Create the bill ↔ transaction link
+  const now = nowIso();
+
+  const billDebug = await executeSql(`SELECT * FROM bills WHERE id = ?`, [
+    billId,
+  ]);
+
+  console.log(
+    "[linkAdditionalTransaction] BILL:",
+    billDebug.rows.length ? billDebug.rows.item(0) : "BILL NOT FOUND",
+  );
+
+  const statementDebug = await executeSql(
+    `SELECT * FROM credit_card_statements`,
+    [],
+  );
+
+  for (let i = 0; i < statementDebug.rows.length; i++) {
+    console.log(
+      "[linkAdditionalTransaction] STATEMENT:",
+      statementDebug.rows.item(i),
+    );
+  }
+
   await addTransactionToBill(billId, transactionId);
 
-  // Always update the bill
   await executeSql(
     `UPDATE bills
      SET
@@ -1457,97 +2288,400 @@ export async function linkAdditionalTransaction(billId, transactionId) {
        linked_transaction_id = ?,
        updated_at = ?
      WHERE id = ?`,
-    [
-      BILL_STATUS.PAID,
-      nowIso(),
-      transactionId,
-      nowIso(),
-      billId,
-    ]
+    [BILL_STATUS.PAID, now, transactionId, now, billId],
   );
+
+  const relatedBills = await executeSql(`SELECT * FROM bills`, []);
+
+  for (let i = 0; i < relatedBills.rows.length; i++) {
+    const b = relatedBills.rows.item(i);
+
+    if (
+      Number(b.id) === 103 ||
+      Number(b.id) === 172 ||
+      Number(b.parent_bill_id) === 103 ||
+      Number(b.parent_bill_id) === 172
+    ) {
+      console.log("[DEBUG] BILL ID:", b.id);
+      console.log("[DEBUG] BILL PARENT:", b.parent_bill_id);
+      console.log("[DEBUG] BILL STATUS:", b.status);
+      console.log("[DEBUG] BILL DUE:", b.due_date);
+    }
+  }
 
   emitBillsChanged();
 }
 
 // ─── getTransactionsForBillLink ───────────────────────────────────────────────
-
 export async function getTransactionsForBillLink(bill) {
   try {
-    // month prefix e.g. '2026-02' — used as the primary filter
-    const dueDatePrefix = bill.due_date ? bill.due_date.slice(0, 7) : null;
+    if (!bill) {
+      return [];
+    }
+    // =========================================================
+    // 1. CURRENT BILL DATE
+    // =========================================================
+    const currentDueDate = bill?.due_date
+      ? String(bill.due_date).slice(0, 10)
+      : null;
+    if (!currentDueDate) {
+      return [];
+    }
+    const currentDate = new Date(`${currentDueDate}T00:00:00`);
+    if (Number.isNaN(currentDate.getTime())) {
+      return [];
+    }
+    // =========================================================
+    // 2. CURRENT DATE
+    // IMPORTANT:
+    // Do NOT use bill due date as the filter end.
+    // We want transactions that have actually happened
+    // up to TODAY.
+    // =========================================================
+    const filterEndDate = todayStr();
+
+    // =========================================================
+    // 3. FIND PREVIOUS CALENDAR MONTH
+    //
+    // Example:
+    //
+    // Current bill = Sep 10, 2026
+    //
+    // Previous month:
+    // Aug 1, 2026 -> Aug 31, 2026
+    // =========================================================
+
+    const previousMonthStart = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() - 1,
+      1,
+    );
+
+    const previousMonthEnd = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      0,
+    );
+
+    const previousMonthStartStr =
+      `${previousMonthStart.getFullYear()}-${String(
+        previousMonthStart.getMonth() + 1,
+      ).padStart(2, "0")}-01`;
+
+    const previousMonthEndStr =
+      `${previousMonthEnd.getFullYear()}-${String(
+        previousMonthEnd.getMonth() + 1,
+      ).padStart(2, "0")}-${String(
+        previousMonthEnd.getDate(),
+      ).padStart(2, "0")}`;
+
+    // =========================================================
+    // 4. DETERMINE BILL SERIES
+    // =========================================================
+
+    const parentId =
+      bill.parent_bill_id ||
+      (Number(bill.is_recurring) === 1 ? bill.id : null);
+
+    let previousBill = null;
+
+    // =========================================================
+    // 5. FIND LAST MONTH'S BILL
+    // =========================================================
+
+    if (parentId) {
+      const previousBillRes = await executeSql(
+        `SELECT *
+         FROM bills
+         WHERE parent_bill_id = ?
+           AND due_date >= ?
+           AND due_date <= ?
+           AND deleted_at IS NULL
+         ORDER BY due_date DESC
+         LIMIT 1`,
+        [
+          parentId,
+          previousMonthStartStr,
+          previousMonthEndStr,
+        ],
+      );
+
+      if (previousBillRes.rows.length) {
+        previousBill = previousBillRes.rows.item(0);
+      }
+    }
+
+    // =========================================================
+    // 6. DETERMINE FILTER START DATE
+    //
+    // RULE 1:
+    // Previous month bill exists + PAID
+    //     -> paid_at
+    //
+    // RULE 2:
+    // Previous month bill exists + NOT PAID
+    //     -> previous bill due_date
+    //
+    // RULE 3:
+    // No previous month bill
+    //     -> previous month's 1st day
+    // =========================================================
+
+    let filterStartDate = null;
+
+    if (previousBill) {
+      const previousBillIsPaid =
+        Number(previousBill.is_paid) === 1 ||
+        previousBill.status === BILL_STATUS.PAID;
+
+      if (
+        previousBillIsPaid &&
+        previousBill.paid_at
+      ) {
+        filterStartDate =
+          String(previousBill.paid_at).slice(0, 10);
+
+        console.log(
+          "[getTransactionsForBillLink] Previous bill PAID:",
+          {
+            currentBillId: bill.id,
+            previousBillId: previousBill.id,
+            paidAt: previousBill.paid_at,
+            filterStartDate,
+            filterEndDate,
+          },
+        );
+      } else if (previousBill.due_date) {
+        filterStartDate =
+          String(previousBill.due_date).slice(0, 10);
+
+        console.log(
+          "[getTransactionsForBillLink] Previous bill NOT PAID:",
+          {
+            currentBillId: bill.id,
+            previousBillId: previousBill.id,
+            dueDate: previousBill.due_date,
+            filterStartDate,
+            filterEndDate,
+          },
+        );
+      }
+    } else {
+      filterStartDate = previousMonthStartStr;
+
+      console.log(
+        "[getTransactionsForBillLink] No previous month bill:",
+        {
+          currentBillId: bill.id,
+          filterStartDate,
+          filterEndDate,
+        },
+      );
+    }
+
+    // =========================================================
+    // SAFETY
+    // =========================================================
+
+    if (!filterStartDate) {
+      filterStartDate = previousMonthStartStr;
+    }
+
+    // =========================================================
+    // 7. LOAD EXPENSE TRANSACTIONS
+    // =========================================================
 
     let rows = [];
 
-    if (Platform.OS === 'web') {
-      const txRes = await executeSql(`SELECT * FROM transactions WHERE type = 'expense' ORDER BY date DESC`, []);
+    if (Platform.OS === "web") {
+      const txRes = await executeSql(
+        `SELECT *
+         FROM transactions
+         WHERE type = 'expense'
+         ORDER BY date DESC`,
+        [],
+      );
       const sourceRes = await executeSql(`SELECT * FROM sources`, []);
       const catRes = await executeSql(`SELECT * FROM categories`, []);
-      const sourceMap = new Map(rowsToArray(sourceRes).map(s => [s.id, s]));
-      const catMap = new Map(rowsToArray(catRes).map(c => [c.id, c]));
-      rows = rowsToArray(txRes).map(t => ({
+      const sourceMap = new Map(
+        rowsToArray(sourceRes).map((s) => [
+          s.id,
+          s,
+        ]),
+      );
+      const catMap = new Map(
+        rowsToArray(catRes).map((c) => [
+          c.id,
+          c,
+        ]),
+      );
+      rows = rowsToArray(txRes).map((t) => ({
         ...t,
-        source_name: sourceMap.get(t.source_id)?.name || '',
-        category_name: catMap.get(t.category_id)?.name || '',
-        category_color: catMap.get(t.category_id)?.color || '',
-        category_icon: catMap.get(t.category_id)?.icon || '',
+        source_name: sourceMap.get(t.source_id)?.name || "",
+        category_name: catMap.get(t.category_id)?.name || "",
+        category_color: catMap.get(t.category_id)?.color || "",
+        category_icon: catMap.get(t.category_id)?.icon || "",
       }));
     } else {
       const res = await executeSql(
-        `SELECT t.*, s.name AS source_name, c.name AS category_name,
-                c.color AS category_color, c.icon AS category_icon
+        `SELECT
+           t.*,
+           s.name AS source_name,
+           c.name AS category_name,
+           c.color AS category_color,
+           c.icon AS category_icon
          FROM transactions t
-         LEFT JOIN sources s    ON s.id = t.source_id
-         LEFT JOIN categories c ON c.id = t.category_id
+         LEFT JOIN sources s
+           ON s.id = t.source_id
+         LEFT JOIN categories c
+           ON c.id = t.category_id
          WHERE t.type = 'expense'
          ORDER BY t.date DESC`,
-        []
+        [],
       );
+
       rows = rowsToArray(res);
     }
 
-    // Remove already-linked transactions for this bill
+    // =========================================================
+    // 8. DATE FILTER
+    //
+    // START = calculated based on previous bill
+    // END   = TODAY
+    //
+    // This is the important fix.
+    // =========================================================
+
+    rows = rows.filter((tx) => {
+      if (
+        String(tx.type).toLowerCase() !==
+        "expense"
+      ) {
+        return false;
+      }
+      if (!tx.date) {
+        return false;
+      }
+      const txDateOnly =
+        String(tx.date).slice(0, 10);
+
+      return (
+        txDateOnly >= filterStartDate &&
+        txDateOnly <= filterEndDate
+      );
+    });
+
+    // =========================================================
+    // 9. REMOVE ALREADY LINKED TRANSACTIONS
+    // =========================================================
     const linked = await getBillLinkedTransactions(bill.id);
-    const linkedIds = new Set(linked.map(l => l.id));
-    rows = rows.filter(t => !linkedIds.has(t.id));
-
-    // ── PRIMARY FILTER: always restrict to the occurrence's month ────────────
-    // This is the main fix — the user must see only transactions from the
-    // same month as the bill occurrence they are trying to link.
-    if (dueDatePrefix) {
-      rows = rows.filter(t => t.date && String(t.date).startsWith(dueDatePrefix));
-    }
-
-    // ── SORT: same-category & same-amount rows rise to the top ───────────────
+    const linkedIds = new Set(
+      linked.map((l) => Number(l.id)),
+    );
+    rows = rows.filter(
+      (tx) =>
+        !linkedIds.has(Number(tx.id)),
+    );
+    // =========================================================
+    // 10. PRIORITIZE MATCHES
+    //
+    // Same category + same amount first.
+    // Then newest transaction.
+    // =========================================================
     rows.sort((a, b) => {
       const aScore =
-        (a.category_id === bill.category_id ? 2 : 0) +
-        (Number(a.amount) === Number(bill.amount) ? 1 : 0);
+        (Number(a.category_id) ===
+          Number(bill.category_id)
+          ? 2
+          : 0) +
+        (Number(a.amount) ===
+          Number(bill.amount)
+          ? 1
+          : 0);
+
       const bScore =
-        (b.category_id === bill.category_id ? 2 : 0) +
-        (Number(b.amount) === Number(bill.amount) ? 1 : 0);
-      if (bScore !== aScore) return bScore - aScore;
-      return new Date(b.date) - new Date(a.date);
+        (Number(b.category_id) ===
+          Number(bill.category_id)
+          ? 2
+          : 0) +
+        (Number(b.amount) ===
+          Number(bill.amount)
+          ? 1
+          : 0);
+
+      if (bScore !== aScore) {
+        return bScore - aScore;
+      }
+      return (
+        new Date(b.date) -
+        new Date(a.date)
+      );
     });
+
+    console.log(
+      "[getTransactionsForBillLink] FINAL FILTER:",
+      {
+        billId: bill.id,
+        currentBillDueDate: currentDueDate,
+        previousBillId:
+          previousBill?.id || null,
+        previousBillDueDate:
+          previousBill?.due_date || null,
+        previousBillPaidAt:
+          previousBill?.paid_at || null,
+        filterStartDate,
+        filterEndDate,
+        transactionCount: rows.length,
+      },
+    );
 
     return rows.slice(0, 50);
   } catch (e) {
-    console.warn('getTransactionsForBillLink error', e);
+    console.warn(
+      "getTransactionsForBillLink error",
+      e,
+    );
+
     return [];
   }
 }
 
 // ─── skip / update / delete ───────────────────────────────────────────────────
-
 export async function skipBill(billId) {
   const bill = await getBillById(billId);
-  if (!bill) throw new Error('Bill not found');
+
+  if (!bill) {
+    throw new Error("Bill not found");
+  }
+
   await executeSql(
-    `UPDATE bills SET status=?, updated_at=? WHERE id=?`,
-    [BILL_STATUS.SKIPPED, nowIso(), billId]
+    `UPDATE bills
+     SET status = ?, updated_at = ?
+     WHERE id = ?`,
+    [BILL_STATUS.SKIPPED, nowIso(), billId],
   );
-  // Ensure next occurrence exists so series continues
-  const parentId = bill.parent_bill_id || (bill.is_recurring ? bill.id : null);
-  if (parentId) await _ensureNextOccurrence(parentId);
+
+  /*
+   * Credit Card Statement bills are generated by the
+   * Credit Card Scheduler.
+   *
+   * Do NOT create the next occurrence here, otherwise
+   * skipping a statement can create an extra bill with
+   * the template amount instead of the future statement's
+   * actual transaction data.
+   */
+  const isCreditCardStatement =
+    typeof bill.notes === "string" && bill.notes.startsWith("Statement ");
+
+  if (!isCreditCardStatement) {
+    const parentId =
+      bill.parent_bill_id || (bill.is_recurring ? bill.id : null);
+
+    if (parentId) {
+      await _ensureNextOccurrence(parentId);
+    }
+  }
+
   emitBillsChanged();
 }
 
@@ -1567,11 +2701,7 @@ export async function unskipBill(billId) {
        status = ?,
        updated_at = ?
      WHERE id = ?`,
-    [
-      status,
-      nowIso(),
-      billId,
-    ]
+    [status, nowIso(), billId],
   );
 
   emitBillsChanged();
@@ -1579,70 +2709,372 @@ export async function unskipBill(billId) {
 
 export async function updateBill(id, fields) {
   const existing = await getBillById(id);
+
   if (!existing) {
-    throw new Error('Bill not found');
+    throw new Error("Bill not found");
   }
 
-  /*
-   * Detect recurrence-rule changes BEFORE updating.
-   */
+  await ensureRecurringOccurrenceColumn();
+  await ensureRecurringDeletionTable();
+
+  // =========================================================
+  // 1. Detect recurrence-rule changes
+  // =========================================================
+
+  const dueDateChanged =
+    fields.due_date !== undefined &&
+    String(fields.due_date).slice(0, 10) !==
+    String(existing.due_date || "").slice(0, 10);
+
+  const recurrenceTypeChanged =
+    fields.recurrence_type !== undefined &&
+    fields.recurrence_type !== existing.recurrence_type;
+
+  const recurrenceIntervalChanged =
+    fields.recurrence_interval !== undefined &&
+    Number(fields.recurrence_interval || 1) !==
+    Number(existing.recurrence_interval || 1);
+
+  const recurrenceEndDateChanged =
+    fields.recurrence_end_date !== undefined &&
+    String(fields.recurrence_end_date || "").slice(0, 10) !==
+    String(existing.recurrence_end_date || "").slice(0, 10);
+
+  const recurrenceEnabledChanged =
+    fields.is_recurring !== undefined &&
+    Boolean(fields.is_recurring) !==
+    Boolean(existing.is_recurring);
+
   const recurrenceChanged =
-    (fields.recurrence_type !== undefined &&
-      fields.recurrence_type !==
-      existing.recurrence_type) ||
+    dueDateChanged ||
+    recurrenceTypeChanged ||
+    recurrenceIntervalChanged ||
+    recurrenceEndDateChanged ||
+    recurrenceEnabledChanged;
 
-    (fields.recurrence_interval !== undefined &&
-      fields.recurrence_interval !==
-      existing.recurrence_interval) ||
+  const isRecurringTemplate =
+    Number(existing.is_recurring) === 1 &&
+    !existing.parent_bill_id;
 
-    (fields.recurrence_end_date !== undefined &&
-      fields.recurrence_end_date !==
-      existing.recurrence_end_date);
+  console.log(
+    "[updateBill] RECURRENCE CHANGE CHECK:",
+    {
+      id,
+      isRecurringTemplate,
+      recurrenceChanged,
+      dueDateChanged,
+      recurrenceTypeChanged,
+      recurrenceIntervalChanged,
+      recurrenceEndDateChanged,
+      recurrenceEnabledChanged,
+    }
+  );
 
-  /*
-   * If the recurrence rule changes on the MAIN TEMPLATE,
-   * the new rule becomes effective from today.
-   *
-   * Existing child occurrences are NOT modified.
-   *
-   * Example:
-   *
-   * 2024 monthly  -> KEEP
-   * 2025 monthly  -> KEEP
-   * 2026 onward   -> NEW yearly rule
-   */
+  // =========================================================
+  // 2. Determine NEW recurrence effective date
+  // =========================================================
+
   let recurrenceEffectiveDate =
     existing.recurrence_effective_date || null;
 
   if (
-    recurrenceChanged &&
-    existing.is_recurring &&
-    !existing.parent_bill_id
+    isRecurringTemplate &&
+    recurrenceChanged
   ) {
-    recurrenceEffectiveDate = todayStr();
+    /*
+     * If the due date itself changed, the new recurrence
+     * starts from the NEW due date.
+     *
+     * Otherwise, when only the recurrence rule changes,
+     * we continue AFTER the latest existing bill.
+     *
+     * Example:
+     *
+     * Existing yearly:
+     * 2020-01-01
+     * 2021-01-01
+     * ...
+     * 2025-01-01
+     *
+     * Change yearly -> monthly
+     * due date remains 2020-01-01
+     *
+     * New monthly recurrence starts after 2025-01-01.
+     */
+
+    if (dueDateChanged) {
+      recurrenceEffectiveDate =
+        fields.due_date
+          ? String(fields.due_date).slice(0, 10)
+          : todayStr();
+    } else {
+      // -------------------------------------------------------
+      // Recurrence rule changed but due date stayed the same.
+      //
+      // Keep ALL existing child bills because they may contain
+      // linked transactions.
+      //
+      // Find the latest existing bill and start the NEW
+      // recurrence immediately after that bill.
+      // -------------------------------------------------------
+
+      const existingChildrenResult =
+        await executeSql(
+          `SELECT * FROM bills WHERE parent_bill_id = ?`,
+          [Number(existing.id)]
+        );
+
+      const existingChildren =
+        rowsToArray(existingChildrenResult)
+          .filter((row) => !row.deleted_at);
+
+      let latestExistingDate = null;
+
+      for (const child of existingChildren) {
+        if (!child.due_date) continue;
+
+        const childDate =
+          String(child.due_date).slice(0, 10);
+
+        if (
+          !latestExistingDate ||
+          childDate > latestExistingDate
+        ) {
+          latestExistingDate = childDate;
+        }
+      }
+
+      // Also consider the parent/template date.
+      const templateDate =
+        existing.due_date
+          ? String(existing.due_date).slice(0, 10)
+          : null;
+
+      if (
+        templateDate &&
+        (
+          !latestExistingDate ||
+          templateDate > latestExistingDate
+        )
+      ) {
+        latestExistingDate = templateDate;
+      }
+
+      // -------------------------------------------------------
+      // IMPORTANT:
+      // We need the NEW recurrence start date to be the next
+      // occurrence after the latest existing bill.
+      //
+      // Use generateOccurrenceDates() with the NEW rule and
+      // find the first generated date AFTER latestExistingDate.
+      //
+      // This avoids directly calling addRecurrence().
+      // -------------------------------------------------------
+
+      if (
+        latestExistingDate &&
+        (
+          fields.recurrence_type ||
+          fields.recurrence_interval !== undefined ||
+          fields.recurrence_end_date !== undefined
+        )
+      ) {
+        const newRecurrenceType =
+          fields.recurrence_type !== undefined
+            ? fields.recurrence_type
+            : existing.recurrence_type;
+
+        const newInterval =
+          fields.recurrence_interval !== undefined
+            ? Number(
+              fields.recurrence_interval || 1
+            )
+            : Number(
+              existing.recurrence_interval || 1
+            );
+
+        // IMPORTANT:
+        // Always use the ORIGINAL due date as the recurrence anchor.
+        //
+        // Example:
+        // Original due date = 2020-01-01
+        // Existing monthly bills through = 2021-12-01
+        // New recurrence = yearly
+        //
+        // Probe:
+        // 2020-01-01
+        // 2021-01-01
+        // 2022-01-01  <-- first date after latest existing bill
+        //
+        // This prevents 2022-01-01 from being missed.
+
+        const originalDueDate =
+          existing.due_date
+            ? String(existing.due_date).slice(0, 10)
+            : latestExistingDate;
+
+        const recurrenceProbeBill = {
+          ...existing,
+
+          is_recurring: 1,
+
+          due_date: originalDueDate,
+
+          recurrence_type:
+            newRecurrenceType,
+
+          recurrence_interval:
+            newInterval,
+
+          // Ignore the old end date while probing.
+          recurrence_end_date: null,
+        };
+
+        const probeDates =
+          generateOccurrenceDates(
+            recurrenceProbeBill,
+            todayStr()
+          );
+
+        const nextDate =
+          probeDates.find(
+            (date) =>
+              String(date).slice(0, 10) >
+              latestExistingDate
+          );
+
+        recurrenceEffectiveDate =
+          nextDate || latestExistingDate;
+
+        console.log(
+          "[updateBill] CONTINUING NEW RECURRENCE FROM ORIGINAL DUE-DATE ANCHOR:",
+          {
+            originalDueDate,
+            latestExistingDate,
+            newRecurrenceType,
+            newInterval,
+            recurrenceEffectiveDate,
+          }
+        );
+      } else {
+        recurrenceEffectiveDate =
+          existing.due_date
+            ? String(existing.due_date).slice(0, 10)
+            : todayStr();
+      }
+    }
+
+    // ---------------------------------------------------------
+    // Old deletion exclusions belong to the old recurrence rule.
+    // They must not block the new recurrence.
+    // ---------------------------------------------------------
+
+    await executeSql(
+      `DELETE FROM bill_deleted_occurrences
+       WHERE parent_bill_id = ?`,
+      [Number(existing.id)]
+    );
   }
 
+  // =========================================================
+  // 3. Merge updated values
+  // =========================================================
+
   const merged = {
-    name: fields.name ?? existing.name,
-    amount: fields.amount ?? existing.amount,
-    due_date: fields.due_date !== undefined ? fields.due_date : existing.due_date,
-    status: fields.status ?? existing.status,
-    is_recurring: fields.is_recurring !== undefined ? (fields.is_recurring ? 1 : 0) : existing.is_recurring,
-    recurrence_type: fields.recurrence_type !== undefined ? fields.recurrence_type : existing.recurrence_type,
-    recurrence_interval: fields.recurrence_interval ?? existing.recurrence_interval ?? 1,
-    recurrence_end_date: fields.recurrence_end_date !== undefined ? fields.recurrence_end_date : existing.recurrence_end_date,
-    category_id: fields.category_id !== undefined ? fields.category_id : existing.category_id,
-    source_id: fields.source_id !== undefined ? fields.source_id : existing.source_id,
-    reminder_days_before: fields.reminder_days_before ?? existing.reminder_days_before ?? 2,
-    auto_pay: fields.auto_pay !== undefined ? (fields.auto_pay ? 1 : 0) : existing.auto_pay,
-    notes: fields.notes !== undefined ? fields.notes : existing.notes,
-    attachment_url: fields.attachment_url !== undefined ? fields.attachment_url : existing.attachment_url,
-    is_paid: fields.is_paid !== undefined ? (fields.is_paid ? 1 : 0) : existing.is_paid,
-    paid_at: fields.paid_at !== undefined ? fields.paid_at : existing.paid_at,
-    last_reminded_at: fields.last_reminded_at !== undefined ? fields.last_reminded_at : existing.last_reminded_at,
-    linked_transaction_id: fields.linked_transaction_id !== undefined ? fields.linked_transaction_id : existing.linked_transaction_id,
+    name:
+      fields.name ?? existing.name,
+
+    amount:
+      fields.amount ?? existing.amount,
+
+    due_date:
+      fields.due_date !== undefined
+        ? fields.due_date
+        : existing.due_date,
+
+    status:
+      fields.status ?? existing.status,
+
+    is_recurring:
+      fields.is_recurring !== undefined
+        ? fields.is_recurring
+          ? 1
+          : 0
+        : existing.is_recurring,
+
+    recurrence_type:
+      fields.recurrence_type !== undefined
+        ? fields.recurrence_type
+        : existing.recurrence_type,
+
+    recurrence_interval:
+      fields.recurrence_interval !== undefined
+        ? fields.recurrence_interval
+        : existing.recurrence_interval ?? 1,
+
+    recurrence_end_date:
+      fields.recurrence_end_date !== undefined
+        ? fields.recurrence_end_date
+        : existing.recurrence_end_date,
+
+    category_id:
+      fields.category_id !== undefined
+        ? fields.category_id
+        : existing.category_id,
+
+    source_id:
+      fields.source_id !== undefined
+        ? fields.source_id
+        : existing.source_id,
+
+    reminder_days_before:
+      fields.reminder_days_before ??
+      existing.reminder_days_before ??
+      2,
+
+    auto_pay:
+      fields.auto_pay !== undefined
+        ? fields.auto_pay
+          ? 1
+          : 0
+        : existing.auto_pay,
+
+    notes:
+      fields.notes !== undefined
+        ? fields.notes
+        : existing.notes,
+
+    attachment_url:
+      fields.attachment_url !== undefined
+        ? fields.attachment_url
+        : existing.attachment_url,
+
+    is_paid:
+      fields.is_paid !== undefined
+        ? fields.is_paid
+          ? 1
+          : 0
+        : existing.is_paid,
+
+    paid_at:
+      fields.paid_at !== undefined
+        ? fields.paid_at
+        : existing.paid_at,
+
+    last_reminded_at:
+      fields.last_reminded_at !== undefined
+        ? fields.last_reminded_at
+        : existing.last_reminded_at,
+
+    linked_transaction_id:
+      fields.linked_transaction_id !== undefined
+        ? fields.linked_transaction_id
+        : existing.linked_transaction_id,
   };
-  await ensureRecurringOccurrenceColumn();
+
+  // =========================================================
+  // 4. Update parent/template
+  // =========================================================
 
   await executeSql(
     `UPDATE bills SET
@@ -1691,39 +3123,409 @@ export async function updateBill(id, fields) {
       id,
     ]
   );
-  /*
-   * Generate occurrences for the NEW recurrence only.
-   *
-   * Historical occurrences remain untouched.
-   */
+
+  // =========================================================
+  // 5. Generate NEW recurrence occurrences
+  // =========================================================
+
   if (
-    existing.is_recurring &&
-    !existing.parent_bill_id &&
-    recurrenceChanged
+    isRecurringTemplate &&
+    recurrenceChanged &&
+    Number(merged.is_recurring) === 1 &&
+    merged.recurrence_type &&
+    merged.due_date
   ) {
+    console.log(
+      "[updateBill] BACKFILLING NEW RECURRENCE SERIES:",
+      {
+        templateId: id,
+        dueDate:
+          String(merged.due_date).slice(0, 10),
+        recurrenceType:
+          merged.recurrence_type,
+        recurrenceInterval:
+          merged.recurrence_interval,
+        recurrenceEndDate:
+          merged.recurrence_end_date,
+        effectiveDate:
+          recurrenceEffectiveDate,
+      }
+    );
+
     await backfillBillOccurrences(id);
   }
 
   emitBillsChanged();
+
+  console.log(
+    "[updateBill] COMPLETE:",
+    {
+      id,
+      recurrenceChanged,
+      recurrenceEffectiveDate,
+    }
+  );
 }
 
 export async function deleteBill(id) {
-  const ts = nowIso();
-  await executeSql(
-    `UPDATE bills SET deleted_at=?, updated_at=? WHERE id=?`,
-    [ts, ts, id]
-  );
-  emitBillsChanged();
+  console.log("=================================================");
+  console.log("[deleteBill] START");
+  console.log("[deleteBill] Raw ID received:", id);
+  console.log("[deleteBill] Raw ID type:", typeof id);
+
+  if (id === null || id === undefined || id === "") {
+    throw new Error("Bill ID is required.");
+  }
+
+  // =========================================================
+  // 0. Normalize credit-card synthetic IDs
+  // =========================================================
+
+  let rawId = id;
+
+  if (
+    typeof rawId === "string" &&
+    rawId.startsWith("cc-")
+  ) {
+    rawId = rawId.substring(3);
+
+    console.log(
+      "[deleteBill] Normalized credit-card ID:",
+      rawId
+    );
+  }
+
+  const billId = Number(rawId);
+
+  if (!Number.isInteger(billId) || billId <= 0) {
+    throw new Error("Invalid bill ID.");
+  }
+
+  try {
+    // =========================================================
+    // 1. Find requested bill
+    // =========================================================
+
+    const billResult = await executeSql(
+      `SELECT *
+       FROM bills
+       WHERE id = ?
+       LIMIT 1`,
+      [billId]
+    );
+
+    if (!billResult.rows.length) {
+      throw new Error("Bill not found.");
+    }
+
+    const bill = billResult.rows.item(0);
+
+    console.log("[deleteBill] BILL FOUND:", {
+      id: bill.id,
+      name: bill.name,
+      amount: bill.amount,
+      due_date: bill.due_date,
+      is_recurring: bill.is_recurring,
+      parent_bill_id: bill.parent_bill_id,
+      linked_transaction_id: bill.linked_transaction_id,
+      is_paid: bill.is_paid,
+      paid_at: bill.paid_at,
+    });
+
+    // =========================================================
+    // 2. Determine the ROOT recurring parent
+    //
+    // If deleting a child occurrence, delete the whole series.
+    // If deleting the parent, delete the whole series.
+    // =========================================================
+
+    let rootBillId = billId;
+
+    const hasParent =
+      bill.parent_bill_id !== null &&
+      bill.parent_bill_id !== undefined &&
+      bill.parent_bill_id !== "" &&
+      Number(bill.parent_bill_id) > 0;
+
+    if (hasParent) {
+      rootBillId = Number(bill.parent_bill_id);
+
+      console.log(
+        "[deleteBill] Child occurrence detected. Root parent:",
+        rootBillId
+      );
+    }
+
+    // =========================================================
+    // 3. Build complete bill family
+    //
+    // Parent + ALL generated occurrences.
+    // =========================================================
+
+    const billIds = [rootBillId];
+
+    const childrenResult = await executeSql(
+      `SELECT id
+       FROM bills
+       WHERE parent_bill_id = ?`,
+      [rootBillId]
+    );
+
+    for (let i = 0; i < childrenResult.rows.length; i++) {
+      const child = childrenResult.rows.item(i);
+      const childId = Number(child.id);
+
+      if (
+        Number.isInteger(childId) &&
+        childId > 0 &&
+        !billIds.includes(childId)
+      ) {
+        billIds.push(childId);
+      }
+    }
+
+    console.log(
+      "[deleteBill] COMPLETE BILL FAMILY TO DELETE:",
+      billIds
+    );
+
+    // =========================================================
+    // 4. Remove bill-linked-transaction relationships
+    //
+    // IMPORTANT:
+    // Transactions themselves are NEVER deleted.
+    // =========================================================
+
+    for (const targetBillId of billIds) {
+      const linkedResult = await executeSql(
+        `SELECT id, bill_id, transaction_id
+         FROM bill_linked_transactions
+         WHERE bill_id = ?`,
+        [targetBillId]
+      );
+
+      console.log(
+        `[deleteBill] Linked transaction count for bill ${targetBillId}:`,
+        linkedResult.rows.length
+      );
+
+      const unlinkResult = await executeSql(
+        `DELETE FROM bill_linked_transactions
+         WHERE bill_id = ?`,
+        [targetBillId]
+      );
+
+      console.log(
+        `[deleteBill] Unlink result for bill ${targetBillId}:`,
+        {
+          rowsAffected: unlinkResult.rowsAffected,
+        }
+      );
+    }
+
+    // =========================================================
+    // 5. Clear direct bill -> transaction references
+    //
+    // Transaction rows remain untouched.
+    // =========================================================
+
+    for (const targetBillId of billIds) {
+      const result = await executeSql(
+        `UPDATE bills
+         SET
+           linked_transaction_id = NULL,
+           paid_at = NULL,
+           is_paid = 0,
+           updated_at = ?
+         WHERE id = ?`,
+        [nowIso(), targetBillId]
+      );
+
+      console.log(
+        `[deleteBill] Cleared transaction reference for ${targetBillId}:`,
+        {
+          rowsAffected: result.rowsAffected,
+        }
+      );
+    }
+
+    // =========================================================
+    // 6. Remove credit-card statement records
+    // =========================================================
+
+    for (const targetBillId of billIds) {
+      const result = await executeSql(
+        `DELETE FROM credit_card_statements
+         WHERE bill_id = ?`,
+        [targetBillId]
+      );
+
+      if (result.rowsAffected) {
+        console.log(
+          `[deleteBill] Credit-card statement removed for ${targetBillId}:`,
+          result.rowsAffected
+        );
+      }
+    }
+
+    // =========================================================
+    // 7. Permanently delete ALL bill records
+    //
+    // Parent/template is deleted too.
+    // =========================================================
+
+    for (const targetBillId of billIds) {
+      const result = await executeSql(
+        `DELETE FROM bills
+         WHERE id = ?`,
+        [targetBillId]
+      );
+
+      console.log(
+        `[deleteBill] BILL DELETE ${targetBillId}:`,
+        {
+          rowsAffected: result.rowsAffected,
+        }
+      );
+    }
+
+    // =========================================================
+    // 8. IMPORTANT:
+    // Remove recurring-occurrence deletion markers for this
+    // series because the entire series itself is gone.
+    // =========================================================
+
+    try {
+      await ensureRecurringDeletionTable();
+
+      const markerResult = await executeSql(
+        `DELETE FROM bill_deleted_occurrences
+         WHERE parent_bill_id = ?`,
+        [rootBillId]
+      );
+
+      console.log(
+        "[deleteBill] Removed recurring deletion markers:",
+        {
+          parentBillId: rootBillId,
+          rowsAffected: markerResult.rowsAffected,
+        }
+      );
+    } catch (markerError) {
+      console.warn(
+        "[deleteBill] Could not remove recurring deletion markers:",
+        markerError
+      );
+    }
+
+    // =========================================================
+    // 9. FINAL VERIFICATION
+    // =========================================================
+
+    const remainingResult = await executeSql(
+      `SELECT id, name, parent_bill_id, is_recurring
+       FROM bills
+       WHERE id = ?
+          OR parent_bill_id = ?`,
+      [rootBillId, rootBillId]
+    );
+
+    console.log(
+      "[deleteBill] REMAINING BILL FAMILY:",
+      {
+        rows: remainingResult.rows.length,
+      }
+    );
+
+    if (remainingResult.rows.length > 0) {
+      const remaining = [];
+
+      for (
+        let i = 0;
+        i < remainingResult.rows.length;
+        i++
+      ) {
+        remaining.push(remainingResult.rows.item(i));
+      }
+
+      console.error(
+        "[deleteBill] WARNING - BILL FAMILY STILL EXISTS:",
+        remaining
+      );
+    } else {
+      console.log(
+        "[deleteBill] SUCCESS - COMPLETE BILL FAMILY DELETED:",
+        billIds
+      );
+    }
+
+    // =========================================================
+    // 10. Notify the app
+    // =========================================================
+
+    emitBillsChanged();
+
+    console.log(
+      "[deleteBill] Permanently deleted bills:",
+      billIds
+    );
+
+    console.log(
+      "[deleteBill] Linked transactions were preserved."
+    );
+
+    console.log("[deleteBill] COMPLETE");
+    console.log("=================================================");
+
+  } catch (error) {
+    console.error(
+      "[deleteBill] FAILED:",
+      error
+    );
+
+    console.log("=================================================");
+
+    throw error;
+  }
 }
 
 // ─── scheduler / reminders ────────────────────────────────────────────────────
 
 export async function runRecurringScheduler() {
   await syncBillStatuses();
+  const rows =
+    (await fetchAllBillsRaw())
+      .map(normalizeBill)
+      .filter(Boolean);
+
+  // Only recurring templates.
+  const templates =
+    rows.filter(bill =>
+      Number(bill.is_recurring) === 1 &&
+      !bill.parent_bill_id &&
+      bill.recurrence_type &&
+      !bill.deleted_at
+    );
+
+  for (
+    const template of templates
+  ) {
+    try {
+      await _ensureNextOccurrence(
+        template.id
+      );
+    } catch (error) {
+      console.error(
+        '[runRecurringScheduler] Failed for template:',
+        template.id,
+        error
+      );
+    }
+  }
 }
 
 function padDateValue(value) {
-  return String(value).padStart(2, '0');
+  return String(value).padStart(2, "0");
 }
 
 function formatDate(date) {
@@ -1743,21 +3545,13 @@ function getStatementPeriod(statementDay, referenceDate) {
   const currentStatementDay = normalizeStatementDay(
     statementDay,
     year,
-    month + 1
+    month + 1,
   );
 
-  const statementDate = new Date(
-    year,
-    month,
-    currentStatementDay
-  );
+  const statementDate = new Date(year, month, currentStatementDay);
 
   // Previous month
-  const previousMonthDate = new Date(
-    year,
-    month - 1,
-    1
-  );
+  const previousMonthDate = new Date(year, month - 1, 1);
 
   const previousYear = previousMonthDate.getFullYear();
   const previousMonth = previousMonthDate.getMonth();
@@ -1765,13 +3559,13 @@ function getStatementPeriod(statementDay, referenceDate) {
   const previousStatementDay = normalizeStatementDay(
     statementDay,
     previousYear,
-    previousMonth + 1
+    previousMonth + 1,
   );
 
   const previousStatementDate = new Date(
     previousYear,
     previousMonth,
-    previousStatementDay
+    previousStatementDay,
   );
 
   // Billing cycle starts the day AFTER previous statement
@@ -1789,402 +3583,6 @@ function getStatementPeriod(statementDay, referenceDate) {
   };
 }
 
-export async function runCreditCardStatementScheduler() {
-  const today = new Date();
-  const todayStrValue = formatDate(today);
-
-  try {
-    const cardsRes = await executeSql(
-      `SELECT * FROM credit_cards`,
-      []
-    );
-
-    for (let i = 0; i < cardsRes.rows.length; i++) {
-      const card = cardsRes.rows.item(i);
-
-      try {
-        if (card.status !== 'active') {
-          continue;
-        }
-
-        const statementDay = Number(card.statement_day);
-
-        if (!statementDay) {
-          continue;
-        }
-
-        /*
-         * We check:
-         *
-         * 1. Current month's statement
-         * 2. Previous month's statement
-         *
-         * This allows the app to recover if it wasn't opened
-         * on the actual statement date.
-         */
-        const candidateDates = [
-          new Date(
-            today.getFullYear(),
-            today.getMonth(),
-            1
-          ),
-          new Date(
-            today.getFullYear(),
-            today.getMonth() - 1,
-            1
-          ),
-        ];
-
-        for (const referenceDate of candidateDates) {
-          const {
-            statementStart,
-            statementEnd,
-            statementDate,
-          } = getStatementPeriod(
-            statementDay,
-            referenceDate
-          );
-          const statementDateStr = formatDate(statementDate);
-          const startDateStr = formatDate(statementStart);
-          const endDateStr = formatDate(statementEnd);
-
-          /*
-           * Do not generate future statements.
-           */
-          if (statementDateStr > todayStrValue) {
-            continue;
-          }
-
-          // ============================================================
-          // CHECK EXISTING STATEMENT
-          // ============================================================
-
-          const statementsRes = await executeSql(
-            `SELECT * FROM credit_card_statements`,
-            []
-          );
-
-          let existingStatement = null;
-          for (
-            let si = 0;
-            si < statementsRes.rows.length;
-            si++
-          ) {
-            const stmt = statementsRes.rows.item(si);
-            if (
-              Number(stmt.card_id) === Number(card.id) &&
-              String(stmt.statement_date || '').slice(0, 10) ===
-              statementDateStr
-            ) {
-              existingStatement = stmt;
-              break;
-            }
-          }
-
-          if (existingStatement) {
-            continue;
-          }
-
-          // ============================================================
-          // GET TRANSACTIONS
-          // ============================================================
-
-          const txRes = await executeSql(
-            `SELECT type, amount, date
-             FROM transactions
-             WHERE source_id = ?`,
-            [card.source_id]
-          );
-
-          let openingBalance = 0;
-          let purchases = 0;
-          let payments = 0;
-
-          for (let j = 0; j < txRes.rows.length; j++) {
-            const tx = txRes.rows.item(j);
-            const txDate = tx.date
-              ? String(tx.date).slice(0, 10)
-              : null;
-            if (!txDate) continue;
-
-            const amount = Number(tx.amount || 0);
-
-            /*
-             * Everything before this billing cycle contributes
-             * to the opening balance.
-             */
-            if (txDate < startDateStr) {
-              if (tx.type === 'expense') {
-                openingBalance += amount;
-              } else if (tx.type === 'income') {
-                openingBalance -= amount;
-              }
-            }
-
-            /*
-             * ONLY transactions between:
-             *
-             * startDate <= transactionDate <= endDate
-             *
-             * are included in this statement.
-             *
-             * Since endDate is statementDate - 1,
-             * transactions on the statement date or later
-             * are NOT included.
-             */
-            else if (
-              txDate >= startDateStr &&
-              txDate <= endDateStr
-            ) {
-              if (tx.type === 'expense') {
-                purchases += amount;
-              } else if (tx.type === 'income') {
-                payments += amount;
-              }
-            }
-          }
-
-          const closingBalance = openingBalance + purchases - payments;
-
-          // ============================================================
-          // ZERO BALANCE
-          // ============================================================
-
-          if (closingBalance <= 0) {
-            continue;
-          }
-
-          // ============================================================
-          // MINIMUM DUE
-          // ============================================================
-
-          const minimumDue = closingBalance * (Number(card.minimum_due_percent || 0) / 100);
-
-          // ============================================================
-          // DUE DATE
-          // ============================================================
-
-          const dueDate = new Date(statementDate);
-
-          if (card.due_after_days != null) {
-            dueDate.setDate(
-              dueDate.getDate() +
-              Number(card.due_after_days || 0)
-            );
-          }
-
-          const dueDateStr = formatDate(dueDate);
-
-          // ============================================================
-          // GET CREDIT CARD BILL TEMPLATE
-          // ============================================================
-
-          if (!card.payment_bill_id) {
-            throw new Error(
-              `Credit card ${card.id} (${card.name}) ` +
-              `does not have payment_bill_id`
-            );
-          }
-
-          const template = await getBillById(card.payment_bill_id);
-
-          if (!template) {
-            throw new Error(
-              `Credit card ${card.id} (${card.name}) ` +
-              `payment bill template ${card.payment_bill_id} not found`
-            );
-          }
-
-          // ============================================================
-          // FIND EXISTING GENERATED BILL
-          // ============================================================
-
-          const billsRes = await executeSql(
-            `SELECT * FROM bills`,
-            []
-          );
-
-          let existingBill = null;
-
-          for (
-            let bi = 0;
-            bi < billsRes.rows.length;
-            bi++
-          ) {
-            const bill = billsRes.rows.item(bi);
-
-            /*
-             * IMPORTANT:
-             *
-             * Only a bill generated for THIS template,
-             * THIS due date, and NOT deleted counts.
-             */
-            if (
-              Number(bill.parent_bill_id) ===
-              Number(template.id) &&
-              String(bill.due_date || '').slice(0, 10) ===
-              dueDateStr &&
-              !bill.deleted_at
-            ) {
-              existingBill = bill;
-              break;
-            }
-          }
-
-          let billId = null;
-
-          if (existingBill) {
-            /*
-             * Normally this should not happen if the statement
-             * does not exist, but it protects against a partial
-             * previous run.
-             */
-            billId = existingBill.id;
-            await executeSql(
-              `UPDATE bills
-               SET amount = ?,
-                   status = ?,
-                   notes = ?,
-                   updated_at = ?
-               WHERE id = ?`,
-              [
-                closingBalance,
-                BILL_STATUS.PENDING,
-                `Statement ${statementDateStr}\n\n${template.notes || ''}`,
-                nowIso(),
-                billId,
-              ]
-            );
-          } else {
-            // ==========================================================
-            // CREATE GENERATED BILL
-            // ==========================================================
-
-            billId = await _insertBill({
-              name: template.name,
-
-              /*
-               * IMPORTANT:
-               *
-               * Bill amount is EXACTLY statement amount.
-               */
-              amount: closingBalance,
-              due_date: dueDateStr,
-              status: BILL_STATUS.PENDING,
-              is_recurring: 0,
-              recurrence_type: null,
-              recurrence_interval: 1,
-              recurrence_end_date: null,
-              category_id: template.category_id,
-              source_id: template.source_id,
-              reminder_days_before: template.reminder_days_before,
-              auto_pay: template.auto_pay,
-              notes: `Statement ${statementDateStr}\n\n` + `${template.notes || ''}`,
-              attachment_url: template.attachment_url,
-              parent_bill_id: template.id,
-            });
-          }
-
-          // ============================================================
-          // VERIFY BILL
-          // ============================================================
-
-          const createdBill = await getBillById(billId);
-          if (!createdBill) {
-            throw new Error(
-              `Generated credit card bill ${billId} ` +
-              `could not be found`
-            );
-          }
-
-          if (
-            Math.abs(
-              Number(createdBill.amount || 0) -
-              Number(closingBalance || 0)
-            ) > 0.01
-          ) {
-            throw new Error(
-              `Credit card bill amount mismatch. ` +
-              `Expected ${closingBalance}, ` +
-              `received ${createdBill.amount}`
-            );
-          }
-
-          // ============================================================
-          // CREATE STATEMENT
-          // ============================================================
-
-          await executeSql(
-            `INSERT INTO credit_card_statements (
-              card_id,
-              bill_id,
-              statement_start,
-              statement_end,
-              statement_date,
-              due_date,
-              opening_balance,
-              purchases,
-              refunds,
-              fees,
-              interest,
-              payments,
-              closing_balance,
-              minimum_due,
-              is_generated,
-              generated_at,
-              status,
-              created_at
-            )
-            VALUES (
-              ?,?,?,?,?,?,
-              ?,?,?,?,?,?,
-              ?,?,
-              ?,?,
-              ?,
-              datetime('now')
-            )`,
-            [
-              card.id,
-              billId,
-              startDateStr,
-              endDateStr,
-              statementDateStr,
-              dueDateStr,
-              openingBalance,
-              purchases,
-              0,
-              0,
-              0,
-              payments,
-              closingBalance,
-              minimumDue,
-              1,
-              nowIso(),
-              'generated',
-            ]
-          );
-        }
-      } catch (cardError) {
-        console.error(
-          `[CC Scheduler] Card ${card.id} (${card.name}) failed:`,
-          cardError
-        );
-
-        /*
-         * Do NOT stop other cards because one card failed.
-         */
-      }
-    }
-  } catch (error) {
-    console.error(
-      '[CC Scheduler] Fatal error:',
-      error
-    );
-
-    throw error;
-  }
-}
-
 export async function processReminders() {
   await syncBillStatuses();
   const today = todayStr();
@@ -2192,7 +3590,8 @@ export async function processReminders() {
   const due = [];
 
   for (const bill of rows) {
-    if (bill.status === BILL_STATUS.PAID || bill.status === BILL_STATUS.SKIPPED) continue;
+    if (bill.status === BILL_STATUS.PAID || bill.status === BILL_STATUS.SKIPPED)
+      continue;
     if (!bill.due_date) continue;
     const days = daysBetween(today, bill.due_date);
     const remindBefore = bill.reminder_days_before ?? 2;
@@ -2202,7 +3601,7 @@ export async function processReminders() {
     const remindedAt = nowIso();
     await executeSql(
       `UPDATE bills SET last_reminded_at=?, updated_at=? WHERE id=?`,
-      [remindedAt, remindedAt, bill.id]
+      [remindedAt, remindedAt, bill.id],
     );
     due.push({ bill, daysUntilDue: days });
   }
@@ -2217,14 +3616,28 @@ export async function runBillMaintenance() {
 }
 
 export default {
-  createBill, getBills, getBillById,
-  getBillSeries, getBillsForCurrentMonth, backfillBillOccurrences,
-  getBillsSummary, getBillInsights,
-  markBillPaid, linkAdditionalTransaction,
-  addTransactionToBill, removeTransactionFromBill,
-  getBillLinkedTransactions, getBillsForTransaction,
+  createBill,
+  getBills,
+  getBillById,
+  getBillSeries,
+  getBillsForCurrentMonth,
+  backfillBillOccurrences,
+  getBillsSummary,
+  getBillInsights,
+  markBillPaid,
+  linkAdditionalTransaction,
+  addTransactionToBill,
+  removeTransactionFromBill,
+  getBillLinkedTransactions,
+  getBillsForTransaction,
   getTransactionsForBillLink,
-  skipBill, unskipBill, updateBill, deleteBill,
-  runRecurringScheduler, processReminders, runBillMaintenance,
-  syncBillStatuses, createBillLinkedTransactionsTable,
+  skipBill,
+  unskipBill,
+  updateBill,
+  deleteBill,
+  runRecurringScheduler,
+  processReminders,
+  runBillMaintenance,
+  syncBillStatuses,
+  createBillLinkedTransactionsTable,
 };

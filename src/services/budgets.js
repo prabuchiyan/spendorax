@@ -26,8 +26,8 @@ export async function getBudgetRemaining(budgetId) {
   const b = res.rows.item(0);
   const month = b.month || new Date().toISOString().slice(0, 7);
 
-  // sum expenses for the budget's category in that month
-  const all = await getTransactions(1000000);
+  // onlyCounted = true — excluded transactions don't count against budget
+  const all = await getTransactions(1000000, 'No', null, null, null, new Date(), true);
   const spent = all.filter(t => {
     if (t.type !== 'expense') return false;
     if (!t.date || !t.date.startsWith(month)) return false;

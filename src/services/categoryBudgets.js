@@ -47,7 +47,8 @@ export async function deleteCategoryBudget(id) {
 export async function getCategoryBudgetSummary(month, year) {
     const budgets = await getCategoryBudgets(month, year);
     const categories = await getCategories(true);
-    const transactions = await getTransactions(1000000);
+    // onlyCounted = true — excluded transactions don't count against category budgets
+    const transactions = await getTransactions(1000000, 'No', null, null, null, new Date(), true);
 
     // Calculate spent for each category
     const spentByCategory = {};
