@@ -1111,8 +1111,8 @@ export default function HomeScreen({ navigation }) {
                           >
                             {balanceVisible
                               ? `₹${dailyAllowance.toLocaleString("en-IN", {
-                                  maximumFractionDigits: 0,
-                                })} / day`
+                                maximumFractionDigits: 0,
+                              })} / day`
                               : "•••••• / day"}
                           </Text>
                         </View>
@@ -1271,7 +1271,7 @@ export default function HomeScreen({ navigation }) {
           )}
         </Card>
 
-        {(categoryBudgets.length > 0 || otherCategorySpending.length > 0) && (
+        {categoryBudgets.length > 0 && (
           <Card>
             <Text
               style={{
@@ -1379,8 +1379,8 @@ export default function HomeScreen({ navigation }) {
                         >
                           {balanceVisible
                             ? `₹${spent.toLocaleString(
-                                "en-IN",
-                              )} of ₹${budgetAmount.toLocaleString("en-IN")}`
+                              "en-IN",
+                            )} of ₹${budgetAmount.toLocaleString("en-IN")}`
                             : "•••••• of ••••••"}
                         </Text>
                         <View
@@ -1440,8 +1440,8 @@ export default function HomeScreen({ navigation }) {
                             ? remaining >= 0
                               ? `₹${remaining.toLocaleString("en-IN")} left`
                               : `₹${Math.abs(remaining).toLocaleString(
-                                  "en-IN",
-                                )} over`
+                                "en-IN",
+                              )} over`
                             : "••••••"}
                         </Text>
                       </View>
@@ -1745,8 +1745,8 @@ export default function HomeScreen({ navigation }) {
                                   >
                                     {balanceVisible
                                       ? `₹${amount.toLocaleString(
-                                          "en-IN",
-                                        )} spent`
+                                        "en-IN",
+                                      )} spent`
                                       : "•••••• spent"}
                                   </Text>
                                   {/* CHILD PROGRESS */}
@@ -1834,6 +1834,29 @@ export default function HomeScreen({ navigation }) {
             >
               Latest transactions
             </Text>
+
+            {recentTx.length > 2 && (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate("Transactions")}
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderRadius: 10,
+                  backgroundColor: "#EAF5EF",
+                }}
+              >
+                <Text
+                  style={{
+                    color: "#3F8F6B",
+                    fontSize: 11,
+                    fontWeight: "800",
+                  }}
+                >
+                  See all ›
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
           {recentTx.length ? (
             recentTx.slice(0, 3).map((r, index) => {
@@ -1853,12 +1876,6 @@ export default function HomeScreen({ navigation }) {
                   : transactionType === "transfer"
                     ? "#718096"
                     : "#E35D6A";
-              const amountPrefix =
-                transactionType === "income"
-                  ? "+"
-                  : transactionType === "expense"
-                    ? "-"
-                    : "";
               const accentColor =
                 transactionType === "income"
                   ? "#20A56A"
@@ -2081,9 +2098,9 @@ export default function HomeScreen({ navigation }) {
                           }}
                         >
                           {balanceVisible
-                            ? `${amountPrefix}₹${Number(r.amount || 0).toFixed(
-                                2,
-                              )}`
+                            ? `₹${Number(r.amount || 0).toFixed(
+                              2,
+                            )}`
                             : "••••••"}
                         </Text>
 
@@ -2192,29 +2209,50 @@ export default function HomeScreen({ navigation }) {
               No recent transactions
             </Text>
           )}
-          {recentTx.length > 2 && (
-            <TouchableOpacity
-              onPress={() => navigation.navigate("Transactions")}
-              style={{ alignItems: "center", marginTop: 8 }}
-            >
-              <Text style={{ color: "#3F8F6B", fontWeight: "600" }}>
-                See all ↓
-              </Text>
-            </TouchableOpacity>
-          )}
         </Card>
 
         <Card>
-          <Text
+          <View
             style={{
-              fontWeight: "800",
-              fontSize: 16,
-              color: "#2F7355",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
               marginBottom: 10,
             }}
           >
-            Spend Areas
-          </Text>
+            <Text
+              style={{
+                fontWeight: "800",
+                fontSize: 16,
+                color: "#2F7355",
+              }}
+            >
+              Spend Areas
+            </Text>
+
+            {topCategories.length > 2 && (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate("SpendAreasDashboard")}
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderRadius: 10,
+                  backgroundColor: "#EAF5EF",
+                }}
+              >
+                <Text
+                  style={{
+                    color: "#3F8F6B",
+                    fontSize: 11,
+                    fontWeight: "800",
+                  }}
+                >
+                  See all ›
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
           {topCategories.length ? (
             <TouchableOpacity
               onPress={() => navigation.navigate("SpendAreasDashboard")}
@@ -2381,16 +2419,6 @@ export default function HomeScreen({ navigation }) {
               </TouchableOpacity>
             );
           })}
-          {topCategories.length > 2 && (
-            <TouchableOpacity
-              onPress={() => navigation.navigate("SpendAreasDashboard")}
-              style={{ alignItems: "center", marginTop: 8 }}
-            >
-              <Text style={{ color: "#3F8F6B", fontWeight: "600" }}>
-                See all ↓
-              </Text>
-            </TouchableOpacity>
-          )}
         </Card>
 
         <Card>
@@ -2715,8 +2743,8 @@ export default function HomeScreen({ navigation }) {
                     .includes("overdue")
                     ? "#E46A6A"
                     : String(display?.label || "")
-                          .toLowerCase()
-                          .includes("paid")
+                      .toLowerCase()
+                      .includes("paid")
                       ? "#3F8F6B"
                       : "#FFB020");
                 return (
@@ -2806,12 +2834,12 @@ export default function HomeScreen({ navigation }) {
                             Due{" "}
                             {b.due_date
                               ? new Date(b.due_date).toLocaleDateString(
-                                  undefined,
-                                  {
-                                    day: "2-digit",
-                                    month: "short",
-                                  },
-                                )
+                                undefined,
+                                {
+                                  day: "2-digit",
+                                  month: "short",
+                                },
+                              )
                               : "—"}
                           </Text>
                         </View>
@@ -2895,7 +2923,7 @@ export default function HomeScreen({ navigation }) {
                 }}
               >
                 <MaterialCommunityIcons
-                  name="receipt-text-outline"
+                  name="note-text-outline"
                   size={22}
                   color="#3F8F6B"
                 />

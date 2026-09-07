@@ -172,77 +172,207 @@ export default function CategoriesScreen({ route, navigation }) {
   }, [editName, userPickedIconEdit]);
 
   return (
-    <View style={{ flex: 1 }}>
-      <View style={{ padding: Spacing.xs, paddingBottom: 0 }}>
+    <View style={styles.container}>
+      {/* ───────────── Header / Summary ───────────── */}
+      <View style={styles.headerSection}>
+        <View style={styles.titleRow}>
+          <View>
+            <Text style={styles.pageTitle}>Categories</Text>
+            <Text style={styles.pageSubtitle}>
+              Organize your income & expenses
+            </Text>
+          </View>
+
+          <View style={styles.totalBadge}>
+            <Text style={styles.totalBadgeNumber}>
+              {items.length}
+            </Text>
+            <Text style={styles.totalBadgeLabel}>
+              TOTAL
+            </Text>
+          </View>
+        </View>
+
+        {/* Summary stats */}
+        <View style={styles.statsRow}>
+          <View style={[styles.statCard, styles.expenseStat]}>
+            <View style={styles.statIconExpense}>
+              <MaterialCommunityIcons
+                name="arrow-down"
+                size={16}
+                color="#E46A6A"
+              />
+            </View>
+
+            <View>
+              <Text style={styles.statValue}>
+                {items.filter(i => i.type === 'expense').length}
+              </Text>
+              <Text style={styles.statLabel}>
+                Expenses
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.statCard, styles.incomeStat]}>
+            <View style={styles.statIconIncome}>
+              <MaterialCommunityIcons
+                name="arrow-up"
+                size={16}
+                color="#36B37E"
+              />
+            </View>
+
+            <View>
+              <Text style={styles.statValue}>
+                {items.filter(i => i.type === 'income').length}
+              </Text>
+              <Text style={styles.statLabel}>
+                Income
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* ───────────── Search ───────────── */}
+      <View style={styles.searchContainer}>
         <Searchbar
-          placeholder="Search Categories..."
+          placeholder="Search categories"
           onChangeText={setSearchQuery}
           value={searchQuery}
-          style={{ elevation: 0, backgroundColor: '#fff', borderWidth: 1, borderColor: '#eee' }}
-          inputStyle={{ fontSize: 14 }}
+          style={styles.searchBar}
+          inputStyle={styles.searchInput}
+          iconColor="#7A8794"
+          placeholderTextColor="#9AA5B1"
         />
       </View>
 
+      {/* ───────────── Category List ───────────── */}
       <FlatList
         data={filteredItems}
         keyExtractor={(i) => String(i.id)}
-        contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.listContent,
+          filteredItems.length === 0 && styles.emptyListContent
+        ]}
+        ListHeaderComponent={
+          filteredItems.length > 0 ? (
+            <View style={styles.listHeader}>
+              <Text style={styles.listTitle}>
+                All Categories
+              </Text>
+
+              <Text style={styles.listCount}>
+                {filteredItems.length}
+              </Text>
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
-          <View style={{ alignItems: 'center', marginTop: 60 }}>
-            <MaterialCommunityIcons name="clipboard-text-outline" size={48} color="#ccc" />
-            <Text style={{ color: Colors.muted, marginTop: 12 }}>No categories found</Text>
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconContainer}>
+              <MaterialCommunityIcons
+                name="tag-multiple-outline"
+                size={38}
+                color="#9AA5B1"
+              />
+            </View>
+
+            <Text style={styles.emptyTitle}>
+              No categories found
+            </Text>
+
+            <Text style={styles.emptySubtitle}>
+              {searchQuery
+                ? 'Try searching with a different name'
+                : 'Create your first category to get started'}
+            </Text>
           </View>
         }
         initialNumToRender={15}
         windowSize={10}
         renderItem={({ item }) => (
-          <Card style={{ marginBottom: Spacing.s }}>
+          <Card style={styles.categoryCard}>
             {editingId === item.id ? (
               <View>
-                <View style={{ borderRadius: 10, overflow: 'hidden', marginBottom: 10 }}>
-                  <View
-                    style={{
-                      backgroundColor: editType === 'expense' ? '#FFF6F6' : '#F6FFFA',
-                      padding: 10,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between'
-                    }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <View
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 18,
-                          backgroundColor: (editColor || '#4B7CF3') + '20',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginRight: 10
-                        }}
-                      >
-                        <MaterialCommunityIcons name={editIcon || 'tag'} size={18} color={editColor || '#4B7CF3'} />
-                      </View>
-                      <Text
-                        style={{
-                          color: editType === 'expense' ? '#E46A6A' : '#36B37E',
-                          fontWeight: '700'
-                        }}
-                      >
-                        {editType.toUpperCase()}
-                      </Text>
+                {/* Edit Preview */}
+                <View
+                  style={[
+                    styles.editPreview,
+                    {
+                      backgroundColor:
+                        editType === 'expense'
+                          ? '#FFF7F7'
+                          : '#F3FCF8'
+                    }
+                  ]}
+                >
+                  <View style={styles.editPreviewLeft}>
+                    <View
+                      style={[
+                        styles.editPreviewIcon,
+                        {
+                          backgroundColor:
+                            (editColor || '#4B7CF3') + '18'
+                        }
+                      ]}
+                    >
+                      <MaterialCommunityIcons
+                        name={editIcon || 'tag'}
+                        size={21}
+                        color={editColor || '#4B7CF3'}
+                      />
                     </View>
 
+                    <View>
+                      <Text style={styles.editPreviewCaption}>
+                        EDITING CATEGORY
+                      </Text>
+
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.editPreviewName,
+                          {
+                            color:
+                              editType === 'expense'
+                                ? '#E46A6A'
+                                : '#36B37E'
+                          }
+                        ]}
+                      >
+                        {editName || 'Category'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.typeBadge,
+                      {
+                        backgroundColor:
+                          editType === 'expense'
+                            ? '#FEECEC'
+                            : '#E6F8EF'
+                      }
+                    ]}
+                  >
                     <Text
-                      numberOfLines={1}
-                      style={{
-                        fontSize: 16,
-                        fontWeight: '800',
-                        color: editType === 'expense' ? '#E46A6A' : '#36B37E',
-                        maxWidth: '55%'
-                      }}
+                      style={[
+                        styles.typeBadgeText,
+                        {
+                          color:
+                            editType === 'expense'
+                              ? '#D95D5D'
+                              : '#2F9B6D'
+                        }
+                      ]}
                     >
-                      {editName || 'Category'}
+                      {editType === 'expense'
+                        ? 'EXPENSE'
+                        : 'INCOME'}
                     </Text>
                   </View>
                 </View>
@@ -251,77 +381,116 @@ export default function CategoriesScreen({ route, navigation }) {
                   value={editName}
                   onChangeText={handleEditNameChange}
                   mode="outlined"
-                  style={{ marginBottom: 8, backgroundColor: '#fff' }}
+                  style={styles.editInput}
                   label="Category Name"
+                  outlineColor="#E2E7EC"
+                  activeOutlineColor="#4B7CF3"
                 />
 
-                <View style={{ flexDirection: 'row', marginBottom: 12 }}>
+                <View style={styles.editTypeRow}>
                   <Chip
-                    mode={editType === 'expense' ? 'flat' : 'outlined'}
+                    mode={
+                      editType === 'expense'
+                        ? 'flat'
+                        : 'outlined'
+                    }
                     selected={editType === 'expense'}
                     onPress={() => setEditType('expense')}
-                    style={{
-                      marginRight: 8,
-                      backgroundColor: editType === 'expense' ? '#FEE2E2' : 'transparent'
-                    }}
-                    selectedColor="#E46A6A"
+                    style={[
+                      styles.typeChip,
+                      editType === 'expense' &&
+                      styles.expenseChipActive
+                    ]}
+                    selectedColor="#D95D5D"
                   >
                     Expense
                   </Chip>
 
                   <Chip
-                    mode={editType === 'income' ? 'flat' : 'outlined'}
+                    mode={
+                      editType === 'income'
+                        ? 'flat'
+                        : 'outlined'
+                    }
                     selected={editType === 'income'}
                     onPress={() => setEditType('income')}
-                    style={{
-                      backgroundColor: editType === 'income' ? '#D1FAE5' : 'transparent'
-                    }}
-                    selectedColor="#36B37E"
+                    style={[
+                      styles.typeChip,
+                      editType === 'income' &&
+                      styles.incomeChipActive
+                    ]}
+                    selectedColor="#2F9B6D"
                   >
                     Income
                   </Chip>
                 </View>
 
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <View style={styles.customizationRow}>
                   <TouchableOpacity
-                    onPress={() => setShowIconPickerForEdit(true)}
+                    activeOpacity={0.75}
+                    onPress={() =>
+                      setShowIconPickerForEdit(true)
+                    }
                     style={[
                       styles.iconSelector,
                       {
-                        backgroundColor: (editColor || '#4B7CF3') + '15',
-                        marginRight: 10
+                        backgroundColor:
+                          (editColor || '#4B7CF3') + '15',
+                        borderColor:
+                          (editColor || '#4B7CF3') + '30'
                       }
                     ]}
                   >
-                    <MaterialCommunityIcons name={editIcon} size={24} color={editColor} />
+                    <MaterialCommunityIcons
+                      name={editIcon || 'tag'}
+                      size={24}
+                      color={editColor || '#4B7CF3'}
+                    />
                   </TouchableOpacity>
 
-                  <IconButton label="Colors" icon="droplet" onPress={() => setShowColorPickerForEdit(true)} />
-                  <IconButton label="Icon" icon="image" onPress={() => setShowIconPickerForEdit(true)} />
+                  <IconButton
+                    label="Colors"
+                    icon="droplet"
+                    onPress={() =>
+                      setShowColorPickerForEdit(true)
+                    }
+                  />
+
+                  <IconButton
+                    label="Icon"
+                    icon="image"
+                    onPress={() =>
+                      setShowIconPickerForEdit(true)
+                    }
+                  />
                 </View>
 
-                <View style={{ flexDirection: 'row' }}>
+                <View style={styles.editButtonsRow}>
                   <PaperButton
                     mode="contained"
                     onPress={saveEdit}
-                    style={{
-                      flex: 1,
-                      borderRadius: 10,
-                      backgroundColor: editType === 'expense' ? '#E46A6A' : '#36B37E'
-                    }}
-                    contentStyle={{ paddingVertical: 4 }}
-                    labelStyle={{ color: '#fff', fontWeight: 'bold' }}
+                    style={[
+                      styles.saveButton,
+                      {
+                        backgroundColor:
+                          editType === 'expense'
+                            ? '#E46A6A'
+                            : '#36B37E'
+                      }
+                    ]}
+                    contentStyle={styles.buttonContent}
+                    labelStyle={styles.saveButtonLabel}
                   >
                     Save
                   </PaperButton>
 
-                  <View style={{ width: 8 }} />
+                  <View style={{ width: 10 }} />
 
                   <PaperButton
                     mode="outlined"
                     onPress={cancelEdit}
-                    style={{ flex: 1, borderRadius: 10 }}
-                    contentStyle={{ paddingVertical: 4 }}
+                    style={styles.cancelButton}
+                    contentStyle={styles.buttonContent}
                   >
                     Cancel
                   </PaperButton>
@@ -329,72 +498,139 @@ export default function CategoriesScreen({ route, navigation }) {
               </View>
             ) : (
               <TouchableOpacity
+                activeOpacity={0.75}
                 onPress={() => {
                   const parent = navigation.getParent();
+
                   parent?.navigate('CategoriesDetails', {
                     categoryId: item.id,
                     categoryName: item.name
                   });
                 }}
               >
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                    <Avatar.Icon
-                      size={40}
-                      icon={item.icon || 'tag'}
-                      style={{
-                        backgroundColor: (item.color || '#eee') + '15',
-                        marginRight: 12
-                      }}
-                      color={item.color || '#999'}
-                    />
+                <View style={styles.categoryRow}>
+                  {/* Left */}
+                  <View style={styles.categoryLeft}>
+                    <View
+                      style={[
+                        styles.categoryIconWrapper,
+                        {
+                          backgroundColor:
+                            (item.color || '#4B7CF3') + '15'
+                        }
+                      ]}
+                    >
+                      <MaterialCommunityIcons
+                        name={item.icon || 'tag'}
+                        size={22}
+                        color={item.color || '#4B7CF3'}
+                      />
+                    </View>
 
-                    <View style={{ flex: 1 }}>
+                    <View style={styles.categoryInfo}>
                       <Text
                         numberOfLines={1}
-                        style={{ fontWeight: '700', fontSize: 15, color: Colors.text }}
+                        style={styles.categoryName}
                       >
                         {item.name}
                       </Text>
 
-                      <Text style={{ color: Colors.muted, fontSize: 12, marginTop: 2 }}>
-                        {item.type === 'income' ? 'Income' : 'Expense'}
-                      </Text>
+                      <View style={styles.categoryMeta}>
+                        <View
+                          style={[
+                            styles.smallTypeDot,
+                            {
+                              backgroundColor:
+                                item.type === 'income'
+                                  ? '#36B37E'
+                                  : '#E46A6A'
+                            }
+                          ]}
+                        />
+
+                        <Text style={styles.categoryType}>
+                          {item.type === 'income'
+                            ? 'Income'
+                            : 'Expense'}
+                        </Text>
+                      </View>
                     </View>
                   </View>
 
-                  <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
-                    <Text
-                      style={{
-                        fontWeight: '800',
-                        fontSize: 16,
-                        color: item.type === 'expense' ? '#E46A6A' : '#36B37E'
-                      }}
+                  {/* Right */}
+                  <View style={styles.categoryRight}>
+                    <View
+                      style={[
+                        styles.typeBadge,
+                        {
+                          backgroundColor:
+                            item.type === 'income'
+                              ? '#E8F8F0'
+                              : '#FDEDED'
+                        }
+                      ]}
                     >
-                      {item.type === 'income' ? 'Income' : 'Expense'}
-                    </Text>
-
-                    <Text style={{ color: Colors.muted, fontSize: 10, marginTop: 2 }}>
-                      Category
-                    </Text>
-
-                    <View style={{ flexDirection: 'row', marginTop: 8 }}>
-                      <TouchableOpacity
-                        onPress={() => { setEditCategory(item); setShowModal(true); }}
-                        style={{ marginRight: 10 }}
+                      <Text
+                        style={[
+                          styles.typeBadgeText,
+                          {
+                            color:
+                              item.type === 'income'
+                                ? '#2F9B6D'
+                                : '#D95D5D'
+                          }
+                        ]}
                       >
-                        <Feather name="edit-2" size={16} color={Colors.primary} />
+                        {item.type === 'income'
+                          ? 'INCOME'
+                          : 'EXPENSE'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.actionRow}>
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          setEditCategory(item);
+                          setShowModal(true);
+                        }}
+                        style={styles.actionButton}
+                      >
+                        <Feather
+                          name="edit-2"
+                          size={15}
+                          color={Colors.primary}
+                        />
                       </TouchableOpacity>
 
                       <TouchableOpacity
+                        activeOpacity={0.7}
                         onPress={() => {
                           setConfirmTargetId(item.id);
-                          setConfirmMessage(`Delete "${item.name}"?`);
+                          setConfirmMessage(
+                            `Delete "${item.name}"?`
+                          );
                           setConfirmVisible(true);
                         }}
+                        style={[
+                          styles.actionButton,
+                          styles.deleteActionButton
+                        ]}
                       >
-                        <Feather name="trash-2" size={16} color="#E46A6A" />
+                        <Feather
+                          name="trash-2"
+                          size={15}
+                          color="#E46A6A"
+                        />
                       </TouchableOpacity>
+
+                      <View style={styles.arrowContainer}>
+                        <Feather
+                          name="chevron-right"
+                          size={17}
+                          color="#B5BEC8"
+                        />
+                      </View>
                     </View>
                   </View>
                 </View>
@@ -404,46 +640,70 @@ export default function CategoriesScreen({ route, navigation }) {
         )}
       />
 
+      {/* ───────────── Delete Confirmation ───────────── */}
       <ConfirmDialog
         visible={confirmVisible}
         title="Delete Category"
         message={confirmMessage}
-        onCancel={() => { setConfirmVisible(false); setConfirmTargetId(null); }}
+        onCancel={() => {
+          setConfirmVisible(false);
+          setConfirmTargetId(null);
+        }}
         onConfirm={async () => {
           if (confirmTargetId) {
             await remove(confirmTargetId);
           }
+
           setConfirmVisible(false);
           setConfirmTargetId(null);
         }}
       />
 
+      {/* ───────────── Add Icon Picker ───────────── */}
       <IconPicker
         visible={showIconPickerForAdd}
-        onClose={() => setShowIconPickerForAdd(false)}
-        onSelect={(name) => { setSelectedIcon(name); setUserPickedIconAdd(true); }}
+        onClose={() =>
+          setShowIconPickerForAdd(false)
+        }
+        onSelect={(name) => {
+          setSelectedIcon(name);
+          setUserPickedIconAdd(true);
+        }}
       />
 
+      {/* ───────────── Edit Icon Picker ───────────── */}
       <IconPicker
         visible={showIconPickerForEdit}
-        onClose={() => setShowIconPickerForEdit(false)}
-        onSelect={(name) => { setEditIcon(name); setUserPickedIconEdit(true); }}
+        onClose={() =>
+          setShowIconPickerForEdit(false)
+        }
+        onSelect={(name) => {
+          setEditIcon(name);
+          setUserPickedIconEdit(true);
+        }}
       />
 
+      {/* ───────────── Add Color Picker ───────────── */}
       <ColorPickerModal
         visible={showColorPickerForAdd}
-        onClose={() => setShowColorPickerForAdd(false)}
+        onClose={() =>
+          setShowColorPickerForAdd(false)
+        }
         onSelect={setSelectedColor}
         currentColor={selectedColor}
       />
 
+      {/* ───────────── Edit Color Picker ───────────── */}
       <ColorPickerModal
         visible={showColorPickerForEdit}
-        onClose={() => setShowColorPickerForEdit(false)}
+        onClose={() =>
+          setShowColorPickerForEdit(false)
+        }
         onSelect={setEditColor}
         currentColor={editColor}
       />
 
+      {/* ───────────── Create / Edit Modal ───────────── */}
       <CategoryCreateModal
         visible={showModal}
         onClose={() => setShowModal(false)}
@@ -454,20 +714,432 @@ export default function CategoriesScreen({ route, navigation }) {
         }}
       />
 
-      <FAB onPress={() => { setEditCategory(null); setShowModal(true); }} />
+      {/* ───────────── FAB ───────────── */}
+      <FAB
+        onPress={() => {
+          setEditCategory(null);
+          setShowModal(true);
+        }}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F7F9FB',
+  },
+
+  /* Header */
+  headerSection: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 10,
+  },
+
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+
+  pageTitle: {
+    fontSize: 23,
+    fontWeight: '900',
+    color: '#24313D',
+    letterSpacing: -0.4,
+  },
+
+  pageSubtitle: {
+    fontSize: 12,
+    color: '#8A96A3',
+    marginTop: 3,
+  },
+
+  totalBadge: {
+    minWidth: 55,
+    height: 50,
+    borderRadius: 15,
+    backgroundColor: '#EAF5EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+
+  totalBadgeNumber: {
+    fontSize: 19,
+    fontWeight: '900',
+    color: '#3F8F6B',
+    lineHeight: 21,
+  },
+
+  totalBadgeLabel: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#6DA68A',
+    letterSpacing: 0.8,
+    marginTop: 2,
+  },
+
+  /* Stats */
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+
+  statCard: {
+    flex: 1,
+    minHeight: 62,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  expenseStat: {
+    backgroundColor: '#FFF3F3',
+  },
+
+  incomeStat: {
+    backgroundColor: '#EFFAF5',
+  },
+
+  statIconExpense: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor: '#FFE3E3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 9,
+  },
+
+  statIconIncome: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor: '#DDF6EA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 9,
+  },
+
+  statValue: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: '#263440',
+  },
+
+  statLabel: {
+    fontSize: 10,
+    color: '#8B97A3',
+    marginTop: 1,
+    fontWeight: '600',
+  },
+
+  /* Search */
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 6,
+  },
+
+  searchBar: {
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    elevation: 0,
+    borderWidth: 1,
+    borderColor: '#E7EBEF',
+  },
+
+  searchInput: {
+    fontSize: 13,
+    color: '#354250',
+  },
+
+  /* List */
+  listContent: {
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 110,
+  },
+
+  emptyListContent: {
+    flexGrow: 1,
+  },
+
+  listHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+    marginBottom: 9,
+    paddingHorizontal: 2,
+  },
+
+  listTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#42515E',
+  },
+
+  listCount: {
+    marginLeft: 7,
+    minWidth: 22,
+    height: 20,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    backgroundColor: '#E9EDF1',
+    textAlign: 'center',
+    lineHeight: 20,
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#778491',
+  },
+
+  /* Category Card */
+  categoryCard: {
+    marginBottom: 9,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    borderRadius: 17,
+    overflow: 'hidden',
+  },
+
+  categoryRow: {
+    minHeight: 76,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  categoryLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 0,
+  },
+
+  categoryIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+
+  categoryInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  categoryName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#293743',
+  },
+
+  categoryMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+  },
+
+  smallTypeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+
+  categoryType: {
+    fontSize: 11,
+    color: '#8A96A2',
+    fontWeight: '600',
+  },
+
+  categoryRight: {
+    alignItems: 'flex-end',
+    marginLeft: 8,
+  },
+
+  typeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+
+  typeBadgeText: {
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 7,
+  },
+
+  actionButton: {
+    width: 27,
+    height: 27,
+    borderRadius: 9,
+    backgroundColor: '#F0F5FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 5,
+  },
+
+  deleteActionButton: {
+    backgroundColor: '#FFF1F1',
+  },
+
+  arrowContainer: {
+    width: 25,
+    height: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 2,
+  },
+
+  /* Edit */
+  editPreview: {
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  editPreviewLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
+  },
+
+  editPreviewIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+
+  editPreviewCaption: {
+    fontSize: 8,
+    fontWeight: '900',
+    color: '#9AA4AE',
+    letterSpacing: 0.7,
+    marginBottom: 2,
+  },
+
+  editPreviewName: {
+    fontSize: 15,
+    fontWeight: '900',
+    maxWidth: 150,
+  },
+
+  editInput: {
+    marginBottom: 9,
+    backgroundColor: '#fff',
+  },
+
+  editTypeRow: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+
+  typeChip: {
+    marginRight: 7,
+    height: 36,
+  },
+
+  expenseChipActive: {
+    backgroundColor: '#FEE4E4',
+  },
+
+  incomeChipActive: {
+    backgroundColor: '#DDF6EA',
+  },
+
+  customizationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+
   iconSelector: {
     width: 48,
     height: 48,
-    borderRadius: 12,
-    backgroundColor: '#f5f5f5',
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#eee',
+    marginRight: 9,
+  },
+
+  editButtonsRow: {
+    flexDirection: 'row',
+  },
+
+  saveButton: {
+    flex: 1,
+    borderRadius: 11,
+  },
+
+  cancelButton: {
+    flex: 1,
+    borderRadius: 11,
+    borderColor: '#D8DEE4',
+  },
+
+  buttonContent: {
+    paddingVertical: 3,
+  },
+
+  saveButtonLabel: {
+    color: '#fff',
+    fontWeight: '800',
+  },
+
+  /* Empty */
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 30,
+    paddingTop: 65,
+  },
+
+  emptyIconContainer: {
+    width: 76,
+    height: 76,
+    borderRadius: 24,
+    backgroundColor: '#EDF1F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#465461',
+  },
+
+  emptySubtitle: {
+    fontSize: 12,
+    color: '#9AA5AF',
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 18,
   },
 });
