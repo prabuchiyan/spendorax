@@ -1,14 +1,22 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+} from 'react-native';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { Searchbar, Avatar } from 'react-native-paper';
+
 import { getSources, deleteSource } from '../services/sources';
 import { getTransactions } from '../services/transactions';
+
 import Card from '../components/Card';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { Colors, Spacing } from '../components/Theme';
 import SourceCreateModal from '../components/SourceCreateModal';
-import { Searchbar, Avatar } from 'react-native-paper';
 import FAB from '../components/FAB';
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 
@@ -19,6 +27,7 @@ export default function SourcesScreen({ route, navigation }) {
   const [showModal, setShowModal] = useState(false);
   const [editSource, setEditSource] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+
   const { balanceVisible } = useBalanceVisibility();
 
   async function load() {
@@ -28,30 +37,41 @@ export default function SourcesScreen({ route, navigation }) {
     const balanceMap = transactions.reduce((acc, txn) => {
       const amt = Number(txn.amount || 0);
       const sourceId = txn.source_id || txn.sourceId;
+
       if (!sourceId) return acc;
-      if (!acc[sourceId]) acc[sourceId] = 0;
+
+      if (!acc[sourceId]) {
+        acc[sourceId] = 0;
+      }
+
       if (txn.type === 'income' || txn.type === 'credit') {
         acc[sourceId] += amt;
       } else if (txn.type === 'expense' || txn.type === 'debit') {
         acc[sourceId] -= amt;
       }
+
       return acc;
     }, {});
 
     const updated = sources.map(s => {
       const id = s.id;
+
       const balance =
         Number(s.initial_balance || 0) +
         Number(balanceMap[id] || 0);
+
       return {
         ...s,
-        balance
+        balance,
       };
     });
+
     setItems(updated);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -60,12 +80,42 @@ export default function SourcesScreen({ route, navigation }) {
   );
 
   const filteredItems = useMemo(() => {
-    if (!searchQuery) return items;
+    if (!searchQuery) {
+      return items;
+    }
+
     const q = searchQuery.toLowerCase();
+
     return items.filter(item =>
       (item.name || '').toLowerCase().includes(q)
     );
   }, [items, searchQuery]);
+
+  const totalBalance = useMemo(() => {
+    return items.reduce(
+      (sum, item) => sum + Number(item.balance || 0),
+      0
+    );
+  }, [items]);
+
+  const positiveAccounts = useMemo(() => {
+    return items.filter(
+      item => Number(item.balance || 0) >= 0
+    ).length;
+  }, [items]);
+
+  const negativeAccounts = useMemo(() => {
+    return items.filter(
+      item => Number(item.balance || 0) < 0
+    ).length;
+  }, [items]);
+
+  const formatAmount = amount => {
+    return Number(amount || 0).toLocaleString('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
 
   async function remove(id) {
     await deleteSource(id);
@@ -73,118 +123,367 @@ export default function SourcesScreen({ route, navigation }) {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <View style={{ padding: Spacing.xs, paddingBottom: 0 }}>
+    <View style={styles.container}>
+
+      {/* =====================================================
+          HEADER / SUMMARY
+      ====================================================== */}
+      <View style={styles.headerSection}>
+        <View style={styles.titleRow}>
+          <View style={styles.titleContainer}>
+            <Text style={styles.pageTitle}>
+              Accounts
+            </Text>
+
+            <Text style={styles.pageSubtitle}>
+              Manage your money sources
+            </Text>
+          </View>
+
+          <View style={styles.totalBadge}>
+            <Text style={styles.totalBadgeNumber}>
+              {items.length}
+            </Text>
+
+            <Text style={styles.totalBadgeLabel}>
+              ACCOUNTS
+            </Text>
+          </View>
+        </View>
+
+        {/* =====================================================
+            ACCOUNT STATS
+        ====================================================== */}
+        <View style={styles.statsRow}>
+
+          <View style={[styles.statCard, styles.activeStat]}>
+            <View style={styles.statIconBlue}>
+              <MaterialCommunityIcons
+                name="wallet-check-outline"
+                size={17}
+                color="#4B7CF3"
+              />
+            </View>
+
+            <View>
+              <Text style={styles.statValue}>
+                {positiveAccounts}
+              </Text>
+
+              <Text style={styles.statLabel}>
+                Positive
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.statCard, styles.negativeStat]}>
+            <View style={styles.statIconRed}>
+              <MaterialCommunityIcons
+                name="wallet-remove-outline"
+                size={17}
+                color="#E46A6A"
+              />
+            </View>
+
+            <View>
+              <Text style={styles.statValue}>
+                {negativeAccounts}
+              </Text>
+
+              <Text style={styles.statLabel}>
+                Negative
+              </Text>
+            </View>
+          </View>
+
+        </View>
+      </View>
+
+      {/* =====================================================
+          SEARCH
+      ====================================================== */}
+      <View style={styles.searchContainer}>
         <Searchbar
-          placeholder="Search source..."
+          placeholder="Search accounts"
           onChangeText={setSearchQuery}
           value={searchQuery}
-          style={{ elevation: 0, backgroundColor: '#fff', borderWidth: 1, borderColor: '#eee' }}
-          inputStyle={{ fontSize: 14 }}
+          style={styles.searchBar}
+          inputStyle={styles.searchInput}
+          iconColor="#7A8794"
+          placeholderTextColor="#9AA5B1"
         />
       </View>
+
+      {/* =====================================================
+          ACCOUNT LIST
+      ====================================================== */}
       <FlatList
         data={filteredItems}
-        keyExtractor={(i) => String(i.id)}
-        contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 100 }}
+        keyExtractor={item => String(item.id)}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.listContent,
+          filteredItems.length === 0 &&
+            styles.emptyListContent,
+        ]}
+        ListHeaderComponent={
+          filteredItems.length > 0 ? (
+            <View style={styles.listHeader}>
+              <Text style={styles.listTitle}>
+                All Accounts
+              </Text>
+
+              <Text style={styles.listCount}>
+                {filteredItems.length}
+              </Text>
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
-          <View style={{ alignItems: 'center', marginTop: 60 }}>
-            <MaterialCommunityIcons name="clipboard-text-outline" size={48} color="#ccc" />
-            <Text style={{ color: Colors.muted, marginTop: 12 }}>No sources found</Text>
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconContainer}>
+              <MaterialCommunityIcons
+                name="wallet-outline"
+                size={39}
+                color="#9AA5B1"
+              />
+            </View>
+
+            <Text style={styles.emptyTitle}>
+              No accounts found
+            </Text>
+
+            <Text style={styles.emptySubtitle}>
+              {searchQuery
+                ? 'Try searching with a different name'
+                : 'Create your first account to get started'}
+            </Text>
           </View>
         }
         initialNumToRender={15}
         windowSize={10}
-        renderItem={({ item }) => (
+        renderItem={({ item }) => {
 
+          const itemBalance = Number(item.balance || 0);
+          const isNegative = itemBalance < 0;
 
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => {
-              const parent = navigation.getParent();
-              parent?.navigate('SourcesDetails', {
-                sourceId: item.id,
-                sourceName: item.name
-              });
-            }}
-          >
-            <Card style={{ marginBottom: Spacing.s }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                  <Avatar.Icon
-                    size={40}
-                    icon={item.icon || 'cash'}
-                    style={{
-                      backgroundColor: (item.color || Colors.primary) + '15',
-                      marginRight: 12
-                    }}
-                    color={item.color || Colors.primary}
-                  />
+          const itemColor =
+            item.color || '#4B7CF3';
 
-                  <View style={{ flex: 1 }}>
+          return (
+            <Card style={styles.accountCard}>
+
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => {
+                  const parent = navigation.getParent();
+
+                  parent?.navigate('SourcesDetails', {
+                    sourceId: item.id,
+                    sourceName: item.name,
+                  });
+                }}
+              >
+                <View style={styles.accountRow}>
+
+                  {/* =================================================
+                      LEFT
+                  ================================================== */}
+                  <View style={styles.accountLeft}>
+
+                    <View
+                      style={[
+                        styles.accountIconWrapper,
+                        {
+                          backgroundColor:
+                            `${itemColor}15`,
+                        },
+                      ]}
+                    >
+                      <MaterialCommunityIcons
+                        name={item.icon || 'cash'}
+                        size={23}
+                        color={itemColor}
+                      />
+                    </View>
+
+                    <View style={styles.accountInfo}>
+
+                      <Text
+                        numberOfLines={1}
+                        style={styles.accountName}
+                      >
+                        {item.name}
+                      </Text>
+
+                      <View style={styles.accountMeta}>
+
+                        <View
+                          style={[
+                            styles.statusDot,
+                            {
+                              backgroundColor:
+                                isNegative
+                                  ? '#E46A6A'
+                                  : '#36B37E',
+                            },
+                          ]}
+                        />
+
+                        <Text style={styles.accountMetaText}>
+                          {isNegative
+                            ? 'Negative balance'
+                            : 'Available balance'}
+                        </Text>
+
+                      </View>
+
+                    </View>
+                  </View>
+
+                  {/* =================================================
+                      RIGHT
+                  ================================================== */}
+                  <View style={styles.accountRight}>
+
                     <Text
                       numberOfLines={1}
-                      style={{ fontWeight: '700', fontSize: 15, color: Colors.text }}
+                      style={[
+                        styles.accountBalance,
+                        {
+                          color: isNegative
+                            ? '#D95D5D'
+                            : '#2F9B6D',
+                        },
+                      ]}
                     >
-                      {item.name}
+                      {balanceVisible
+                        ? `₹${formatAmount(itemBalance)}`
+                        : '••••••'}
                     </Text>
 
-                    <Text style={{ color: Colors.muted, fontSize: 12, marginTop: 2 }}>
-                      Available balance
-                    </Text>
+                    <View style={styles.balanceCaptionRow}>
+                      <Text style={styles.balanceCaption}>
+                        BALANCE
+                      </Text>
+
+                      <MaterialCommunityIcons
+                        name={
+                          isNegative
+                            ? 'arrow-down'
+                            : 'arrow-up'
+                        }
+                        size={12}
+                        color={
+                          isNegative
+                            ? '#D95D5D'
+                            : '#2F9B6D'
+                        }
+                      />
+                    </View>
+
                   </View>
+
                 </View>
 
-                <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
-                  <Text style={{ fontWeight: '800', fontSize: 16, color: Number(item.balance || 0) < 0 ? '#E46A6A' : '#36B37E' }}>
-                    {balanceVisible
-                      ? `₹${Number(item.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
-                      : '••••••'}
-                  </Text>
+                {/* =================================================
+                    ACTION BAR
+                ================================================== */}
+                <View style={styles.accountBottom}>
 
-                  <Text style={{ color: Colors.muted, fontSize: 10, marginTop: 2 }}>
-                    Balance
-                  </Text>
+                  <View style={styles.initialBalanceInfo}>
+                    <MaterialCommunityIcons
+                      name="bank-outline"
+                      size={14}
+                      color="#9AA5B1"
+                    />
 
-                  <View style={{ flexDirection: 'row', marginTop: 8 }}>
+                    <Text style={styles.initialBalanceText}>
+                      Initial ₹
+                      {formatAmount(
+                        item.initial_balance || 0
+                      )}
+                    </Text>
+                  </View>
+
+                  <View style={styles.actionRow}>
+
                     <TouchableOpacity
+                      activeOpacity={0.7}
                       onPress={() => {
                         setEditSource(item);
                         setShowModal(true);
                       }}
-                      style={{ marginRight: 10 }}
+                      style={styles.actionButton}
                     >
-                      <Feather name="edit-2" size={16} color={Colors.primary} />
+                      <Feather
+                        name="edit-2"
+                        size={15}
+                        color={Colors.primary}
+                      />
                     </TouchableOpacity>
 
                     <TouchableOpacity
+                      activeOpacity={0.7}
                       onPress={() => {
                         setConfirmTargetId(item.id);
                         setConfirmVisible(true);
                       }}
+                      style={[
+                        styles.actionButton,
+                        styles.deleteActionButton,
+                      ]}
                     >
-                      <Feather name="trash-2" size={16} color="#E46A6A" />
+                      <Feather
+                        name="trash-2"
+                        size={15}
+                        color="#E46A6A"
+                      />
                     </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            </Card>
-          </TouchableOpacity>
-        )}
-      />
 
-      <ConfirmDialog
-        visible={confirmVisible}
-        title="Delete Source"
-        message="Are you sure?"
-        onCancel={() => setConfirmVisible(false)}
-        onConfirm={async () => {
-          await remove(confirmTargetId);
-          setConfirmVisible(false);
+                    <View style={styles.arrowContainer}>
+                      <Feather
+                        name="chevron-right"
+                        size={17}
+                        color="#B5BEC8"
+                      />
+                    </View>
+
+                  </View>
+
+                </View>
+
+              </TouchableOpacity>
+
+            </Card>
+          );
         }}
       />
 
-      {/* Create/Edit Modal */}
+      {/* =====================================================
+          DELETE CONFIRMATION
+      ====================================================== */}
+      <ConfirmDialog
+        visible={confirmVisible}
+        title="Delete Account"
+        message="Are you sure?"
+        onCancel={() => {
+          setConfirmVisible(false);
+          setConfirmTargetId(null);
+        }}
+        onConfirm={async () => {
+          if (confirmTargetId) {
+            await remove(confirmTargetId);
+          }
+
+          setConfirmVisible(false);
+          setConfirmTargetId(null);
+        }}
+      />
+
+      {/* =====================================================
+          CREATE / EDIT MODAL
+      ====================================================== */}
       <SourceCreateModal
         visible={showModal}
         onClose={() => setShowModal(false)}
@@ -195,54 +494,394 @@ export default function SourcesScreen({ route, navigation }) {
         }}
       />
 
-      <FAB onPress={() => { setEditSource(null); setShowModal(true); }} />
+      {/* =====================================================
+          FAB
+      ====================================================== */}
+      <FAB
+        onPress={() => {
+          setEditSource(null);
+          setShowModal(true);
+        }}
+      />
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 16,
+
+  /* ==========================================================
+     CONTAINER
+  ========================================================== */
+
+  container: {
+    flex: 1,
+    backgroundColor: '#F7F9FB',
   },
-  row: {
+
+  /* ==========================================================
+     HEADER
+  ========================================================== */
+
+  headerSection: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 10,
+  },
+
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+
+  titleContainer: {
+    flex: 1,
+  },
+
+  pageTitle: {
+    fontSize: 23,
+    fontWeight: '900',
+    color: '#24313D',
+    letterSpacing: -0.4,
+  },
+
+  pageSubtitle: {
+    fontSize: 12,
+    color: '#8A96A3',
+    marginTop: 3,
+  },
+
+  totalBadge: {
+    minWidth: 68,
+    height: 50,
+    borderRadius: 15,
+    backgroundColor: '#EAF5EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+
+  totalBadgeNumber: {
+    fontSize: 19,
+    fontWeight: '900',
+    color: '#3F8F6B',
+    lineHeight: 21,
+  },
+
+  totalBadgeLabel: {
+    fontSize: 7,
+    fontWeight: '800',
+    color: '#6DA68A',
+    letterSpacing: 0.7,
+    marginTop: 2,
+  },
+
+  /* ==========================================================
+     STATS
+  ========================================================== */
+
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+
+  statCard: {
+    flex: 1,
+    minHeight: 60,
+    borderRadius: 16,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
     flexDirection: 'row',
     alignItems: 'center',
   },
-  iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+
+  activeStat: {
+    backgroundColor: '#F0F5FF',
+  },
+
+  negativeStat: {
+    backgroundColor: '#FFF3F3',
+  },
+
+  statIconBlue: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor: '#E0E9FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 9,
+  },
+
+  statIconRed: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor: '#FFE3E3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 9,
+  },
+
+  statValue: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: '#263440',
+  },
+
+  statLabel: {
+    fontSize: 10,
+    color: '#8B97A3',
+    marginTop: 1,
+    fontWeight: '600',
+  },
+
+  /* ==========================================================
+     SEARCH
+  ========================================================== */
+
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 6,
+  },
+
+  searchBar: {
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    elevation: 0,
+    borderWidth: 1,
+    borderColor: '#E7EBEF',
+  },
+
+  searchInput: {
+    fontSize: 13,
+    color: '#354250',
+  },
+
+  /* ==========================================================
+     LIST
+  ========================================================== */
+
+  listContent: {
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 110,
+  },
+
+  emptyListContent: {
+    flexGrow: 1,
+  },
+
+  listHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+    marginBottom: 9,
+    paddingHorizontal: 2,
+  },
+
+  listTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#42515E',
+  },
+
+  listCount: {
+    marginLeft: 7,
+    minWidth: 22,
+    height: 20,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    backgroundColor: '#E9EDF1',
+    textAlign: 'center',
+    lineHeight: 20,
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#778491',
+  },
+
+  /* ==========================================================
+     ACCOUNT CARD
+  ========================================================== */
+
+  accountCard: {
+    marginBottom: 9,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    borderRadius: 17,
+    overflow: 'hidden',
+  },
+
+  accountRow: {
+    minHeight: 79,
+    paddingHorizontal: 13,
+    paddingTop: 12,
+    paddingBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  accountLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 0,
+  },
+
+  accountIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
-  name: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.text,
+
+  accountInfo: {
+    flex: 1,
+    minWidth: 0,
   },
-  amount: {
-    fontSize: 14,
-    color: Colors.text,
-    marginTop: 2,
+
+  accountName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#293743',
+  },
+
+  accountMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+  },
+
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+
+  accountMetaText: {
+    fontSize: 11,
+    color: '#8A96A2',
     fontWeight: '600',
   },
-  actionBtn: {
-    padding: 8,
-    marginLeft: 6,
+
+  accountRight: {
+    alignItems: 'flex-end',
+    marginLeft: 8,
+    maxWidth: '45%',
   },
-  fab: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#4B7CF3',
+
+  accountBalance: {
+    fontSize: 15,
+    fontWeight: '900',
+  },
+
+  balanceCaptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 3,
+  },
+
+  balanceCaption: {
+    fontSize: 7,
+    fontWeight: '900',
+    color: '#A0A9B2',
+    letterSpacing: 0.7,
+    marginRight: 3,
+  },
+
+  /* ==========================================================
+     BOTTOM BAR
+  ========================================================== */
+
+  accountBottom: {
+    minHeight: 39,
+    paddingHorizontal: 13,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F2F4',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  initialBalanceInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  initialBalanceText: {
+    fontSize: 10,
+    color: '#9AA5B1',
+    fontWeight: '600',
+    marginLeft: 5,
+  },
+
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  actionButton: {
+    width: 27,
+    height: 27,
+    borderRadius: 9,
+    backgroundColor: '#F0F5FF',
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 5,
+    marginLeft: 5,
+  },
+
+  deleteActionButton: {
+    backgroundColor: '#FFF1F1',
+  },
+
+  arrowContainer: {
+    width: 25,
+    height: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 2,
+  },
+
+  /* ==========================================================
+     EMPTY STATE
+  ========================================================== */
+
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 30,
+    paddingTop: 65,
+  },
+
+  emptyIconContainer: {
+    width: 76,
+    height: 76,
+    borderRadius: 24,
+    backgroundColor: '#EDF1F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#465461',
+  },
+
+  emptySubtitle: {
+    fontSize: 12,
+    color: '#9AA5AF',
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 18,
   },
 });
