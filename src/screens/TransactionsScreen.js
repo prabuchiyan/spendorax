@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   TextInput,
 } from 'react-native';
+import { useDispatch } from 'react-redux';
 import { getTransactions } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
@@ -14,14 +15,26 @@ import { Colors, Spacing } from '../components/Theme';
 import FAB from '../components/FAB';
 import { useFocusEffect } from '@react-navigation/native';
 import { usePageLoader } from '../context/PageLoaderContext';
+// Redux imports
+import {
+  setTransactions,
+  setLoading as setTransactionLoading,
+  setError as setTransactionError,
+} from '../redux/slices/transactionSlice';
+import { setCategoriesMap } from '../redux/slices/categorySlice';
+import { setSources as setReduxSources } from '../redux/slices/sourceSlice';
+import { useAppDispatch } from '../redux/hooks';
 
 export default function TransactionsScreen({ navigation }) {
+  const dispatch = useAppDispatch();
+  const { show: showLoader, hide: hideLoader } = usePageLoader();
+  
+  // Local state
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [sources, setSources] = useState([]);
+  const [sourceOptions, setSourceOptions] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
-  const { show: showLoader, hide: hideLoader } = usePageLoader();
 
   const load = useCallback(async () => {
     showLoader();
@@ -37,13 +50,23 @@ export default function TransactionsScreen({ navigation }) {
       ]);
 
       setItems(transactionsData || []);
+      dispatch(setTransactions(transactionsData || []));
+      
       setCategories(categoriesData || []);
-      setSources(sourcesData || []);
+      const cmap = {};
+      (categoriesData || []).forEach((c) => {
+        cmap[c.id] = c;
+      });
+      dispatch(setCategoriesMap(cmap));
+      
+      setSourceOptions(sourcesData || []);
+      dispatch(setReduxSources(sourcesData || []));
     } catch (error) {
       console.error('Error loading transaction data:', error);
       setItems([]);
       setCategories([]);
-      setSources([]);
+      setSourceOptions([]);
+      dispatch(setTransactionError(error.message));
     } finally {
       const elapsed = Date.now() - startTime;
       const remainingDelay = minimumLoaderDelay - elapsed;
@@ -54,7 +77,7 @@ export default function TransactionsScreen({ navigation }) {
 
       hideLoader();
     }
-  }, [showLoader, hideLoader]);
+  }, [dispatch, showLoader, hideLoader]);
 
   useEffect(() => {
     load();
@@ -113,7 +136,7 @@ export default function TransactionsScreen({ navigation }) {
           categories.find(x => x.id === item.category_id)?.name || '';
 
         const source =
-          sources.find(x => x.id === item.source_id)?.name || '';
+          sourceOptions.find(x => x.id === item.source_id)?.name || '';
 
         return (
           (item.notes || '').toLowerCase().includes(q) ||
@@ -125,7 +148,7 @@ export default function TransactionsScreen({ navigation }) {
     }
 
     return result;
-  }, [items, activeFilter, searchQuery, categories, sources]);
+  }, [items, activeFilter, searchQuery, categories, sourceOptions]);
 
   // ---------------------------------------------------------
   // GROUP BY DATE
@@ -628,7 +651,7 @@ export default function TransactionsScreen({ navigation }) {
           const category = categories.find(
             x => x.id === item.category_id
           );
-          const source = sources.find(
+          const source = sourceOptions.find(
             x => x.id === item.source_id
           );
           const type = getTransactionType(item);

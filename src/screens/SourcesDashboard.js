@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+import { useDispatch } from 'react-redux';
 import { getSources } from '../services/sources';
 import { getTransactions } from '../services/transactions';
 import { getCreditCards } from '../services/creditCards';
@@ -14,8 +15,12 @@ import { Colors, Spacing } from '../components/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 import { usePageLoader } from '../context/PageLoaderContext';
+// Redux imports
+import { setSources as setReduxSources, setLoading as setSourceLoading } from '../redux/slices/sourceSlice';
+import { useAppDispatch } from '../redux/hooks';
 
 export default function SourcesDashboard({ navigation }) {
+  const dispatch = useAppDispatch();
   const [sources, setSources] = useState([]);
   const [tab, setTab] = useState('banks');
   const [loading, setLoading] = useState(true);
@@ -74,12 +79,14 @@ export default function SourcesDashboard({ navigation }) {
         }
       );
       setSources(updatedSources);
+      dispatch(setReduxSources(updatedSources));
     } catch (error) {
       console.error(
         'SourcesDashboard load error:',
         error
       );
       setSources([]);
+      dispatch(setReduxSources([]));
     } finally {
       setLoading(false);
       hidePageLoader();

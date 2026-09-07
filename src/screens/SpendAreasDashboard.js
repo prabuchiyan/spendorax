@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
+import { useDispatch } from 'react-redux';
 import Svg, { Circle } from 'react-native-svg';
 import { getCategories } from '../services/categories';
 import { getTransactions } from '../services/transactions';
@@ -9,6 +10,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
 import { usePageLoader } from '../context/PageLoaderContext';
+// Redux imports
+import { setTopCategories } from '../redux/slices/homeSlice';
+import { setCategoriesMap } from '../redux/slices/categorySlice';
+import { useAppDispatch } from '../redux/hooks';
 
 function CategoryDonut({ data = [], categoriesMap = {} }) {
   const total = data.reduce((sum, d) => sum + Number(d.amount || 0), 0);
@@ -218,6 +223,7 @@ function CategoryDonut({ data = [], categoriesMap = {} }) {
 }
 
 export default function SpendAreasDashboard({ route, navigation }) {
+  const dispatch = useAppDispatch();
   const params = route?.params || {};
   const {
     show: showPageLoader,
@@ -251,6 +257,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
         cmap[String(c.id)] = c;
       });
       setCategoriesMap(cmap);
+      dispatch(setCategoriesMap(cmap));
       // SOURCES
       const smap = {};
       (sourcesAll || []).forEach(source => {
@@ -262,6 +269,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
     } catch (e) {
       console.error('Error loading dashboard data:', e);
       setCategoriesMap({});
+      dispatch(setCategoriesMap({}));
       setSourcesMap({});
       setTransactions([]);
     } finally {

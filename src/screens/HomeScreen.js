@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useDispatch, useSelector } from "react-redux";
 import { getCategorySpending } from "../services/reports";
 import { getBudgetsWithRemaining } from "../services/budgets";
 import { getCategoryBudgetSummary } from "../services/categoryBudgets";
@@ -26,6 +27,50 @@ import { Spacing } from "../components/Theme";
 import BottomStatsBar from "../components/BottomStatsBar";
 import { useBalanceVisibility } from "../context/BalanceVisibilityContext";
 import { usePageLoader } from "../context/PageLoaderContext";
+// Redux imports
+import {
+  setTopCategories,
+  setSources,
+  setSourceBalances,
+  setRecentTransactions,
+  setSelectedBudgetId,
+  setLoading as setHomeLoading,
+  setError as setHomeError,
+} from "../redux/slices/homeSlice";
+import {
+  setBudgets,
+  setCategoryBudgets,
+  setOtherCategorySpending,
+  setOthersExpanded,
+  setLoading as setBudgetLoading,
+  setError as setBudgetError,
+} from "../redux/slices/budgetSlice";
+import {
+  setBills,
+  setBillsSummary,
+  setLoading as setBillLoading,
+  setError as setBillError,
+} from "../redux/slices/billSlice";
+import {
+  setCategoriesMap,
+  setLoading as setCategoryLoading,
+  setError as setCategoryError,
+} from "../redux/slices/categorySlice";
+import {
+  useTopCategories,
+  useSources,
+  useSourceBalances,
+  useRecentTransactions,
+  useSelectedBudgetId,
+  useBudgets,
+  useCategoryBudgets,
+  useOtherCategorySpending,
+  useOthersExpanded,
+  useBills,
+  useBillsSummary,
+  useCategoriesMap,
+  useAppDispatch,
+} from "../redux/hooks";
 
 function daysRemainingInMonth() {
   const now = new Date();
@@ -287,18 +332,22 @@ export default function HomeScreen({ navigation }) {
   const { width: screenWidth } = useWindowDimensions();
   const budgetDonutSize = Math.min(240, Math.max(190, screenWidth - 80));
   const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
-  const [topCategories, setTopCategories] = useState([]);
-  const [sources, setSources] = useState([]);
-  const [sourceBalances, setSourceBalances] = useState([]);
-  const [budgets, setBudgets] = useState([]);
-  const [selectedBudgetId, setSelectedBudgetId] = useState("");
-  const [recentTx, setRecentTx] = useState([]);
-  const [categoriesMap, setCategoriesMap] = useState({});
-  const [bills, setBills] = useState([]);
-  const [billsSummary, setBillsSummary] = useState(null);
-  const [categoryBudgets, setCategoryBudgets] = useState([]);
-  const [otherCategorySpending, setOtherCategorySpending] = useState([]);
-  const [othersExpanded, setOthersExpanded] = useState(false);
+  
+  // Redux hooks
+  const dispatch = useAppDispatch();
+  const topCategories = useTopCategories();
+  const sources = useSources();
+  const sourceBalances = useSourceBalances();
+  const budgets = useBudgets();
+  const selectedBudgetId = useSelectedBudgetId();
+  const recentTx = useRecentTransactions();
+  const categoriesMap = useCategoriesMap();
+  const bills = useBills();
+  const billsSummary = useBillsSummary();
+  const categoryBudgets = useCategoryBudgets();
+  const otherCategorySpending = useOtherCategorySpending();
+  const othersExpanded = useOthersExpanded();
+  
   /* Prevent multiple Home loads from running at the same time. */
   const loadingRef = React.useRef(false);
   /* Track whether Home has already loaded once. */
@@ -329,7 +378,7 @@ export default function HomeScreen({ navigation }) {
           cmap[c.id] = c;
         });
         loadedCategoriesMap = cmap;
-        setCategoriesMap(cmap);
+        dispatch(setCategoriesMap(cmap));
       } catch (e) {
         console.error("Error loading categories:", e);
       }
@@ -358,7 +407,7 @@ export default function HomeScreen({ navigation }) {
             new Date(a.due_date).getTime() - new Date(b.due_date).getTime(),
         );
 
-        setBills(currentMonthBills);
+        dispatch(setBills(currentMonthBills));
         /* DATE-ONLY BOUNDARIES
          * Today = today 00:00 Next 7 days = today through +7 days
          *  We intentionally ignore the bill's time.
@@ -462,7 +511,7 @@ export default function HomeScreen({ navigation }) {
           return total;
         }, 0);
         currentMonthSummary.upcoming7 = upcoming7Amount;
-        setBillsSummary(currentMonthSummary);
+        dispatch(setBillsSummary(currentMonthSummary));
       } catch (e) {
         console.error("Error loading bills:", e);
         setBills([]);
@@ -481,10 +530,10 @@ export default function HomeScreen({ navigation }) {
 
       try {
         availableSources = await getSources(true);
-        setSources(availableSources);
+        dispatch(setSources(availableSources));
       } catch (e) {
         console.error("Error loading sources:", e);
-        setSources([]);
+        dispatch(setSources([]));
       }
 
       // SOURCE TRANSACTIONS / BALANCES
@@ -519,9 +568,11 @@ export default function HomeScreen({ navigation }) {
             Number(balanceMap[source.id] || 0),
         }));
         setSourceBalances(calculatedSourceBalances);
+        dispatch(setSourceBalances(calculatedSourceBalances));
       } catch (e) {
         console.error("Error calculating source balances:", e);
         setSourceBalances([]);
+        dispatch(setSourceBalances([]));
         allTransactionsForHome = [];
       }
 
@@ -530,25 +581,25 @@ export default function HomeScreen({ navigation }) {
       try {
         bs = await getBudgetsWithRemaining();
         console.debug && console.debug("Home.load budgets:", bs);
-        setBudgets(bs);
+        dispatch(setBudgets(bs));
         if (bs && bs.length && !selectedBudgetId) {
           const firstId = String(bs[0].budget.id);
           console.debug &&
             console.debug("Home.load setSelectedBudgetId ->", firstId);
-          setSelectedBudgetId(firstId);
+          dispatch(setSelectedBudgetId(firstId));
         }
       } catch (e) {
         console.error("Error loading budgets:", e);
-        setBudgets([]);
+        dispatch(setBudgets([]));
       }
 
       // TOP CATEGORY SPENDING
       try {
         const cats = await getCategorySpending();
-        setTopCategories(cats);
+        dispatch(setTopCategories(cats));
       } catch (e) {
         console.error("Error loading category spending:", e);
-        setTopCategories([]);
+        dispatch(setTopCategories([]));
       }
 
       // CATEGORY BUDGETS
@@ -557,7 +608,7 @@ export default function HomeScreen({ navigation }) {
         const month = now.getMonth() + 1;
         const year = now.getFullYear();
         const catBudgets = await getCategoryBudgetSummary(month, year);
-        setCategoryBudgets(Array.isArray(catBudgets) ? catBudgets : []);
+        dispatch(setCategoryBudgets(Array.isArray(catBudgets) ? catBudgets : []));
         // OTHERS CATEGORY
         // Any expense category that does NOT have a category budget
         // is grouped under "Others".
@@ -610,23 +661,23 @@ export default function HomeScreen({ navigation }) {
         const othersList = Object.values(othersMap)
           .filter((item) => Number(item.amount || 0) > 0)
           .sort((a, b) => b.amount - a.amount);
-        setOtherCategorySpending(othersList);
-        setOthersExpanded(false);
+        dispatch(setOtherCategorySpending(othersList));
+        dispatch(setOthersExpanded(false));
       } catch (e) {
         console.error("Error loading category budgets:", e);
-        setCategoryBudgets([]);
-        setOtherCategorySpending([]);
-        setOthersExpanded(false);
+        dispatch(setCategoryBudgets([]));
+        dispatch(setOtherCategorySpending([]));
+        dispatch(setOthersExpanded(false));
       }
       // RECENT TRANSACTIONS
       // This now executes because there is NO leftover
       // getSourceBalances() call crashing load().
       try {
         const tx = await getTransactions(3, "Yes");
-        setRecentTx(Array.isArray(tx) ? tx : []);
+        dispatch(setRecentTransactions(Array.isArray(tx) ? tx : []));
       } catch (e) {
         console.error("Error loading recent transactions:", e);
-        setRecentTx([]);
+        dispatch(setRecentTransactions([]));
       }
       return bs;
     } catch (e) {
@@ -721,7 +772,7 @@ export default function HomeScreen({ navigation }) {
     const off2 = events.on("budgetsChanged", async (id) => {
       console.debug && console.debug("Home.budgetsChanged received id:", id);
       if (id) {
-        setSelectedBudgetId(String(id));
+        dispatch(setSelectedBudgetId(String(id)));
       }
       refreshPendingRef.current = true;
       /* Home is already loaded, so refresh silently in the background.  */
@@ -732,12 +783,12 @@ export default function HomeScreen({ navigation }) {
           force: true,
         });
         if (!id && bs && bs.length) {
-          setSelectedBudgetId(String(bs[0].budget.id));
+          dispatch(setSelectedBudgetId(String(bs[0].budget.id)));
         }
       }
     });
     return () => off2();
-  }, []);
+  }, [dispatch]);
 
   const totalSpend = topCategories.reduce(
     (sum, c) => sum + Number(c.amount || 0),
@@ -747,17 +798,6 @@ export default function HomeScreen({ navigation }) {
   const sortedBills = [...bills].sort(
     (a, b) =>
       new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime(),
-  );
-
-  const totalBalance = sourceBalances
-    .filter(
-      (source) => String(source.type || "").toLowerCase() !== "credit_card",
-    )
-    .reduce((sum, source) => sum + Number(source.balance || 0), 0);
-
-  const totalMonthlySpend = topCategories.reduce(
-    (sum, c) => sum + Number(c.amount || 0),
-    0,
   );
 
   return (
@@ -2927,21 +2967,6 @@ export default function HomeScreen({ navigation }) {
       </ScrollView>
       <BottomStatsBar
         navigation={navigation}
-        totalBalance={totalBalance}
-        billsSummary={{
-          count: bills.filter((bill) => {
-            const status = String(bill.status || "").toLowerCase();
-            return status !== "paid" && status !== "skipped";
-          }).length,
-          totalAmount: bills
-            .filter((bill) => {
-              const status = String(bill.status || "").toLowerCase();
-              return status !== "paid" && status !== "skipped";
-            })
-            .reduce((sum, bill) => sum + Number(bill.amount || 0), 0),
-        }}
-        totalMonthlySpend={totalMonthlySpend}
-        balanceVisible={balanceVisible}
       />
       <FAB
         onPress={() => navigation.navigate("TransactionAdd")}

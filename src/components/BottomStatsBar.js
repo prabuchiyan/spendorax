@@ -1,15 +1,23 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useSelector } from 'react-redux';
 import { Colors } from './Theme';
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
+import {
+  selectTotalBalance,
+  selectUpcomingBillsCount,
+  selectUpcomingBillsTotal,
+  selectTotalMonthlySpend,
+} from '../redux/selectors';
 
 export default function BottomStatsBar({
   navigation,
-  totalBalance = 0,
-  billsSummary = {},
-  totalMonthlySpend = 0
 }) {
   const { balanceVisible } = useBalanceVisibility();
+  const totalBalance = useSelector(selectTotalBalance);
+  const billsCount = useSelector(selectUpcomingBillsCount);
+  const billsTotal = useSelector(selectUpcomingBillsTotal);
+  const totalMonthlySpend = useSelector(selectTotalMonthlySpend);
 
   return (
     <View style={styles.container}>
@@ -34,11 +42,11 @@ export default function BottomStatsBar({
       >
         <Text style={[styles.value, { color: '#FF9800' }]}>
           {balanceVisible
-            ? `₹${Number(billsSummary?.totalAmount || 0).toLocaleString('en-IN')}`
+            ? `₹${Number(billsTotal || 0).toLocaleString('en-IN')}`
             : '••••••'}
         </Text>
         <Text style={styles.subLabel}>
-          {billsSummary?.count || 0} Bill Due
+          {billsCount || 0} Bill Due
         </Text>
       </TouchableOpacity>
 

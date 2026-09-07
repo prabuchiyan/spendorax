@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, FlatList } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
 import { TextInput as PaperInput, Button, Avatar, IconButton } from 'react-native-paper';
 import { createBudget, getBudgetsForMonth, updateBudget } from '../services/budgets';
 import { saveCategoryBudget, deleteCategoryBudget, getCategoryBudgetSummary, copyCategoryBudgets } from '../services/categoryBudgets';
@@ -10,21 +11,31 @@ import { Spacing } from '../components/Theme';
 import ConfirmDialog from '../components/ConfirmDialog';
 import BudgetCreateModal from '../components/BudgetCreateModal';
 import FAB from '../components/FAB';
+// Redux imports
+import { setBudgets, setCategoryBudgets, setLoading as setBudgetLoading } from '../redux/slices/budgetSlice';
+import { setCategoriesMap } from '../redux/slices/categorySlice';
+import { useBudgets, useCategoryBudgets, useCategoriesMap, useAppDispatch } from '../redux/hooks';
 
 function getMonthLabel(date) {
   return date.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
 }
 
 export default function BudgetsScreen({ route, navigation }) {
+  const dispatch = useAppDispatch();
+  
+  // Redux state
+  const reduxBudgets = useBudgets();
+  const reduxCategoryBudgets = useCategoryBudgets();
+  const categoriesMap = useCategoriesMap();
+  // Backwards-compatible local name expected by existing code
+  const categoryBudgets = reduxCategoryBudgets || [];
+  
+  // Local state
   const [tab, setTab] = useState('overall');
   const [limit, setLimit] = useState('');
   const [currentBudgetId, setCurrentBudgetId] = useState(null);
-
-  // Category budget tab
-  const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [categoryBudgetAmount, setCategoryBudgetAmount] = useState('');
-  const [categoryBudgets, setCategoryBudgets] = useState([]);
   const [searchText, setSearchText] = useState('');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
@@ -33,6 +44,7 @@ export default function BudgetsScreen({ route, navigation }) {
   const [showModal, setShowModal] = useState(false);
   const [editBudget, setEditBudget] = useState(null);
   const [selectedMonthDate, setSelectedMonthDate] = useState(new Date());
+  const [categories, setCategories] = useState([]);
 
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
@@ -45,7 +57,7 @@ export default function BudgetsScreen({ route, navigation }) {
     selectedYear === currentYear;
   const hasCurrentMonthCategoryBudgets =
     isCurrentMonthSelected &&
-    categoryBudgets.length > 0;
+    reduxCategoryBudgets.length > 0;
 
   /*
    * Copy is available ONLY when:
@@ -55,7 +67,7 @@ export default function BudgetsScreen({ route, navigation }) {
    */
   const shouldShowCopyOption =
     isCurrentMonthSelected &&
-    categoryBudgets.length === 0;
+    reduxCategoryBudgets.length === 0;
   const monthCarousel = useMemo(() => {
     const current = new Date(
       currentYear,
@@ -72,12 +84,13 @@ export default function BudgetsScreen({ route, navigation }) {
 
   async function loadCategoryBudgetsForMonth(month = selectedMonth, year = selectedYear) {
     const budgets = await getCategoryBudgetSummary(month, year);
-    setCategoryBudgets(budgets);
+    dispatch(setCategoryBudgets(budgets));
   }
 
   async function load() {
     // Load overall budget
     const rows = await getBudgetsForMonth();
+    dispatch(setBudgets(rows));
     const general = rows.find(r => r.category_id == null) || rows[0];
     if (general) {
       setCurrentBudgetId(general.id);
@@ -89,6 +102,11 @@ export default function BudgetsScreen({ route, navigation }) {
 
     // Load categories
     const cats = await getCategories(true);
+    const cmap = {};
+    cats.forEach((c) => {
+      cmap[c.id] = c;
+    });
+    dispatch(setCategoriesMap(cmap));
     setCategories(cats);
 
     await loadCategoryBudgetsForMonth(selectedMonth, selectedYear);

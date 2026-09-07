@@ -3,6 +3,8 @@ import { StatusBar } from 'expo-status-bar';
 import { Text, View, Image, BackHandler } from 'react-native';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Provider as ReduxProvider } from 'react-redux';
+import store from './src/redux/store';
 import ErrorBoundary from './src/screens/ErrorBoundary';
 import { BalanceVisibilityProvider } from './src/context/BalanceVisibilityContext';
 import { PageLoaderProvider } from './src/context/PageLoaderContext';
@@ -104,23 +106,24 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <PaperProvider
-        theme={{
-          ...PaperDefaultTheme,
-          colors: {
-            ...PaperDefaultTheme.colors,
-            primary: Colors.primary,
-            accent: Colors.accent
-          }
-        }}
-      >
-        <StatusBar
-          style="light"
-          backgroundColor="#0B1F3A"
-        />
-        <PageLoaderProvider>
-          <BalanceVisibilityProvider>
-            <NavigationContainer ref={navigationRef}>
+      <ReduxProvider store={store}>
+        <PaperProvider
+          theme={{
+            ...PaperDefaultTheme,
+            colors: {
+              ...PaperDefaultTheme.colors,
+              primary: Colors.primary,
+              accent: Colors.accent
+            }
+          }}
+        >
+          <StatusBar
+            style="light"
+            backgroundColor="#0B1F3A"
+          />
+          <PageLoaderProvider>
+            <BalanceVisibilityProvider>
+              <NavigationContainer ref={navigationRef}>
             <Stack.Navigator>
               <Stack.Screen
                 name="Drawer"
@@ -151,14 +154,15 @@ export default function App() {
               <Stack.Screen name="NotificationSettings" component={require('./src/screens/NotificationSettingsScreen').default} options={{ title: 'Notifications' }} />
             </Stack.Navigator>
           </NavigationContainer>
-          </BalanceVisibilityProvider>
-        </PageLoaderProvider>
-        <ExitConfirmationModal
-          visible={visible}
-          onCancel={hideDialog}
-          onExit={() => BackHandler.exitApp()}
-        />
-      </PaperProvider>
+            </BalanceVisibilityProvider>
+          </PageLoaderProvider>
+          <ExitConfirmationModal
+            visible={visible}
+            onCancel={hideDialog}
+            onExit={() => BackHandler.exitApp()}
+          />
+        </PaperProvider>
+      </ReduxProvider>
     </ErrorBoundary>
   );
 }
