@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
-import { useDispatch } from 'react-redux';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { getCategories } from '../services/categories';
 import { getTransactions } from '../services/transactions';
@@ -11,8 +10,7 @@ import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
 import { usePageLoader } from '../context/PageLoaderContext';
 // Redux imports
-import { setTopCategories } from '../redux/slices/homeSlice';
-import { setCategoriesMap } from '../redux/slices/categorySlice';
+import { setCategoriesMap as setReduxCategoriesMap } from '../redux/slices/categorySlice';
 import { useAppDispatch } from '../redux/hooks';
 
 function CategoryDonut({ data = [], categoriesMap = {} }) {
@@ -234,7 +232,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
   const periodChipPositions = useRef({});
   const periodScrollWidth = useRef(0);
   const [transactions, setTransactions] = useState([]);
-  const [categoriesMap, setCategoriesMap] = useState({});
+  const [categoriesMap, setLocalCategoriesMap] = useState({});
   const [sourcesMap, setSourcesMap] = useState({});
   const [filterMode, setFilterMode] = useState(params.mode || 'monthly');
   const [selectedPeriod, setSelectedPeriod] = useState(params.periodLabel || null);
@@ -256,8 +254,8 @@ export default function SpendAreasDashboard({ route, navigation }) {
       (catsAll || []).forEach(c => {
         cmap[String(c.id)] = c;
       });
-      setCategoriesMap(cmap);
-      dispatch(setCategoriesMap(cmap));
+      setLocalCategoriesMap(cmap);
+      dispatch(setReduxCategoriesMap(cmap));
       // SOURCES
       const smap = {};
       (sourcesAll || []).forEach(source => {
@@ -268,8 +266,8 @@ export default function SpendAreasDashboard({ route, navigation }) {
       setTransactions(tx || []);
     } catch (e) {
       console.error('Error loading dashboard data:', e);
-      setCategoriesMap({});
-      dispatch(setCategoriesMap({}));
+      setLocalCategoriesMap({});
+      dispatch(setReduxCategoriesMap({}));
       setSourcesMap({});
       setTransactions([]);
     } finally {

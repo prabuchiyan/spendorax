@@ -159,7 +159,7 @@ export default function SourcesScreen({ route, navigation }) {
           <View style={[styles.statCard, styles.activeStat]}>
             <View style={styles.statIconBlue}>
               <MaterialCommunityIcons
-                name="wallet-check-outline"
+                name="cash-plus"
                 size={17}
                 color="#4B7CF3"
               />
@@ -179,7 +179,7 @@ export default function SourcesScreen({ route, navigation }) {
           <View style={[styles.statCard, styles.negativeStat]}>
             <View style={styles.statIconRed}>
               <MaterialCommunityIcons
-                name="wallet-remove-outline"
+                name="cash-minus"
                 size={17}
                 color="#E46A6A"
               />
