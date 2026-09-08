@@ -760,27 +760,15 @@ export default function TransactionForm({
         {showSuggestions && (
           <View
             style={{
-              position: "absolute",
-              top: 62, // Immediately below the TextInput
-              left: 0,
-              right: 0,
               backgroundColor: "#fff",
               borderRadius: 12,
               borderWidth: 1,
               borderColor: "#E6EAF2",
-              maxHeight: 220,
-              zIndex: 9999,
-              elevation: 10,
+              marginTop: 4,
+              overflow: "hidden",
             }}
           >
-            <ScrollView
-              nestedScrollEnabled={true}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={true}
-              persistentScrollbar={true}
-              style={{ maxHeight: 220 }}
-            >
-              {filteredSuggestions.map((item, index) => {
+              {filteredSuggestions.slice(0, 4).map((item, index) => {
                 const category = categories.find(
                   (c) => c.id === item.category_id,
                 );
@@ -852,7 +840,6 @@ export default function TransactionForm({
                   </TouchableOpacity>
                 );
               })}
-            </ScrollView>
           </View>
         )}
       </View>
@@ -898,12 +885,12 @@ export default function TransactionForm({
                     style={{
                       flexDirection: "row",
                       flexWrap: "wrap",
-                      justifyContent: "space-between",
+                      justifyContent: "flex-start",
                       rowGap: 8,
                       marginTop: 8,
                     }}
                   >
-                    {visibleCategories.map((c) => (
+                    {visibleCategories.map((c, index) => (
                       <TouchableOpacity
                         key={c.id}
                         disabled={submitting}
@@ -916,6 +903,7 @@ export default function TransactionForm({
                         }}
                         style={{
                           width: "23%",
+                          marginRight: index % 4 !== 3 ? "2.66%" : 0,
                           height: 72,
                           borderRadius: 10,
                           marginBottom: 8,
