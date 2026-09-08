@@ -5,9 +5,10 @@ import {
   SectionList,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { useDispatch } from 'react-redux';
-import { getTransactions } from '../services/transactions';
+import { getTransactionsPaginated } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -36,22 +37,17 @@ export default function TransactionsScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
 
-  const load = useCallback(async () => {
-    showLoader();
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const LIMIT = 30;
 
-    const startTime = Date.now();
-    const minimumLoaderDelay = 700;
-
+  const loadCategoriesAndSources = useCallback(async () => {
     try {
-      const [transactionsData, categoriesData, sourcesData] = await Promise.all([
-        getTransactions(1000000, 'Yes'),
+      const [categoriesData, sourcesData] = await Promise.all([
         getCategories(true),
         getSources(true),
       ]);
-
-      setItems(transactionsData || []);
-      dispatch(setTransactions(transactionsData || []));
-      
       setCategories(categoriesData || []);
       const cmap = {};
       (categoriesData || []).forEach((c) => {
@@ -62,32 +58,90 @@ export default function TransactionsScreen({ navigation }) {
       setSourceOptions(sourcesData || []);
       dispatch(setReduxSources(sourcesData || []));
     } catch (error) {
+      console.error('Error loading static data:', error);
+    }
+  }, [dispatch]);
+
+  const loadInitialTransactions = useCallback(async (isSilent = false) => {
+    if (!isSilent) showLoader();
+
+    const startTime = Date.now();
+    const minimumLoaderDelay = 700;
+
+    try {
+      const newItems = await getTransactionsPaginated({
+        limit: LIMIT,
+        offset: 0,
+        searchQuery,
+        filterType: activeFilter
+      });
+
+      setItems(newItems || []);
+      dispatch(setTransactions(newItems || []));
+      setPage(1);
+      setHasMore((newItems || []).length === LIMIT);
+    } catch (error) {
       console.error('Error loading transaction data:', error);
       setItems([]);
-      setCategories([]);
-      setSourceOptions([]);
       dispatch(setTransactionError(error.message));
     } finally {
-      const elapsed = Date.now() - startTime;
-      const remainingDelay = minimumLoaderDelay - elapsed;
+      if (!isSilent) {
+        const elapsed = Date.now() - startTime;
+        const remainingDelay = minimumLoaderDelay - elapsed;
 
-      if (remainingDelay > 0) {
-        await new Promise(resolve => setTimeout(resolve, remainingDelay));
+        if (remainingDelay > 0) {
+          await new Promise(resolve => setTimeout(resolve, remainingDelay));
+        }
+        hideLoader();
       }
-
-      hideLoader();
     }
-  }, [dispatch, showLoader, hideLoader]);
+  }, [searchQuery, activeFilter, dispatch, showLoader, hideLoader]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    loadCategoriesAndSources();
+  }, [loadCategoriesAndSources]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadInitialTransactions();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [loadInitialTransactions]);
 
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load])
+      loadInitialTransactions(true);
+      loadCategoriesAndSources();
+    }, [loadInitialTransactions, loadCategoriesAndSources])
   );
+
+  const loadMore = async () => {
+    if (!hasMore || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const newItems = await getTransactionsPaginated({
+        limit: LIMIT,
+        offset: page * LIMIT,
+        searchQuery,
+        filterType: activeFilter
+      });
+      if (newItems.length > 0) {
+        setItems(prev => {
+          const updated = [...prev, ...newItems];
+          dispatch(setTransactions(updated));
+          return updated;
+        });
+        setPage(prev => prev + 1);
+      }
+      if (newItems.length < LIMIT) {
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error('Error loading more transactions:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const handleEdit = (item) => {
     navigation.navigate('TransactionAdd', {
@@ -95,60 +149,6 @@ export default function TransactionsScreen({ navigation }) {
       transaction: item,
     });
   };
-
-  // ---------------------------------------------------------
-  // FILTER TRANSACTIONS
-  // ---------------------------------------------------------
-
-  const filteredItems = useMemo(() => {
-    let result = items;
-
-    if (activeFilter !== 'all') {
-      result = result.filter(item => {
-        const type = String(item.type || '').toLowerCase();
-
-        if (activeFilter === 'expense') {
-          return type === 'expense';
-        }
-
-        if (activeFilter === 'income') {
-          return type === 'income';
-        }
-
-        if (activeFilter === 'transfer') {
-          return (
-            type === 'transfer' ||
-            item.transfer_group_id ||
-            item.is_transfer
-          );
-        }
-
-        return true;
-      });
-    }
-
-    // Search filter
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-
-      result = result.filter(item => {
-        const category =
-          categories.find(x => x.id === item.category_id)?.name || '';
-
-        const source =
-          sourceOptions.find(x => x.id === item.source_id)?.name || '';
-
-        return (
-          (item.notes || '').toLowerCase().includes(q) ||
-          category.toLowerCase().includes(q) ||
-          source.toLowerCase().includes(q) ||
-          (item.amount || '').toString().toLowerCase().includes(q)
-        );
-      });
-    }
-
-    return result;
-  }, [items, activeFilter, searchQuery, categories, sourceOptions]);
 
   // ---------------------------------------------------------
   // GROUP BY DATE
@@ -165,7 +165,7 @@ export default function TransactionsScreen({ navigation }) {
       ).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     };
 
-    filteredItems.forEach(item => {
+    items.forEach(item => {
       const key = getDateKey(item.date);
 
       if (!groups[key]) {
@@ -231,7 +231,7 @@ export default function TransactionsScreen({ navigation }) {
           dailyIncome,
         };
       });
-  }, [filteredItems]);
+  }, [items]);
 
   // ---------------------------------------------------------
   // HELPERS
@@ -505,6 +505,15 @@ export default function TransactionsScreen({ navigation }) {
         keyExtractor={(item) => String(item.id)}
         showsVerticalScrollIndicator={false}
         stickySectionHeadersEnabled={false}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={{ paddingVertical: 20 }}>
+              <ActivityIndicator size="small" color={Colors.text} />
+            </View>
+          ) : null
+        }
 
         contentContainerStyle={{
           paddingHorizontal: Spacing.s,

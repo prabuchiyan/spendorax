@@ -596,18 +596,6 @@ function createWebExecuteSql() {
           return projected;
         });
       }
-
-      console.log(
-        '[WebSQLite SELECT]',
-        {
-          sql,
-          params,
-          table,
-          resultCount: rows.length,
-          firstRow: rows[0] || null,
-        }
-      );
-
       return {
         rows: makeRows(rows),
         rowsAffected: 0,
