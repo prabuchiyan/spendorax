@@ -1,21 +1,17 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  categories: [],
-  categoriesMap: {},
+  loans: [],
   isLoading: false,
   error: null,
 };
 
-const categorySlice = createSlice({
-  name: 'category',
+const loanSlice = createSlice({
+  name: 'loan',
   initialState,
   reducers: {
-    setCategories: (state, action) => {
-      state.categories = action.payload;
-    },
-    setCategoriesMap: (state, action) => {
-      state.categoriesMap = action.payload;
+    setLoans: (state, action) => {
+      state.loans = action.payload;
     },
     setLoading: (state, action) => {
       state.isLoading = action.payload;
@@ -26,19 +22,18 @@ const categorySlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
-    resetCategories: (state) => {
+    resetLoans: (state) => {
       return initialState;
     },
   },
 });
 
 export const {
-  setCategories,
-  setCategoriesMap,
+  setLoans,
   setLoading,
   setError,
   clearError,
-  resetCategories,
-} = categorySlice.actions;
+  resetLoans,
+} = loanSlice.actions;
 
-export default categorySlice.reducer;
+export default loanSlice.reducer;

@@ -302,7 +302,7 @@ function createWebExecuteSql() {
       // ---------------------------------------------------------
 
       const selectMatch = s.match(
-        /^select\s+(.+?)\s+from\s+([a-zA-Z0-9_]+)([\s\S]*)$/i
+        /^select\s+([\s\S]+?)\s+from\s+([a-zA-Z0-9_]+)([\s\S]*)$/i
       );
 
       if (!selectMatch) {
@@ -314,6 +314,10 @@ function createWebExecuteSql() {
       const colsStr = selectMatch[1].trim();
       const table = selectMatch[2].trim();
       const remainder = selectMatch[3] || '';
+
+      if (/\bjoin\b/i.test(remainder)) {
+        throw new Error('Unsupported JOIN in generic parser: ' + sql);
+      }
 
       let rows = readTable(table);
 
@@ -339,15 +343,17 @@ function createWebExecuteSql() {
           for (const part of parts) {
 
             // ---------------------------------------------------
-            // col = ?
+            // col = ? or table.col = ?
             // ---------------------------------------------------
 
             const eqParamMatch = part.match(
-              /^([a-zA-Z0-9_]+)\s*=\s*\?\s*$/i
+              /^([a-zA-Z0-9_\.]+)\s*=\s*\?\s*$/i
             );
 
             if (eqParamMatch) {
-              const col = eqParamMatch[1];
+              // Extract just the column name if it has an alias
+              const colParts = eqParamMatch[1].split('.');
+              const col = colParts[colParts.length - 1];
               const value = params[paramIndex++];
 
               rows = rows.filter(
@@ -359,15 +365,37 @@ function createWebExecuteSql() {
             }
 
             // ---------------------------------------------------
-            // col >= ?
+            // col = 'literal' or col = 1 or table.col = 1
+            // ---------------------------------------------------
+
+            const eqLiteralMatch = part.match(
+              /^([a-zA-Z0-9_\.]+)\s*=\s*['"]?([^'"]+)['"]?\s*$/i
+            );
+
+            if (eqLiteralMatch && eqLiteralMatch[2] !== '?') {
+              const colParts = eqLiteralMatch[1].split('.');
+              const col = colParts[colParts.length - 1];
+              const value = eqLiteralMatch[2];
+
+              rows = rows.filter(
+                row =>
+                  String(row[col]) === String(value)
+              );
+
+              continue;
+            }
+
+            // ---------------------------------------------------
+            // col >= ? or table.col >= ?
             // ---------------------------------------------------
 
             const geMatch = part.match(
-              /^([a-zA-Z0-9_]+)\s*>=\s*\?\s*$/i
+              /^([a-zA-Z0-9_\.]+)\s*>=\s*\?\s*$/i
             );
 
             if (geMatch) {
-              const col = geMatch[1];
+              const colParts = geMatch[1].split('.');
+              const col = colParts[colParts.length - 1];
               const value = params[paramIndex++];
 
               rows = rows.filter(
@@ -379,15 +407,16 @@ function createWebExecuteSql() {
             }
 
             // ---------------------------------------------------
-            // col <= ?
+            // col <= ? or table.col <= ?
             // ---------------------------------------------------
 
             const leMatch = part.match(
-              /^([a-zA-Z0-9_]+)\s*<=\s*\?\s*$/i
+              /^([a-zA-Z0-9_\.]+)\s*<=\s*\?\s*$/i
             );
 
             if (leMatch) {
-              const col = leMatch[1];
+              const colParts = leMatch[1].split('.');
+              const col = colParts[colParts.length - 1];
               const value = params[paramIndex++];
 
               rows = rows.filter(
@@ -399,15 +428,16 @@ function createWebExecuteSql() {
             }
 
             // ---------------------------------------------------
-            // col IN (?, ?, ?)
+            // col IN (?, ?, ?) or table.col IN (?, ?, ?)
             // ---------------------------------------------------
 
             const inMatch = part.match(
-              /^([a-zA-Z0-9_]+)\s+in\s*\(([^)]+)\)\s*$/i
+              /^([a-zA-Z0-9_\.]+)\s+in\s*\(([^)]+)\)\s*$/i
             );
 
             if (inMatch) {
-              const col = inMatch[1];
+              const colParts = inMatch[1].split('.');
+              const col = colParts[colParts.length - 1];
 
               const slots = inMatch[2]
                 .split(',')
@@ -429,15 +459,16 @@ function createWebExecuteSql() {
             }
 
             // ---------------------------------------------------
-            // col IS NULL
+            // col IS NULL or table.col IS NULL
             // ---------------------------------------------------
 
             const isNullMatch = part.match(
-              /^([a-zA-Z0-9_]+)\s+is\s+null\s*$/i
+              /^([a-zA-Z0-9_\.]+)\s+is\s+null\s*$/i
             );
 
             if (isNullMatch) {
-              const col = isNullMatch[1];
+              const colParts = isNullMatch[1].split('.');
+              const col = colParts[colParts.length - 1];
 
               rows = rows.filter(
                 row => row[col] == null
@@ -447,15 +478,16 @@ function createWebExecuteSql() {
             }
 
             // ---------------------------------------------------
-            // col IS NOT NULL
+            // col IS NOT NULL or table.col IS NOT NULL
             // ---------------------------------------------------
 
             const isNotNullMatch = part.match(
-              /^([a-zA-Z0-9_]+)\s+is\s+not\s+null\s*$/i
+              /^([a-zA-Z0-9_\.]+)\s+is\s+not\s+null\s*$/i
             );
 
             if (isNotNullMatch) {
-              const col = isNotNullMatch[1];
+              const colParts = isNotNullMatch[1].split('.');
+              const col = colParts[colParts.length - 1];
 
               rows = rows.filter(
                 row => row[col] != null

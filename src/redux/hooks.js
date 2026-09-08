@@ -88,6 +88,10 @@ export const useCategoryData = () => {
   return useSelector((state) => state.category);
 };
 
+export const useCategories = () => {
+  return useSelector((state) => state.category.categories);
+};
+
 export const useCategoriesMap = () => {
   return useSelector((state) => state.category.categoriesMap);
 };
@@ -140,6 +144,28 @@ export const useSourceLoading = () => {
 
 export const useSourceError = () => {
   return useSelector((state) => state.source.error);
+};
+
+// Loan Hooks
+export const useLoanData = () => {
+  return useSelector((state) => state.loan);
+};
+
+export const useLoans = () => {
+  return useSelector((state) => state.loan.loans);
+};
+
+// Credit Card Hooks
+export const useCreditCardData = () => {
+  return useSelector((state) => state.creditCard);
+};
+
+export const useCreditCards = () => {
+  return useSelector((state) => state.creditCard.creditCards);
+};
+
+export const useCreditCardStatements = () => {
+  return useSelector((state) => state.creditCard.statements);
 };
 
 // Dispatch hook

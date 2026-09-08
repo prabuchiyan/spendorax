@@ -20,8 +20,13 @@ import SourceCreateModal from '../components/SourceCreateModal';
 import FAB from '../components/FAB';
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 
+import { useAppDispatch, useSourcesList } from '../redux/hooks';
+import { setSources } from '../redux/slices/sourceSlice';
+
 export default function SourcesScreen({ route, navigation }) {
-  const [items, setItems] = useState([]);
+  const dispatch = useAppDispatch();
+  const reduxItems = useSourcesList();
+  const items = reduxItems || [];
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmTargetId, setConfirmTargetId] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -66,7 +71,7 @@ export default function SourcesScreen({ route, navigation }) {
       };
     });
 
-    setItems(updated);
+    dispatch(setSources(updated));
   }
 
   useEffect(() => {

@@ -1,21 +1,21 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  categories: [],
-  categoriesMap: {},
+  creditCards: [],
+  statements: [],
   isLoading: false,
   error: null,
 };
 
-const categorySlice = createSlice({
-  name: 'category',
+const creditCardSlice = createSlice({
+  name: 'creditCard',
   initialState,
   reducers: {
-    setCategories: (state, action) => {
-      state.categories = action.payload;
+    setCreditCards: (state, action) => {
+      state.creditCards = action.payload;
     },
-    setCategoriesMap: (state, action) => {
-      state.categoriesMap = action.payload;
+    setStatements: (state, action) => {
+      state.statements = action.payload;
     },
     setLoading: (state, action) => {
       state.isLoading = action.payload;
@@ -26,19 +26,19 @@ const categorySlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
-    resetCategories: (state) => {
+    resetCreditCards: (state) => {
       return initialState;
     },
   },
 });
 
 export const {
-  setCategories,
-  setCategoriesMap,
+  setCreditCards,
+  setStatements,
   setLoading,
   setError,
   clearError,
-  resetCategories,
-} = categorySlice.actions;
+  resetCreditCards,
+} = creditCardSlice.actions;
 
-export default categorySlice.reducer;
+export default creditCardSlice.reducer;

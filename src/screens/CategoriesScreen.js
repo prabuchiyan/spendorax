@@ -12,9 +12,14 @@ import IconButton from '../components/IconButton';
 import { Colors, Spacing } from '../components/Theme';
 import CategoryCreateModal from '../components/CategoryCreateModal';
 import FAB from '../components/FAB';
+import { useCategories, useAppDispatch } from '../redux/hooks';
+import { setCategories, setCategoriesMap } from '../redux/slices/categorySlice';
 
 export default function CategoriesScreen({ route, navigation }) {
-  const [items, setItems] = useState([]);
+  const dispatch = useAppDispatch();
+  const reduxItems = useCategories();
+  const items = reduxItems || [];
+
   const [name, setName] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editCategory, setEditCategory] = useState(null);
@@ -39,7 +44,11 @@ export default function CategoriesScreen({ route, navigation }) {
 
   async function load() {
     const rows = await getCategories(true);
-    setItems(rows);
+    dispatch(setCategories(rows));
+    
+    const catMap = {};
+    rows.forEach(c => { catMap[c.id] = c; });
+    dispatch(setCategoriesMap(catMap));
   }
 
   useEffect(() => { load(); }, []);

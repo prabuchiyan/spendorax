@@ -11,9 +11,13 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { getLoans } from "../services/loans";
 import LoanCard from "../components/LoanCard";
 import { Colors } from "../components/Theme";
+import { useAppDispatch, useLoans } from '../redux/hooks';
+import { setLoans } from '../redux/slices/loanSlice';
 
 export default function LoanListScreen({ navigation, route }) {
-  const [loans, setLoans] = useState([]);
+  const dispatch = useAppDispatch();
+  const reduxLoans = useLoans();
+  const loans = reduxLoans || [];
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState(route?.params?.status || "ALL");
   const [directionFilter, setDirectionFilter] = useState(
@@ -22,7 +26,7 @@ export default function LoanListScreen({ navigation, route }) {
 
   async function load() {
     const data = await getLoans();
-    setLoans(data);
+    dispatch(setLoans(data));
   }
 
   useEffect(() => {

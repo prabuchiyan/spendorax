@@ -16,12 +16,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 import { usePageLoader } from '../context/PageLoaderContext';
 // Redux imports
-import { setSources as setReduxSources, setLoading as setSourceLoading } from '../redux/slices/sourceSlice';
-import { useAppDispatch } from '../redux/hooks';
+import { setSources, setLoading as setSourceLoading } from '../redux/slices/sourceSlice';
+import { useAppDispatch, useSourcesList } from '../redux/hooks';
 
 export default function SourcesDashboard({ navigation }) {
   const dispatch = useAppDispatch();
-  const [sources, setSources] = useState([]);
+  const reduxSources = useSourcesList();
+  const sources = reduxSources || [];
   const [tab, setTab] = useState('banks');
   const [loading, setLoading] = useState(true);
   const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
@@ -78,15 +79,13 @@ export default function SourcesDashboard({ navigation }) {
           };
         }
       );
-      setSources(updatedSources);
-      dispatch(setReduxSources(updatedSources));
+      dispatch(setSources(updatedSources));
     } catch (error) {
       console.error(
         'SourcesDashboard load error:',
         error
       );
-      setSources([]);
-      dispatch(setReduxSources([]));
+      dispatch(setSources([]));
     } finally {
       setLoading(false);
       hidePageLoader();
