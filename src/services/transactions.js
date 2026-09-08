@@ -372,3 +372,129 @@ export async function getTransactionById(id) {
   if (res.rows.length === 0) return null;
   return res.rows.item(0);
 }
+
+export async function getSourceTransactionBalances() {
+  try {
+    const result = await executeSql(`
+      SELECT source_id, type, amount
+      FROM transactions
+      WHERE source_id IS NOT NULL
+    `);
+    const rows = result?.rows;
+    const balanceMap = {};
+    if (!rows || !Number.isFinite(rows.length)) {
+      return balanceMap;
+    }
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows.item(i);
+      if (
+        row?.source_id === null ||
+        row?.source_id === undefined
+      ) {
+        continue;
+      }
+      const sourceId = String(row.source_id);
+      const amount = Number(row.amount || 0);
+      if (!balanceMap[sourceId]) {
+        balanceMap[sourceId] = 0;
+      }
+      const type = String(row.type || "").toLowerCase();
+      if (type === "income") {
+        balanceMap[sourceId] += amount;
+      } else if (type === "expense") {
+        balanceMap[sourceId] -= amount;
+      }
+    }
+    return balanceMap;
+  } catch (error) {
+    console.error(
+      "getSourceTransactionBalances error:",
+      error,
+    );
+
+    return {};
+  }
+}
+
+export async function getHomeExpenseTransactions(
+  referenceDate = new Date()
+) {
+  try {
+    const year = referenceDate.getFullYear();
+
+    const month = String(
+      referenceDate.getMonth() + 1
+    ).padStart(2, "0");
+
+    const monthKey = `${year}-${month}`;
+
+    const res = await executeSql(
+      `
+      SELECT *
+      FROM transactions
+      WHERE type = ?
+        AND transfer_group_id IS NULL
+      ORDER BY id DESC
+      `,
+      ["expense"]
+    );
+
+    const rows = [];
+
+    if (
+      !res?.rows ||
+      !Number.isFinite(res.rows.length)
+    ) {
+      return rows;
+    }
+
+    for (
+      let i = 0;
+      i < res.rows.length;
+      i++
+    ) {
+      const row = res.rows.item(i);
+
+      if (!row?.date) {
+        continue;
+      }
+
+      // Ignore transactions explicitly marked as not counted.
+      if (
+        row.is_counted !== null &&
+        row.is_counted !== undefined &&
+        Number(row.is_counted) === 0
+      ) {
+        continue;
+      }
+
+      const txMonth = String(row.date)
+        .replace(" ", "T")
+        .substring(0, 7);
+
+      if (txMonth !== monthKey) {
+        continue;
+      }
+
+      // Extra protection for transfer transactions.
+      if (
+        row.direction &&
+        String(row.direction).toLowerCase() ===
+        "transfer"
+      ) {
+        continue;
+      }
+
+      rows.push(row);
+    }
+
+    return rows;
+  } catch (error) {
+    console.error(
+      "getHomeExpenseTransactions error:",
+      error
+    );
+
+    return [];
+  }
+}

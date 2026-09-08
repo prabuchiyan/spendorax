@@ -1,4 +1,8 @@
 import { executeSql } from '../database/db';
+import {
+  getTransactions,
+  getHomeExpenseTransactions,
+} from "./transactions";
 
 export async function createBudget({ category_id = null, monthly_limit = 0, month = null }) {
   const m = month || new Date().toISOString().slice(0, 7);
@@ -17,7 +21,82 @@ export async function getBudgetsForMonth(month = null) {
   return rows;
 }
 
-import { getTransactions } from './transactions';
+export async function getHomeBudgets(month = null) {
+  try {
+    const monthKey =
+      month ||
+      new Date().toISOString().slice(0, 7);
+
+    const budgets =
+      await getBudgetsForMonth(monthKey);
+
+    if (!budgets.length) {
+      return [];
+    }
+
+    const transactions =
+      await getHomeExpenseTransactions(
+        new Date()
+      );
+
+    const spendingMap = {};
+    let totalSpent = 0;
+
+    transactions.forEach((tx) => {
+      const amount = Number(tx.amount || 0);
+
+      if (amount <= 0) {
+        return;
+      }
+
+      const categoryId =
+        tx.category_id !== null &&
+          tx.category_id !== undefined
+          ? String(tx.category_id)
+          : "uncategorized";
+
+      spendingMap[categoryId] =
+        Number(spendingMap[categoryId] || 0) +
+        amount;
+
+      totalSpent += amount;
+    });
+
+    return budgets.map((budget) => {
+      const limit =
+        Number(budget.monthly_limit || 0);
+
+      let spent = 0;
+
+      if (
+        budget.category_id !== null &&
+        budget.category_id !== undefined
+      ) {
+        spent =
+          Number(
+            spendingMap[
+            String(budget.category_id)
+            ] || 0
+          );
+      } else {
+        spent = totalSpent;
+      }
+
+      return {
+        budget,
+        spent,
+        remaining: limit - spent,
+      };
+    });
+  } catch (error) {
+    console.error(
+      "getHomeBudgets error:",
+      error
+    );
+
+    return [];
+  }
+}
 
 export async function getBudgetRemaining(budgetId) {
   // fetch budget
@@ -69,5 +148,5 @@ export async function getBudgets() {
   return rows;
 }
 
-export default { createBudget, getBudgetsForMonth, updateBudget, deleteBudget, getBudgets };
+export default { createBudget, getBudgetsForMonth, getHomeBudgets, updateBudget, deleteBudget, getBudgets };
 
