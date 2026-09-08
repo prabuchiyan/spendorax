@@ -12,9 +12,9 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import BudgetCreateModal from '../components/BudgetCreateModal';
 import FAB from '../components/FAB';
 // Redux imports
-import { setBudgets, setCategoryBudgets, setLoading as setBudgetLoading } from '../redux/slices/budgetSlice';
+import { setCategoryBudgets } from '../redux/slices/budgetSlice';
 import { setCategoriesMap } from '../redux/slices/categorySlice';
-import { useBudgets, useCategoryBudgets, useCategoriesMap, useAppDispatch } from '../redux/hooks';
+import { useCategoryBudgets, useCategoriesMap, useAppDispatch } from '../redux/hooks';
 
 function getMonthLabel(date) {
   return date.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
@@ -22,14 +22,12 @@ function getMonthLabel(date) {
 
 export default function BudgetsScreen({ route, navigation }) {
   const dispatch = useAppDispatch();
-  
   // Redux state
-  const reduxBudgets = useBudgets();
   const reduxCategoryBudgets = useCategoryBudgets();
   const categoriesMap = useCategoriesMap();
   // Backwards-compatible local name expected by existing code
   const categoryBudgets = reduxCategoryBudgets || [];
-  
+
   // Local state
   const [tab, setTab] = useState('overall');
   const [limit, setLimit] = useState('');
@@ -88,30 +86,68 @@ export default function BudgetsScreen({ route, navigation }) {
   }
 
   async function load() {
-    // Load overall budget
-    const rows = await getBudgetsForMonth();
-    dispatch(setBudgets(rows));
-    const general = rows.find(r => r.category_id == null) || rows[0];
-    if (general) {
-      setCurrentBudgetId(general.id);
-      setLimit(String(general.monthly_limit || ''));
-    } else {
-      setCurrentBudgetId(null);
-      setLimit('');
+    try {
+      // Load overall budget for this screen.
+      // Do NOT dispatch these raw rows into the shared
+      // Home budget Redux state because Home uses a
+      // different normalized structure.
+      const rows = await getBudgetsForMonth();
+
+      const general =
+        rows.find(
+          (r) => r.category_id == null
+        ) || rows[0];
+
+      if (general) {
+        setCurrentBudgetId(general.id);
+        setLimit(
+          String(
+            general.monthly_limit || ''
+          )
+        );
+      } else {
+        setCurrentBudgetId(null);
+        setLimit('');
+      }
+
+      // Load categories
+      const cats =
+        await getCategories(true);
+
+      const safeCategories =
+        Array.isArray(cats)
+          ? cats
+          : [];
+
+      const cmap = {};
+
+      safeCategories.forEach(
+        (c) => {
+          cmap[c.id] = c;
+        }
+      );
+
+      dispatch(
+        setCategoriesMap(cmap)
+      );
+
+      setCategories(
+        safeCategories
+      );
+
+      // Load category budgets for the
+      // currently selected month.
+      await loadCategoryBudgetsForMonth(
+        selectedMonth,
+        selectedYear
+      );
+    } catch (error) {
+      console.error(
+        'BudgetsScreen load error:',
+        error
+      );
     }
-
-    // Load categories
-    const cats = await getCategories(true);
-    const cmap = {};
-    cats.forEach((c) => {
-      cmap[c.id] = c;
-    });
-    dispatch(setCategoriesMap(cmap));
-    setCategories(cats);
-
-    await loadCategoryBudgetsForMonth(selectedMonth, selectedYear);
   }
-
   useEffect(() => {
     load();
     const unsub = navigation.addListener('focus', () => { load(); });
