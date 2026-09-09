@@ -17,6 +17,7 @@ export async function createCreditCard({
   color = "#4B7CF3",
   notes = null,
   status = "active",
+  interest_rate_percent = 0,
 }) {
   const sourceId = await createSource({
     name,
@@ -42,6 +43,7 @@ export async function createCreditCard({
     statement_day,
     due_after_days,
     minimum_due_percent,
+    interest_rate_percent,
     currency,
     color,
     notes,
@@ -51,7 +53,7 @@ export async function createCreditCard({
     created_at,
     updated_at
   )
-  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       name,
       bank,
@@ -63,6 +65,7 @@ export async function createCreditCard({
       statement_day,
       due_after_days,
       Number(minimum_due_percent || 0),
+      Number(interest_rate_percent || 0),
       currency,
       color,
       notes,
@@ -190,10 +193,7 @@ export async function updateCreditCard(id, fields) {
 
 export async function getCreditCards(activeOnly = true) {
   const res = await executeSql(
-    `SELECT cc.*, s.name as source_name, s.type as source_type, s.is_active as source_active
-     FROM credit_cards cc
-     LEFT JOIN sources s ON s.id = cc.source_id
-     ORDER BY cc.name`,
+    `SELECT * FROM credit_cards ORDER BY name`,
     [],
   );
 
@@ -203,6 +203,21 @@ export async function getCreditCards(activeOnly = true) {
     const row = res.rows.item(i);
     rows.push(row);
     if (row.source_id) sourceIds.push(row.source_id);
+  }
+
+  // Fetch sources manually
+  const sourceMap = {};
+  if (sourceIds.length > 0) {
+    const uniqueSourceIds = [...new Set(sourceIds)];
+    const placeholders = uniqueSourceIds.map(() => "?").join(",");
+    const sourcesRes = await executeSql(
+      `SELECT id, name, type, is_active FROM sources WHERE id IN (${placeholders})`,
+      uniqueSourceIds
+    );
+    for (let i = 0; i < sourcesRes.rows.length; i++) {
+      const src = sourcesRes.rows.item(i);
+      sourceMap[src.id] = src;
+    }
   }
 
   const totalsBySource = {};
@@ -228,12 +243,16 @@ export async function getCreditCards(activeOnly = true) {
   }
 
   const normalizedRows = rows.map((row) => {
+    const src = sourceMap[row.source_id] || {};
     const outstanding = Number(
       totalsBySource[row.source_id] || row.outstanding || 0,
     );
     const limit = Number(row.credit_limit || 0);
     return {
       ...row,
+      source_name: src.name || null,
+      source_type: src.type || null,
+      source_active: src.is_active !== undefined ? src.is_active : null,
       outstanding,
       available_limit: limit - outstanding,
     };
@@ -246,15 +265,26 @@ export async function getCreditCards(activeOnly = true) {
 
 export async function getCreditCardById(id) {
   const res = await executeSql(
-    `SELECT cc.*, s.name as source_name, s.type as source_type, s.is_active as source_active
-     FROM credit_cards cc
-     LEFT JOIN sources s ON s.id = cc.source_id
-     WHERE cc.id = ? LIMIT 1`,
+    `SELECT * FROM credit_cards WHERE id = ? LIMIT 1`,
     [id],
   );
   if (res.rows.length === 0) return null;
 
   const row = res.rows.item(0);
+  
+  if (row.source_id) {
+    const srcRes = await executeSql(
+      `SELECT name, type, is_active FROM sources WHERE id = ? LIMIT 1`,
+      [row.source_id]
+    );
+    if (srcRes.rows.length > 0) {
+      const src = srcRes.rows.item(0);
+      row.source_name = src.name;
+      row.source_type = src.type;
+      row.source_active = src.is_active;
+    }
+  }
+
   if (!row.source_id) return row;
 
   const txRes = await executeSql(
@@ -472,12 +502,74 @@ export async function getCreditCardStatements(cardId) {
   return rows;
 }
 
+export async function getCreditCardStatementById(statementId) {
+  const statementRes = await executeSql(
+    `SELECT * FROM credit_card_statements WHERE id = ?`,
+    [statementId]
+  );
+  if (statementRes.rows.length === 0) return null;
+  const statement = statementRes.rows.item(0);
+
+  const cardRes = await executeSql(
+    `SELECT * FROM credit_cards WHERE id = ?`,
+    [statement.card_id]
+  );
+  const card = cardRes.rows.length > 0 ? cardRes.rows.item(0) : {};
+
+  return {
+    ...statement,
+    card_name: card.name,
+    card_color: card.color,
+    card_currency: card.currency,
+    source_id: card.source_id,
+  };
+}
+
+export async function getStatementTransactions(sourceId, startDate, endDate) {
+  const res = await executeSql(
+    `SELECT * FROM transactions
+     WHERE source_id = ?
+     ORDER BY date DESC, created_at DESC`,
+    [sourceId]
+  );
+  const rows = [];
+  const start = new Date(startDate).getTime();
+  // To cover the whole end date, we can set the time to end of day if it's just a date string.
+  // Assuming endDate is like YYYY-MM-DD. We want to include transactions on that day.
+  const endStr = String(endDate).includes("T") ? endDate : `${endDate}T23:59:59.999Z`;
+  const end = new Date(endStr).getTime();
+
+  for (let i = 0; i < res.rows.length; i++) {
+    const item = res.rows.item(i);
+    if (!item.date) continue;
+    
+    // Some dates might be stored as YYYY-MM-DD, others as ISO string.
+    const itemTime = new Date(item.date).getTime();
+    
+    // Filter between start and end (inclusive)
+    if (itemTime >= start && itemTime <= end) {
+      rows.push(item);
+    }
+  }
+  return rows;
+}
+
+
 export async function getAllCreditCardStatements() {
+    const cardsRes = await executeSql(
+        `SELECT id, name, color, currency FROM credit_cards`,
+        []
+    );
+    const cardsMap = {};
+    for (let i = 0; i < cardsRes.rows.length; i++) {
+        const c = cardsRes.rows.item(i);
+        cardsMap[c.id] = c;
+    }
+
     const res = await executeSql(
-        `SELECT ccs.*, cc.name as card_name, cc.color as card_color, cc.currency as card_currency
-         FROM credit_card_statements ccs
-         LEFT JOIN credit_cards cc ON cc.id = ccs.card_id
-         ORDER BY ccs.statement_date DESC`,
+        `SELECT *
+         FROM credit_card_statements
+         ORDER BY statement_date DESC`,
         []
     );
     const rows = [];
@@ -498,8 +590,14 @@ export async function getAllCreditCardStatements() {
                 billIsPaid = bill.is_paid;
             }
         }
+        
+        const card = cardsMap[statement.card_id] || {};
+
         rows.push({
             ...statement,
+            card_name: card.name,
+            card_color: card.color,
+            card_currency: card.currency,
             bill_status: billStatus,
             bill_is_paid: billIsPaid,
         });
@@ -685,4 +783,42 @@ export async function syncCreditCardBillAmount(cardId) {
   // =========================================================
 
   return;
+}
+
+export async function updateCreditCardStatement(statementId, fields) {
+  const statement = await getCreditCardStatementById(statementId);
+  if (!statement) {
+    throw new Error("Credit card statement not found");
+  }
+
+  const newOpeningBalance = fields.opening_balance != null ? Number(fields.opening_balance) : Number(statement.opening_balance || 0);
+  const newFees = fields.fees != null ? Number(fields.fees) : Number(statement.fees || 0);
+  const newInterest = fields.interest != null ? Number(fields.interest) : Number(statement.interest || 0);
+  const newRefunds = fields.refunds != null ? Number(fields.refunds) : Number(statement.refunds || 0);
+  
+  // Calculate new closing balance
+  const closingBalance = newOpeningBalance + Number(statement.purchases || 0) + newFees + newInterest - Number(statement.payments || 0) - newRefunds;
+  
+  // Need to get card for minimum_due
+  let minimumDue = statement.minimum_due;
+  const cardRes = await executeSql(`SELECT minimum_due_percent FROM credit_cards WHERE id = ?`, [statement.card_id]);
+  if (cardRes.rows.length > 0) {
+    const card = cardRes.rows.item(0);
+    minimumDue = closingBalance > 0 ? closingBalance * (Number(card.minimum_due_percent || 0) / 100) : 0;
+  }
+
+  await executeSql(
+    `UPDATE credit_card_statements 
+     SET opening_balance = ?, fees = ?, interest = ?, refunds = ?, closing_balance = ?, minimum_due = ?
+     WHERE id = ?`,
+    [newOpeningBalance, newFees, newInterest, newRefunds, closingBalance, minimumDue, statementId]
+  );
+  
+  // Also update the linked bill amount if not paid
+  if (statement.bill_id) {
+    await executeSql(
+      `UPDATE bills SET amount = ? WHERE id = ? AND (status != 'paid' AND is_paid = 0)`,
+      [closingBalance, statement.bill_id]
+    );
+  }
 }

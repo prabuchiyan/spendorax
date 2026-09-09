@@ -149,6 +149,7 @@ export default function App() {
               <Stack.Screen name="TopUp" component={TopUpScreen} options={{ title: 'Top Up' }} />
               <Stack.Screen name="LoanList" component={LoanListScreen} options={{ title: 'All Loans' }} />
               <Stack.Screen name="CreditCardStatements" component={CreditCardStatementsScreen} options={{ title: 'Credit Card Statements' }} />
+              <Stack.Screen name="CreditCardStatementDetail" component={require('./src/screens/CreditCardStatementDetailScreen').default} options={{ title: 'Statement Details' }} />
               <Stack.Screen name="LoanHistory" component={require('./src/screens/LoanHistoryScreen').default} options={{ title: 'Loan History' }} />
               <Stack.Screen name="LoanReports" component={require('./src/screens/LoanReportsScreen').default} options={{ title: 'Loan Reports' }} />
               <Stack.Screen name="NotificationSettings" component={require('./src/screens/NotificationSettingsScreen').default} options={{ title: 'Notifications' }} />

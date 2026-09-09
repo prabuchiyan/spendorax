@@ -110,6 +110,7 @@ export async function initDB() {
       statement_day INTEGER,
       due_after_days INTEGER,
       minimum_due_percent REAL DEFAULT 0,
+      interest_rate_percent REAL DEFAULT 0,
       currency TEXT,
       color TEXT,
       notes TEXT,
@@ -121,6 +122,12 @@ export async function initDB() {
       FOREIGN KEY(source_id) REFERENCES sources(id),
       FOREIGN KEY(payment_bill_id) REFERENCES bills(id)
     );`);
+
+    try {
+      await executeSql(`ALTER TABLE credit_cards ADD COLUMN interest_rate_percent REAL DEFAULT 0`);
+    } catch (e) {
+      // Column already exists
+    }
 
     await executeSql(`CREATE TABLE IF NOT EXISTS credit_card_statements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

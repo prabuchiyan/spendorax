@@ -419,13 +419,21 @@ async function processCycle(
     // Continue with the existing unpaid-statement logic.
     // ─────────────────────────────────────────────────────────────
 
-    const { openingBalance, purchases, payments } = calcCycleAmounts(
+    // Find previous statement to determine opening balance
+    const pastStatements = allStatements.filter(s => Number(s.card_id) === Number(card.id) && s.statement_end < cycleStart);
+    pastStatements.sort((a, b) => (a.statement_end > b.statement_end ? -1 : 1));
+    const previousStatement = pastStatements[0];
+
+    const { purchases, payments } = calcCycleAmounts(
       cardTxs,
       cycleStart,
       cycleEnd,
     );
 
-    const closingBalance = openingBalance + purchases - payments;
+    const openingBalance = Number(existingStatement.opening_balance != null ? existingStatement.opening_balance : (previousStatement ? previousStatement.closing_balance : 0));
+    
+    // Calculate new closing balance keeping existing fees/interest/refunds
+    const closingBalance = openingBalance + purchases + Number(existingStatement.fees || 0) + Number(existingStatement.interest || 0) - payments - Number(existingStatement.refunds || 0);
 
     console.log(
       `[CC Cycle Debug] Amounts | opening: ${openingBalance} | purchases: ${purchases} | payments: ${payments} | closing: ${closingBalance}`,
@@ -480,13 +488,29 @@ async function processCycle(
 
   if (!cycleHasTxs) return;
 
-  const { openingBalance, purchases, payments } = calcCycleAmounts(
+  const pastStatements = allStatements.filter(s => Number(s.card_id) === Number(card.id) && s.statement_end < cycleStart);
+  pastStatements.sort((a, b) => (a.statement_end > b.statement_end ? -1 : 1));
+  const previousStatement = pastStatements[0];
+
+  const openingBalance = previousStatement ? Number(previousStatement.closing_balance || 0) : 0;
+  
+  let autoInterest = 0;
+  if (previousStatement && Number(card.interest_rate_percent || 0) > 0) {
+    const prevBill = allBills.find(b => Number(b.id) === Number(previousStatement.bill_id));
+    const isPrevPaid = prevBill && !prevBill.deleted_at && (prevBill.status === 'paid' || prevBill.is_paid === 1);
+    if (!isPrevPaid) {
+      // Calculate simple monthly interest on the unpaid carry-over
+      autoInterest = openingBalance * (Number(card.interest_rate_percent) / 100) / 12;
+    }
+  }
+
+  const { purchases, payments } = calcCycleAmounts(
     cardTxs,
     cycleStart,
     cycleEnd,
   );
 
-  const closingBalance = openingBalance + purchases - payments;
+  const closingBalance = openingBalance + purchases + autoInterest - payments;
 
   if (closingBalance <= 0) return;
 
@@ -549,9 +573,9 @@ async function processCycle(
       dueDateStr,
       openingBalance,
       purchases,
-      0,
-      0,
-      0,
+      0, // refunds
+      0, // fees
+      autoInterest, // auto calculated interest
       payments,
       closingBalance,
       minimumDue,
@@ -573,7 +597,6 @@ async function processCycle(
  * Purchases/payments = transactions strictly within [cycleStart, cycleEnd]
  */
 function calcCycleAmounts(cardTxs, cycleStart, cycleEnd) {
-  let openingBalance = 0;
   let purchases = 0;
   let payments = 0;
 
@@ -592,7 +615,7 @@ function calcCycleAmounts(cardTxs, cycleStart, cycleEnd) {
     // not by re-summing all historical transactions.
   }
 
-  return { openingBalance, purchases, payments };
+  return { purchases, payments };
 }
 
 async function updateExistingStatement(

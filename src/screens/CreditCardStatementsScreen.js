@@ -150,20 +150,17 @@ export default function CreditCardStatementsScreen({ navigation }) {
                   <Text style={styles.statusPill}>
                     {(item.status || "generated").toString().toUpperCase()}
                   </Text>
-                  {console.log("item", item)}
-                  {item.bill_id ? (
+                  <Text style={styles.viewStatementLink}>View Statement</Text>
+                  {item.bill_id && (
                     <Text
                       style={[
                         styles.billLink,
+                        { marginLeft: 10 },
                         item.bill_status === "paid" && styles.billPaidText,
                       ]}
                     >
-                      {item.bill_status === "paid"
-                        ? "Bill Paid"
-                        : "Bill available"}
+                      • {item.bill_status === "paid" ? "Bill Paid" : "Bill available"}
                     </Text>
-                  ) : (
-                    <Text style={styles.billLink}>No bill created</Text>
                   )}
                 </View>
               </View>
@@ -206,21 +203,16 @@ export default function CreditCardStatementsScreen({ navigation }) {
 
           return (
             <Card style={styles.statementCard}>
-              {/* Only statement details navigate to BillDetail */}
-              {item.bill_id ? (
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  onPress={() =>
-                    navigation.navigate("BillDetail", {
-                      billId: item.bill_id,
-                    })
-                  }
-                >
-                  {rowContent}
-                </TouchableOpacity>
-              ) : (
-                rowContent
-              )}
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() =>
+                  navigation.navigate("CreditCardStatementDetail", {
+                    statementId: item.id,
+                  })
+                }
+              >
+                {rowContent}
+              </TouchableOpacity>
             </Card>
           );
         }}
@@ -363,6 +355,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     marginRight: 10,
+  },
+  viewStatementLink: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
   billLink: {
     color: Colors.muted,
