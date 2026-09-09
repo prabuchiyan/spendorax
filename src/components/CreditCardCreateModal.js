@@ -20,6 +20,7 @@ export default function CreditCardCreateModal({
   const [statementDay, setStatementDay] = useState('');
   const [dueAfterDays, setDueAfterDays] = useState('');
   const [minimumDuePercent, setMinimumDuePercent] = useState('0');
+  const [interestRatePercent, setInterestRatePercent] = useState('0');
   const [currency, setCurrency] = useState('INR');
   const [color, setColor] = useState('#4B7CF3');
   const [notes, setNotes] = useState('');
@@ -47,6 +48,9 @@ export default function CreditCardCreateModal({
       setMinimumDuePercent(
         String(editData.minimum_due_percent || 0)
       );
+      setInterestRatePercent(
+        String(editData.interest_rate_percent || 0)
+      );
       setCurrency(editData.currency || 'INR');
       setColor(editData.color || '#4B7CF3');
       setNotes(editData.notes || '');
@@ -61,6 +65,7 @@ export default function CreditCardCreateModal({
       setStatementDay('');
       setDueAfterDays('');
       setMinimumDuePercent('0');
+      setInterestRatePercent('0');
       setCurrency('INR');
       setColor('#4B7CF3');
       setNotes('');
@@ -89,6 +94,7 @@ export default function CreditCardCreateModal({
         statement_day: statementDay ? Number(statementDay) : null,
         due_after_days: dueAfterDays ? Number(dueAfterDays) : null,
         minimum_due_percent: parseFloat(minimumDuePercent) || 0,
+        interest_rate_percent: parseFloat(interestRatePercent) || 0,
         currency: currency.trim() || 'INR',
         color,
         notes: notes.trim() || null,
@@ -249,15 +255,37 @@ export default function CreditCardCreateModal({
             disabled={saving}
           />
         </View>
-        <TextInput
-          label="Minimum Due %"
-          value={minimumDuePercent}
-          onChangeText={setMinimumDuePercent}
-          mode="outlined"
-          style={formModalStyles.input}
-          keyboardType="numeric"
-          disabled={saving}
-        />
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+          }}
+        >
+          <TextInput
+            label="Minimum Due %"
+            value={minimumDuePercent}
+            onChangeText={setMinimumDuePercent}
+            mode="outlined"
+            style={[
+              formModalStyles.input,
+              { flex: 1, marginRight: 6 },
+            ]}
+            keyboardType="numeric"
+            disabled={saving}
+          />
+          <TextInput
+            label="Ann. Interest Rate %"
+            value={interestRatePercent}
+            onChangeText={setInterestRatePercent}
+            mode="outlined"
+            style={[
+              formModalStyles.input,
+              { flex: 1, marginLeft: 6 },
+            ]}
+            keyboardType="numeric"
+            disabled={saving}
+          />
+        </View>
         <TextInput
           label="Currency"
           value={currency}
