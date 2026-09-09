@@ -1289,6 +1289,9 @@ export default function HomeScreen({
 
     loadingRef.current = true;
 
+    const startTime = Date.now();
+    const minimumLoaderDelay = 700;
+
     if (showLoader) {
       showPageLoader();
     }
@@ -1430,6 +1433,15 @@ export default function HomeScreen({
 
       return [];
     } finally {
+      if (showLoader) {
+        const elapsed = Date.now() - startTime;
+        const remainingDelay = minimumLoaderDelay - elapsed;
+
+        if (remainingDelay > 0) {
+          await new Promise(resolve => setTimeout(resolve, remainingDelay));
+        }
+      }
+
       loadingRef.current =
         false;
 
@@ -1449,34 +1461,37 @@ export default function HomeScreen({
   useEffect(() => {
     let mounted = true;
 
-    (async () => {
-      const bs =
-        await load({
-          showLoader: true,
-          force: true,
-        });
+    const timer = setTimeout(() => {
+      (async () => {
+        const bs =
+          await load({
+            showLoader: true,
+            force: true,
+          });
 
-      if (
-        mounted &&
-        bs?.length
-      ) {
-        const firstId =
-          String(
-            bs[0]?.budget?.id,
-          );
+        if (
+          mounted &&
+          bs?.length
+        ) {
+          const firstId =
+            String(
+              bs[0]?.budget?.id,
+            );
 
-        if (firstId) {
-          dispatch(
-            setSelectedBudgetId(
-              firstId,
-            ),
-          );
+          if (firstId) {
+            dispatch(
+              setSelectedBudgetId(
+                firstId,
+              ),
+            );
+          }
         }
-      }
-    })();
+      })();
+    }, 300);
 
     return () => {
       mounted = false;
+      clearTimeout(timer);
     };
   }, []);
 
