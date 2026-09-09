@@ -9,9 +9,12 @@ import FAB from '../components/FAB';
 import { Colors, Spacing } from '../components/Theme';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { createCreditCard, updateCreditCard, getCreditCardById } from '../services/creditCards';
+import { useAppDispatch, useCreditCards } from '../redux/hooks';
+import { setCreditCards } from '../redux/slices/creditCardSlice';
 
 export default function CreditCardsScreen({ navigation }) {
-    const [cards, setCards] = useState([]);
+    const dispatch = useAppDispatch();
+    const cards = useCreditCards() || [];
     const [showModal, setShowModal] = useState(false);
     const [editCard, setEditCard] = useState(null);
     const [confirmVisible, setConfirmVisible] = useState(false);
@@ -19,7 +22,7 @@ export default function CreditCardsScreen({ navigation }) {
 
     const load = async () => {
         const items = await getCreditCards(true);
-        setCards(items);
+        dispatch(setCreditCards(items));
     };
 
     useFocusEffect(

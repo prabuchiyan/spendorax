@@ -51,6 +51,17 @@ import {
 import { getCreditCards, payCreditCardBill } from "../services/creditCards";
 import { usePageLoader } from "../context/PageLoaderContext";
 import { onStatementPaid } from "../services/creditCardScheduler";
+import {
+  setBills,
+  setBillsSummary,
+} from "../redux/slices/billSlice";
+import { setCategoriesMap } from "../redux/slices/categorySlice";
+import {
+  useAppDispatch,
+  useBills,
+  useBillsSummary,
+  useCategoriesMap,
+} from "../redux/hooks";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -866,6 +877,10 @@ export default function BillDetailScreen({ route, navigation }) {
   const [paymentSourceSearch, setPaymentSourceSearch] = useState("");
   const [selectedCreditCard, setSelectedCreditCard] = useState(null);
   const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
+  const dispatch = useAppDispatch();
+  const reduxBills = useBills();
+  const reduxSummary = useBillsSummary();
+  const categoriesMap = useCategoriesMap();
 
   // ── hook 15 ───────────────────────────────────────────────────────────────
   useFocusEffect(
@@ -925,6 +940,9 @@ export default function BillDetailScreen({ route, navigation }) {
     return Math.min(100, (totalPaidAmount / totalDueAmount) * 100);
   }, [totalDueAmount, totalPaidAmount]);
 
+  const reduxCategory = categoriesMap?.[bill?.category_id] || category;
+  const summary = reduxSummary || {};
+
   // ── Early returns AFTER every hook ───────────────────────────────────────
   if (!bill && !editing) {
     return (
@@ -981,6 +999,26 @@ export default function BillDetailScreen({ route, navigation }) {
 
       setBill(b);
       setSeries(s);
+
+      const categoryMap = {};
+      (cats || []).forEach((c) => {
+        categoryMap[c.id] = c;
+      });
+      dispatch(setCategoriesMap(categoryMap));
+      dispatch(setBills(s || []));
+      dispatch(setBillsSummary({
+        totalThisMonth: s.reduce((sum, row) => sum + Number(row.amount || 0), 0),
+        totalPaid: s.reduce((sum, row) => sum + Number(row.paid_amount || 0), 0),
+        overdueAmount: s
+          .filter((row) => row.status === BILL_STATUS.OVERDUE)
+          .reduce((sum, row) => sum + Number(row.amount || 0), 0),
+        overdueCount: s.filter((row) => row.status === BILL_STATUS.OVERDUE).length,
+        upcoming7: s
+          .filter((row) => row.status !== BILL_STATUS.PAID && row.status !== BILL_STATUS.SKIPPED)
+          .reduce((sum, row) => sum + Number(row.amount || 0), 0),
+        upcoming3Count: s.filter((row) => row.status !== BILL_STATUS.PAID && row.status !== BILL_STATUS.SKIPPED).length,
+      }));
+
       if (b?.category_id)
         setCategory(cats.find((c) => c.id === b.category_id) || null);
       if (b?.source_id)
@@ -1331,7 +1369,7 @@ export default function BillDetailScreen({ route, navigation }) {
             paidValues={chartData.map((x) => x.paid)}
             width={screenWidth - 56}
             height={250}
-            baseColor={category?.color || Colors.primary}
+            baseColor={reduxCategory?.color || Colors.primary}
             selectedLabel={selectedLabel}
             isEmpty={chartData.length === 0}
             onBarPress={(data) => {
@@ -1372,7 +1410,7 @@ export default function BillDetailScreen({ route, navigation }) {
               }}
             >
               <MaterialCommunityIcons
-                name={category?.icon || "receipt"}
+                name={reduxCategory?.icon || "receipt"}
                 size={30}
                 color={display.color}
               />
@@ -1451,9 +1489,9 @@ export default function BillDetailScreen({ route, navigation }) {
                 value: formatDueDate(activeBill.due_date),
               },
               {
-                icon: category?.icon || "shape",
+                icon: reduxCategory?.icon || "shape",
                 label: "Category",
-                value: category?.name || "-",
+                value: reduxCategory?.name || "-",
               },
               { icon: "bank", label: "Source", value: source?.name || "-" },
               {

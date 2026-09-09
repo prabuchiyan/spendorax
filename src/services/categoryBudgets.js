@@ -191,10 +191,134 @@ export async function copyCategoryBudgets({
     return copied;
 }
 
+export async function getCategoryBudgetsForMonth(month, year) {
+    try {
+        const res = await executeSql(
+            `SELECT *
+                FROM category_budgets
+                WHERE month = ? AND year = ?
+                ORDER BY category_id`,
+            [month, year]
+        );
+
+        const rows = [];
+
+        if (!res?.rows || !Number.isFinite(res.rows.length)) {
+            return rows;
+        }
+
+        for (let i = 0; i < res.rows.length; i++) {
+            rows.push(res.rows.item(i));
+        }
+
+        return rows;
+    } catch (error) {
+        console.error('getCategoryBudgetsForMonth error:', error);
+        return [];
+    }
+}
+
+export async function getHomeCategoryBudgets(
+    month,
+    year,
+    categoriesMap = {}
+) {
+    try {
+        const budgets =
+            await getCategoryBudgetsForMonth(
+                month,
+                year
+            );
+
+        if (!budgets.length) {
+            return [];
+        }
+
+        const {
+            getHomeExpenseTransactions,
+        } = await import("./transactions");
+
+        const transactions =
+            await getHomeExpenseTransactions(
+                new Date()
+            );
+
+        const spentMap = {};
+
+        transactions.forEach((tx) => {
+            if (
+                tx.category_id === null ||
+                tx.category_id === undefined
+            ) {
+                return;
+            }
+
+            const categoryId =
+                String(tx.category_id);
+
+            spentMap[categoryId] =
+                Number(spentMap[categoryId] || 0) +
+                Number(tx.amount || 0);
+        });
+
+        return budgets.map((budget) => {
+            const categoryId =
+                budget.category_id;
+
+            const category =
+                categoriesMap?.[String(categoryId)] ||
+                categoriesMap?.[Number(categoryId)] ||
+                {};
+
+            const budgetAmount =
+                Number(budget.amount || 0);
+
+            const spent =
+                Number(
+                    spentMap[String(categoryId)] || 0
+                );
+
+            const remaining =
+                budgetAmount - spent;
+
+            const percentage =
+                budgetAmount > 0
+                    ? (spent / budgetAmount) * 100
+                    : 0;
+
+            return {
+                id: budget.id,
+                categoryId,
+                categoryName:
+                    category.name || "Uncategorized",
+                icon:
+                    category.icon || "tag",
+                color:
+                    category.color || "#ccc",
+                budget: budgetAmount,
+                spent,
+                remaining,
+                percentage,
+                exceeded:
+                    spent > budgetAmount,
+            };
+        });
+    } catch (error) {
+        console.error(
+            "getHomeCategoryBudgets error:",
+            error
+        );
+
+        return [];
+    }
+}
+
 export default {
     getCategoryBudgets,
     saveCategoryBudget,
     deleteCategoryBudget,
     getCategoryBudgetSummary,
     copyCategoryBudgets,
+    getCategoryBudgetsForMonth,
+    getHomeCategoryBudgets
 };

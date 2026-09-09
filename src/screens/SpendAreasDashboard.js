@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { getCategories } from '../services/categories';
 import { getTransactions } from '../services/transactions';
@@ -9,6 +9,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
 import { usePageLoader } from '../context/PageLoaderContext';
+// Redux imports
+import { setCategoriesMap as setReduxCategoriesMap } from '../redux/slices/categorySlice';
+import { useAppDispatch } from '../redux/hooks';
 
 function CategoryDonut({ data = [], categoriesMap = {} }) {
   const total = data.reduce((sum, d) => sum + Number(d.amount || 0), 0);
@@ -218,6 +221,7 @@ function CategoryDonut({ data = [], categoriesMap = {} }) {
 }
 
 export default function SpendAreasDashboard({ route, navigation }) {
+  const dispatch = useAppDispatch();
   const params = route?.params || {};
   const {
     show: showPageLoader,
@@ -228,7 +232,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
   const periodChipPositions = useRef({});
   const periodScrollWidth = useRef(0);
   const [transactions, setTransactions] = useState([]);
-  const [categoriesMap, setCategoriesMap] = useState({});
+  const [categoriesMap, setLocalCategoriesMap] = useState({});
   const [sourcesMap, setSourcesMap] = useState({});
   const [filterMode, setFilterMode] = useState(params.mode || 'monthly');
   const [selectedPeriod, setSelectedPeriod] = useState(params.periodLabel || null);
@@ -250,7 +254,8 @@ export default function SpendAreasDashboard({ route, navigation }) {
       (catsAll || []).forEach(c => {
         cmap[String(c.id)] = c;
       });
-      setCategoriesMap(cmap);
+      setLocalCategoriesMap(cmap);
+      dispatch(setReduxCategoriesMap(cmap));
       // SOURCES
       const smap = {};
       (sourcesAll || []).forEach(source => {
@@ -261,7 +266,8 @@ export default function SpendAreasDashboard({ route, navigation }) {
       setTransactions(tx || []);
     } catch (e) {
       console.error('Error loading dashboard data:', e);
-      setCategoriesMap({});
+      setLocalCategoriesMap({});
+      dispatch(setReduxCategoriesMap({}));
       setSourcesMap({});
       setTransactions([]);
     } finally {
@@ -309,28 +315,97 @@ export default function SpendAreasDashboard({ route, navigation }) {
     selectedPeriod,
   ]);
 
-  // Compute periods for the selected filter mode.
-  // DAILY  → Current month dates only
-  // WEEKLY → Current month dynamically calculated week ranges
-  // MONTHLY → All available months
-  // YEARLY → All available years
-  // All periods are shown NEWEST → OLDEST.
   const allPeriods = useMemo(() => {
-    if (transactions.length === 0) return [];
-    const periods = new Set();
-    // Current month
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
+    // WEEKLY
+    // Calendar week = Sunday -> Saturday
+    // The first week starts from the 1st of the month and ends
+    // on the first Saturday.
+    // Example:
+    // Sep 2026 -> 1-5, 6-12, 13-19, 20-26, 27-30
+    // Oct 2026 -> 1-3, 4-10, 11-17, 18-24, 25-31
+    // Nov 2026 -> 1-7, 8-14, 15-21, 22-28, 29-30
+    if (filterMode === 'weekly') {
+      const periods = [];
+      const lastDayOfMonth = new Date(
+        currentYear,
+        currentMonth + 1,
+        0
+      ).getDate();
+      const currentDay = now.getDate();
+      let weekStartDay = 1;
+      while (weekStartDay <= lastDayOfMonth) {
+        let weekEndDay;
+        if (weekStartDay === 1) {
+          // First week:
+          // Find the first Saturday of the month.
+          const firstDay = new Date(
+            currentYear,
+            currentMonth,
+            1
+          );
+
+          const firstDayWeekday = firstDay.getDay();
+          // Sunday = 0
+          // Monday = 1
+          // ...
+          // Saturday = 6
+          const daysUntilSaturday =
+            (6 - firstDayWeekday + 7) % 7;
+
+          weekEndDay =
+            Math.min(
+              1 + daysUntilSaturday,
+              lastDayOfMonth
+            );
+        } else {
+          // All following weeks are Sunday -> Saturday.
+          weekEndDay = Math.min(
+            weekStartDay + 6,
+            lastDayOfMonth
+          );
+        }
+        // Only show weeks that have already started.
+        if (weekStartDay > currentDay) {
+          break;
+        }
+        const key =
+          `${currentYear}-${String(
+            currentMonth + 1
+          ).padStart(2, '0')}-` +
+          `${String(weekStartDay).padStart(2, '0')}_` +
+          `${String(weekEndDay).padStart(2, '0')}`;
+
+        periods.push(key);
+
+        weekStartDay =
+          weekEndDay + 1;
+      }
+      // Newest -> oldest
+      return periods.reverse();
+    }
+    // OTHER MODES
+    if (transactions.length === 0) {
+      return [];
+    }
+    const periods = new Set();
     transactions.forEach(t => {
       if (!t.date) return;
       const dateStr = String(t.date).replace(' ', 'T');
       const dateObj = new Date(dateStr);
-      if (isNaN(dateObj.getTime())) return;
-      const transactionYear = dateObj.getFullYear();
-      const transactionMonth = dateObj.getMonth();
+      if (isNaN(dateObj.getTime())) {
+        return;
+      }
+
+      const transactionYear =
+        dateObj.getFullYear();
+
+      const transactionMonth =
+        dateObj.getMonth();
+
       // DAILY
-      // Current month only
       if (filterMode === 'daily') {
         if (
           transactionYear !== currentYear ||
@@ -339,58 +414,40 @@ export default function SpendAreasDashboard({ route, navigation }) {
           return;
         }
 
-        periods.add(dateStr.split('T')[0]);
-        return;
-      }
-      // WEEKLY
-      // Current month only
-      if (filterMode === 'weekly') {
-        if (
-          transactionYear !== currentYear ||
-          transactionMonth !== currentMonth
-        ) {
-          return;
-        }
-        const dayOfMonth = dateObj.getDate();
-        const weekNumber = Math.floor((dayOfMonth - 1) / 7);
-        const weekStartDay =
-          weekNumber === 0 ? 1 : weekNumber * 7 - 1;
-        const firstDayOfNextMonth = new Date(
-          currentYear,
-          currentMonth + 1,
-          1
+        periods.add(
+          dateStr.split('T')[0]
         );
-        const lastDayOfCurrentMonth = new Date(
-          firstDayOfNextMonth.getTime() - 24 * 60 * 60 * 1000
-        ).getDate();
-        const weekEndDay = Math.min(
-          weekStartDay + (weekNumber === 0 ? 4 : 6),
-          lastDayOfCurrentMonth
-        );
-        const key = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-` +
-          `${String(weekStartDay).padStart(2, '0')}_` +
-          `${String(weekEndDay).padStart(2, '0')}`;
-        periods.add(key);
+
         return;
       }
       // MONTHLY
-      // All available months
       if (filterMode === 'monthly') {
-        periods.add(dateStr.substring(0, 7));
+        periods.add(
+          dateStr.substring(0, 7)
+        );
         return;
       }
       // YEARLY
-      // All available years
       if (filterMode === 'yearly') {
-        periods.add(dateStr.substring(0, 4));
+        periods.add(
+          dateStr.substring(0, 4)
+        );
       }
     });
-    // NEWEST → OLDEST
-    return Array.from(periods).sort((a, b) => {
-      const dateA = a.split('_')[0];
-      const dateB = b.split('_')[0];
-      return dateB.localeCompare(dateA);
-    });
+    // Newest -> oldest
+    return Array.from(periods).sort(
+      (a, b) => {
+        const dateA =
+          a.split('_')[0];
+
+        const dateB =
+          b.split('_')[0];
+
+        return dateB.localeCompare(
+          dateA
+        );
+      }
+    );
   }, [transactions, filterMode]);
 
   // Fallback selectedPeriod to the latest period if none is selected or matches the mode
@@ -611,28 +668,83 @@ export default function SpendAreasDashboard({ route, navigation }) {
       }
       // MONTHLY → GROUP BY WEEK
       else if (filterMode === 'monthly') {
-        const weekNumber = Math.floor((day - 1) / 7);
-        const weekStartDay =
-          weekNumber === 0 ? 1 : weekNumber * 7 - 1;
-        const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
-        const weekEndDay = Math.min(
-          weekStartDay +
-          (weekNumber === 0 ? 4 : 6),
-          lastDayOfMonth
-        );
-        key = `${year}-${String(month + 1).padStart(2, '0')}-` +
-          `${String(weekStartDay).padStart(2, '0')}_` +
-          `${String(weekEndDay).padStart(2, '0')}`;
+        // MONTHLY → GROUP BY CALENDAR WEEK
+        // Calendar week = Sunday -> Saturday.
+        // The first week starts from the 1st of the month and ends on the first Saturday.
+        // This MUST match the Weekly period selector above.
+        const firstDayOfMonth = new Date(year, month, 1);
+        const firstDayWeekday = firstDayOfMonth.getDay();
+        const lastDayOfMonth =
+          new Date(
+            year,
+            month + 1,
+            0
+          ).getDate();
+        let weekStartDay;
+        let weekEndDay;
+        let weekNumber;
+        if (day <= (
+          1 +
+          ((6 - firstDayWeekday + 7) % 7)
+        )) {
+          // First partial/full week.
+          weekNumber = 1;
+          weekStartDay = 1;
+          weekEndDay =
+            Math.min(
+              1 +
+              ((6 - firstDayWeekday + 7) % 7),
+              lastDayOfMonth
+            );
+        } else {
+          // Subsequent Sunday -> Saturday weeks.
+          const firstWeekEndDay =
+            1 +
+            ((6 - firstDayWeekday + 7) % 7);
+          const daysAfterFirstWeek = day - firstWeekEndDay - 1;
+          weekNumber =
+            Math.floor(
+              daysAfterFirstWeek / 7
+            ) + 2;
+          weekStartDay =
+            firstWeekEndDay + 1 +
+            Math.floor(
+              daysAfterFirstWeek / 7
+            ) * 7;
+          weekEndDay =
+            Math.min(
+              weekStartDay + 6,
+              lastDayOfMonth
+            );
+        }
+        key =
+          `${year}-${String(
+            month + 1
+          ).padStart(2, '0')}-` +
+          `${String(
+            weekStartDay
+          ).padStart(2, '0')}_` +
+          `${String(
+            weekEndDay
+          ).padStart(2, '0')}`;
 
-        label = `Week ${weekNumber + 1} • ` +
-          `${String(weekStartDay).padStart(2, '0')} ` +
-          `${date.toLocaleDateString('en-IN', {
-            month: 'short',
-          })} - ` +
-          `${String(weekEndDay).padStart(2, '0')} ` +
-          `${date.toLocaleDateString('en-IN', {
-            month: 'short',
-          })}`;
+        const monthName =
+          date.toLocaleDateString(
+            'en-IN',
+            {
+              month: 'short',
+            }
+          );
+        label =
+          `Week ${weekNumber} • ` +
+          `${String(
+            weekStartDay
+          ).padStart(2, '0')} ` +
+          `${monthName} - ` +
+          `${String(
+            weekEndDay
+          ).padStart(2, '0')} ` +
+          `${monthName}`;
       }
       // YEARLY → GROUP BY MONTH
       else if (filterMode === 'yearly') {

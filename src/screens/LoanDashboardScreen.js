@@ -11,6 +11,8 @@ import { getLoans, getLoanPayments } from "../services/loans";
 import events from "../services/events";
 import FAB from "../components/FAB";
 import { Colors, Spacing } from "../components/Theme";
+import { useAppDispatch, useLoans } from '../redux/hooks';
+import { setLoans } from '../redux/slices/loanSlice';
 
 /* =========================================================
    HELPERS
@@ -1216,7 +1218,9 @@ function DirectionTab({ active, icon, label, color, onPress }) {
 ========================================================= */
 
 function LoanDirectionDashboard({ navigation }) {
-  const [loans, setLoans] = useState([]);
+  const dispatch = useAppDispatch();
+  const reduxLoans = useLoans();
+  const loans = reduxLoans || [];
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [direction, setDirection] = useState("BORROWED");
@@ -1254,7 +1258,7 @@ function LoanDirectionDashboard({ navigation }) {
             new Date(loan.loan_end_date) < new Date(),
         }));
 
-      setLoans(filtered);
+      dispatch(setLoans(filtered));
 
       let recent = [];
 

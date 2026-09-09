@@ -20,8 +20,13 @@ import SourceCreateModal from '../components/SourceCreateModal';
 import FAB from '../components/FAB';
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 
+import { useAppDispatch, useSourcesList } from '../redux/hooks';
+import { setSources } from '../redux/slices/sourceSlice';
+
 export default function SourcesScreen({ route, navigation }) {
-  const [items, setItems] = useState([]);
+  const dispatch = useAppDispatch();
+  const reduxItems = useSourcesList();
+  const items = reduxItems || [];
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmTargetId, setConfirmTargetId] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -66,7 +71,7 @@ export default function SourcesScreen({ route, navigation }) {
       };
     });
 
-    setItems(updated);
+    dispatch(setSources(updated));
   }
 
   useEffect(() => {
@@ -159,7 +164,7 @@ export default function SourcesScreen({ route, navigation }) {
           <View style={[styles.statCard, styles.activeStat]}>
             <View style={styles.statIconBlue}>
               <MaterialCommunityIcons
-                name="wallet-check-outline"
+                name="cash-plus"
                 size={17}
                 color="#4B7CF3"
               />
@@ -179,7 +184,7 @@ export default function SourcesScreen({ route, navigation }) {
           <View style={[styles.statCard, styles.negativeStat]}>
             <View style={styles.statIconRed}>
               <MaterialCommunityIcons
-                name="wallet-remove-outline"
+                name="cash-minus"
                 size={17}
                 color="#E46A6A"
               />

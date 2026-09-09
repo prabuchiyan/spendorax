@@ -15,6 +15,7 @@ import events from "../services/events";
 import Card from "../components/Card";
 import calc from "../services/loanCalculations";
 import { Colors } from "../components/Theme";
+import { useLoans } from '../redux/hooks';
 
 function ActionButton({ icon, title, color, bg, onPress, width = "31%" }) {
   return (
@@ -79,7 +80,12 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
   const id = route?.params?.id;
 
-  const [loan, setLoan] = useState(null);
+  const reduxLoans = useLoans();
+  const reduxLoan = reduxLoans?.find(l => String(l.id) === String(id));
+  
+  const [localLoan, setLocalLoan] = useState(null);
+  const loan = reduxLoan || localLoan;
+
   const [linkedTxs, setLinkedTxs] = useState([]);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
@@ -90,8 +96,10 @@ export default function LoanDetailsScreen({ route, navigation }) {
       if (!id) return;
 
       try {
-        const l = await getLoanById(id);
-        setLoan(l);
+        if (!reduxLoan) {
+          const l = await getLoanById(id);
+          setLocalLoan(l);
+        }
       } catch (error) {
         console.error("Failed to load loan:", error);
       }

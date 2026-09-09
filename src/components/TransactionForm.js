@@ -17,6 +17,8 @@ import {
   getTransactionNoteSuggestions,
   updateTransaction,
   deleteTransaction,
+  getAllTransactionsByYears,
+  getCategoryAndSourceUsage
 } from "../services/transactions";
 import {
   getLoans,
@@ -146,36 +148,19 @@ export default function TransactionForm({
          * so opening Add Transaction does not wait for transaction history, notes or loans. */
 
         // CATEGORY / SOURCE USAGE
-        getTransactions(1000000, "Yes")
-          .then((transactions) => {
-            if (cancelled) return;
-            const categoryCount = {};
-            const sourceCount = {};
-            (transactions || []).forEach((txn) => {
-              // Category usage
-              if (txn.category_id && txn.type !== "transfer") {
-                const categoryKey = String(txn.category_id);
-                categoryCount[categoryKey] =
-                  (categoryCount[categoryKey] || 0) + 1;
-              }
-              // Source usage
-              if (txn.source_id) {
-                const sourceKey = String(txn.source_id);
-                sourceCount[sourceKey] = (sourceCount[sourceKey] || 0) + 1;
-              }
-            });
-            setCategoryUsage(categoryCount);
-            setSourceUsage(sourceCount);
-          })
-          .catch((usageError) => {
-            console.warn(
-              "Unable to calculate category/source usage:",
-              usageError,
-            );
-            if (cancelled) return;
-            setCategoryUsage({});
-            setSourceUsage({});
-          });
+        getCategoryAndSourceUsage(1).then(({ categoryCount, sourceCount }) => {
+          if (cancelled) return;
+          setCategoryUsage(categoryCount || {});
+          setSourceUsage(sourceCount || {});
+        }).catch((usageError) => {
+          console.warn(
+            "Unable to calculate category/source usage:",
+            usageError,
+          );
+          if (cancelled) return;
+          setCategoryUsage({});
+          setSourceUsage({});
+        });
         //NOTE SUGGESTIONS
         getTransactionNoteSuggestions()
           .then((notes) => {
@@ -432,28 +417,37 @@ export default function TransactionForm({
     return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm}`;
   }
 
+  const filterTimeoutRef = useRef(null);
+
   const handleNotesChange = (text) => {
     setNotes(text);
     setNotesError(false);
     markDirty();
-    if (!text.trim()) {
-      setFilteredSuggestions([]);
-      setShowSuggestions(false);
-      return;
+
+    if (filterTimeoutRef.current) {
+      clearTimeout(filterTimeoutRef.current);
     }
-    const searchText = text.toLowerCase();
-    const matches = noteSuggestions.filter((item) => {
-      const category = categories.find((c) => c.id === item.category_id);
-      return (
-        item.notes.toLowerCase().includes(searchText) &&
-        // Match selected transaction type
-        (category?.type === type ||
-          // Include suggestions that don't have a category
-          !item.category_id)
-      );
-    });
-    setFilteredSuggestions(matches);
-    setShowSuggestions(matches.length > 0);
+
+    filterTimeoutRef.current = setTimeout(() => {
+      if (!text.trim()) {
+        setFilteredSuggestions([]);
+        setShowSuggestions(false);
+        return;
+      }
+      const searchText = text.toLowerCase();
+      const matches = noteSuggestions.filter((item) => {
+        const category = categories.find((c) => c.id === item.category_id);
+        return (
+          item.notes.toLowerCase().includes(searchText) &&
+          // Match selected transaction type
+          (category?.type === type ||
+            // Include suggestions that don't have a category
+            !item.category_id)
+        );
+      });
+      setFilteredSuggestions(matches);
+      setShowSuggestions(matches.length > 0);
+    }, 150);
   };
 
   // CATEGORIES
@@ -737,6 +731,16 @@ export default function TransactionForm({
           autoCorrect={false}
           autoCapitalize="sentences"
           editable={!submitting}
+          onBlur={() => {
+            setTimeout(() => {
+              setShowSuggestions(false);
+            }, 200);
+          }}
+          onFocus={() => {
+            if (filteredSuggestions.length > 0) {
+              setShowSuggestions(true);
+            }
+          }}
           right={
             notes.length > 0 ? (
               <PaperTextInput.Icon
@@ -756,33 +760,21 @@ export default function TransactionForm({
         {showSuggestions && (
           <View
             style={{
-              position: "absolute",
-              top: 62, // Immediately below the TextInput
-              left: 0,
-              right: 0,
               backgroundColor: "#fff",
               borderRadius: 12,
               borderWidth: 1,
               borderColor: "#E6EAF2",
-              maxHeight: 220,
-              zIndex: 9999,
-              elevation: 10,
+              marginTop: 4,
+              overflow: "hidden",
             }}
           >
-            <FlatList
-              data={filteredSuggestions}
-              keyExtractor={(item, index) => `${item.notes}-${index}`}
-              nestedScrollEnabled
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator
-              persistentScrollbar
-              style={{ maxHeight: 220 }}
-              renderItem={({ item }) => {
+              {filteredSuggestions.slice(0, 4).map((item, index) => {
                 const category = categories.find(
                   (c) => c.id === item.category_id,
                 );
                 return (
                   <TouchableOpacity
+                    key={`${item.notes}-${index}`}
                     onPress={() => {
                       setNotes(item.notes);
 
@@ -847,8 +839,7 @@ export default function TransactionForm({
                     </View>
                   </TouchableOpacity>
                 );
-              }}
-            />
+              })}
           </View>
         )}
       </View>
@@ -894,12 +885,12 @@ export default function TransactionForm({
                     style={{
                       flexDirection: "row",
                       flexWrap: "wrap",
-                      justifyContent: "space-between",
+                      justifyContent: "flex-start",
                       rowGap: 8,
                       marginTop: 8,
                     }}
                   >
-                    {visibleCategories.map((c) => (
+                    {visibleCategories.map((c, index) => (
                       <TouchableOpacity
                         key={c.id}
                         disabled={submitting}
@@ -912,6 +903,7 @@ export default function TransactionForm({
                         }}
                         style={{
                           width: "23%",
+                          marginRight: index % 4 !== 3 ? "2.66%" : 0,
                           height: 72,
                           borderRadius: 10,
                           marginBottom: 8,

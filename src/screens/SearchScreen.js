@@ -12,30 +12,15 @@ import { getSources } from '../services/sources';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Spacing } from '../components/Theme';
 import { useFocusEffect } from '@react-navigation/native';
+import { useCategories, useSourcesList } from '../redux/hooks';
 
 export default function SearchScreen({ navigation }) {
   const [items, setItems] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [sources, setSources] = useState([]);
+  const reduxCategories = useCategories();
+  const categories = reduxCategories || [];
+  const reduxSources = useSourcesList();
+  const sources = reduxSources || [];
   const [searchQuery, setSearchQuery] = useState('');
-
-  async function load() {
-    const cats = await getCategories(true);
-    setCategories(cats);
-
-    const src = await getSources(true);
-    setSources(src);
-  }
-
-  useEffect(() => {
-    load();
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [])
-  );
 
   // ---------------------------------------------------------
   // SEARCH

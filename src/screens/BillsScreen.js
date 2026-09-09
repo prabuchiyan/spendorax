@@ -4,6 +4,7 @@ import {
   TouchableOpacity, TextInput, ScrollView, Alert
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useDispatch, useSelector } from 'react-redux';
 import { Searchbar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {
@@ -30,6 +31,10 @@ import { Colors, Spacing } from '../components/Theme';
 import { BILL_STATUS, formatCurrency } from '../services/billUtils';
 import { getSources } from '../services/sources';
 import { getCreditCards, payCreditCardBill } from '../services/creditCards';
+// Redux imports
+import { setBills, setBillsSummary } from '../redux/slices/billSlice';
+import { setCategoriesMap } from '../redux/slices/categorySlice';
+import { useBills, useBillsSummary, useCategoriesMap, useAppDispatch } from '../redux/hooks';
 
 const STATUS_FILTERS = [
   { key: 'all', label: 'All' },
@@ -190,11 +195,18 @@ function getPreferredBillOccurrence(bill, allBills) {
 }
 
 export default function BillsScreen({ navigation }) {
+  const dispatch = useAppDispatch();
+  
+  // Redux state
+  const reduxBills = useBills();
+  const reduxSummary = useBillsSummary();
+  const categoriesMap = useCategoriesMap();
+  const summary = reduxSummary || {};
+  
+  // Local state
   const [items, setItems] = useState([]);
   const [preferredOccurrences, setPreferredOccurrences] = useState({});
-  const [summary, setSummary] = useState(null);
   const [categories, setCategories] = useState([]);
-  const [categoriesMap, setCategoriesMap] = useState({});
   const [viewMode, setViewMode] = useState('list');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState(null);
@@ -231,6 +243,7 @@ export default function BillsScreen({ navigation }) {
       getCategories(true),
     ]);
     setItems(rows);
+    dispatch(setBills(rows));
     const preferredMap = {};
     await Promise.all(
       rows.map(async bill => {
@@ -270,17 +283,17 @@ export default function BillsScreen({ navigation }) {
       })
     );
     setPreferredOccurrences(preferredMap);
-    setSummary(sum);
+    dispatch(setBillsSummary(sum));
     const expCats = cats.filter(c => c.type === 'expense');
     setCategories(expCats);
     const map = {};
     cats.forEach(c => (map[c.id] = c));
-    setCategoriesMap(map);
+    dispatch(setCategoriesMap(map));
     const sources = await getSources(true);
     setPaymentSources(sources);
   }
 
-  useFocusEffect(useCallback(() => { load(); }, [statusFilter, categoryFilter, sortBy]));
+  useFocusEffect(useCallback(() => { load(); }, [dispatch, statusFilter, categoryFilter, sortBy]));
 
   // ── derived lists ──────────────────────────────────────────────────────────
   const filteredItems = useMemo(() => {

@@ -14,6 +14,8 @@ import { deleteStatement } from "../services/creditCardScheduler";
 import Card from "../components/Card";
 import { Colors, Spacing } from "../components/Theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useAppDispatch, useCreditCardStatements } from '../redux/hooks';
+import { setStatements } from '../redux/slices/creditCardSlice';
 
 function formatDate(value) {
   if (!value) return "-";
@@ -27,13 +29,15 @@ function formatAmount(amount) {
 }
 
 export default function CreditCardStatementsScreen({ navigation }) {
-  const [statements, setStatements] = useState([]);
+  const dispatch = useAppDispatch();
+  const reduxStatements = useCreditCardStatements();
+  const statements = reduxStatements || [];
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
     const items = await getAllCreditCardStatements();
-    setStatements(items);
+    dispatch(setStatements(items));
   };
 
   const handleDeleteStatement = useCallback((statement) => {
@@ -50,7 +54,7 @@ export default function CreditCardStatementsScreen({ navigation }) {
       // the scheduler so the cycle regenerates if balance > 0.
       await deleteStatement(deleteTarget.id);
       const items = await getAllCreditCardStatements();
-      setStatements(items || []);
+      dispatch(setStatements(items || []));
       setDeleteTarget(null);
     } catch (error) {
       console.error("[CreditCardStatements] Delete failed:", error);

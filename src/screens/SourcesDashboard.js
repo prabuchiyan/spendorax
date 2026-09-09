@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+import { useDispatch } from 'react-redux';
 import { getSources } from '../services/sources';
 import { getTransactions } from '../services/transactions';
 import { getCreditCards } from '../services/creditCards';
@@ -14,9 +15,14 @@ import { Colors, Spacing } from '../components/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 import { usePageLoader } from '../context/PageLoaderContext';
+// Redux imports
+import { setSources, setLoading as setSourceLoading } from '../redux/slices/sourceSlice';
+import { useAppDispatch, useSourcesList } from '../redux/hooks';
 
 export default function SourcesDashboard({ navigation }) {
-  const [sources, setSources] = useState([]);
+  const dispatch = useAppDispatch();
+  const reduxSources = useSourcesList();
+  const sources = reduxSources || [];
   const [tab, setTab] = useState('banks');
   const [loading, setLoading] = useState(true);
   const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
@@ -73,13 +79,13 @@ export default function SourcesDashboard({ navigation }) {
           };
         }
       );
-      setSources(updatedSources);
+      dispatch(setSources(updatedSources));
     } catch (error) {
       console.error(
         'SourcesDashboard load error:',
         error
       );
-      setSources([]);
+      dispatch(setSources([]));
     } finally {
       setLoading(false);
       hidePageLoader();
