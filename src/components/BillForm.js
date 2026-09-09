@@ -403,59 +403,67 @@ export default function BillForm({
     );
   }
 
+  const [submitting, setSubmitting] = useState(false);
+
   async function submit() {
+    if (submitting) return;
     if (!validate()) return;
 
-    const payload = {
-      name: name.trim(),
-      amount: parseFloat(amount),
-      due_date: dueDate,
-      is_recurring: isRecurring,
+    setSubmitting(true);
+    try {
+      const payload = {
+        name: name.trim(),
+        amount: parseFloat(amount),
+        due_date: dueDate,
+        is_recurring: isRecurring,
 
-      recurrence_type: isRecurring
-        ? recurrenceType
-        : null,
-
-      recurrence_interval: isRecurring
-        ? parseInt(
-          recurrenceInterval,
-          10
-        ) || 1
-        : 1,
-
-      recurrence_end_date:
-        isRecurring &&
-          recurrenceEndDate
-          ? recurrenceEndDate
+        recurrence_type: isRecurring
+          ? recurrenceType
           : null,
 
-      category_id: categoryId,
-      source_id: sourceId,
+        recurrence_interval: isRecurring
+          ? parseInt(
+            recurrenceInterval,
+            10
+          ) || 1
+          : 1,
 
-      reminder_days_before:
-        parseInt(
-          reminderDays,
-          10
-        ) || 2,
+        recurrence_end_date:
+          isRecurring &&
+            recurrenceEndDate
+            ? recurrenceEndDate
+            : null,
 
-      auto_pay: autoPay,
+        category_id: categoryId,
+        source_id: sourceId,
 
-      notes: notes || null,
+        reminder_days_before:
+          parseInt(
+            reminderDays,
+            10
+          ) || 2,
 
-      attachment_url:
-        attachmentUrl || null,
-    };
+        auto_pay: autoPay,
 
-    if (isEdit) {
-      await updateBill(
-        bill.id,
-        payload
-      );
-    } else {
-      await createBill(payload);
+        notes: notes || null,
+
+        attachment_url:
+          attachmentUrl || null,
+      };
+
+      if (isEdit) {
+        await updateBill(
+          bill.id,
+          payload
+        );
+      } else {
+        await createBill(payload);
+      }
+
+      onSaved && onSaved();
+    } finally {
+      setSubmitting(false);
     }
-
-    onSaved && onSaved();
   }
 
   const dueParts = dueDate
@@ -1228,6 +1236,8 @@ export default function BillForm({
                 ? "content-save-outline"
                 : "check"
             }
+            disabled={submitting}
+            loading={submitting}
           >
             {isEdit
               ? "Save Changes"

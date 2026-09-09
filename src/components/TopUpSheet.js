@@ -45,12 +45,13 @@ function formatDateTime(value) {
 }
 
 // Field Card
-function FieldCard({ icon, title, value, color = "#2563EB", onPress }) {
+function FieldCard({ icon, title, value, color = "#2563EB", onPress, disabled = false }) {
   return (
     <TouchableOpacity
       activeOpacity={0.85}
       onPress={onPress}
       style={styles.fieldCard}
+      disabled={disabled}
     >
       <View
         style={[
@@ -375,6 +376,7 @@ export default function TopUpSheet({
                 left={<PaperTextInput.Icon icon="currency-inr" />}
                 style={styles.input}
                 error={!!errors.amount}
+                disabled={loading}
                 autoFocus
               />
 
@@ -400,6 +402,7 @@ export default function TopUpSheet({
                   left={<PaperTextInput.Icon icon="calendar-clock-outline" />}
                   right={<PaperTextInput.Icon icon="chevron-down" />}
                   style={styles.input}
+                  disabled={loading}
                 />
               </TouchableOpacity>
 
@@ -413,6 +416,7 @@ export default function TopUpSheet({
                   selectedSource ? selectedSource.name : "Select Bank / Wallet"
                 }
                 onPress={() => setShowSourcePicker(true)}
+                disabled={loading}
               />
 
               {errors.source ? (
@@ -429,6 +433,7 @@ export default function TopUpSheet({
                   selectedCategory ? selectedCategory.name : "Select Category"
                 }
                 onPress={() => setShowCategoryPicker(true)}
+                disabled={loading}
               />
 
               {errors.category ? (
@@ -445,6 +450,7 @@ export default function TopUpSheet({
                 numberOfLines={2}
                 left={<PaperTextInput.Icon icon="note-text-outline" />}
                 style={styles.input}
+                disabled={loading}
               />
 
               {/* Buttons */}

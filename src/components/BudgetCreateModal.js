@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
 import { TextInput as PaperInput, Button, Avatar } from 'react-native-paper';
 import Card from './Card';
@@ -42,6 +42,9 @@ export default function BudgetCreateModal({
         setSearchText,
         setShowCategoryDropdown,
     ]);
+
+    const [submitting, setSubmitting] = useState(false);
+
     return (
         <Modal
             visible={visible}
@@ -60,6 +63,7 @@ export default function BudgetCreateModal({
 
                         <TouchableOpacity
                             activeOpacity={0.8}
+                            disabled={submitting}
                             onPress={() => setShowCategoryDropdown(true)}
                             style={{
                                 borderWidth: 1,
@@ -124,6 +128,7 @@ export default function BudgetCreateModal({
                                         value={searchText}
                                         onChangeText={setSearchText}
                                         mode="outlined"
+                                        disabled={submitting}
                                         style={{ marginBottom: 8 }}
                                     />
 
@@ -194,19 +199,27 @@ export default function BudgetCreateModal({
                             value={categoryBudgetAmount}
                             keyboardType="numeric"
                             onChangeText={setCategoryBudgetAmount}
+                            disabled={submitting}
                             style={{ marginTop: 12 }}
                         />
 
                         <View style={styles.actions}>
-                            <Button onPress={onClose}>Cancel</Button>
+                            <Button onPress={onClose} disabled={submitting}>Cancel</Button>
 
                             <Button
                                 mode="contained"
+                                loading={submitting}
+                                disabled={submitting}
                                 onPress={async () => {
-                                    const success = await handleSaveBudget();
-
-                                    if (success) {
-                                        onSave();
+                                    if (submitting) return;
+                                    setSubmitting(true);
+                                    try {
+                                        const success = await handleSaveBudget();
+                                        if (success) {
+                                            onSave();
+                                        }
+                                    } finally {
+                                        setSubmitting(false);
                                     }
                                 }}
                             >

@@ -11,9 +11,9 @@ import { getSources } from '../services/sources';
 import { getCategories } from '../services/categories';
 
 // Reused exactly from LoanPaymentScreen
-function FieldCard({ icon, title, value, color = '#2563EB', onPress }) {
+function FieldCard({ icon, title, value, color = '#2563EB', onPress, disabled = false }) {
     return (
-        <TouchableOpacity activeOpacity={0.85} onPress={onPress} style={styles.fieldCard}>
+        <TouchableOpacity activeOpacity={0.85} onPress={onPress} style={styles.fieldCard} disabled={disabled}>
             <View style={[styles.fieldIcon, { backgroundColor: color + '20' }]}>
                 <MaterialCommunityIcons name={icon} size={22} color={color} />
             </View>
@@ -180,12 +180,13 @@ export default function LendMoreSheet({ visible, loanId, loanName, onClose, onSu
                                 left={<PaperTextInput.Icon icon="currency-inr" />}
                                 style={styles.input}
                                 error={!!errors.amount}
+                                disabled={loading}
                                 autoFocus
                             />
                             {errors.amount ? <Text style={styles.error}>{errors.amount}</Text> : null}
 
                             {/* Date */}
-                            <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+                            <TouchableOpacity onPress={() => setShowDatePicker(true)} disabled={loading}>
                                 <PaperTextInput
                                     label="Date"
                                     value={date}
@@ -194,6 +195,7 @@ export default function LendMoreSheet({ visible, loanId, loanName, onClose, onSu
                                     left={<PaperTextInput.Icon icon="calendar" />}
                                     right={<PaperTextInput.Icon icon="chevron-down" />}
                                     style={styles.input}
+                                    disabled={loading}
                                 />
                             </TouchableOpacity>
 
@@ -204,6 +206,7 @@ export default function LendMoreSheet({ visible, loanId, loanName, onClose, onSu
                                 title="Payment Source"
                                 value={selectedSource ? selectedSource.name : 'Select Bank / Wallet'}
                                 onPress={() => setShowSourcePicker(true)}
+                                disabled={loading}
                             />
                             {errors.source ? <Text style={styles.error}>{errors.source}</Text> : null}
 
@@ -214,6 +217,7 @@ export default function LendMoreSheet({ visible, loanId, loanName, onClose, onSu
                                 title="Category"
                                 value={selectedCategory ? selectedCategory.name : 'Select Category'}
                                 onPress={() => setShowCategoryPicker(true)}
+                                disabled={loading}
                             />
                             {errors.category ? <Text style={styles.error}>{errors.category}</Text> : null}
 
@@ -227,6 +231,7 @@ export default function LendMoreSheet({ visible, loanId, loanName, onClose, onSu
                                 numberOfLines={2}
                                 left={<PaperTextInput.Icon icon="note-text-outline" />}
                                 style={styles.input}
+                                disabled={loading}
                             />
 
                             {/* Buttons */}

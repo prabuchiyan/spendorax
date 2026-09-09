@@ -26,12 +26,14 @@ function FieldCard({
     value,
     color = '#2563EB',
     onPress,
+    disabled = false,
 }) {
     return (
         <TouchableOpacity
             activeOpacity={0.85}
             onPress={onPress}
             style={styles.fieldCard}
+            disabled={disabled}
         >
             <View
                 style={[
@@ -184,6 +186,7 @@ export default function LoanForeclosureScreen({
     const [amount, setAmount] = useState('');
     const [charges, setCharges] = useState('');
     const [notes, setNotes] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const [loans, setLoans] = useState([]);
     const [sources, setSources] = useState([]);
@@ -273,9 +276,11 @@ export default function LoanForeclosureScreen({
     }
 
     async function save() {
+        if (loading) return;
         if (!validate()) return;
 
         try {
+            setLoading(true);
             await forecloseLoan({
                 loanId,
                 date: new Date().toISOString(),
@@ -295,6 +300,8 @@ export default function LoanForeclosureScreen({
                 e?.message ||
                 'Failed to foreclose loan'
             );
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -445,6 +452,7 @@ export default function LoanForeclosureScreen({
                                 : 'Select Loan'
                         }
                         onPress={() => setShowLoanPicker(true)}
+                        disabled={loading}
                     />
 
                     <FieldCard
@@ -457,6 +465,7 @@ export default function LoanForeclosureScreen({
                                 : 'Select Bank / Wallet'
                         }
                         onPress={() => setShowSourcePicker(true)}
+                        disabled={loading}
                     />
 
                     <FieldCard
@@ -469,6 +478,7 @@ export default function LoanForeclosureScreen({
                                 : 'Select Category'
                         }
                         onPress={() => setShowCategoryPicker(true)}
+                        disabled={loading}
                     />
 
                     {/* Final Payment */}
@@ -506,6 +516,7 @@ export default function LoanForeclosureScreen({
                                     onBlur={() =>
                                         setAmountFocused(false)
                                     }
+                                    editable={!loading}
                                     style={styles.amountInput}
                                     onChangeText={(text) => {
                                         let value = text.replace(
@@ -574,6 +585,7 @@ export default function LoanForeclosureScreen({
                                     onBlur={() =>
                                         setChargesFocused(false)
                                     }
+                                    editable={!loading}
                                     style={styles.amountInput}
                                     onChangeText={(text) => {
                                         let value = text.replace(
@@ -625,6 +637,7 @@ export default function LoanForeclosureScreen({
                             selectionColor="#DC2626"
                             cursorColor="#DC2626"
                             underlineColorAndroid="transparent"
+                            editable={!loading}
                             style={styles.notesInput}
                         />
                     </View>
@@ -634,6 +647,8 @@ export default function LoanForeclosureScreen({
                             mode="contained"
                             buttonColor="#DC2626"
                             onPress={save}
+                            loading={loading}
+                            disabled={loading}
                             style={styles.saveButton}
                             contentStyle={{
                                 height: 54,

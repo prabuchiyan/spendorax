@@ -19,7 +19,7 @@ import { getSources } from "../services/sources";
 import { getCategories } from "../services/categories";
 import Card from "../components/Card";
 
-function FieldCard({ icon, title, value, color = "#2563EB", onPress, error }) {
+function FieldCard({ icon, title, value, color = "#2563EB", onPress, error, disabled = false }) {
   const hasError = !!error;
 
   return (
@@ -28,6 +28,7 @@ function FieldCard({ icon, title, value, color = "#2563EB", onPress, error }) {
         activeOpacity={0.85}
         onPress={onPress}
         style={[styles.fieldCard, hasError && styles.fieldCardError]}
+        disabled={disabled}
       >
         <View
           style={[
@@ -563,6 +564,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
             title="Loan"
             value={selectedLoan ? selectedLoan.loan_name : "Select Loan"}
             onPress={() => setShowLoanPicker(true)}
+            disabled={loading}
           />
 
           <FieldCard
@@ -573,6 +575,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
               selectedSource ? selectedSource.name : "Select Bank / Wallet"
             }
             error={errors.source}
+            disabled={loading}
             onPress={() => {
               setErrors((prev) => ({
                 ...prev,
@@ -588,6 +591,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
             title="Category"
             value={selectedCategory ? selectedCategory.name : "Select Category"}
             error={errors.category}
+            disabled={loading}
             onPress={() => {
               setErrors((prev) => ({
                 ...prev,
@@ -603,6 +607,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
             title="Date & Time"
             value={formatDateTime(transactionDate)}
             error={errors.date}
+            disabled={loading}
             onPress={() => {
               setErrors((prev) => ({
                 ...prev,
@@ -671,6 +676,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
                   maxLength={12}
                   importantForAutofill="no"
                   autoCorrect={false}
+                  editable={!loading}
                   style={[
                     styles.amountInput,
                     {
@@ -734,6 +740,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
                   activeOpacity={0.85}
                   onPress={() => setReduceEMI(!reduceEMI)}
                   style={[styles.toggle, reduceEMI && styles.toggleOn]}
+                  disabled={loading}
                 >
                   <View
                     style={[
@@ -760,6 +767,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
               cursorColor="#2563EB"
               underlineColorAndroid="transparent"
               maxLength={250}
+              editable={!loading}
               style={[
                 styles.notesInput,
                 {
