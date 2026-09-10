@@ -79,49 +79,25 @@ export default function CategoriesDetails({ route, navigation }) {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmTargetId, setConfirmTargetId] = useState(null);
 
-  const initialSelectedBar = useMemo(() => {
-    const now = new Date();
-    if (periodLabel) {
-      if (initialPeriod === 'year') {
-        return { label: String(periodLabel) };
-      }
-      if (initialPeriod === 'month') {
-        const parts = String(periodLabel).split('-');
-        if (parts.length === 2) {
-          const year = parts[0].substring(2);
-          const monthIndex = parseInt(parts[1], 10) - 1;
-          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-          const monthName = months[monthIndex] || parts[1];
-          return { label: `${monthName} '${year}` };
-        }
-      }
-    } else {
-      if (initialPeriod === 'month') {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return { label: `${months[now.getMonth()]} '${String(now.getFullYear()).slice(2)}` };
-      }
-      if (initialPeriod === 'year') {
-        return { label: String(now.getFullYear()) };
-      }
-    }
-    return null;
-  }, [periodLabel, initialPeriod]);
-
-  const [selectedBar, setSelectedBar] = useState(initialSelectedBar);
-
-  useLayoutEffect(() => {
-    navigation.setOptions({ title: categoryName });
-  }, [categoryName, navigation]);
-
-  const getLabelForDate = (d, periodType) => {
+  const getLabelForDate = useCallback((d, periodType) => {
     if (periodType === 'day') {
-      return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${day} ${months[d.getMonth()]}`;
     }
     if (periodType === 'week') {
       const startOfWeek = new Date(d);
       startOfWeek.setDate(d.getDate() - d.getDay());
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return `${startOfWeek.getDate()} ${months[startOfWeek.getMonth()]}`;
+      const startDay = String(startOfWeek.getDate()).padStart(2, '0');
+      const startMonth = months[startOfWeek.getMonth()].charAt(0).toLowerCase();
+      const endDay = String(endOfWeek.getDate());
+      const endMonth = months[endOfWeek.getMonth()].charAt(0).toLowerCase();
+      
+      return `${startDay}${startMonth}-${endDay}${endMonth}`;
     }
     if (periodType === 'month') {
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -131,7 +107,25 @@ export default function CategoriesDetails({ route, navigation }) {
       return String(d.getFullYear());
     }
     return '';
-  };
+  }, []);
+
+  const initialSelectedBar = useMemo(() => {
+    const now = new Date();
+    if (periodLabel) {
+      // Just fallback to computing the label for the provided date string to ensure format is identical
+      const d = new Date(periodLabel);
+      if (!isNaN(d.getTime())) {
+        return { label: getLabelForDate(d, initialPeriod) };
+      }
+    }
+    return { label: getLabelForDate(now, initialPeriod) };
+  }, [periodLabel, initialPeriod, getLabelForDate]);
+
+  const [selectedBar, setSelectedBar] = useState(initialSelectedBar);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ title: categoryName });
+  }, [categoryName, navigation]);
 
   const getPeriodKey = (dateString, p) => {
     if (!dateString) return '';

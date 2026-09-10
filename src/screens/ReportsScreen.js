@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, FlatList, Platform, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, FlatList, Platform, Pressable } from 'react-native';
 import { Chip } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { getTransactions } from '../services/transactions';
@@ -9,6 +9,40 @@ import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import events from '../services/events';
+
+const getCurrentPeriodLabel = (m) => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  
+  if (m === 'daily') {
+    return dateStr;
+  }
+  if (m === 'weekly') {
+    const day = d.getDay();
+    const diff = d.getDate() - day;
+    const weekStart = new Date(d.setDate(diff));
+    return `${weekStart.getFullYear()}-${pad(weekStart.getMonth() + 1)}-${pad(weekStart.getDate())}`;
+  }
+  if (m === 'monthly') {
+    return dateStr.substring(0, 7);
+  }
+  if (m === 'yearly') {
+    return dateStr.substring(0, 4);
+  }
+  return null;
+};
+
+const hexToRgba = (hex, alpha = 0.15) => {
+  if (!hex || typeof hex !== 'string') return `rgba(0,0,0,${alpha})`;
+  let cleanHex = hex.replace('#', '').trim();
+  if (cleanHex.length === 3) cleanHex = cleanHex.split('').map(char => char + char).join('');
+  if (cleanHex.length !== 6) return `rgba(0,0,0,${alpha})`;
+  const r = parseInt(cleanHex.substring(0, 2), 16);
+  const g = parseInt(cleanHex.substring(2, 4), 16);
+  const b = parseInt(cleanHex.substring(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+};
 
 const ReportItemCard = React.memo(({ data, categoriesMap, onCategoryPress }) => {
   return (
@@ -25,32 +59,43 @@ const ReportItemCard = React.memo(({ data, categoriesMap, onCategoryPress }) => 
       </View>
 
       <View style={styles.categoryBreakdown}>
-        {Object.entries(data.categories).map(([cid, totals]) => {
+        {Object.entries(data.categories)
+          .sort((a, b) => Math.max(b[1].income, b[1].expense) - Math.max(a[1].income, a[1].expense))
+          .map(([cid, totals]) => {
           const cat = categoriesMap[cid] || { name: 'Uncategorized', icon: 'help-circle', color: '#999' };
           const isExpense = totals.expense > 0;
+          const amount = isExpense ? totals.expense : totals.income;
+          const totalAmount = Math.max(isExpense ? data.expense : data.income, 1);
+          const percentage = (amount / totalAmount) * 100;
+
           return (
             <Pressable
               key={cid}
               style={({ pressed }) => [
                 styles.catRow,
-                pressed && { backgroundColor: '#f0f0f0', borderRadius: 4 }
+                pressed && { backgroundColor: hexToRgba(cat.color, 0.05), borderColor: hexToRgba(cat.color, 0.2) }
               ]}
               onPress={() => onCategoryPress(cid, cat.name, data.label)}
             >
               <View style={styles.catInfo}>
-                <MaterialCommunityIcons
-                  name={cat.icon || 'tag'}
-                  size={16}
-                  color={cat.color}
-                  style={{ marginRight: 6 }}
-                />
-                <Text style={styles.catName}>{cat.name}</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={[styles.catAmount, { color: isExpense ? '#E46A6A' : '#36B37E' }]}>
-                  {isExpense ? '-' : '+'}₹{(isExpense ? totals.expense : totals.income).toLocaleString('en-IN')}
-                </Text>
-                <MaterialCommunityIcons name="chevron-right" size={16} color="#ccc" style={{ marginLeft: 4 }} />
+                <View style={[styles.catIconContainer, { backgroundColor: hexToRgba(cat.color, 0.12) }]}>
+                  <MaterialCommunityIcons
+                    name={cat.icon || 'tag'}
+                    size={22}
+                    color={cat.color}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 6 }}>
+                    <Text style={styles.catName}>{cat.name}</Text>
+                    <Text style={[styles.catAmount, { color: isExpense ? '#E46A6A' : '#36B37E' }]}>
+                      {isExpense ? '-' : '+'}₹{amount.toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                  <View style={styles.progressBarBackground}>
+                    <View style={[styles.progressBarFill, { width: `${Math.min(100, percentage)}%`, backgroundColor: cat.color }]} />
+                  </View>
+                </View>
               </View>
             </Pressable>
           );
@@ -64,7 +109,8 @@ export default function ReportsScreen() {
   const [transactions, setTransactions] = useState([]);
   const [categoriesMap, setCategoriesMap] = useState({});
   const [mode, setMode] = useState('monthly');
-  const [selectedPeriod, setSelectedPeriod] = useState(null);
+  const [selectedPeriod, setSelectedPeriod] = useState(() => getCurrentPeriodLabel('monthly'));
+  const [chartOffset, setChartOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const navigation = useNavigation();
 
@@ -104,7 +150,8 @@ export default function ReportsScreen() {
 
   const handleModeChange = useCallback((newMode) => {
     setMode(newMode);
-    setSelectedPeriod(null);
+    setSelectedPeriod(getCurrentPeriodLabel(newMode));
+    setChartOffset(0);
   }, []);
 
   const handleCategoryPress = useCallback((categoryId, categoryName, periodLabel) => {
@@ -125,15 +172,24 @@ export default function ReportsScreen() {
     return reportData.filter(d => d.label === selectedPeriod);
   }, [reportData, selectedPeriod]);
 
+  const displayReportData = useMemo(() => {
+    return reportData.slice(chartOffset, chartOffset + 5);
+  }, [reportData, chartOffset]);
+
   const maxAmount = useMemo(() => {
-    if (!reportData || reportData.length === 0) return 100;
-    const points = reportData.map(d => Math.max(d.income || 0, d.expense || 0));
+    if (!displayReportData || displayReportData.length === 0) return 100;
+    const points = displayReportData.map(d => Math.max(d.income || 0, d.expense || 0));
     const max = Math.max(...points);
     return max > 0 ? max : 100;
-  }, [reportData]);
+  }, [displayReportData]);
 
   const formatLabel = useCallback((label) => {
-    if (mode === 'daily') return label.substring(5);
+    if (mode === 'daily') {
+      const d = new Date(label);
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${day} ${months[d.getMonth()]}`;
+    }
     if (mode === 'monthly') {
       const parts = label.split('-');
       if (parts.length < 2) return label;
@@ -144,7 +200,19 @@ export default function ReportsScreen() {
       const monthName = months[index] || month;
       return `${monthName} '${year}`;
     }
-    if (mode === 'weekly') return `Wk ${label.substring(8, 10)}`;
+    if (mode === 'weekly') {
+      const startOfWeek = new Date(label);
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const startDay = String(startOfWeek.getDate()).padStart(2, '0');
+      const startMonth = months[startOfWeek.getMonth()].charAt(0).toLowerCase();
+      const endDay = String(endOfWeek.getDate());
+      const endMonth = months[endOfWeek.getMonth()].charAt(0).toLowerCase();
+      
+      return `${startDay}${startMonth}-${endDay}${endMonth}`;
+    }
     return label;
   }, [mode]);
 
@@ -161,20 +229,36 @@ export default function ReportsScreen() {
           ) : reportData.length === 0 ? (
             <Text style={styles.emptyText}>No data available for the selected period</Text>
           ) : (
-            <View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chartScrollContainer}>
-                <View style={styles.chartOuterRow}>
-                  {reportData.map((data, idx) => {
-                    const isSelected = selectedPeriod === data.label;
-                    return (
-                      <Pressable
-                        key={idx}
-                        onPress={() => setSelectedPeriod(prev => prev === data.label ? null : data.label)}
-                        style={[
-                          styles.chartColumn,
-                          selectedPeriod && !isSelected && { opacity: 0.4 }
-                        ]}
-                      >
+            <View style={{ width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+              
+              <TouchableOpacity 
+                onPress={() => setChartOffset(prev => Math.max(0, prev - 1))} 
+                style={{ 
+                  position: 'absolute', left: 4, zIndex: 10,
+                  width: 34, height: 34, borderRadius: 17, 
+                  backgroundColor: 'rgba(255,255,255,0.85)', 
+                  alignItems: 'center', justifyContent: 'center',
+                  shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+                  opacity: chartOffset === 0 ? 0.3 : 1
+                }} 
+                disabled={chartOffset === 0}
+              >
+                <MaterialCommunityIcons name="chevron-left" size={20} color={Colors.text} />
+              </TouchableOpacity>
+
+              <View style={[styles.chartOuterRow, { width: '100%', justifyContent: 'space-evenly', paddingHorizontal: 24 }]}>
+                {displayReportData.map((data, idx) => {
+                  const isSelected = selectedPeriod === data.label;
+                  return (
+                    <Pressable
+                      key={idx}
+                      onPress={() => setSelectedPeriod(prev => prev === data.label ? null : data.label)}
+                      style={[
+                        styles.chartColumn,
+                        { marginHorizontal: 0, width: '18%' },
+                        selectedPeriod && !isSelected && { opacity: 0.4 }
+                      ]}
+                    >
                         <View style={[
                           styles.barContainer,
                           isSelected && styles.selectedBarContainer
@@ -201,7 +285,22 @@ export default function ReportsScreen() {
                     );
                   })}
                 </View>
-              </ScrollView>
+
+              <TouchableOpacity 
+                onPress={() => setChartOffset(prev => prev + 1)} 
+                style={{ 
+                  position: 'absolute', right: 4, zIndex: 10,
+                  width: 34, height: 34, borderRadius: 17, 
+                  backgroundColor: 'rgba(255,255,255,0.85)', 
+                  alignItems: 'center', justifyContent: 'center',
+                  shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+                  opacity: chartOffset >= reportData.length - 5 ? 0.3 : 1
+                }}
+                disabled={chartOffset >= reportData.length - 5}
+              >
+                <MaterialCommunityIcons name="chevron-right" size={20} color={Colors.text} />
+              </TouchableOpacity>
+
               {selectedPeriod && (
                 <View style={styles.filterBanner}>
                   <Text style={styles.filterText}>Filtering: {formatLabel(selectedPeriod)}</Text>
@@ -228,7 +327,7 @@ export default function ReportsScreen() {
         </Card>
       </View>
     );
-  }, [loading, reportData, maxAmount, formatLabel, selectedPeriod]);
+  }, [loading, reportData, displayReportData, maxAmount, formatLabel, selectedPeriod, chartOffset]);
 
   const renderItem = useCallback(({ item }) => {
     return <ReportItemCard data={item} categoriesMap={categoriesMap} onCategoryPress={handleCategoryPress} />;
@@ -417,27 +516,48 @@ const styles = StyleSheet.create({
   },
   categoryBreakdown: {
     marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#f9f9f9',
   },
   catRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 12,
     marginBottom: 6,
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  catIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
   },
   catInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
   },
   catName: {
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: '700',
     color: Colors.text,
   },
   catAmount: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  progressBarBackground: {
+    width: '100%',
+    height: 5,
+    backgroundColor: '#EAEAEA',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 3,
   },
   selectedBarContainer: {
     borderBottomWidth: 3,
