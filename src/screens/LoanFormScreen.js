@@ -35,33 +35,33 @@ import { getCategories } from "../services/categories";
 ========================================================= */
 
 const LOAN_TYPES = [
-  { key: "Home", label: "Home Loan", icon: "home-outline" },
-  { key: "Vehicle", label: "Vehicle Loan", icon: "car-outline" },
-  { key: "Two Wheeler", label: "Two Wheeler", icon: "motorbike" },
-  { key: "Personal", label: "Personal Loan", icon: "account-cash-outline" },
-  { key: "Education", label: "Education Loan", icon: "school-outline" },
-  { key: "Business", label: "Business Loan", icon: "briefcase-outline" },
-  { key: "Gold", label: "Gold Loan", icon: "gold" },
-  { key: "Property", label: "Loan Against Property", icon: "office-building-outline" },
-  { key: "Mortgage", label: "Mortgage", icon: "home-city-outline" },
-  { key: "Credit Card", label: "Credit Card", icon: "credit-card-outline" },
-  { key: "Overdraft", label: "Overdraft", icon: "bank-transfer-out" },
-  { key: "Line of Credit", label: "Line of Credit", icon: "cash-multiple" },
-  { key: "Consumer", label: "Consumer Durable", icon: "washing-machine" },
-  { key: "Medical", label: "Medical Loan", icon: "medical-bag" },
-  { key: "Agriculture", label: "Agriculture Loan", icon: "sprout-outline" },
-  { key: "Friend", label: "Friend", icon: "account-heart-outline" },
-  { key: "Family", label: "Family", icon: "account-group-outline" },
-  { key: "Employee", label: "Employee", icon: "account-tie-outline" },
-  { key: "Employer", label: "Employer", icon: "briefcase-account-outline" },
-  { key: "Customer", label: "Customer", icon: "account-outline" },
-  { key: "Vendor", label: "Vendor", icon: "store-outline" },
-  { key: "Supplier", label: "Supplier", icon: "truck-outline" },
-  { key: "Partner", label: "Business Partner", icon: "handshake-outline" },
-  { key: "Bank", label: "Bank Loan", icon: "bank-outline" },
-  { key: "Finance", label: "Finance Company", icon: "finance" },
-  { key: "NBFC", label: "NBFC", icon: "domain" },
-  { key: "Other", label: "Other", icon: "dots-horizontal-circle-outline" },
+  { key: "Home", label: "Home Loan", icon: "home-outline", color: "#3B82F6" },
+  { key: "Vehicle", label: "Vehicle Loan", icon: "car-outline", color: "#F59E0B" },
+  { key: "Two Wheeler", label: "Two Wheeler", icon: "motorbike", color: "#F97316" },
+  { key: "Personal", label: "Personal Loan", icon: "account-cash-outline", color: "#8B5CF6" },
+  { key: "Education", label: "Education Loan", icon: "school-outline", color: "#10B981" },
+  { key: "Business", label: "Business Loan", icon: "briefcase-outline", color: "#6366F1" },
+  { key: "Gold", label: "Gold Loan", icon: "gold", color: "#EAB308" },
+  { key: "Property", label: "Loan Against Property", icon: "office-building-outline", color: "#06B6D4" },
+  { key: "Mortgage", label: "Mortgage", icon: "home-city-outline", color: "#14B8A6" },
+  { key: "Credit Card", label: "Credit Card", icon: "credit-card-outline", color: "#EF4444" },
+  { key: "Overdraft", label: "Overdraft", icon: "bank-transfer-out", color: "#F43F5E" },
+  { key: "Line of Credit", label: "Line of Credit", icon: "cash-multiple", color: "#84CC16" },
+  { key: "Consumer", label: "Consumer Durable", icon: "washing-machine", color: "#D946EF" },
+  { key: "Medical", label: "Medical Loan", icon: "medical-bag", color: "#EC4899" },
+  { key: "Agriculture", label: "Agriculture Loan", icon: "sprout-outline", color: "#22C55E" },
+  { key: "Friend", label: "Friend", icon: "account-heart-outline", color: "#0EA5E9" },
+  { key: "Family", label: "Family", icon: "account-group-outline", color: "#3B82F6" },
+  { key: "Employee", label: "Employee", icon: "account-tie-outline", color: "#64748B" },
+  { key: "Employer", label: "Employer", icon: "briefcase-account-outline", color: "#334155" },
+  { key: "Customer", label: "Customer", icon: "account-outline", color: "#A855F7" },
+  { key: "Vendor", label: "Vendor", icon: "store-outline", color: "#F59E0B" },
+  { key: "Supplier", label: "Supplier", icon: "truck-outline", color: "#F97316" },
+  { key: "Partner", label: "Business Partner", icon: "handshake-outline", color: "#6366F1" },
+  { key: "Bank", label: "Bank Loan", icon: "bank-outline", color: "#0284C7" },
+  { key: "Finance", label: "Finance Company", icon: "finance", color: "#0D9488" },
+  { key: "NBFC", label: "NBFC", icon: "domain", color: "#4F46E5" },
+  { key: "Other", label: "Other", icon: "dots-horizontal-circle-outline", color: "#94A3B8" },
 ];
 /* =========================================================
    DIRECTION CONFIG
@@ -1507,11 +1507,14 @@ export default function LoanFormScreen({
                   item.key === loanData.loan_type
               )?.icon || "bank-outline"
             }
-            onPress={() =>
-              setShowTypePicker(true)
-            }
+            onPress={() => setShowTypePicker(true)}
             disabled={submitting}
-            color={cfg.color}
+            color={
+              LOAN_TYPES.find(
+                (item) =>
+                  item.key === loanData.loan_type
+              )?.color || cfg.color
+            }
           />
 
           {/* PERSON */}
@@ -1993,21 +1996,16 @@ export default function LoanFormScreen({
                           style={[
                             styles.simplePickerIcon,
                             {
-                              backgroundColor:
-                                selected
-                                  ? cfg.color
-                                  : "#F1F5F9",
+                              backgroundColor: selected
+                                ? type.color || cfg.color
+                                : `${type.color || cfg.color}18`,
                             },
                           ]}
                         >
                           <MaterialCommunityIcons
                             name={type.icon || "bank-outline"}
                             size={20}
-                            color={
-                              selected
-                                ? "#FFFFFF"
-                                : "#64748B"
-                            }
+                            color={selected ? "#FFFFFF" : type.color || cfg.color}
                           />
                         </View>
 

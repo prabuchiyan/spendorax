@@ -1249,7 +1249,6 @@ function LoanDirectionDashboard({ navigation }) {
             isBorrowed ? "Latest loan payments" : "Latest repayments received"
           }
           count={payments.length}
-          onViewAll={() => navigation.navigate("Transactions", { direction })}
         />
 
         {payments.length === 0 ? (
