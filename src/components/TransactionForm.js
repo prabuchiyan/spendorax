@@ -13,11 +13,9 @@ import {
 import {
   createTransaction,
   createTransfer,
-  getTransactions,
   getTransactionNoteSuggestions,
   updateTransaction,
   deleteTransaction,
-  getAllTransactionsByYears,
   getCategoryAndSourceUsage
 } from "../services/transactions";
 import {
@@ -1461,18 +1459,11 @@ export default function TransactionForm({
                             await unlinkTransactionFromLoan(transaction.id);
                             setSelectedLoanId(null);
                             setLoanSearch("");
-                            setSnackbarMsg("Transaction unlinked");
-                            setSnackbarVisible(true);
                           } catch (e) {
                             console.error(
                               "[TransactionForm] Unlink loan failed:",
                               e,
                             );
-                            setSnackbarMsg(
-                              e?.message ||
-                              "Failed to unlink transaction from loan",
-                            );
-                            setSnackbarVisible(true);
                           } finally {
                             setLinking(false);
                             hidePageLoader();
@@ -3050,6 +3041,7 @@ export default function TransactionForm({
               const doLink = async (paymentType) => {
                 try {
                   setLinking(true);
+                  showPageLoader();
                   setShowLoanActionSheet(false);
 
                   if (isEdit && transaction?.id) {
@@ -3061,8 +3053,6 @@ export default function TransactionForm({
                         linkedDate: transaction.date || date,
                       },
                     );
-                    setSnackbarMsg(`Linked to ${pendingLoan.loan_name}`);
-                    setSnackbarVisible(true);
                   }
 
                   setSelectedLoanId(pendingLoan.id);
@@ -3071,10 +3061,9 @@ export default function TransactionForm({
                   markDirty();
                 } catch (e) {
                   console.error("[TransactionForm] Link loan failed:", e);
-                  setSnackbarMsg(e?.message || "Failed to link to loan");
-                  setSnackbarVisible(true);
                 } finally {
                   setLinking(false);
+                  hidePageLoader();
                 }
               };
 
