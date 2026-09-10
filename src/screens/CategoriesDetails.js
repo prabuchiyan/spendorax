@@ -6,9 +6,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
-  ScrollView
+  ScrollView,
+  ActivityIndicator
 } from 'react-native';
-import { getTransactions, deleteTransaction } from '../services/transactions';
+import { getTransactions, deleteTransaction, getTransactionsByDateRange } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
 import { Colors, Spacing } from '../components/Theme';
@@ -62,6 +63,7 @@ export default function CategoriesDetails({ route, navigation }) {
   const [categoriesMap, setCategoriesMap] = useState({});
   const [sourcesMap, setSourcesMap] = useState({});
   const [loading, setLoading] = useState(true);
+  const [chartOffset, setChartOffset] = useState(0);
 
   const initialPeriod = useMemo(() => {
     if (mode === 'daily') return 'day';
@@ -111,36 +113,78 @@ export default function CategoriesDetails({ route, navigation }) {
     navigation.setOptions({ title: categoryName });
   }, [categoryName, navigation]);
 
-  const getPeriodKey = (dateString) => {
+  const getLabelForDate = (d, periodType) => {
+    if (periodType === 'day') {
+      return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+    }
+    if (periodType === 'week') {
+      const startOfWeek = new Date(d);
+      startOfWeek.setDate(d.getDate() - d.getDay());
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${startOfWeek.getDate()} ${months[startOfWeek.getMonth()]}`;
+    }
+    if (periodType === 'month') {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
+    }
+    if (periodType === 'year') {
+      return String(d.getFullYear());
+    }
+    return '';
+  };
+
+  const getPeriodKey = (dateString, p) => {
     if (!dateString) return '';
     const dateStr = String(dateString).replace(' ', 'T');
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return '';
-
-    if (period === 'day') return `${d.getHours()}:00`;
-    if (period === 'week') return d.toLocaleDateString('en-IN', { weekday: 'short' });
-    if (period === 'month') {
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
-    }
-    if (period === 'year') return String(d.getFullYear());
-
-    return '';
+    
+    const periodType = p || period;
+    return getLabelForDate(d, periodType);
   };
 
-  const groupData = (data) => {
+  const generateContinuousPeriods = (periodType, offset) => {
+    const periods = [];
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    for (let i = 4; i >= 0; i--) {
+      const d = new Date(now);
+      const shiftAmount = offset + i;
+
+      if (periodType === 'day') {
+        d.setDate(d.getDate() - shiftAmount);
+      } else if (periodType === 'week') {
+        d.setDate(d.getDate() - shiftAmount * 7);
+      } else if (periodType === 'month') {
+        d.setMonth(d.getMonth() - shiftAmount);
+      } else if (periodType === 'year') {
+        d.setFullYear(d.getFullYear() - shiftAmount);
+      }
+      periods.push(d);
+    }
+    return periods;
+  };
+
+  const groupData = (data, currentPeriod, offset) => {
     const map = {};
 
     data.forEach(tx => {
-      const key = getPeriodKey(tx.date);
-      map[key] = (map[key] || 0) + Number(tx.amount || 0);
+      const key = getPeriodKey(tx.date, currentPeriod);
+      if (key) {
+        map[key] = (map[key] || 0) + Number(tx.amount || 0);
+      }
     });
 
-    const labels = Object.keys(map);
-    const values = labels.map(k => map[k]);
+    const continuousPeriods = generateContinuousPeriods(currentPeriod, offset);
+    // Reverse the periods so newest is on the left, oldest on the right
+    const displayPeriods = [...continuousPeriods].reverse();
+    
+    const continuousLabels = displayPeriods.map(d => getLabelForDate(d, currentPeriod));
+    const values = continuousLabels.map(k => map[k] || 0);
 
     setChartData({
-      labels,
+      labels: continuousLabels,
       datasets: [
         {
           data: values
@@ -149,18 +193,61 @@ export default function CategoriesDetails({ route, navigation }) {
     });
   };
 
-  const loadTransactions = async () => {
+  const getBoundsForPeriods = (periods, periodType) => {
+    if (!periods || periods.length === 0) return { start: null, end: null };
+    
+    const firstDate = new Date(periods[0]);
+    const lastDate = new Date(periods[periods.length - 1]);
+    
+    let start = new Date(firstDate);
+    let end = new Date(lastDate);
+    
+    if (periodType === 'day') {
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+    } else if (periodType === 'week') {
+      start.setDate(start.getDate() - start.getDay());
+      start.setHours(0, 0, 0, 0);
+      
+      end.setDate(end.getDate() + (6 - end.getDay()));
+      end.setHours(23, 59, 59, 999);
+    } else if (periodType === 'month') {
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      
+      end = new Date(end.getFullYear(), end.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else if (periodType === 'year') {
+      start.setMonth(0, 1);
+      start.setHours(0, 0, 0, 0);
+      
+      end.setMonth(11, 31);
+      end.setHours(23, 59, 59, 999);
+    }
+    
+    const pad = (n) => String(n).padStart(2, '0');
+    const formatSqlite = (d) => {
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    };
+
+    return {
+      start: formatSqlite(start),
+      end: formatSqlite(end)
+    };
+  };
+
+  const loadTransactions = async (currentPeriod = period, offset = chartOffset) => {
     try {
       setLoading(true);
 
+      const continuousPeriods = generateContinuousPeriods(currentPeriod, offset);
+      const bounds = getBoundsForPeriods(continuousPeriods, currentPeriod);
+
       const [txData, catData, sourceData] =
         await Promise.all([
-          getTransactions(
-            1000000,
-            null,
-            null,
+          getTransactionsByDateRange(
             categoryId,
-            null
+            bounds.start,
+            bounds.end
           ),
           getCategories(true),
           getSources(true)
@@ -172,13 +259,11 @@ export default function CategoriesDetails({ route, navigation }) {
       const smap = {};
       sourceData.forEach(s => { smap[s.id] = s; });
 
-      const filtered = txData.filter(tx => tx.category_id === Number(categoryId));
-
       setCategoriesMap(cmap);
       setSourcesMap(smap);
-      setTransactions(filtered);
-
-      groupData(filtered);
+      setTransactions(txData);
+      
+      groupData(txData, currentPeriod, offset);
     } catch (error) {
       console.error('Error loading transactions:', error);
     } finally {
@@ -187,13 +272,13 @@ export default function CategoriesDetails({ route, navigation }) {
   };
 
   useEffect(() => {
-    loadTransactions();
-  }, [period]);
+    loadTransactions(period, chartOffset);
+  }, [period, chartOffset]);
 
   useFocusEffect(
     useCallback(() => {
-      loadTransactions();
-    }, [period])
+      loadTransactions(period, chartOffset);
+    }, [period, chartOffset])
   );
 
   const handleDeleteConfirm = async () => {
@@ -222,102 +307,99 @@ export default function CategoriesDetails({ route, navigation }) {
 
   const activeCategory = categoriesMap[Number(categoryId)] || {};
   const activeCategoryColor = activeCategory.color || Colors.primary;
+  
+  const THEME_COLOR = '#3F8F6B';
 
   const chartValues = useMemo(
     () => chartData?.datasets?.[0]?.data || [],
     [chartData]
   );
 
-  const hasChartData = chartData.labels.length > 0 && chartValues.length > 0;
+  const hasChartData = true; // We always show the 5 periods, even if empty
 
   const filteredTransactions = useMemo(() => {
     if (!selectedBar?.label) return transactions;
-    return transactions.filter(tx => getPeriodKey(tx.date) === selectedBar.label);
+    return transactions.filter(tx => getPeriodKey(tx.date, period) === selectedBar.label);
   }, [transactions, selectedBar, period]);
 
   const groupedTransactions = useMemo(() => {
     const groups = {};
 
-    const getDateKey = (dateValue) => {
-      const date = new Date(dateValue);
-
-      return `${date.getFullYear()}-${String(
-        date.getMonth() + 1
-      ).padStart(2, '0')}-${String(
-        date.getDate()
-      ).padStart(2, '0')}`;
-    };
-
     filteredTransactions.forEach(item => {
-      const key = getDateKey(item.date);
+      const dateStr = String(item.date).replace(' ', 'T');
+      const date = new Date(dateStr);
+      let key = '';
+      let title = '';
+      let sortVal = 0;
 
-      if (!groups[key]) {
-        groups[key] = [];
-      }
-
-      groups[key].push(item);
-    });
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const yesterday = new Date(today);
-    yesterday.setDate(
-      yesterday.getDate() - 1
-    );
-
-    return Object.keys(groups)
-      .sort((a, b) => b.localeCompare(a))
-      .map(dateKey => {
-        const [year, month, day] =
-          dateKey.split('-').map(Number);
-
-        const date = new Date(
-          year,
-          month - 1,
-          day
-        );
-
-        date.setHours(0, 0, 0, 0);
-
-        let title;
-
-        if (
-          date.getTime() ===
-          today.getTime()
-        ) {
+      if (period === 'year') {
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        title = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+        sortVal = date.getFullYear() * 100 + date.getMonth();
+      } else if (period === 'month') {
+        const startOfWeek = new Date(date);
+        startOfWeek.setDate(date.getDate() - date.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+        
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+        
+        const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        key = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`;
+        title = `${startOfWeek.getDate()} ${monthNamesShort[startOfWeek.getMonth()]} - ${endOfWeek.getDate()} ${monthNamesShort[endOfWeek.getMonth()]}`;
+        sortVal = startOfWeek.getTime();
+      } else {
+        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        const dMidnight = new Date(date);
+        dMidnight.setHours(0, 0, 0, 0);
+        
+        if (dMidnight.getTime() === today.getTime()) {
           title = 'Today';
-        } else if (
-          date.getTime() ===
-          yesterday.getTime()
-        ) {
+        } else if (dMidnight.getTime() === yesterday.getTime()) {
           title = 'Yesterday';
         } else {
-          title = date.toLocaleDateString(
-            'en-IN',
-            {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-            }
-          );
+          title = date.toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          });
         }
+        sortVal = dMidnight.getTime();
+      }
 
-        const dailyTotal =
-          groups[dateKey].reduce(
-            (sum, item) =>
-              sum + Number(item.amount || 0),
-            0
-          );
-
-        return {
+      if (!groups[key]) {
+        groups[key] = {
           title,
-          dateKey,
-          data: groups[dateKey],
-          dailyTotal,
+          sortVal,
+          data: []
+        };
+      }
+      groups[key].data.push(item);
+    });
+
+    return Object.values(groups)
+      .sort((a, b) => b.sortVal - a.sortVal)
+      .map(group => {
+        const dailyTotal = group.data.reduce(
+          (sum, item) => sum + Number(item.amount || 0),
+          0
+        );
+        return {
+          title: group.title,
+          data: group.data,
+          dailyTotal
         };
       });
-  }, [filteredTransactions]);
+  }, [filteredTransactions, period]);
 
   const renderItem = ({
     item,
@@ -354,12 +436,7 @@ export default function CategoriesDetails({ route, navigation }) {
           ? '#718096'
           : '#D14343';
 
-    const amountPrefix =
-      type === 'income'
-        ? '+'
-        : type === 'expense'
-          ? '-'
-          : '';
+
 
     const accentColor =
       type === 'income'
@@ -638,7 +715,7 @@ export default function CategoriesDetails({ route, navigation }) {
                   letterSpacing: -0.35,
                 }}
               >
-                {amountPrefix}₹
+                ₹
                 {Number(
                   item.amount || 0
                 ).toLocaleString(
@@ -754,24 +831,52 @@ export default function CategoriesDetails({ route, navigation }) {
       <View
         style={[
           styles.chartCard,
-          { borderColor: rgbaFromColor(activeCategoryColor, 0.14) }
+          { borderColor: rgbaFromColor(THEME_COLOR, 0.14) }
         ]}
       >
 
-        <PremiumRoundedBarChart
-          labels={chartData.labels}
-          values={chartValues}
-          width={screenWidth - 56}
-          height={250}
-          baseColor={activeCategoryColor}
-          isEmpty={!hasChartData}
-          onBarPress={(data) => {
-            setSelectedBar({
-              label: data.label,
-              value: data.value
-            });
-          }}
-        />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, marginBottom: 12 }}>
+          <TouchableOpacity 
+            onPress={() => setChartOffset(prev => Math.max(0, prev - 1))} 
+            style={{ padding: 4, opacity: chartOffset === 0 ? 0.2 : 1 }} 
+            disabled={chartOffset === 0}
+          >
+            <Feather name="chevron-left" size={24} color={Colors.text} />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            {period === 'day' ? 'Days' : period === 'week' ? 'Weeks' : period === 'month' ? 'Months' : 'Years'}
+          </Text>
+          <TouchableOpacity onPress={() => setChartOffset(prev => prev + 1)} style={{ padding: 4 }}>
+            <Feather name="chevron-right" size={24} color={Colors.text} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ alignItems: 'center', width: '100%' }}>
+          <PremiumRoundedBarChart
+            labels={chartData.labels}
+            values={chartValues}
+            width={screenWidth - 60}
+            height={220}
+            baseColor={THEME_COLOR}
+            isEmpty={!hasChartData}
+            selectedLabel={selectedBar?.label}
+            onBarPress={(data) => {
+              setSelectedBar({
+                label: data.label,
+                value: data.value
+              });
+            }}
+          />
+        </View>
+
+        {selectedBar?.label && (
+          <View style={styles.filterBanner}>
+            <Text style={styles.filterText}>Filtering: {selectedBar.label}</Text>
+            <TouchableOpacity onPress={() => setSelectedBar(null)}>
+              <Text style={styles.clearFilterText}>Clear Filter</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
       </View>
 
@@ -784,6 +889,7 @@ export default function CategoriesDetails({ route, navigation }) {
               selected={active}
               onPress={() => {
                 setSelectedBar(null);
+                setChartOffset(0);
                 setPeriod(p);
               }}
               mode="flat"
@@ -791,17 +897,17 @@ export default function CategoriesDetails({ route, navigation }) {
                 styles.chip,
                 {
                   backgroundColor: active
-                    ? activeCategoryColor
-                    : rgbaFromColor(activeCategoryColor, 0.08),
+                    ? THEME_COLOR
+                    : rgbaFromColor(THEME_COLOR, 0.08),
                   borderColor: active
-                    ? activeCategoryColor
-                    : rgbaFromColor(activeCategoryColor, 0.22)
+                    ? THEME_COLOR
+                    : rgbaFromColor(THEME_COLOR, 0.22)
                 }
               ]}
               textStyle={[
                 styles.chipText,
                 {
-                  color: active ? '#FFFFFF' : activeCategoryColor
+                  color: active ? '#FFFFFF' : THEME_COLOR
                 }
               ]}
             >
@@ -823,16 +929,11 @@ export default function CategoriesDetails({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      {loading ? (
-        <View style={styles.center}>
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
-      ) : (
-        <SectionList
-          sections={groupedTransactions}
-          keyExtractor={(item) =>
-            item.id.toString()
-          }
+      <SectionList
+        sections={groupedTransactions}
+        keyExtractor={(item) =>
+          item.id.toString()
+        }
           renderItem={renderItem}
 
           ListHeaderComponent={ListHeader}
@@ -894,8 +995,7 @@ export default function CategoriesDetails({ route, navigation }) {
 
                 <Text
                   style={{
-                    color:
-                      activeCategoryColor,
+                    color: Colors.text,
                     fontSize: 12,
                     fontWeight: '900',
                   }}
@@ -913,6 +1013,11 @@ export default function CategoriesDetails({ route, navigation }) {
             </View>
           )}
         />
+
+      {loading && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.4)', justifyContent: 'center', alignItems: 'center', zIndex: 10 }]}>
+          <ActivityIndicator size="large" color={THEME_COLOR} />
+        </View>
       )}
       
       <ConfirmDialog
@@ -1003,6 +1108,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: Colors.muted
+  },
+
+  filterBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#e6f7ff',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 12,
+    marginHorizontal: 8,
+  },
+  filterText: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  clearFilterText: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
 
   txCard: {

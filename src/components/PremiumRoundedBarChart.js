@@ -189,9 +189,9 @@ export default function PremiumRoundedBarChart({
 }
 
 const styles = StyleSheet.create({
-  customChartWrap: { justifyContent: 'flex-end' },
-  customChartBarsRow: { flexDirection: 'row', alignItems: 'flex-end' },
-  customBarItem: { width: 42, marginRight: 10, alignItems: 'center' },
+  customChartWrap: { justifyContent: 'flex-end', flex: 1 },
+  customChartBarsRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-evenly', flex: 1 },
+  customBarItem: { width: 42, alignItems: 'center' },
   customBarTrack: { width: 38, height: BAR_TRACK_HEIGHT + 22, justifyContent: 'flex-end', alignItems: 'center' },
   customBarGroup: { width: '100%', alignItems: 'center', justifyContent: 'flex-end' },
   customBarValue: { fontSize: 10, fontWeight: '800', color: Colors.text, marginBottom: 6, maxWidth: 56, textAlign: 'center' },
