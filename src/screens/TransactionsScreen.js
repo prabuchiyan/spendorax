@@ -34,6 +34,7 @@ export default function TransactionsScreen({ navigation }) {
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [sourceOptions, setSourceOptions] = useState([]);
+  const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
 
@@ -401,49 +402,77 @@ export default function TransactionsScreen({ navigation }) {
       >
         <View
           style={{
-            height: 44,
-            borderRadius: 12,
+            height: 48,
+            borderRadius: 24,
             backgroundColor: '#fff',
             borderWidth: 1,
             borderColor: '#E9EBEF',
             flexDirection: 'row',
             alignItems: 'center',
-            paddingHorizontal: 13,
+            paddingLeft: 16,
+            paddingRight: 6,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.03,
+            shadowRadius: 3,
+            elevation: 2,
           }}
         >
-          <MaterialCommunityIcons
-            name="magnify"
-            size={21}
-            color="#9CA3AF"
-          />
-
           <TextInput
-            value={searchQuery}
-            onChangeText={setSearchQuery}
+            value={searchInput}
+            onChangeText={setSearchInput}
+            onSubmitEditing={() => setSearchQuery(searchInput)}
+            returnKeyType="search"
             placeholder="Search transactions..."
             placeholderTextColor="#9CA3AF"
             style={{
               flex: 1,
-              marginLeft: 8,
-              fontSize: 14,
+              fontSize: 15,
               color: Colors.text,
               paddingVertical: 0,
             }}
           />
 
-          {searchQuery.length > 0 && (
+          {searchInput.length > 0 && (
             <TouchableOpacity
-              onPress={() => setSearchQuery('')}
+              onPress={() => {
+                setSearchInput('');
+                setSearchQuery('');
+              }}
               activeOpacity={0.7}
+              style={{ padding: 6 }}
             >
               <MaterialCommunityIcons
                 name="close-circle"
-                size={18}
+                size={20}
                 color="#9CA3AF"
               />
             </TouchableOpacity>
           )}
+
+          <TouchableOpacity
+            onPress={() => setSearchQuery(searchInput)}
+            activeOpacity={0.8}
+            style={{
+              backgroundColor: Colors.primary,
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginLeft: 4,
+            }}
+          >
+            <MaterialCommunityIcons
+              name="magnify"
+              size={20}
+              color="#FFF"
+            />
+          </TouchableOpacity>
         </View>
+        <Text style={{ fontSize: 11, color: Colors.muted, marginTop: 8, marginLeft: 16, fontWeight: '500' }}>
+          Press Enter or click the search icon to search
+        </Text>
       </View>
 
       {/* FILTERS */}

@@ -12,72 +12,102 @@ import { getSources } from '../services/sources';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Spacing } from '../components/Theme';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCategories, useSourcesList } from '../redux/hooks';
+import {
+  useCategories,
+  useSourcesList,
+  useFilteredTransactions,
+  useAppDispatch,
+} from '../redux/hooks';
+import { setCategories } from '../redux/slices/categorySlice';
+import { setSources as setReduxSources } from '../redux/slices/sourceSlice';
+import { setFilteredTransactions } from '../redux/slices/transactionSlice';
 
 export default function SearchScreen({ navigation }) {
-  const [items, setItems] = useState([]);
+  const dispatch = useAppDispatch();
+
   const reduxCategories = useCategories();
   const categories = reduxCategories || [];
+
   const reduxSources = useSourcesList();
   const sources = reduxSources || [];
+
+  const reduxItems = useFilteredTransactions();
+  const items = reduxItems || [];
+
   const [searchQuery, setSearchQuery] = useState('');
 
   // ---------------------------------------------------------
   // SEARCH
   // ---------------------------------------------------------
 
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+      const loadStatic = async () => {
+        try {
+          const [cats, srcs] = await Promise.all([
+            getCategories(true),
+            getSources(true)
+          ]);
+          if (isActive) {
+            dispatch(setCategories(cats || []));
+            dispatch(setReduxSources(srcs || []));
+          }
+        } catch (e) {
+          console.warn(e);
+        }
+      };
+      loadStatic();
+      return () => { isActive = false; };
+    }, [dispatch])
+  );
+
   useEffect(() => {
+    let isActive = true;
+
     const search = async () => {
       const q = searchQuery.trim();
 
       if (q.length < 3) {
-        setItems([]);
+        dispatch(setFilteredTransactions([]));
         return;
       }
 
-      const transactions =
-        await getTransactions(1000000, 'Yes');
+      try {
+        const transactions = await getTransactions(1000000, 'Yes');
+        const lowerQuery = q.toLowerCase();
 
-      const lowerQuery = q.toLowerCase();
+        const filtered = transactions.filter(item => {
+          const category =
+            categories.find(
+              x => String(x.id) === String(item.category_id)
+            )?.name || '';
 
-      const filtered = transactions.filter(item => {
-        const category =
-          categories.find(
-            x => x.id === item.category_id
-          )?.name || '';
+          const source =
+            sources.find(
+              x => String(x.id) === String(item.source_id)
+            )?.name || '';
 
-        const source =
-          sources.find(
-            x => x.id === item.source_id
-          )?.name || '';
+          return (
+            (item.notes || '').toLowerCase().includes(lowerQuery) ||
+            String(item.amount || '').includes(q) ||
+            category.toLowerCase().includes(lowerQuery) ||
+            source.toLowerCase().includes(lowerQuery)
+          );
+        });
 
-        return (
-          (item.notes || '')
-            .toLowerCase()
-            .includes(lowerQuery) ||
-
-          String(item.amount || '')
-            .includes(q) ||
-
-          category
-            .toLowerCase()
-            .includes(lowerQuery) ||
-
-          source
-            .toLowerCase()
-            .includes(lowerQuery)
-        );
-      });
-
-      setItems(filtered);
+        if (isActive) {
+          dispatch(setFilteredTransactions(filtered));
+        }
+      } catch (e) {
+        console.warn(e);
+      }
     };
 
     search();
-  }, [
-    searchQuery,
-    categories,
-    sources,
-  ]);
+
+    return () => { isActive = false; };
+  }, [searchQuery, categories, sources]);
 
   // ---------------------------------------------------------
   // EDIT
@@ -510,15 +540,15 @@ export default function SearchScreen({ navigation }) {
           const category =
             categories.find(
               x =>
-                x.id ===
-                item.category_id
+                String(x.id) ===
+                String(item.category_id)
             );
 
           const source =
             sources.find(
               x =>
-                x.id ===
-                item.source_id
+                String(x.id) ===
+                String(item.source_id)
             );
 
           const type =
