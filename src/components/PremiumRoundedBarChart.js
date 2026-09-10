@@ -9,7 +9,6 @@ import {
 import { Colors } from './Theme';
 
 const BAR_TRACK_HEIGHT = 170;
-const ITEM_WIDTH = 52;
 
 const hexToRgb = (hex) => {
   if (!hex || typeof hex !== 'string') return null;
@@ -69,8 +68,10 @@ export default function PremiumRoundedBarChart({
     const index = labels.findIndex(l => l === selectedLabel);
     if (index < 0) return;
 
-    const centerOffset = width / 2 - ITEM_WIDTH / 2;
-    const x = Math.max(0, Math.min(index * ITEM_WIDTH - centerOffset, chartInnerWidth - width));
+    const itemWidth = Math.min(52, Math.max(38, width / 5));
+    const centerOffset = width / 2 - itemWidth / 2;
+    const chartInnerWidth = Math.max(width, labels.length * itemWidth);
+    const x = Math.max(0, Math.min(index * itemWidth - centerOffset, chartInnerWidth - width));
 
     requestAnimationFrame(() => {
       scrollRef.current?.scrollTo({ x, animated: true });
@@ -86,7 +87,8 @@ export default function PremiumRoundedBarChart({
     );
   }
 
-  const chartInnerWidth = Math.max(width, labels.length * ITEM_WIDTH);
+  const itemWidth = Math.min(52, Math.max(38, width / 5));
+  const chartInnerWidth = Math.max(width, labels.length * itemWidth);
   const finalDue = dueValues.length > 0 ? dueValues : values;
   const finalPaid = paidValues.length > 0 ? paidValues : values;
   const maxValue = Math.max(...finalDue, 1);

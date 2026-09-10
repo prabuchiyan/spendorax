@@ -835,27 +835,33 @@ export default function CategoriesDetails({ route, navigation }) {
         ]}
       >
 
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, marginBottom: 12 }}>
-          <TouchableOpacity 
-            onPress={() => setChartOffset(prev => Math.max(0, prev - 1))} 
-            style={{ padding: 4, opacity: chartOffset === 0 ? 0.2 : 1 }} 
-            disabled={chartOffset === 0}
-          >
-            <Feather name="chevron-left" size={24} color={Colors.text} />
-          </TouchableOpacity>
+        <View style={{ alignItems: 'center', marginBottom: 8, marginTop: 4 }}>
           <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
             {period === 'day' ? 'Days' : period === 'week' ? 'Weeks' : period === 'month' ? 'Months' : 'Years'}
           </Text>
-          <TouchableOpacity onPress={() => setChartOffset(prev => prev + 1)} style={{ padding: 4 }}>
-            <Feather name="chevron-right" size={24} color={Colors.text} />
-          </TouchableOpacity>
         </View>
 
-        <View style={{ alignItems: 'center', width: '100%' }}>
+        <View style={{ width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+          
+          <TouchableOpacity 
+            onPress={() => setChartOffset(prev => Math.max(0, prev - 1))} 
+            style={{ 
+              position: 'absolute', left: -4, zIndex: 10,
+              width: 34, height: 34, borderRadius: 17, 
+              backgroundColor: 'rgba(255,255,255,0.85)', 
+              alignItems: 'center', justifyContent: 'center',
+              shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+              opacity: chartOffset === 0 ? 0.3 : 1
+            }} 
+            disabled={chartOffset === 0}
+          >
+            <Feather name="chevron-left" size={20} color={Colors.text} />
+          </TouchableOpacity>
+
           <PremiumRoundedBarChart
             labels={chartData.labels}
             values={chartValues}
-            width={screenWidth - 60}
+            width={screenWidth - 48}
             height={220}
             baseColor={THEME_COLOR}
             isEmpty={!hasChartData}
@@ -867,6 +873,19 @@ export default function CategoriesDetails({ route, navigation }) {
               });
             }}
           />
+
+          <TouchableOpacity 
+            onPress={() => setChartOffset(prev => prev + 1)} 
+            style={{ 
+              position: 'absolute', right: -4, zIndex: 10,
+              width: 34, height: 34, borderRadius: 17, 
+              backgroundColor: 'rgba(255,255,255,0.85)', 
+              alignItems: 'center', justifyContent: 'center',
+              shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3
+            }}
+          >
+            <Feather name="chevron-right" size={20} color={Colors.text} />
+          </TouchableOpacity>
         </View>
 
         {selectedBar?.label && (
