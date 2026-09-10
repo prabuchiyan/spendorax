@@ -8,10 +8,12 @@ import {
   StyleSheet,
   Modal,
   ActivityIndicator,
+  KeyboardAvoidingView,
 } from "react-native";
 import {
   TextInput as PaperTextInput,
   Button as PaperButton,
+  Switch,
 } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -438,6 +440,8 @@ export default function LoanFormScreen({
   const [deleting, setDeleting] =
     useState(false);
 
+  const [hasEmi, setHasEmi] = useState(false);
+
   /* Pickers */
 
   const [showTypePicker, setShowTypePicker] =
@@ -583,6 +587,15 @@ export default function LoanFormScreen({
 
         if (d.category_id != null) {
           setCategoryId(d.category_id);
+        }
+
+        if (
+          Number(d.interest_rate) > 0 ||
+          Number(d.tenure_months) > 0 ||
+          Number(d.emi_amount) > 0 ||
+          Number(d.emi_day) > 0
+        ) {
+          setHasEmi(true);
         }
       } catch (e) {
         console.error(
@@ -910,6 +923,20 @@ export default function LoanFormScreen({
         Number(
           payload.emi_day || 0
         );
+    }
+
+    if (!hasEmi) {
+      delete payload.interest_rate;
+      delete payload.tenure_months;
+      delete payload.emi_amount;
+      delete payload.emi_day;
+
+      if (editId) {
+        payload.interest_rate = 0;
+        payload.tenure_months = 0;
+        payload.emi_amount = 0;
+        payload.emi_day = 0;
+      }
     }
 
     payload.loan_start_date =
@@ -1277,7 +1304,10 @@ export default function LoanFormScreen({
   ========================================================= */
 
   return (
-    <View style={styles.screen}>
+    <KeyboardAvoidingView 
+      style={styles.screen}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
       <ScrollView
         contentContainerStyle={
           styles.content
@@ -1536,153 +1566,76 @@ export default function LoanFormScreen({
             large
           />
 
-          {/* INTEREST + TENURE */}
-
-          {fieldConfig.interest ||
-            fieldConfig.tenure ? (
-            <View
-              style={
-                styles.row
-              }
-            >
-              {fieldConfig.interest ? (
-                <View
-                  style={
-                    styles.half
-                  }
-                >
-                  <CompactInput
-                    label="Interest %"
-                    value={
-                      loanData.interest_rate
-                    }
-                    onChangeText={(
-                      text
-                    ) =>
-                      setField(
-                        "interest_rate",
-                        text
-                      )
-                    }
-                    keyboardType="numeric"
-                    placeholder="0"
-                    icon="percent"
-                    disabled={
-                      submitting
-                    }
-                    error={
-                      errors.interest_rate
-                    }
-                  />
-                </View>
-              ) : null}
-
-              {fieldConfig.tenure ? (
-                <View
-                  style={
-                    styles.half
-                  }
-                >
-                  <CompactInput
-                    label="Tenure"
-                    value={
-                      loanData.tenure_months
-                    }
-                    onChangeText={(
-                      text
-                    ) =>
-                      setField(
-                        "tenure_months",
-                        text
-                      )
-                    }
-                    keyboardType="numeric"
-                    placeholder="Months"
-                    icon="calendar"
-                    disabled={
-                      submitting
-                    }
-                  />
-                </View>
-              ) : null}
+          {/* EMI TOGGLE */}
+          <View style={styles.switchRow}>
+            <View style={styles.switchLabelWrap}>
+              <MaterialCommunityIcons name="calendar-sync-outline" size={20} color="#64748B" style={{ marginRight: 8 }} />
+              <Text style={styles.switchLabel}>Has EMI Options</Text>
             </View>
+            <Switch
+              value={hasEmi}
+              onValueChange={setHasEmi}
+              color={cfg.color}
+            />
+          </View>
+
+          {/* INTEREST + TENURE */}
+          {hasEmi ? (
+            <>
+              <CompactInput
+                label="Interest %"
+                value={loanData.interest_rate}
+                onChangeText={(text) => setField("interest_rate", text)}
+                keyboardType="numeric"
+                placeholder="0"
+                icon="percent"
+                disabled={submitting}
+                error={errors.interest_rate}
+              />
+
+              <CompactInput
+                label="Tenure"
+                value={loanData.tenure_months}
+                onChangeText={(text) => setField("tenure_months", text)}
+                keyboardType="numeric"
+                placeholder="Months"
+                icon="calendar"
+                disabled={submitting}
+              />
+            </>
           ) : null}
 
           {/* EMI + DUE DAY */}
+          {hasEmi ? (
+            <>
+              <CompactInput
+                label={
+                  loanData.loan_direction === "BORROWED"
+                    ? "EMI"
+                    : "Instalment"
+                }
+                value={loanData.emi_amount}
+                onChangeText={(text) => setField("emi_amount", text)}
+                keyboardType="numeric"
+                placeholder="0"
+                icon="cash"
+                disabled={submitting}
+                error={errors.emi_amount}
+              />
 
-          {fieldConfig.emi ||
-            fieldConfig.dueDay ? (
-            <View
-              style={
-                styles.row
-              }
-            >
-              {fieldConfig.emi ? (
-                <View
-                  style={
-                    styles.half
-                  }
-                >
-                  <CompactInput
-                    label={
-                      loanData.loan_direction ===
-                        "BORROWED"
-                        ? "EMI"
-                        : "Instalment"
-                    }
-                    value={
-                      loanData.emi_amount
-                    }
-                    onChangeText={(
-                      text
-                    ) =>
-                      setField(
-                        "emi_amount",
-                        text
-                      )
-                    }
-                    keyboardType="numeric"
-                    placeholder="0"
-                    icon="cash"
-                    disabled={
-                      submitting
-                    }
-                    error={
-                      errors.emi_amount
-                    }
-                  />
-                </View>
-              ) : null}
-
-              {fieldConfig.dueDay ? (
-                <View
-                  style={
-                    styles.half
-                  }
-                >
-                  <CompactSelect
-                    label="Due day"
-                    value={
-                      loanData.emi_day
-                        ? `Day ${loanData.emi_day}`
-                        : "Select day"
-                    }
-                    icon="calendar"
-                    onPress={() =>
-                      setShowDueDayPicker(
-                        true
-                      )
-                    }
-                    disabled={
-                      submitting
-                    }
-                    color={
-                      cfg.color
-                    }
-                  />
-                </View>
-              ) : null}
-            </View>
+              <CompactSelect
+                label="Due day"
+                value={
+                  loanData.emi_day
+                    ? `Day ${loanData.emi_day}`
+                    : "Select day"
+                }
+                icon="calendar"
+                onPress={() => setShowDueDayPicker(true)}
+                disabled={submitting}
+                color={cfg.color}
+              />
+            </>
           ) : null}
 
           {/* START DATE */}
@@ -1749,43 +1702,25 @@ export default function LoanFormScreen({
                 Transaction setup
               </Text>
 
-              <View
-                style={
-                  styles.row
-                }
-              >
-                <View
-                  style={
-                    styles.half
-                  }
-                >
-                  <CompactSelect
-                    label={cfg.sourceLabel}
-                    value={selectedSource?.name || "Select account"}
-                    icon={selectedSource?.icon || "wallet-outline"}
-                    onPress={() => setShowSourcePicker(true)}
-                    disabled={submitting}
-                    color={selectedSource?.color || cfg.color}
-                    error={errors.sourceId}
-                  />
-                </View>
+              <CompactSelect
+                label={cfg.sourceLabel}
+                value={selectedSource?.name || "Select account"}
+                icon={selectedSource?.icon || "wallet-outline"}
+                onPress={() => setShowSourcePicker(true)}
+                disabled={submitting}
+                color={selectedSource?.color || cfg.color}
+                error={errors.sourceId}
+              />
 
-                <View
-                  style={
-                    styles.half
-                  }
-                >
-                  <CompactSelect
-                    label="Category"
-                    value={selectedCategory?.name || "Select category"}
-                    icon={selectedCategory?.icon || "shape-outline"}
-                    onPress={() => setShowCategoryPicker(true)}
-                    disabled={submitting}
-                    color={selectedCategory?.color || cfg.color}
-                    error={errors.categoryId}
-                  />
-                </View>
-              </View>
+              <CompactSelect
+                label="Category"
+                value={selectedCategory?.name || "Select category"}
+                icon={selectedCategory?.icon || "shape-outline"}
+                onPress={() => setShowCategoryPicker(true)}
+                disabled={submitting}
+                color={selectedCategory?.color || cfg.color}
+                error={errors.categoryId}
+              />
             </>
           ) : null}
         </View>
@@ -1904,22 +1839,17 @@ export default function LoanFormScreen({
       ===================================================== */}
 
       <Modal
-        visible={
-          showTypePicker
-        }
+        visible={showTypePicker}
         transparent
         animationType="slide"
         onRequestClose={() => {
           setLoanTypeSearch("");
-          setShowTypePicker(
-            false
-          );
+          setShowTypePicker(false);
         }}
       >
-        <View
-          style={
-            styles.sheetOverlay
-          }
+        <KeyboardAvoidingView
+          style={styles.sheetOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <View
             style={
@@ -2118,14 +2048,10 @@ export default function LoanFormScreen({
                 )
               )}
 
-              <View
-                style={{
-                  height: 16,
-                }}
-              />
+              <View style={{ height: 16 }} />
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* =====================================================
@@ -2198,67 +2124,45 @@ export default function LoanFormScreen({
               </TouchableOpacity>
             </View>
 
-            <View
-              style={
-                styles.dayGrid
-              }
+            <ScrollView
+              style={styles.sheetScroll}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
             >
-              {Array.from({
-                length: 31,
-              }).map(
-                (_, index) => {
-                  const day =
-                    String(
-                      index + 1
-                    );
-
-                  const selected =
-                    String(
-                      loanData.emi_day
-                    ) === day;
+              <View style={styles.dayGrid}>
+                {Array.from({ length: 31 }).map((_, index) => {
+                  const day = String(index + 1);
+                  const selected = String(loanData.emi_day) === day;
 
                   return (
                     <TouchableOpacity
                       key={day}
-                      activeOpacity={
-                        0.8
-                      }
+                      activeOpacity={0.8}
                       onPress={() => {
-                        setField(
-                          "emi_day",
-                          day
-                        );
-
-                        setShowDueDayPicker(
-                          false
-                        );
+                        setField("emi_day", day);
+                        setShowDueDayPicker(false);
                       }}
                       style={[
                         styles.dayTile,
                         selected && {
-                          backgroundColor:
-                            cfg.color,
-                          borderColor:
-                            cfg.color,
+                          backgroundColor: cfg.color,
+                          borderColor: cfg.color,
                         },
                       ]}
                     >
                       <Text
                         style={[
                           styles.dayText,
-                          selected && {
-                            color:
-                              "#FFFFFF",
-                          },
+                          selected && { color: "#FFFFFF" },
                         ]}
                       >
                         {day}
                       </Text>
                     </TouchableOpacity>
                   );
-                }
-              )}
-            </View>
+                })}
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -2268,22 +2172,17 @@ export default function LoanFormScreen({
       ===================================================== */}
 
       <Modal
-        visible={
-          showSourcePicker
-        }
+        visible={showSourcePicker}
         transparent
         animationType="slide"
         onRequestClose={() => {
           setSourceSearch("");
-          setShowSourcePicker(
-            false
-          );
+          setShowSourcePicker(false);
         }}
       >
-        <View
-          style={
-            styles.sheetOverlay
-          }
+        <KeyboardAvoidingView
+          style={styles.sheetOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <View
             style={
@@ -2515,14 +2414,10 @@ export default function LoanFormScreen({
                 )
               )}
 
-              <View
-                style={{
-                  height: 16,
-                }}
-              />
+              <View style={{ height: 16 }} />
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* =====================================================
@@ -2530,22 +2425,17 @@ export default function LoanFormScreen({
       ===================================================== */}
 
       <Modal
-        visible={
-          showCategoryPicker
-        }
+        visible={showCategoryPicker}
         transparent
         animationType="slide"
         onRequestClose={() => {
           setCategorySearch("");
-          setShowCategoryPicker(
-            false
-          );
+          setShowCategoryPicker(false);
         }}
       >
-        <View
-          style={
-            styles.sheetOverlay
-          }
+        <KeyboardAvoidingView
+          style={styles.sheetOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <View
             style={
@@ -2777,14 +2667,10 @@ export default function LoanFormScreen({
                 )
               )}
 
-              <View
-                style={{
-                  height: 16,
-                }}
-              />
+              <View style={{ height: 16 }} />
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* =====================================================
@@ -3039,7 +2925,7 @@ export default function LoanFormScreen({
           );
         })()
         : null}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -3415,6 +3301,26 @@ const styles =
       marginBottom: 7,
     },
 
+    switchRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 4,
+      marginTop: 8,
+      marginBottom: 12,
+    },
+
+    switchLabelWrap: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+
+    switchLabel: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: "#334155",
+    },
+
     /* =====================================================
        ACTION BUTTONS
     ===================================================== */
@@ -3510,8 +3416,8 @@ const styles =
       borderTopRightRadius: 22,
       paddingHorizontal: 14,
       paddingTop: 9,
-      paddingBottom: 16,
-      maxHeight: "82%",
+      paddingBottom: Platform.OS === "ios" ? 40 : 24,
+      maxHeight: "90%",
     },
 
     smallSheet: {
@@ -3520,8 +3426,8 @@ const styles =
       borderTopRightRadius: 22,
       paddingHorizontal: 14,
       paddingTop: 9,
-      paddingBottom: 20,
-      maxHeight: "65%",
+      paddingBottom: Platform.OS === "ios" ? 40 : 24,
+      maxHeight: "80%",
     },
 
     sheetHandle: {
@@ -3561,7 +3467,8 @@ const styles =
     },
 
     sheetScroll: {
-      flexGrow: 0,
+      flexShrink: 1,
+      width: "100%",
     },
 
     /* =====================================================
@@ -3643,21 +3550,20 @@ const styles =
     dayGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      justifyContent: "flex-start",
+      justifyContent: "center",
       paddingTop: 4,
-      columnGap: 7,
+      gap: 8,
     },
 
     dayTile: {
-      width: "13.2%",
-      aspectRatio: 1,
-      borderRadius: 9,
+      width: 44,
+      height: 44,
+      borderRadius: 11,
       borderWidth: 1,
       borderColor: "#E2E8F0",
       backgroundColor: "#F8FAFC",
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: 7,
     },
 
     dayText: {
