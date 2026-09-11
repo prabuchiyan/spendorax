@@ -85,17 +85,15 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
 
   // --- Date Logic ---
   const handlePrevMonth = () => {
-    triggerAnimation();
     setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1));
   };
   const handleNextMonth = () => {
     if (disableFutureDates && isMonthFuture(viewMonth.getFullYear(), viewMonth.getMonth() + 1)) return;
-    triggerAnimation();
     setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1));
   };
   
-  const handlePrevYears = () => { triggerAnimation(); setYearPageStart(y => y - 12); };
-  const handleNextYears = () => { triggerAnimation(); setYearPageStart(y => y + 12); };
+  const handlePrevYears = () => setYearPageStart(y => y - 12);
+  const handleNextYears = () => setYearPageStart(y => y + 12);
   
   const handleDaySelect = (day) => {
     const newDate = new Date(date);
@@ -385,8 +383,9 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
       for (let i = 0; i < 60; i += 5) items.push(i);
     }
 
-    const radius = 95;
-    const center = 125;
+    const clockSize = 220;
+    const radius = 82;
+    const center = clockSize / 2;
     
     let selectedVal = timeMode === 'hours' ? displayH : currentM;
     let angleIndex = timeMode === 'hours' ? selectedVal : (selectedVal / 5);
@@ -429,8 +428,8 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
         </View>
 
         <View style={styles.clockContainer}>
-          <View style={styles.clockFace}>
-            <Svg width="250" height="250" style={StyleSheet.absoluteFill}>
+          <View style={[styles.clockFace, { width: clockSize, height: clockSize, borderRadius: center }]}>
+            <Svg width={clockSize} height={clockSize} style={StyleSheet.absoluteFill}>
               <SvgCircle cx={center} cy={center} r="4" fill={PRIMARY_COLOR} />
               <Line x1={center} y1={center} x2={lineX} y2={lineY} stroke={PRIMARY_COLOR} strokeWidth="2" />
               <SvgCircle cx={lineX} cy={lineY} r="16" fill={PRIMARY_COLOR} />
@@ -450,7 +449,7 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
                 <TouchableOpacity
                   key={val}
                   onPress={() => handleTimeSelect(val)}
-                  style={[styles.clockItem, { left: x, top: y }]}
+                  style={[styles.clockItem, { left: x, top: y, zIndex: 10 }]}
                 >
                   <Text style={[styles.clockItemText, isSelected && { color: '#fff' }]}>
                     {timeMode === 'minutes' ? String(val).padStart(2, '0') : val}
@@ -824,9 +823,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   clockFace: {
-    width: 250,
-    height: 250,
-    borderRadius: 125,
     backgroundColor: '#F3F4F6',
     position: 'relative',
   },
