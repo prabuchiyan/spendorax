@@ -35,6 +35,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import CategoryCreateModal from "./CategoryCreateModal";
 import SourceCreateModal from "./SourceCreateModal";
 import ConfirmDialog from "./ConfirmDialog";
+import MuiDateTimePicker from "./MuiDateTimePicker";
 import { Feather } from "@expo/vector-icons";
 import LinkedBillCard from "./LinkedBillCard";
 import { usePageLoader } from "../context/PageLoaderContext";
@@ -2242,7 +2243,18 @@ export default function TransactionForm({
       </View>
 
       {/* Date & Time Picker */}
-      {showDateTimePicker &&
+      <MuiDateTimePicker
+        visible={showDateTimePicker}
+        initialDate={date}
+        disableFutureDates={true}
+        onSelect={(newDate) => {
+          setDate(newDate.toISOString());
+          setShowDateTimePicker(false);
+          markDirty();
+        }}
+        onClose={() => setShowDateTimePicker(false)}
+      />
+      {false &&
         (() => {
           // Native picker for Android / iOS
           if (Platform.OS === "android") {
