@@ -736,3 +736,64 @@ export async function getCategoryAndSourceUsage(years = 1) {
     return { categoryCount: {}, sourceCount: {} };
   }
 }
+
+export async function getTransactionsByDateRange(categoryId, startDateStr, endDateStr) {
+  try {
+    if (Platform.OS === 'web') {
+      const res = await executeSql('SELECT * FROM transactions');
+      const rows = [];
+      for (let i = 0; i < res.rows.length; i++) {
+        rows.push(res.rows.item(i));
+      }
+      
+      const filtered = rows.filter(tx => {
+        if (categoryId && Number(tx.category_id) !== Number(categoryId)) return false;
+        if (!tx.date) return false;
+        const dStr = String(tx.date).replace(' ', 'T');
+        if (startDateStr && dStr < startDateStr) return false;
+        if (endDateStr && dStr > endDateStr) return false;
+        return true;
+      });
+      
+      filtered.sort((a, b) => {
+        const dA = String(a.date).replace(' ', 'T');
+        const dB = String(b.date).replace(' ', 'T');
+        if (dA > dB) return -1;
+        if (dA < dB) return 1;
+        return b.id - a.id;
+      });
+      
+      return filtered;
+    }
+
+    const params = [];
+    let query = `SELECT * FROM transactions WHERE 1=1`;
+
+    if (categoryId) {
+      query += ` AND category_id = ?`;
+      params.push(Number(categoryId));
+    }
+
+    if (startDateStr) {
+      query += ` AND REPLACE(date, ' ', 'T') >= ?`;
+      params.push(startDateStr);
+    }
+
+    if (endDateStr) {
+      query += ` AND REPLACE(date, ' ', 'T') <= ?`;
+      params.push(endDateStr);
+    }
+
+    query += ` ORDER BY REPLACE(date, ' ', 'T') DESC, id DESC`;
+
+    const res = await executeSql(query, params);
+    const rows = [];
+    for (let i = 0; i < res.rows.length; i++) {
+      rows.push(res.rows.item(i));
+    }
+    return rows;
+  } catch (error) {
+    console.error('getTransactionsByDateRange error:', error);
+    return [];
+  }
+}

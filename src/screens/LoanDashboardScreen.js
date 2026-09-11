@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -20,6 +21,7 @@ import { setLoans } from '../redux/slices/loanSlice';
 
 function money(value) {
   return `₹${Number(value || 0).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 }
@@ -56,7 +58,7 @@ function computeNextDueDate(loan) {
       candidate.setMonth(candidate.getMonth() + 1);
     }
 
-    return candidate;
+    return candidate.toISOString();
   } catch (e) {
     return null;
   }
@@ -145,377 +147,99 @@ function StatusBadge({ status, color }) {
 }
 
 /* =========================================================
-   STAT CARD
+   HERO DASHBOARD CARD
 ========================================================= */
 
-function StatCard({ title, amount, icon, color }) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        minHeight: 86,
-        backgroundColor: "#FFFFFF",
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: "#E7EBF0",
-        padding: 12,
-        shadowColor: "#172033",
-        shadowOffset: {
-          width: 0,
-          height: 2,
-        },
-        shadowOpacity: 0.035,
-        shadowRadius: 5,
-        elevation: 1,
-      }}
-    >
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          marginBottom: 8,
-        }}
-      >
-        <IconBox icon={icon} color={color} size={30} iconSize={16} radius={9} />
-
-        <Text
-          numberOfLines={1}
-          style={{
-            flex: 1,
-            marginLeft: 8,
-            fontSize: 10,
-            fontWeight: "800",
-            color: "#7B8794",
-          }}
-        >
-          {title}
-        </Text>
-      </View>
-
-      <Text
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        style={{
-          fontSize: 16,
-          fontWeight: "900",
-          color: "#172033",
-        }}
-      >
-        {amount}
-      </Text>
-    </View>
-  );
-}
-
-/* =========================================================
-   PRIMARY SUMMARY CARD
-========================================================= */
-
-function PrimarySummaryCard({
-  title,
-  subtitle,
-  amount,
-  icon,
-  color,
-  percentage,
-  paid,
-  outstanding,
+function HeroDashboardCard({
+  summary,
+  accent,
   isBorrowed,
+  navigation,
+  direction,
 }) {
+  const { outstanding, paid, percentage, emi, total, activeCount, overdue } = summary;
   const progressColor = getProgressColor(percentage);
   const safePercentage = Math.max(0, Math.min(100, Number(percentage || 0)));
 
   return (
     <View
       style={{
-        marginBottom: 10,
         backgroundColor: "#FFFFFF",
-        borderRadius: 18,
+        borderRadius: 22,
+        padding: 20,
+        marginBottom: 16,
         borderWidth: 1,
-        borderColor: "#E6EBF0",
-        overflow: "hidden",
+        borderColor: "#EAF0F6",
         shadowColor: "#172033",
-        shadowOffset: {
-          width: 0,
-          height: 3,
-        },
-        shadowOpacity: 0.055,
-        shadowRadius: 7,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.06,
+        shadowRadius: 14,
+        elevation: 4,
       }}
     >
       <View
         style={{
-          height: 4,
-          backgroundColor: color,
-        }}
-      />
-
-      <View
-        style={{
-          paddingHorizontal: 16,
-          paddingTop: 14,
-          paddingBottom: 15,
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: 20,
         }}
       >
-        <View
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 13, fontWeight: "700", color: "#8A94A6" }}>
+            {isBorrowed ? "Still to Repay" : "Pending Recovery"}
+          </Text>
+          <Text
+            numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.5}
+            style={{ fontSize: 28, fontWeight: "900", color: "#172033", marginTop: 4 }}
+          >
+            {money(outstanding)}
+          </Text>
+        </View>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate("LoanList", { status: "Active", direction })}
           style={{
-            flexDirection: "row",
-            alignItems: "center",
+            backgroundColor: `${accent}15`,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 20,
+            marginLeft: 12,
           }}
         >
-          <IconBox
-            icon={icon}
-            color={color}
-            size={46}
-            iconSize={24}
-            radius={14}
+          <Text style={{ color: accent, fontSize: 12, fontWeight: "800" }}>
+            {activeCount} Active
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={{ marginBottom: 20 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
+          <Text style={{ fontSize: 12, fontWeight: "600", color: "#8A94A6" }}>
+            {isBorrowed ? "Repayment Progress" : "Recovery Progress"}
+          </Text>
+          <Text style={{ fontSize: 12, fontWeight: "900", color: progressColor }}>
+            {Math.round(safePercentage)}%
+          </Text>
+        </View>
+        <View style={{ height: 8, backgroundColor: "#F0F3F6", borderRadius: 4 }}>
+          <View
+            style={{
+              width: `${safePercentage}%`,
+              height: "100%",
+              backgroundColor: progressColor,
+              borderRadius: 4,
+            }}
           />
-
-          <View
-            style={{
-              flex: 1,
-              marginLeft: 11,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "900",
-                color: "#172033",
-              }}
-            >
-              {title}
-            </Text>
-
-            <Text
-              numberOfLines={1}
-              style={{
-                marginTop: 2,
-                fontSize: 10,
-                color: "#7B8794",
-              }}
-            >
-              {subtitle}
-            </Text>
-          </View>
-
-          <View
-            style={{
-              alignItems: "flex-end",
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 25,
-                fontWeight: "900",
-                color,
-              }}
-            >
-              {money(amount)}
-            </Text>
-
-            <Text
-              style={{
-                marginTop: 1,
-                fontSize: 9,
-                fontWeight: "800",
-                color: "#8A94A6",
-              }}
-            >
-              {isBorrowed ? "TO REPAY" : "TO RECOVER"}
-            </Text>
-          </View>
         </View>
-
-        {/* Progress */}
-
-        <View
-          style={{
-            marginTop: 15,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 7,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 10,
-                fontWeight: "800",
-                color: "#687385",
-              }}
-            >
-              {isBorrowed ? "Repayment progress" : "Recovery progress"}
-            </Text>
-
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: "900",
-                color: progressColor,
-              }}
-            >
-              {Math.round(safePercentage)}%
-            </Text>
-          </View>
-
-          <View
-            style={{
-              height: 7,
-              backgroundColor: "#EDF1F4",
-              borderRadius: 5,
-              overflow: "hidden",
-            }}
-          >
-            <View
-              style={{
-                width: `${safePercentage}%`,
-                height: "100%",
-                backgroundColor: progressColor,
-                borderRadius: 5,
-              }}
-            />
-          </View>
-        </View>
-
-        {/* Paid / Remaining */}
-
-        <View
-          style={{
-            flexDirection: "row",
-            marginTop: 11,
-          }}
-        >
-          <View
-            style={{
-              flex: 1,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 9,
-                color: "#8A94A6",
-              }}
-            >
-              {isBorrowed ? "Principal paid" : "Recovered"}
-            </Text>
-
-            <Text
-              style={{
-                marginTop: 2,
-                fontSize: 12,
-                fontWeight: "900",
-                color: "#172033",
-              }}
-            >
-              {money(paid)}
-            </Text>
-          </View>
-
-          <View
-            style={{
-              flex: 1,
-              alignItems: "flex-end",
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 9,
-                color: "#8A94A6",
-              }}
-            >
-              {isBorrowed ? "Still to repay" : "Pending recovery"}
-            </Text>
-
-            <Text
-              style={{
-                marginTop: 2,
-                fontSize: 12,
-                fontWeight: "900",
-                color: number(outstanding) > 0 ? "#172033" : "#16A34A",
-              }}
-            >
-              {money(outstanding)}
-            </Text>
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-/* OVERVIEW CARD */
-function OverviewCard({ summary, accent, isBorrowed, navigation, direction }) {
-  const openLoanList = (status) => {
-    navigation.navigate("LoanList", {
-      status,
-      direction,
-    });
-  };
-
-  return (
-    <View
-      style={{
-        backgroundColor: "#FFFFFF",
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: "#E7EBF0",
-        padding: 14,
-        marginBottom: 2,
-        shadowColor: "#172033",
-        shadowOffset: {
-          width: 0,
-          height: 2,
-        },
-        shadowOpacity: 0.03,
-        shadowRadius: 5,
-        elevation: 1,
-      }}
-    >
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          marginBottom: 12,
-        }}
-      >
-        <IconBox
-          icon={isBorrowed ? "shield-check-outline" : "account-cash-outline"}
-          color={accent}
-          size={38}
-          iconSize={20}
-          radius={11}
-        />
-
-        <View
-          style={{
-            flex: 1,
-            marginLeft: 10,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 14,
-              fontWeight: "900",
-              color: "#172033",
-            }}
-          >
-            {isBorrowed ? "Loan Overview" : "Lending Overview"}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
+          <Text style={{ fontSize: 11, fontWeight: "600", color: "#687385" }}>
+            Paid: <Text style={{ color: "#172033" }}>{money(paid)}</Text>
           </Text>
-
-          <Text
-            style={{
-              marginTop: 1,
-              fontSize: 10,
-              color: "#8A94A6",
-            }}
-          >
-            Current portfolio status
+          <Text style={{ fontSize: 11, fontWeight: "600", color: "#687385" }}>
+            Total: <Text style={{ color: "#172033" }}>{money(total)}</Text>
           </Text>
         </View>
       </View>
@@ -523,94 +247,39 @@ function OverviewCard({ summary, accent, isBorrowed, navigation, direction }) {
       <View
         style={{
           flexDirection: "row",
+          backgroundColor: "#F8FAFC",
+          borderRadius: 16,
+          padding: 14,
+          borderWidth: 1,
+          borderColor: "#EAF0F6",
         }}
       >
-        <OverviewItem
-          value={summary.activeCount}
-          label="Active"
-          color={accent}
-          onPress={() => openLoanList("Active")}
-        />
-
-        <OverviewItem
-          value={summary.closedCount}
-          label="Closed"
-          color="#687385"
-          onPress={() => openLoanList("Closed")}
-        />
-
-        <OverviewItem
-          value={summary.overdue}
-          label="Overdue"
-          color={summary.overdue > 0 ? "#E25563" : "#16A34A"}
-          last
-        />
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 11, color: "#8A94A6", marginBottom: 4, fontWeight: "600" }}>
+            {isBorrowed ? "Monthly EMI" : "Total Lent"}
+          </Text>
+          <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.5} style={{ fontSize: 16, fontWeight: "900", color: "#172033" }}>
+            {money(isBorrowed ? emi : total)}
+          </Text>
+        </View>
+        <View style={{ width: 1, backgroundColor: "#EAF0F6", marginHorizontal: 16 }} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 11, color: "#8A94A6", marginBottom: 4, fontWeight: "600" }}>
+            Status
+          </Text>
+          <Text style={{ fontSize: 14, fontWeight: "900", color: overdue > 0 ? "#E25563" : "#16A34A", marginTop: 2 }}>
+            {overdue > 0 ? `${overdue} Overdue` : "All Good"}
+          </Text>
+        </View>
       </View>
     </View>
-  );
-}
-
-function OverviewItem({ value, label, color, last, onPress }) {
-  const content = (
-    <>
-      <Text
-        style={{
-          fontSize: 19,
-          fontWeight: "900",
-          color,
-        }}
-      >
-        {value}
-      </Text>
-
-      <Text
-        style={{
-          marginTop: 1,
-          fontSize: 9,
-          fontWeight: "700",
-          color: "#8A94A6",
-        }}
-      >
-        {label}
-      </Text>
-    </>
-  );
-
-  if (!onPress) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: "center",
-          borderRightWidth: last ? 0 : 1,
-          borderRightColor: "#EDF0F3",
-        }}
-      >
-        {content}
-      </View>
-    );
-  }
-
-  return (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={onPress}
-      style={{
-        flex: 1,
-        alignItems: "center",
-        borderRightWidth: last ? 0 : 1,
-        borderRightColor: "#EDF0F3",
-      }}
-    >
-      {content}
-    </TouchableOpacity>
   );
 }
 
 /* =========================================================
    SECTION HEADER
 ========================================================= */
-function SectionHeader({ title, subtitle, count }) {
+function SectionHeader({ title, subtitle, count, onViewAll }) {
   return (
     <View
       style={{
@@ -650,30 +319,47 @@ function SectionHeader({ title, subtitle, count }) {
         )}
       </View>
 
-      {count !== undefined && (
-        <View
-          style={{
-            minWidth: 26,
-            height: 23,
-            paddingHorizontal: 7,
-            borderRadius: 12,
-            backgroundColor: "#F0F3F6",
-            alignItems: "center",
-            justifyContent: "center",
-            marginLeft: 8,
-          }}
-        >
-          <Text
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        {count !== undefined && (
+          <View
             style={{
-              color: "#5E6A7A",
-              fontSize: 10,
-              fontWeight: "900",
+              minWidth: 26,
+              height: 23,
+              paddingHorizontal: 7,
+              borderRadius: 12,
+              backgroundColor: "#F0F3F6",
+              alignItems: "center",
+              justifyContent: "center",
+              marginLeft: 8,
             }}
           >
-            {count}
-          </Text>
-        </View>
-      )}
+            <Text
+              style={{
+                color: "#5E6A7A",
+                fontSize: 10,
+                fontWeight: "900",
+              }}
+            >
+              {count}
+            </Text>
+          </View>
+        )}
+
+        {onViewAll && (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={onViewAll}
+            style={{
+              marginLeft: 10,
+              paddingVertical: 4,
+            }}
+          >
+            <Text style={{ fontSize: 11, fontWeight: "800", color: "#3B82F6" }}>
+              View All
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 }
@@ -878,81 +564,45 @@ function DirectionLoanCard({ loan, direction, navigation }) {
 
 function UpcomingCard({ loan, direction, navigation }) {
   const accent = direction === "BORROWED" ? "#36B37E" : "#4F7CAC";
-
   const dueDate = loan.nextDueDate || computeNextDueDate(loan);
-
   const overdue =
     dueDate &&
     new Date(dueDate) < new Date() &&
     number(loan.outstanding_amount) > 0;
+  const { width } = Dimensions.get("window");
 
   return (
     <TouchableOpacity
       activeOpacity={0.86}
-      onPress={() =>
-        navigation.navigate("LoanDetails", {
-          id: loan.id,
-        })
-      }
+      onPress={() => navigation.navigate("LoanDetails", { id: loan.id })}
       style={{
-        width: 178,
-        marginRight: 9,
+        width: width * 0.42,
+        marginRight: 12,
         backgroundColor: "#FFFFFF",
-        borderRadius: 15,
+        borderRadius: 18,
         borderWidth: 1,
-        borderColor: "#E7EBF0",
-        padding: 12,
+        borderColor: "#EAF0F6",
+        padding: 16,
         shadowColor: "#172033",
-        shadowOffset: {
-          width: 0,
-          height: 2,
-        },
-        shadowOpacity: 0.03,
-        shadowRadius: 5,
-        elevation: 1,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        elevation: 2,
       }}
     >
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-        }}
-      >
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
         <IconBox
-          icon={
-            direction === "BORROWED" ? "calendar-arrow-right" : "calendar-check"
-          }
+          icon={direction === "BORROWED" ? "calendar-arrow-right" : "calendar-check"}
           color={overdue ? "#E25563" : accent}
-          size={36}
+          size={38}
           iconSize={18}
-          radius={11}
+          radius={12}
         />
-
-        <View
-          style={{
-            flex: 1,
-            marginLeft: 8,
-          }}
-        >
-          <Text
-            numberOfLines={1}
-            style={{
-              fontSize: 12,
-              fontWeight: "900",
-              color: "#172033",
-            }}
-          >
+        <View style={{ flex: 1, marginLeft: 10 }}>
+          <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: "900", color: "#172033" }}>
             {loan.loan_name || "Loan"}
           </Text>
-
-          <Text
-            style={{
-              marginTop: 2,
-              fontSize: 9,
-              color: overdue ? "#E25563" : "#8A94A6",
-              fontWeight: overdue ? "800" : "500",
-            }}
-          >
+          <Text style={{ marginTop: 2, fontSize: 11, color: overdue ? "#E25563" : "#8A94A6", fontWeight: overdue ? "800" : "600" }}>
             {overdue ? "Overdue" : formatDate(dueDate)}
           </Text>
         </View>
@@ -961,23 +611,12 @@ function UpcomingCard({ loan, direction, navigation }) {
       <Text
         numberOfLines={1}
         adjustsFontSizeToFit
-        style={{
-          marginTop: 11,
-          fontSize: 17,
-          fontWeight: "900",
-          color: overdue ? "#E25563" : accent,
-        }}
+        style={{ marginTop: 14, fontSize: 18, fontWeight: "900", color: overdue ? "#E25563" : accent }}
       >
         {money(number(loan.emi_amount) || number(loan.outstanding_amount))}
       </Text>
 
-      <Text
-        style={{
-          marginTop: 1,
-          fontSize: 9,
-          color: "#8A94A6",
-        }}
-      >
+      <Text style={{ marginTop: 2, fontSize: 11, color: "#8A94A6", fontWeight: "600" }}>
         {direction === "BORROWED" ? "Next EMI" : "Expected recovery"}
       </Text>
     </TouchableOpacity>
@@ -1143,10 +782,10 @@ function DirectionTabs({ direction, setDirection }) {
     <View
       style={{
         flexDirection: "row",
-        backgroundColor: "#E8EDF2",
-        borderRadius: 15,
+        backgroundColor: "#F0F3F6",
+        borderRadius: 20,
         padding: 4,
-        marginBottom: 11,
+        marginBottom: 16,
       }}
     >
       <DirectionTab
@@ -1171,22 +810,19 @@ function DirectionTabs({ direction, setDirection }) {
 function DirectionTab({ active, icon, label, color, onPress }) {
   return (
     <TouchableOpacity
-      activeOpacity={0.85}
+      activeOpacity={0.8}
       onPress={onPress}
       style={{
         flex: 1,
-        height: 42,
-        borderRadius: 11,
+        height: 44,
+        borderRadius: 16,
         alignItems: "center",
         justifyContent: "center",
         flexDirection: "row",
         backgroundColor: active ? "#FFFFFF" : "transparent",
         shadowColor: "#172033",
-        shadowOffset: {
-          width: 0,
-          height: 2,
-        },
-        shadowOpacity: active ? 0.08 : 0,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: active ? 0.05 : 0,
         shadowRadius: 4,
         elevation: active ? 2 : 0,
       }}
@@ -1194,17 +830,14 @@ function DirectionTab({ active, icon, label, color, onPress }) {
       <MaterialCommunityIcons
         name={icon}
         size={18}
-        color={active ? color : "#8993A1"}
-        style={{
-          marginRight: 6,
-        }}
+        color={active ? color : "#8A94A6"}
+        style={{ marginRight: 8 }}
       />
-
       <Text
         style={{
-          fontSize: 12,
-          fontWeight: "900",
-          color: active ? "#172033" : "#7B8794",
+          fontSize: 13,
+          fontWeight: "800",
+          color: active ? "#172033" : "#8A94A6",
         }}
       >
         {label}
@@ -1358,7 +991,7 @@ function LoanDirectionDashboard({ navigation }) {
 
   const upcoming = useMemo(() => {
     return loans
-      .filter((loan) => isActive(loan) && number(loan.outstanding_amount) > 0)
+      .filter((loan) => isActive(loan) && number(loan.outstanding_amount) > 0 && number(loan.emi_amount) > 0)
       .sort((a, b) => new Date(a.nextDueDate) - new Date(b.nextDueDate))
       .slice(0, 6);
   }, [loans]);
@@ -1513,49 +1146,10 @@ function LoanDirectionDashboard({ navigation }) {
         <DirectionTabs direction={direction} setDirection={setDirection} />
 
         {/* =================================================
-            SUMMARY
+            HERO SUMMARY
         ================================================= */}
 
-        <PrimarySummaryCard
-          title={primaryTitle}
-          subtitle={primarySubtitle}
-          amount={summary.outstanding}
-          icon={primaryIcon}
-          color={accent}
-          percentage={summary.percentage}
-          paid={summary.paid}
-          outstanding={summary.outstanding}
-          isBorrowed={isBorrowed}
-        />
-
-        {/* =================================================
-            STATS
-        ================================================= */}
-
-        <View
-          style={{
-            flexDirection: "row",
-            gap: 8,
-            marginBottom: 9,
-          }}
-        >
-          <StatCard
-            title={isBorrowed ? "Monthly EMI" : "Total Lent"}
-            amount={money(isBorrowed ? summary.emi : summary.total)}
-            icon={isBorrowed ? "calendar-month" : "cash-multiple"}
-            color={accent}
-          />
-
-          <StatCard
-            title={isBorrowed ? "Interest Paid" : "Recovered"}
-            amount={money(isBorrowed ? summary.interest : summary.paid)}
-            icon={isBorrowed ? "percent" : "cash-check"}
-            color={isBorrowed ? "#F59E0B" : "#36B37E"}
-          />
-        </View>
-
-        {/* OVERVIEW  */}
-        <OverviewCard
+        <HeroDashboardCard
           summary={summary}
           accent={accent}
           isBorrowed={isBorrowed}
@@ -1620,6 +1214,7 @@ function LoanDirectionDashboard({ navigation }) {
             isBorrowed ? "Currently being repaid" : "People who still owe you"
           }
           count={activeLoans.length}
+          onViewAll={() => navigation.navigate("LoanList", { direction })}
         />
 
         {activeLoans.length === 0 ? (

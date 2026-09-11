@@ -610,7 +610,6 @@ export default function LendMoreScreen({ route, navigation }) {
             />
           </View>
 
-          {/* ── SAVE BUTTON ── */}
           <View style={{ marginTop: 10, marginBottom: 25 }}>
             <PaperButton
               mode="contained"
@@ -623,9 +622,9 @@ export default function LendMoreScreen({ route, navigation }) {
                 fontSize: 16,
                 fontWeight: "800",
               }}
-              icon="hand-coin-outline"
+              icon={loading ? undefined : "hand-coin-outline"}
             >
-              Give Money
+              {loading ? "Recording..." : "Give Money"}
             </PaperButton>
           </View>
         </Card>
