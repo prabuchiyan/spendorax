@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { formatAmount } from '../utils/numberUtils';
 import {
   TextInput,
   Button,
@@ -93,10 +94,7 @@ export default function SourceCreateModal({
 
   const displayName = name.trim() || 'Your Account';
   const numericBalance = parseFloat(initial) || 0;
-  const formattedBalance = numericBalance.toLocaleString('en-IN', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  const formattedBalance = formatAmount(numericBalance);
 
   return (
     <FormModalShell

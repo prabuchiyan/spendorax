@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
 } from 'react-native';
+import { formatCompactAmount } from '../utils/numberUtils';
 import { Colors } from './Theme';
 
 const BAR_TRACK_HEIGHT = 170;
@@ -31,14 +32,7 @@ const getPremiumBarColor = (baseColor, index, total, opacity = 1) => {
   return `rgba(${r},${g},${b},${Math.min(1, Math.max(0.84, opacity))})`;
 };
 
-const formatCompactAmount = (amount) => {
-  const num = Number(amount || 0);
-  const abs = Math.abs(num);
-  if (abs >= 10000000) return `₹${(num / 10000000).toFixed(1).replace(/\.0$/, '')}Cr`;
-  if (abs >= 100000) return `₹${(num / 100000).toFixed(1).replace(/\.0$/, '')}L`;
-  if (abs >= 1000) return `₹${(num / 1000).toFixed(1).replace(/\.0$/, '')}K`;
-  return `₹${num.toLocaleString('en-IN')}`;
-};
+
 
 export default function PremiumRoundedBarChart({
   labels = [],

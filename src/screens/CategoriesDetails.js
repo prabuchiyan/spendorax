@@ -21,6 +21,14 @@ import { Chip } from 'react-native-paper';
 
 const screenWidth = Dimensions.get('window').width;
 import PremiumRoundedBarChart from '../components/PremiumRoundedBarChart';
+import TransactionListItem from '../components/TransactionListItem';
+import {
+  getLabelForDate,
+  getPeriodKey,
+  generateContinuousPeriods,
+  getBoundsForPeriods,
+  formatDate,
+} from '../utils/dateUtils';
 
 const hexToRgb = (hex) => {
   if (!hex || typeof hex !== 'string') return null;
@@ -79,35 +87,6 @@ export default function CategoriesDetails({ route, navigation }) {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmTargetId, setConfirmTargetId] = useState(null);
 
-  const getLabelForDate = useCallback((d, periodType) => {
-    if (periodType === 'day') {
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${day} ${months[d.getMonth()]}`;
-    }
-    if (periodType === 'week') {
-      const startOfWeek = new Date(d);
-      startOfWeek.setDate(d.getDate() - d.getDay());
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6);
-      
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const startDay = String(startOfWeek.getDate()).padStart(2, '0');
-      const startMonth = months[startOfWeek.getMonth()].charAt(0).toLowerCase();
-      const endDay = String(endOfWeek.getDate());
-      const endMonth = months[endOfWeek.getMonth()].charAt(0).toLowerCase();
-      
-      return `${startDay}${startMonth}-${endDay}${endMonth}`;
-    }
-    if (periodType === 'month') {
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
-    }
-    if (periodType === 'year') {
-      return String(d.getFullYear());
-    }
-    return '';
-  }, []);
 
   const initialSelectedBar = useMemo(() => {
     const now = new Date();
@@ -119,7 +98,7 @@ export default function CategoriesDetails({ route, navigation }) {
       }
     }
     return { label: getLabelForDate(now, initialPeriod) };
-  }, [periodLabel, initialPeriod, getLabelForDate]);
+  }, [periodLabel, initialPeriod]);
 
   const [selectedBar, setSelectedBar] = useState(initialSelectedBar);
 
@@ -127,38 +106,6 @@ export default function CategoriesDetails({ route, navigation }) {
     navigation.setOptions({ title: categoryName });
   }, [categoryName, navigation]);
 
-  const getPeriodKey = (dateString, p) => {
-    if (!dateString) return '';
-    const dateStr = String(dateString).replace(' ', 'T');
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '';
-    
-    const periodType = p || period;
-    return getLabelForDate(d, periodType);
-  };
-
-  const generateContinuousPeriods = (periodType, offset) => {
-    const periods = [];
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-
-    for (let i = 4; i >= 0; i--) {
-      const d = new Date(now);
-      const shiftAmount = offset + i;
-
-      if (periodType === 'day') {
-        d.setDate(d.getDate() - shiftAmount);
-      } else if (periodType === 'week') {
-        d.setDate(d.getDate() - shiftAmount * 7);
-      } else if (periodType === 'month') {
-        d.setMonth(d.getMonth() - shiftAmount);
-      } else if (periodType === 'year') {
-        d.setFullYear(d.getFullYear() - shiftAmount);
-      }
-      periods.push(d);
-    }
-    return periods;
-  };
 
   const groupData = (data, currentPeriod, offset) => {
     const map = {};
@@ -187,47 +134,6 @@ export default function CategoriesDetails({ route, navigation }) {
     });
   };
 
-  const getBoundsForPeriods = (periods, periodType) => {
-    if (!periods || periods.length === 0) return { start: null, end: null };
-    
-    const firstDate = new Date(periods[0]);
-    const lastDate = new Date(periods[periods.length - 1]);
-    
-    let start = new Date(firstDate);
-    let end = new Date(lastDate);
-    
-    if (periodType === 'day') {
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
-    } else if (periodType === 'week') {
-      start.setDate(start.getDate() - start.getDay());
-      start.setHours(0, 0, 0, 0);
-      
-      end.setDate(end.getDate() + (6 - end.getDay()));
-      end.setHours(23, 59, 59, 999);
-    } else if (periodType === 'month') {
-      start.setDate(1);
-      start.setHours(0, 0, 0, 0);
-      
-      end = new Date(end.getFullYear(), end.getMonth() + 1, 0, 23, 59, 59, 999);
-    } else if (periodType === 'year') {
-      start.setMonth(0, 1);
-      start.setHours(0, 0, 0, 0);
-      
-      end.setMonth(11, 31);
-      end.setHours(23, 59, 59, 999);
-    }
-    
-    const pad = (n) => String(n).padStart(2, '0');
-    const formatSqlite = (d) => {
-      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-    };
-
-    return {
-      start: formatSqlite(start),
-      end: formatSqlite(end)
-    };
-  };
 
   const loadTransactions = async (currentPeriod = period, offset = chartOffset) => {
     try {
@@ -289,15 +195,7 @@ export default function CategoriesDetails({ route, navigation }) {
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'No date';
-    const d = new Date(dateString);
-    return d.toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
+
 
   const activeCategory = categoriesMap[Number(categoryId)] || {};
   const activeCategoryColor = activeCategory.color || Colors.primary;
@@ -406,72 +304,16 @@ export default function CategoriesDetails({ route, navigation }) {
     const source =
       sourcesMap[item.source_id] || {};
 
-    const isExpense =
-      String(item.type || '').toLowerCase() ===
-      'expense';
-
-    const isTransfer =
-      String(item.type || '').toLowerCase() ===
-      'transfer' ||
-      item.transfer_group_id ||
-      item.is_transfer;
-
-    const type =
-      isTransfer
-        ? 'transfer'
-        : isExpense
-          ? 'expense'
-          : 'income';
-
-    const amountColor =
-      type === 'income'
-        ? '#20A56A'
-        : type === 'transfer'
-          ? '#718096'
-          : '#D14343';
-
-
-
-    const accentColor =
-      type === 'income'
-        ? '#20A56A'
-        : type === 'transfer'
-          ? '#718096'
-          : '#D14343';
-
-    const iconColor =
-      category.color ||
-      activeCategoryColor ||
-      accentColor;
-
-    const transactionDate =
-      new Date(item.date);
-
-    const dateText =
-      transactionDate.toLocaleDateString(
-        'en-IN',
-        {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-        }
-      );
-
-    const timeText =
-      transactionDate.toLocaleTimeString(
-        'en-IN',
-        {
-          hour: '2-digit',
-          minute: '2-digit',
-        }
-      );
-
     const isLast =
       index === section.data.length - 1;
 
     return (
-      <TouchableOpacity
-        activeOpacity={0.88}
+      <TransactionListItem
+        item={item}
+        category={category}
+        source={source}
+        isLast={isLast}
+        showDate={true}
         onPress={() =>
           navigation.navigate(
             'TransactionAdd',
@@ -481,342 +323,7 @@ export default function CategoriesDetails({ route, navigation }) {
             }
           )
         }
-        style={{
-          marginBottom:
-            isLast ? 12 : 8,
-        }}
-      >
-        <View
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderRadius: 17,
-            overflow: 'hidden',
-
-            shadowColor: '#000',
-            shadowOffset: {
-              width: 0,
-              height: 3,
-            },
-            shadowOpacity: 0.06,
-            shadowRadius: 8,
-            elevation: 2,
-          }}
-        >
-
-          {/* LEFT ACCENT */}
-
-          <View
-            style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 4,
-              backgroundColor:
-                accentColor,
-            }}
-          />
-
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-
-              minHeight: 82,
-
-              paddingLeft: 15,
-              paddingRight: 12,
-              paddingVertical: 12,
-            }}
-          >
-
-            {/* ============================================ */}
-            {/* CATEGORY ICON */}
-            {/* ============================================ */}
-
-            <View
-              style={{
-                width: 50,
-                height: 50,
-                borderRadius: 16,
-
-                backgroundColor:
-                  iconColor,
-
-                justifyContent: 'center',
-                alignItems: 'center',
-
-                marginRight: 12,
-
-                shadowColor:
-                  iconColor,
-
-                shadowOffset: {
-                  width: 0,
-                  height: 3,
-                },
-
-                shadowOpacity: 0.22,
-                shadowRadius: 6,
-                elevation: 3,
-              }}
-            >
-              <MaterialCommunityIcons
-                name={
-                  category.icon ||
-                  'tag'
-                }
-                size={23}
-                color="#FFFFFF"
-              />
-            </View>
-
-            {/* ============================================ */}
-            {/* DETAILS */}
-            {/* ============================================ */}
-
-            <View
-              style={{
-                flex: 1,
-                minWidth: 0,
-                justifyContent: 'center',
-                paddingRight: 8,
-              }}
-            >
-
-              {/* NOTES */}
-
-              <Text
-                numberOfLines={2}
-                ellipsizeMode="tail"
-                style={{
-                  fontSize: 15,
-                  lineHeight: 19,
-                  fontWeight: '800',
-                  color: Colors.text,
-                  letterSpacing: -0.15,
-                }}
-              >
-                {item.notes ||
-                  category.name ||
-                  'Untitled'}
-              </Text>
-
-              {/* CATEGORY + SOURCE */}
-
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  marginTop: 6,
-                  minWidth: 0,
-                }}
-              >
-                {/* CATEGORY */}
-
-                <View
-                  style={{
-                    flexShrink: 1,
-                    maxWidth: '54%',
-
-                    backgroundColor:
-                      iconColor + '12',
-
-                    borderRadius: 6,
-
-                    paddingHorizontal: 7,
-                    paddingVertical: 4,
-
-                    borderWidth: 1,
-                    borderColor:
-                      iconColor + '18',
-                  }}
-                >
-                  <Text
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                    style={{
-                      color: iconColor,
-                      fontSize: 11,
-                      lineHeight: 13,
-                      fontWeight: '800',
-                    }}
-                  >
-                    {category.name ||
-                      categoryName ||
-                      'Uncategorized'}
-                  </Text>
-                </View>
-
-                {/* DOT */}
-
-                <View
-                  style={{
-                    width: 3,
-                    height: 3,
-                    borderRadius: 2,
-                    backgroundColor:
-                      '#C7CBD1',
-                    marginHorizontal: 6,
-                    flexShrink: 0,
-                  }}
-                />
-
-                {/* SOURCE */}
-
-                <Text
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    color: '#9299A3',
-                    fontSize: 11,
-                    lineHeight: 14,
-                    fontWeight: '600',
-                  }}
-                >
-                  {source.name || 'No source'}
-                </Text>
-              </View>
-            </View>
-
-            {/* ============================================ */}
-            {/* RIGHT COLUMN */}
-            {/* ============================================ */}
-
-            <View
-              style={{
-                width: 96,
-                flexShrink: 0,
-                alignItems: 'flex-end',
-                justifyContent: 'center',
-              }}
-            >
-
-              {/* AMOUNT */}
-
-              <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.72}
-                style={{
-                  width: '100%',
-                  textAlign: 'right',
-                  fontSize: 15,
-                  fontWeight: '900',
-                  color: amountColor,
-                  letterSpacing: -0.35,
-                }}
-              >
-                ₹
-                {Number(
-                  item.amount || 0
-                ).toLocaleString(
-                  'en-IN',
-                  {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  }
-                )}
-              </Text>
-
-              {/* DATE */}
-
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  marginTop: 5,
-                }}
-              >
-                <MaterialCommunityIcons
-                  name="calendar-month-outline"
-                  size={11}
-                  color="#A3A9B2"
-                />
-
-                <Text
-                  style={{
-                    color: '#9299A3',
-                    fontSize: 10,
-                    fontWeight: '700',
-                    marginLeft: 3,
-                  }}
-                >
-                  {dateText}
-                </Text>
-              </View>
-
-              {/* TIME / TRANSFER */}
-
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  marginTop: 3,
-                  minHeight: 14,
-                }}
-              >
-                {type === 'transfer' ? (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      backgroundColor: '#F1F3F5',
-                      paddingHorizontal: 6,
-                      paddingVertical: 2,
-                      borderRadius: 5,
-                    }}
-                  >
-                    <MaterialCommunityIcons
-                      name="swap-horizontal"
-                      size={10}
-                      color="#718096"
-                    />
-
-                    <Text
-                      style={{
-                        fontSize: 7.5,
-                        fontWeight: '900',
-                        color: '#718096',
-                        marginLeft: 3,
-                        letterSpacing: 0.2,
-                      }}
-                    >
-                      TRANSFER
-                    </Text>
-                  </View>
-                ) : (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <MaterialCommunityIcons
-                      name="clock-outline"
-                      size={10}
-                      color="#A3A9B2"
-                    />
-
-                    <Text
-                      style={{
-                        color: '#A3A9B2',
-                        fontSize: 9,
-                        fontWeight: '600',
-                        marginLeft: 3,
-                      }}
-                    >
-                      {timeText}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
+      />
     );
   };
 
