@@ -213,7 +213,7 @@ export default function ReportsScreen() {
               <TouchableOpacity 
                 onPress={() => setChartOffset(prev => Math.max(0, prev - 1))} 
                 style={{ 
-                  position: 'absolute', left: 4, zIndex: 10,
+                  position: 'absolute', left: 0, zIndex: 10,
                   width: 34, height: 34, borderRadius: 17, 
                   backgroundColor: 'rgba(255,255,255,0.85)', 
                   alignItems: 'center', justifyContent: 'center',
@@ -225,7 +225,7 @@ export default function ReportsScreen() {
                 <MaterialCommunityIcons name="chevron-left" size={20} color={Colors.text} />
               </TouchableOpacity>
 
-              <View style={[styles.chartOuterRow, { width: '100%', justifyContent: 'space-evenly', paddingHorizontal: 24 }]}>
+              <View style={[styles.chartOuterRow, { width: '100%', justifyContent: 'space-evenly', paddingHorizontal: 36 }]}>
                 {displayReportData.map((data, idx) => {
                   const isSelected = selectedPeriod === data.label;
                   return (
@@ -268,7 +268,7 @@ export default function ReportsScreen() {
               <TouchableOpacity 
                 onPress={() => setChartOffset(prev => prev + 1)} 
                 style={{ 
-                  position: 'absolute', right: 4, zIndex: 10,
+                  position: 'absolute', right: 0, zIndex: 10,
                   width: 34, height: 34, borderRadius: 17, 
                   backgroundColor: 'rgba(255,255,255,0.85)', 
                   alignItems: 'center', justifyContent: 'center',
