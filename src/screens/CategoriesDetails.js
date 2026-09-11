@@ -71,8 +71,6 @@ export default function CategoriesDetails({ route, navigation }) {
   const [categoriesMap, setCategoriesMap] = useState({});
   const [sourcesMap, setSourcesMap] = useState({});
   const [loading, setLoading] = useState(true);
-  const [chartOffset, setChartOffset] = useState(0);
-
   const initialPeriod = useMemo(() => {
     if (mode === 'daily') return 'day';
     if (mode === 'weekly') return 'week';
@@ -87,12 +85,47 @@ export default function CategoriesDetails({ route, navigation }) {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmTargetId, setConfirmTargetId] = useState(null);
 
+  const initialOffset = useMemo(() => {
+    if (!periodLabel) return 0;
+    const now = new Date();
+    let diff = 0;
+    try {
+      if (initialPeriod === 'year') {
+        const targetYear = parseInt(periodLabel, 10);
+        diff = now.getFullYear() - targetYear;
+      } else if (initialPeriod === 'month') {
+        const [y, m] = periodLabel.split('-');
+        const targetYear = parseInt(y, 10);
+        const targetMonth = parseInt(m, 10) - 1;
+        diff = (now.getFullYear() - targetYear) * 12 + (now.getMonth() - targetMonth);
+      } else if (initialPeriod === 'day' || initialPeriod === 'week') {
+        const parts = periodLabel.split('-');
+        const targetDate = new Date(parseInt(parts[0], 10), parseInt(parts[1] || 1, 10) - 1, parseInt(parts[2] || 1, 10));
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        if (initialPeriod === 'day') {
+          diff = Math.floor((today - targetDate) / (1000 * 60 * 60 * 24));
+        } else {
+          diff = Math.floor((today - targetDate) / (1000 * 60 * 60 * 24 * 7));
+        }
+      }
+    } catch (e) {
+      console.warn("Error parsing periodLabel for offset", e);
+    }
+    return Math.max(0, diff - 2);
+  }, [periodLabel, initialPeriod]);
+
+  const [chartOffset, setChartOffset] = useState(initialOffset);
 
   const initialSelectedBar = useMemo(() => {
     const now = new Date();
     if (periodLabel) {
-      // Just fallback to computing the label for the provided date string to ensure format is identical
-      const d = new Date(periodLabel);
+      let dateStr = periodLabel;
+      if (initialPeriod === 'month' && dateStr.length === 7) {
+        dateStr += '-01'; // Ensure proper local parsing
+      } else if (initialPeriod === 'year' && dateStr.length === 4) {
+        dateStr += '-01-01';
+      }
+      const d = new Date(dateStr);
       if (!isNaN(d.getTime())) {
         return { label: getLabelForDate(d, initialPeriod) };
       }
