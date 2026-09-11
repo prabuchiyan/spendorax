@@ -447,7 +447,7 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
 
               return (
                 <TouchableOpacity
-                  key={val}
+                  key={`${timeMode}-${val}`}
                   onPress={() => handleTimeSelect(val)}
                   style={[styles.clockItem, { left: x, top: y, zIndex: 10 }]}
                 >
