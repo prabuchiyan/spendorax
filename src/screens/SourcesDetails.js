@@ -3,8 +3,8 @@ import React, {
   useState,
   useLayoutEffect,
   useCallback,
-  useMemo,
-} from 'react';
+  useMemo } from
+'react';
 import {
   View,
   Text,
@@ -12,14 +12,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
-  Easing,
-} from 'react-native';
+  Easing } from
+'react-native';
 import FAB from '../components/FAB';
 import { getTransactions } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
 import { Colors, Spacing } from '../components/Theme';
-import { useSelector, useDispatch } from 'react-redux';
+
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import TransactionListItem from '../components/TransactionListItem';
 import { useFocusEffect } from '@react-navigation/native';
@@ -27,63 +27,63 @@ import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 import { parseDate } from '../utils/dateUtils';
 
 function PageLoader({
-  message = 'Loading transactions...',
+  message = 'Loading transactions...'
 }) {
   const rotation =
-    React.useRef(
-      new Animated.Value(0)
-    ).current;
+  React.useRef(
+    new Animated.Value(0)
+  ).current;
 
   const pulse =
-    React.useRef(
-      new Animated.Value(0)
-    ).current;
+  React.useRef(
+    new Animated.Value(0)
+  ).current;
 
   React.useEffect(() => {
     const rotateAnimation =
-      Animated.loop(
-        Animated.timing(
-          rotation,
-          {
-            toValue: 1,
-            duration: 900,
-            easing:
-              Easing.linear,
-            useNativeDriver: true,
-          }
-        )
-      );
+    Animated.loop(
+      Animated.timing(
+        rotation,
+        {
+          toValue: 1,
+          duration: 900,
+          easing:
+          Easing.linear,
+          useNativeDriver: true
+        }
+      )
+    );
 
     const pulseAnimation =
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(
-            pulse,
-            {
-              toValue: 1,
-              duration: 700,
-              easing:
-                Easing.inOut(
-                  Easing.ease
-                ),
-              useNativeDriver: true,
-            }
+    Animated.loop(
+      Animated.sequence([
+      Animated.timing(
+        pulse,
+        {
+          toValue: 1,
+          duration: 700,
+          easing:
+          Easing.inOut(
+            Easing.ease
           ),
+          useNativeDriver: true
+        }
+      ),
 
-          Animated.timing(
-            pulse,
-            {
-              toValue: 0,
-              duration: 700,
-              easing:
-                Easing.inOut(
-                  Easing.ease
-                ),
-              useNativeDriver: true,
-            }
+      Animated.timing(
+        pulse,
+        {
+          toValue: 0,
+          duration: 700,
+          easing:
+          Easing.inOut(
+            Easing.ease
           ),
-        ])
-      );
+          useNativeDriver: true
+        }
+      )]
+      )
+    );
 
     rotateAnimation.start();
     pulseAnimation.start();
@@ -95,31 +95,31 @@ function PageLoader({
   }, []);
 
   const spin =
-    rotation.interpolate({
-      inputRange: [0, 1],
-      outputRange: [
-        '0deg',
-        '360deg',
-      ],
-    });
+  rotation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [
+    '0deg',
+    '360deg']
+
+  });
 
   const scale =
-    pulse.interpolate({
-      inputRange: [0, 1],
-      outputRange: [
-        0.94,
-        1.06,
-      ],
-    });
+  pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [
+    0.94,
+    1.06]
+
+  });
 
   const opacity =
-    pulse.interpolate({
-      inputRange: [0, 1],
-      outputRange: [
-        0.65,
-        1,
-      ],
-    });
+  pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [
+    0.65,
+    1]
+
+  });
 
   return (
     <View
@@ -128,9 +128,9 @@ function PageLoader({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor:
-          Colors.background,
-      }}
-    >
+        Colors.background
+      }}>
+      
       {/* OUTER LOADER */}
       <View
         style={{
@@ -142,25 +142,25 @@ function PageLoader({
           justifyContent: 'center',
 
           backgroundColor:
-            '#FFFFFF',
+          '#FFFFFF',
 
           borderWidth: 1,
           borderColor:
-            '#ECEEF1',
+          '#ECEEF1',
 
           shadowColor: '#000',
 
           shadowOffset: {
             width: 0,
-            height: 4,
+            height: 4
           },
 
           shadowOpacity: 0.08,
           shadowRadius: 10,
 
-          elevation: 4,
-        }}
-      >
+          elevation: 4
+        }}>
+        
         {/* ROTATING RING */}
         <Animated.View
           style={{
@@ -174,36 +174,36 @@ function PageLoader({
             borderWidth: 3,
 
             borderColor:
-              '#E5E7EB',
+            '#E5E7EB',
 
             borderTopColor:
-              '#5B67F1',
+            '#5B67F1',
 
             transform: [
-              {
-                rotate: spin,
-              },
-            ],
-          }}
-        />
+            {
+              rotate: spin
+            }]
+
+          }} />
+        
 
         {/* CENTER ICON */}
         <Animated.View
           style={{
             transform: [
-              {
-                scale,
-              },
-            ],
+            {
+              scale
+            }],
 
-            opacity,
-          }}
-        >
+
+            opacity
+          }}>
+          
           <MaterialCommunityIcons
             name="wallet-outline"
             size={25}
-            color="#5B67F1"
-          />
+            color="#5B67F1" />
+          
         </Animated.View>
       </View>
 
@@ -217,9 +217,9 @@ function PageLoader({
           fontWeight: '800',
 
           color:
-            Colors.text,
-        }}
-      >
+          Colors.text
+        }}>
+        
         {message}
       </Text>
 
@@ -230,74 +230,74 @@ function PageLoader({
           fontSize: 11,
 
           color:
-            Colors.muted,
-        }}
-      >
+          Colors.muted
+        }}>
+        
         Please wait...
       </Text>
-    </View>
-  );
+    </View>);
+
 }
 
 export default function SourcesDetails({
   route,
-  navigation,
+  navigation
 }) {
   const {
     sourceId,
-    sourceName,
+    sourceName
   } = route.params || {};
 
   const {
-    balanceVisible,
+    balanceVisible
   } = useBalanceVisibility();
 
   const [
-    transactions,
-    setTransactions,
-  ] = useState([]);
+  transactions,
+  setTransactions] =
+  useState([]);
 
   const [
-    categoriesMap,
-    setCategoriesMap,
-  ] = useState({});
+  categoriesMap,
+  setCategoriesMap] =
+  useState({});
 
   const [
-    sourcesMap,
-    setSourcesMap,
-  ] = useState({});
+  sourcesMap,
+  setSourcesMap] =
+  useState({});
 
   const [
-    source,
-    setSource,
-  ] = useState(null);
+  source,
+  setSource] =
+  useState(null);
 
   const [
-    loading,
-    setLoading,
-  ] = useState(true);
+  loading,
+  setLoading] =
+  useState(true);
 
   const [
-    groupMode,
-    setGroupMode,
-  ] = useState('daily');
+  groupMode,
+  setGroupMode] =
+  useState('daily');
 
   const groupOptions = [
-    { key: 'daily', label: 'Daily' },
-    { key: 'weekly', label: 'Weekly' },
-    { key: 'monthly', label: 'Monthly' },
-  ];
+  { key: 'daily', label: 'Daily' },
+  { key: 'weekly', label: 'Weekly' },
+  { key: 'monthly', label: 'Monthly' }];
+
 
   // HEADER
   useLayoutEffect(() => {
     navigation.setOptions({
       title:
-        sourceName || 'Source',
+      sourceName || 'Source'
     });
   }, [
-    navigation,
-    sourceName,
-  ]);
+  navigation,
+  sourceName]
+  );
 
 
 
@@ -305,9 +305,9 @@ export default function SourcesDetails({
   const loadData = useCallback(
     async () => {
       if (
-        sourceId === null ||
-        sourceId === undefined
-      ) {
+      sourceId === null ||
+      sourceId === undefined)
+      {
         setTransactions([]);
         setSource(null);
         setLoading(false);
@@ -319,31 +319,31 @@ export default function SourcesDetails({
 
         // Load all required data
         const [
-          txData,
-          catData,
-          sourceData,
-        ] = await Promise.all([
-          getTransactions(
-            1000000,
-            'Yes'
-          ),
+        txData,
+        catData,
+        sourceData] =
+        await Promise.all([
+        getTransactions(
+          1000000,
+          'Yes'
+        ),
 
-          getCategories(true),
+        getCategories(true),
 
-          getSources(true),
-        ]);
+        getSources(true)]
+        );
 
         // CATEGORY MAP
         const categoryMap = {};
 
         if (
-          Array.isArray(catData)
-        ) {
+        Array.isArray(catData))
+        {
           catData.forEach(
             (category) => {
               categoryMap[
-                category.id
-              ] = category;
+              category.id] =
+              category;
             }
           );
         }
@@ -352,48 +352,48 @@ export default function SourcesDetails({
         const sourceMap = {};
 
         if (
-          Array.isArray(sourceData)
-        ) {
+        Array.isArray(sourceData))
+        {
           sourceData.forEach(
             (src) => {
               sourceMap[
-                src.id
-              ] = src;
+              src.id] =
+              src;
             }
           );
         }
 
         // SOURCE ID
         const selectedSourceId =
-          Number(sourceId);
+        Number(sourceId);
 
         // FILTER TRANSACTIONS
         const filteredTransactions =
-          (
-            Array.isArray(txData)
-              ? txData
-              : []
-          ).filter(
-            (transaction) =>
-              Number(
-                transaction.source_id
-              ) ===
-              selectedSourceId
-          );
+        (
+        Array.isArray(txData) ?
+        txData :
+        []).
+        filter(
+          (transaction) =>
+          Number(
+            transaction.source_id
+          ) ===
+          selectedSourceId
+        );
 
         // CURRENT SOURCE
         const currentSource =
-          (
-            Array.isArray(
-              sourceData
-            )
-              ? sourceData
-              : []
-          ).find(
-            (src) =>
-              Number(src.id) ===
-              selectedSourceId
-          ) || null;
+        (
+        Array.isArray(
+          sourceData
+        ) ?
+        sourceData :
+        []).
+        find(
+          (src) =>
+          Number(src.id) ===
+          selectedSourceId
+        ) || null;
 
         // UPDATE STATE
         setCategoriesMap(
@@ -439,305 +439,305 @@ export default function SourcesDetails({
 
   // EDIT TRANSACTION
   const handleEdit =
-    useCallback(
-      (item) => {
-        navigation.navigate(
-          'TransactionAdd',
-          {
-            isEdit: true,
-            transaction: item,
-          }
-        );
-      },
-      [navigation]
-    );
+  useCallback(
+    (item) => {
+      navigation.navigate(
+        'TransactionAdd',
+        {
+          isEdit: true,
+          transaction: item
+        }
+      );
+    },
+    [navigation]
+  );
 
   // BALANCE
   const totalBalance =
-    useMemo(() => {
-      const initialBalance =
+  useMemo(() => {
+    const initialBalance =
+    Number(
+      source?.initial_balance ||
+      0
+    );
+
+    const transactionBalance =
+    transactions.reduce(
+      (sum, tx) => {
+        const amount =
         Number(
-          source?.initial_balance ||
-          0
-        );
+          tx.amount
+        ) || 0;
 
-      const transactionBalance =
-        transactions.reduce(
-          (sum, tx) => {
-            const amount =
-              Number(
-                tx.amount
-              ) || 0;
+        const type =
+        String(
+          tx.type || ''
+        ).toLowerCase();
 
-            const type =
-              String(
-                tx.type || ''
-              ).toLowerCase();
+        if (
+        type === 'expense' ||
+        type === 'debit')
+        {
+          return (
+            sum - amount);
 
-            if (
-              type === 'expense' ||
-              type === 'debit'
-            ) {
-              return (
-                sum - amount
-              );
-            }
+        }
 
-            return (
-              sum + amount
-            );
-          },
-          0
-        );
+        return (
+          sum + amount);
 
-      return (
-        initialBalance +
-        transactionBalance
-      );
-    }, [
-      source,
-      transactions,
-    ]);
+      },
+      0
+    );
+
+    return (
+      initialBalance +
+      transactionBalance);
+
+  }, [
+  source,
+  transactions]
+  );
 
   // GROUP TRANSACTIONS
   const groupedTransactions =
-    useMemo(() => {
-      const groups = {};
+  useMemo(() => {
+    const groups = {};
 
-      const getGroupDate = (date) => {
-        if (groupMode === 'weekly') {
-          const startOfWeek = new Date(date);
-          const day = startOfWeek.getDay();
-          const diff = (day + 6) % 7;
-          startOfWeek.setDate(startOfWeek.getDate() - diff);
-          startOfWeek.setHours(0, 0, 0, 0);
-          return startOfWeek;
-        }
+    const getGroupDate = (date) => {
+      if (groupMode === 'weekly') {
+        const startOfWeek = new Date(date);
+        const day = startOfWeek.getDay();
+        const diff = (day + 6) % 7;
+        startOfWeek.setDate(startOfWeek.getDate() - diff);
+        startOfWeek.setHours(0, 0, 0, 0);
+        return startOfWeek;
+      }
 
-        if (groupMode === 'monthly') {
-          const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
-          monthStart.setHours(0, 0, 0, 0);
-          return monthStart;
-        }
+      if (groupMode === 'monthly') {
+        const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+        monthStart.setHours(0, 0, 0, 0);
+        return monthStart;
+      }
 
-        const dayOnly = new Date(date);
-        dayOnly.setHours(0, 0, 0, 0);
-        return dayOnly;
-      };
+      const dayOnly = new Date(date);
+      dayOnly.setHours(0, 0, 0, 0);
+      return dayOnly;
+    };
 
-      const getGroupKey = (date) => {
-        const groupDate = getGroupDate(date);
+    const getGroupKey = (date) => {
+      const groupDate = getGroupDate(date);
 
-        if (groupMode === 'weekly') {
-          return `${groupDate.getFullYear()}-${String(groupDate.getMonth() + 1).padStart(2, '0')}-${String(groupDate.getDate()).padStart(2, '0')}`;
-        }
-
-        if (groupMode === 'monthly') {
-          return `${groupDate.getFullYear()}-${String(groupDate.getMonth() + 1).padStart(2, '0')}`;
-        }
-
+      if (groupMode === 'weekly') {
         return `${groupDate.getFullYear()}-${String(groupDate.getMonth() + 1).padStart(2, '0')}-${String(groupDate.getDate()).padStart(2, '0')}`;
-      };
+      }
 
-      transactions.forEach((item) => {
-        const date = parseDate(item.date);
+      if (groupMode === 'monthly') {
+        return `${groupDate.getFullYear()}-${String(groupDate.getMonth() + 1).padStart(2, '0')}`;
+      }
 
-        if (!date) {
-          return;
+      return `${groupDate.getFullYear()}-${String(groupDate.getMonth() + 1).padStart(2, '0')}-${String(groupDate.getDate()).padStart(2, '0')}`;
+    };
+
+    transactions.forEach((item) => {
+      const date = parseDate(item.date);
+
+      if (!date) {
+        return;
+      }
+
+      const key = getGroupKey(date);
+
+      if (!groups[key]) {
+        groups[key] = {
+          date: getGroupDate(date),
+          items: []
+        };
+      }
+
+      groups[key].items.push(item);
+    });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    return Object.keys(groups).
+    sort((a, b) => b.localeCompare(a)).
+    map((groupKey) => {
+      const groupDate = groups[groupKey].date;
+      const items = groups[groupKey].items;
+
+      let title;
+
+      if (groupMode === 'daily') {
+        if (groupDate.getTime() === today.getTime()) {
+          title = 'Today';
+        } else if (groupDate.getTime() === yesterday.getTime()) {
+          title = 'Yesterday';
+        } else {
+          title = groupDate.toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          });
         }
-
-        const key = getGroupKey(date);
-
-        if (!groups[key]) {
-          groups[key] = {
-            date: getGroupDate(date),
-            items: [],
-          };
-        }
-
-        groups[key].items.push(item);
-      });
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-
-      return Object.keys(groups)
-        .sort((a, b) => b.localeCompare(a))
-        .map((groupKey) => {
-          const groupDate = groups[groupKey].date;
-          const items = groups[groupKey].items;
-
-          let title;
-
-          if (groupMode === 'daily') {
-            if (groupDate.getTime() === today.getTime()) {
-              title = 'Today';
-            } else if (groupDate.getTime() === yesterday.getTime()) {
-              title = 'Yesterday';
-            } else {
-              title = groupDate.toLocaleDateString('en-IN', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-              });
-            }
-          } else if (groupMode === 'weekly') {
-            const weekEnd = new Date(groupDate);
-            weekEnd.setDate(weekEnd.getDate() + 6);
-            title = `Week of ${groupDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} - ${weekEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
-          } else {
-            title = groupDate.toLocaleDateString('en-IN', {
-              month: 'short',
-              year: 'numeric',
-            });
-          }
-
-          const income = items.reduce((sum, item) => {
-            const type = String(item.type || '').toLowerCase();
-            if (type === 'income' || type === 'credit') {
-              return sum + Number(item.amount || 0);
-            }
-            return sum;
-          }, 0);
-
-          const expense = items.reduce((sum, item) => {
-            const type = String(item.type || '').toLowerCase();
-            if (type === 'expense' || type === 'debit') {
-              return sum + Number(item.amount || 0);
-            }
-            return sum;
-          }, 0);
-
-          return {
-            title,
-            dateKey: groupKey,
-            data: items,
-            dailyIncome: income,
-            dailyExpense: expense,
-          };
+      } else if (groupMode === 'weekly') {
+        const weekEnd = new Date(groupDate);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        title = `Week of ${groupDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} - ${weekEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+      } else {
+        title = groupDate.toLocaleDateString('en-IN', {
+          month: 'short',
+          year: 'numeric'
         });
-    }, [
-      transactions,
-      parseDate,
-      groupMode,
-    ]);
+      }
+
+      const income = items.reduce((sum, item) => {
+        const type = String(item.type || '').toLowerCase();
+        if (type === 'income' || type === 'credit') {
+          return sum + Number(item.amount || 0);
+        }
+        return sum;
+      }, 0);
+
+      const expense = items.reduce((sum, item) => {
+        const type = String(item.type || '').toLowerCase();
+        if (type === 'expense' || type === 'debit') {
+          return sum + Number(item.amount || 0);
+        }
+        return sum;
+      }, 0);
+
+      return {
+        title,
+        dateKey: groupKey,
+        data: items,
+        dailyIncome: income,
+        dailyExpense: expense
+      };
+    });
+  }, [
+  transactions,
+  parseDate,
+  groupMode]
+  );
 
   // TRANSACTION CARD
   const renderItem =
-    useCallback(
-      ({
-        item,
-        index,
-        section,
-      }) => {
-        const category =
-          categoriesMap[
-            item.category_id
-          ] || {};
+  useCallback(
+    ({
+      item,
+      index,
+      section
+    }) => {
+      const category =
+      categoriesMap[
+      item.category_id] ||
+      {};
 
-        const isLast =
-          index ===
-          section.data.length -
-          1;
+      const isLast =
+      index ===
+      section.data.length -
+      1;
 
-        // CARD
-        return (
-          <TransactionListItem
-            item={item}
-            category={category}
-            source={source}
-            isLast={isLast}
-            showDate={true}
-            hideAmount={!balanceVisible}
-            onPress={() => handleEdit(item)}
-          />
-        );
-      },
-      [
-        categoriesMap,
-        source,
-        balanceVisible,
-        handleEdit,
-      ]
-    );
+      // CARD
+      return (
+        <TransactionListItem
+          item={item}
+          category={category}
+          source={source}
+          isLast={isLast}
+          showDate={true}
+          hideAmount={!balanceVisible}
+          onPress={() => handleEdit(item)} />);
+
+
+    },
+    [
+    categoriesMap,
+    source,
+    balanceVisible,
+    handleEdit]
+
+  );
 
   // SCREEN
   return (
     <View
       style={
-        styles.container
-      }
-    >
+      styles.container
+      }>
+      
 
       {/* BALANCE */}
       <View
-        style={styles.hero}
-      >
+        style={styles.hero}>
+        
         <Text
           style={
-            styles.heroLabel
-          }
-        >
+          styles.heroLabel
+          }>
+          
           Available Balance
         </Text>
 
         <Text
           style={
-            styles.heroAmount
-          }
-        >
-          {balanceVisible
-            ? `₹ ${totalBalance.toLocaleString(
-              'en-IN',
-              {
-                minimumFractionDigits:
-                  2,
+          styles.heroAmount
+          }>
+          
+          {balanceVisible ?
+          `₹ ${totalBalance.toLocaleString(
+            'en-IN',
+            {
+              minimumFractionDigits:
+              2,
 
-                maximumFractionDigits:
-                  2,
-              }
-            )}`
-            : '••••••'}
+              maximumFractionDigits:
+              2
+            }
+          )}` :
+          '••••••'}
         </Text>
       </View>
 
       {/* HEADER */}
       <View
         style={
-          styles.headerRow
-        }
-      >
+        styles.headerRow
+        }>
+        
         <View>
           <Text
             style={
-              styles.headerTitle
-            }
-          >
+            styles.headerTitle
+            }>
+            
             Recent Activity
           </Text>
 
           <Text
             style={
-              styles.headerSubtitle
-            }
-          >
+            styles.headerSubtitle
+            }>
+            
             Transactions from this source
           </Text>
         </View>
 
         <View
           style={
-            styles.countBadge
-          }
-        >
+          styles.countBadge
+          }>
+          
           <Text
             style={
-              styles.countText
-            }
-          >
+            styles.countText
+            }>
+            
             {transactions.length}
           </Text>
         </View>
@@ -746,404 +746,404 @@ export default function SourcesDetails({
       {/* GROUPING MODE CHIPS */}
       <View
         style={
-          styles.chipContainer
-        }
-      >
-        {groupOptions.map((option) => (
-          <TouchableOpacity
-            key={
-              option.key
-            }
-            onPress={() =>
-              setGroupMode(option.key)
-            }
-            style={{
-              ...styles.chip,
+        styles.chipContainer
+        }>
+        
+        {groupOptions.map((option) =>
+        <TouchableOpacity
+          key={
+          option.key
+          }
+          onPress={() =>
+          setGroupMode(option.key)
+          }
+          style={{
+            ...styles.chip,
 
-              backgroundColor:
-                groupMode ===
-                  option.key
-                  ? '#5B67F1'
-                  : '#F0F1F3',
-            }}
-          >
+            backgroundColor:
+            groupMode ===
+            option.key ?
+            '#5B67F1' :
+            '#F0F1F3'
+          }}>
+          
             <Text
-              style={{
-                ...styles.chipText,
+            style={{
+              ...styles.chipText,
 
-                color:
-                  groupMode ===
-                    option.key
-                    ? '#FFFFFF'
-                    : '#6B7280',
-              }}
-            >
+              color:
+              groupMode ===
+              option.key ?
+              '#FFFFFF' :
+              '#6B7280'
+            }}>
+            
               {option.label}
             </Text>
           </TouchableOpacity>
-        ))}
+        )}
       </View>
 
       {/* CONTENT */}
 
-      {loading ? (
-        <PageLoader
-          message="Loading transactions..."
-        />
-      ) : transactions.length === 0 ? (
-        <View
-          style={
-            styles.center
-          }
-        >
+      {loading ?
+      <PageLoader
+        message="Loading transactions..." /> :
+
+      transactions.length === 0 ?
+      <View
+        style={
+        styles.center
+        }>
+        
           <View
-            style={
-              styles.emptyIcon
-            }
-          >
+          style={
+          styles.emptyIcon
+          }>
+          
             <MaterialCommunityIcons
-              name="clipboard-text-outline"
-              size={36}
-              color="#AEB4BC"
-            />
+            name="clipboard-text-outline"
+            size={36}
+            color="#AEB4BC" />
+          
           </View>
 
           <Text
-            style={
-              styles.emptyTitle
-            }
-          >
+          style={
+          styles.emptyTitle
+          }>
+          
             No transactions found
           </Text>
 
           <Text
-            style={
-              styles.emptySubtitle
-            }
-          >
+          style={
+          styles.emptySubtitle
+          }>
+          
             Transactions for this
             source will appear
             here
           </Text>
-        </View>
-      ) : (
-        <SectionList
-          sections={
-            groupedTransactions
-          }
+        </View> :
 
-          keyExtractor={
-            (item) =>
-              String(item.id)
-          }
+      <SectionList
+        sections={
+        groupedTransactions
+        }
 
-          renderItem={
-            renderItem
-          }
+        keyExtractor={
+        (item) =>
+        String(item.id)
+        }
 
-          showsVerticalScrollIndicator={
-            false
-          }
+        renderItem={
+        renderItem
+        }
 
-          stickySectionHeadersEnabled={
-            false
-          }
+        showsVerticalScrollIndicator={
+        false
+        }
 
-          contentContainerStyle={{
+        stickySectionHeadersEnabled={
+        false
+        }
+
+        contentContainerStyle={{
+          paddingBottom:
+          40,
+
+          paddingHorizontal:
+          1
+        }}
+
+        renderSectionHeader={({
+          section
+        }) =>
+        <View
+          style={{
+            paddingTop:
+            9,
+
             paddingBottom:
-              40,
+            7,
 
-            paddingHorizontal:
-              1,
-          }}
-
-          renderSectionHeader={({
-            section,
-          }) => (
-            <View
-              style={{
-                paddingTop:
-                  9,
-
-                paddingBottom:
-                  7,
-
-                backgroundColor:
-                  Colors.background,
-              }}
-            >
+            backgroundColor:
+            Colors.background
+          }}>
+          
               <View
-                style={{
-                  flexDirection:
-                    'row',
+            style={{
+              flexDirection:
+              'row',
 
-                  alignItems:
-                    'center',
+              alignItems:
+              'center',
 
-                  justifyContent:
-                    'space-between',
-                }}
-              >
+              justifyContent:
+              'space-between'
+            }}>
+            
 
                 {/* DATE */}
 
                 <View>
                   <Text
-                    style={{
-                      fontSize:
-                        13,
+                style={{
+                  fontSize:
+                  13,
 
-                      fontWeight:
-                        '900',
+                  fontWeight:
+                  '900',
 
-                      color:
-                        Colors.text,
+                  color:
+                  Colors.text,
 
-                      textTransform:
-                        'uppercase',
+                  textTransform:
+                  'uppercase',
 
-                      letterSpacing:
-                        0.4,
-                    }}
-                  >
+                  letterSpacing:
+                  0.4
+                }}>
+                
                     {
-                      section.title
-                    }
+                section.title
+                }
                   </Text>
 
                   <Text
-                    style={{
-                      fontSize:
-                        11,
+                style={{
+                  fontSize:
+                  11,
 
-                      color:
-                        Colors.muted,
+                  color:
+                  Colors.muted,
 
-                      marginTop:
-                        2,
-                    }}
-                  >
+                  marginTop:
+                  2
+                }}>
+                
                     {
-                      section
-                        .data
-                        .length
-                    }{' '}
-                    {section
-                      .data
-                      .length ===
-                      1
-                      ? 'transaction'
-                      : 'transactions'}
+                section.
+                data.
+                length
+                }{' '}
+                    {section.
+                data.
+                length ===
+                1 ?
+                'transaction' :
+                'transactions'}
                   </Text>
                 </View>
 
                 {/* DAILY TOTAL */}
                 <View
-                  style={{
-                    flexDirection:
-                      'row',
+              style={{
+                flexDirection:
+                'row',
 
-                    alignItems:
-                      'center',
-                  }}
-                >
+                alignItems:
+                'center'
+              }}>
+              
                   {section.dailyIncome >
-                    0 && (
-                      <Text
-                        style={{
-                          color:
-                            '#20A56A',
+              0 &&
+              <Text
+                style={{
+                  color:
+                  '#20A56A',
 
-                          fontSize:
-                            11,
+                  fontSize:
+                  11,
 
-                          fontWeight:
-                            '800',
+                  fontWeight:
+                  '800',
 
-                          marginRight:
-                            8,
-                        }}
-                      >
+                  marginRight:
+                  8
+                }}>
+                
                         +₹
                         {section.dailyIncome.toLocaleString(
-                          'en-IN',
-                          {
-                            maximumFractionDigits:
-                              0,
-                          }
-                        )}
+                  'en-IN',
+                  {
+                    maximumFractionDigits:
+                    0
+                  }
+                )}
                       </Text>
-                    )}
+              }
 
                   {section.dailyExpense >
-                    0 && (
-                      <Text
-                        style={{
-                          color:
-                            '#E35D6A',
+              0 &&
+              <Text
+                style={{
+                  color:
+                  '#E35D6A',
 
-                          fontSize:
-                            11,
+                  fontSize:
+                  11,
 
-                          fontWeight:
-                            '800',
-                        }}
-                      >
+                  fontWeight:
+                  '800'
+                }}>
+                
                         -₹
                         {section.dailyExpense.toLocaleString(
-                          'en-IN',
-                          {
-                            maximumFractionDigits:
-                              0,
-                          }
-                        )}
+                  'en-IN',
+                  {
+                    maximumFractionDigits:
+                    0
+                  }
+                )}
                       </Text>
-                    )}
+              }
                 </View>
               </View>
             </View>
-          )}
-        />
-      )}
+        } />
+
+      }
 
       <FAB
         onPress={() =>
-          navigation.navigate('TransactionAdd', {
-            sourceId: Number(sourceId),
-          })
+        navigation.navigate('TransactionAdd', {
+          sourceId: Number(sourceId)
+        })
         }
         style={{
           position: 'absolute',
           bottom: 70,
           right: 20,
           zIndex: 20,
-          elevation: 20,
-        }}
-      />
+          elevation: 20
+        }} />
+      
 
-    </View>
-  );
+    </View>);
+
 }
 
 // STYLES
 const styles =
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: Colors.background,
-      padding: Spacing.xs,
+StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    padding: Spacing.xs
+  },
+  hero: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 15,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    marginBottom: 13,
+    borderWidth: 1,
+    borderColor: '#F0F1F3',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 3
     },
-    hero: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 20,
-      paddingVertical: 15,
-      paddingHorizontal: 14,
-      alignItems: 'center',
-      marginBottom: 13,
-      borderWidth: 1,
-      borderColor: '#F0F1F3',
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 3,
-      },
-      shadowOpacity: 0.05,
-      shadowRadius: 8,
-      elevation: 2,
-    },
-    heroLabel: {
-      fontSize: 12,
-      fontWeight: '800',
-      color: Colors.muted,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-    },
-    heroAmount: {
-      fontSize: 25,
-      fontWeight: '900',
-      color: Colors.text,
-      marginTop: 7,
-      letterSpacing: -0.5,
-    },
-    headerRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 10,
-      paddingHorizontal: 2,
-    },
-    headerTitle: {
-      fontSize: 17,
-      fontWeight: '800',
-      color: Colors.text,
-    },
-    headerSubtitle: {
-      fontSize: 11,
-      color: Colors.muted,
-      marginTop: 2,
-    },
-    countBadge: {
-      minWidth: 30,
-      height: 28,
-      borderRadius: 14,
-      backgroundColor: '#EEF0F3',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 8,
-    },
-    countText: {
-      fontSize: 11,
-      fontWeight: '800',
-      color: '#6B7280',
-    },
-    emptyIcon: {
-      width: 76,
-      height: 76,
-      borderRadius: 38,
-      backgroundColor: '#EEF0F3',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    emptyTitle: {
-      color: Colors.text,
-      fontSize: 15,
-      fontWeight: '700',
-      marginTop: 14,
-    },
-    emptySubtitle: {
-      color: Colors.muted,
-      fontSize: 12,
-      marginTop: 5,
-      textAlign: 'center',
-      maxWidth: 260,
-    },
-    center: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 60,
-    },
-    chipContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 10,
-      paddingHorizontal: 2,
-    },
-    chip: {
-      flex: 1,
-      borderRadius: 16,
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 8,
-      borderWidth: 1,
-      borderColor: '#D1D5DB',
-    },
-    chipText: {
-      fontSize: 14,
-      fontWeight: '600',
-      lineHeight: 18,
-    },
-  });
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2
+  },
+  heroLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5
+  },
+  heroAmount: {
+    fontSize: 25,
+    fontWeight: '900',
+    color: Colors.text,
+    marginTop: 7,
+    letterSpacing: -0.5
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    paddingHorizontal: 2
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: Colors.text
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    color: Colors.muted,
+    marginTop: 2
+  },
+  countBadge: {
+    minWidth: 30,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#EEF0F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8
+  },
+  countText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#6B7280'
+  },
+  emptyIcon: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: '#EEF0F3',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  emptyTitle: {
+    color: Colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 14
+  },
+  emptySubtitle: {
+    color: Colors.muted,
+    fontSize: 12,
+    marginTop: 5,
+    textAlign: 'center',
+    maxWidth: 260
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    paddingHorizontal: 2
+  },
+  chip: {
+    flex: 1,
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#D1D5DB'
+  },
+  chipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 18
+  }
+});

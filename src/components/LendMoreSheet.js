@@ -4,15 +4,15 @@ import {
   Text,
   Modal,
   TouchableOpacity,
-  Platform,
+
   StyleSheet,
   Alert,
-  ScrollView,
-} from "react-native";
+  ScrollView } from
+"react-native";
 import {
   TextInput as PaperTextInput,
-  Button as PaperButton,
-} from "react-native-paper";
+  Button as PaperButton } from
+"react-native-paper";
 import MuiDateTimePicker from "../components/MuiDateTimePicker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { recordAdvance } from "../services/loans";
@@ -26,15 +26,15 @@ function FieldCard({
   value,
   color = "#2563EB",
   onPress,
-  disabled = false,
+  disabled = false
 }) {
   return (
     <TouchableOpacity
       activeOpacity={0.85}
       onPress={onPress}
       style={styles.fieldCard}
-      disabled={disabled}
-    >
+      disabled={disabled}>
+      
       <View style={[styles.fieldIcon, { backgroundColor: color + "20" }]}>
         <MaterialCommunityIcons name={icon} size={22} color={color} />
       </View>
@@ -45,8 +45,8 @@ function FieldCard({
         </Text>
       </View>
       <MaterialCommunityIcons name="chevron-right" size={22} color="#94A3B8" />
-    </TouchableOpacity>
-  );
+    </TouchableOpacity>);
+
 }
 
 // Reused exactly from LoanPaymentScreen
@@ -57,7 +57,7 @@ function PickerItem({
   title,
   subtitle,
   selected = false,
-  onPress,
+  onPress
 }) {
   return (
     <TouchableOpacity
@@ -71,9 +71,9 @@ function PickerItem({
         padding: 14,
         marginBottom: 10,
         borderWidth: selected ? 1.5 : 1,
-        borderColor: selected ? "#2563EB" : "#EEF2F7",
-      }}
-    >
+        borderColor: selected ? "#2563EB" : "#EEF2F7"
+      }}>
+      
       <View
         style={{
           width: 48,
@@ -82,49 +82,49 @@ function PickerItem({
           backgroundColor: iconBg,
           justifyContent: "center",
           alignItems: "center",
-          marginRight: 14,
-        }}
-      >
+          marginRight: 14
+        }}>
+        
         <MaterialCommunityIcons name={icon} size={22} color={iconColor} />
       </View>
       <View style={{ flex: 1 }}>
         <Text
           style={{ fontSize: 15, fontWeight: "800", color: "#111827" }}
-          numberOfLines={1}
-        >
+          numberOfLines={1}>
+          
           {title}
         </Text>
-        {!!subtitle && (
-          <Text
-            style={{ marginTop: 4, fontSize: 12, color: "#64748B" }}
-            numberOfLines={1}
-          >
+        {!!subtitle &&
+        <Text
+          style={{ marginTop: 4, fontSize: 12, color: "#64748B" }}
+          numberOfLines={1}>
+          
             {subtitle}
           </Text>
-        )}
+        }
       </View>
-      {selected ? (
-        <View
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 14,
-            backgroundColor: "#2563EB",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
+      {selected ?
+      <View
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 14,
+          backgroundColor: "#2563EB",
+          justifyContent: "center",
+          alignItems: "center"
+        }}>
+        
           <MaterialCommunityIcons name="check" size={18} color="#FFFFFF" />
-        </View>
-      ) : (
-        <MaterialCommunityIcons
-          name="chevron-right"
-          size={22}
-          color="#94A3B8"
-        />
-      )}
-    </TouchableOpacity>
-  );
+        </View> :
+
+      <MaterialCommunityIcons
+        name="chevron-right"
+        size={22}
+        color="#94A3B8" />
+
+      }
+    </TouchableOpacity>);
+
 }
 
 export default function LendMoreSheet({
@@ -132,7 +132,7 @@ export default function LendMoreSheet({
   loanId,
   loanName,
   onClose,
-  onSuccess,
+  onSuccess
 }) {
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -200,7 +200,7 @@ export default function LendMoreSheet({
         amount: parseFloat(amount),
         sourceId,
         categoryId,
-        notes: notes.trim() || `Additional lending: ${loanName}`,
+        notes: notes.trim() || `Additional lending: ${loanName}`
       });
       reset();
       onSuccess?.();
@@ -221,8 +221,8 @@ export default function LendMoreSheet({
         onRequestClose={() => {
           reset();
           onClose?.();
-        }}
-      >
+        }}>
+        
         <View style={styles.overlay}>
           <View style={styles.sheet}>
             {/* Handle bar */}
@@ -250,17 +250,17 @@ export default function LendMoreSheet({
                 style={styles.input}
                 error={!!errors.amount}
                 disabled={loading}
-                autoFocus
-              />
-              {errors.amount ? (
-                <Text style={styles.error}>{errors.amount}</Text>
-              ) : null}
+                autoFocus />
+              
+              {errors.amount ?
+              <Text style={styles.error}>{errors.amount}</Text> :
+              null}
 
               {/* Date */}
               <TouchableOpacity
                 onPress={() => setShowDatePicker(true)}
-                disabled={loading}
-              >
+                disabled={loading}>
+                
                 <PaperTextInput
                   label="Date"
                   value={date}
@@ -269,8 +269,8 @@ export default function LendMoreSheet({
                   left={<PaperTextInput.Icon icon="calendar" />}
                   right={<PaperTextInput.Icon icon="chevron-down" />}
                   style={styles.input}
-                  disabled={loading}
-                />
+                  disabled={loading} />
+                
               </TouchableOpacity>
 
               {/* Source picker */}
@@ -279,14 +279,14 @@ export default function LendMoreSheet({
                 color="#16A34A"
                 title="Payment Source"
                 value={
-                  selectedSource ? selectedSource.name : "Select Bank / Wallet"
+                selectedSource ? selectedSource.name : "Select Bank / Wallet"
                 }
                 onPress={() => setShowSourcePicker(true)}
-                disabled={loading}
-              />
-              {errors.source ? (
-                <Text style={styles.error}>{errors.source}</Text>
-              ) : null}
+                disabled={loading} />
+              
+              {errors.source ?
+              <Text style={styles.error}>{errors.source}</Text> :
+              null}
 
               {/* Category picker */}
               <FieldCard
@@ -294,14 +294,14 @@ export default function LendMoreSheet({
                 color="#EA580C"
                 title="Category"
                 value={
-                  selectedCategory ? selectedCategory.name : "Select Category"
+                selectedCategory ? selectedCategory.name : "Select Category"
                 }
                 onPress={() => setShowCategoryPicker(true)}
-                disabled={loading}
-              />
-              {errors.category ? (
-                <Text style={styles.error}>{errors.category}</Text>
-              ) : null}
+                disabled={loading} />
+              
+              {errors.category ?
+              <Text style={styles.error}>{errors.category}</Text> :
+              null}
 
               {/* Notes */}
               <PaperTextInput
@@ -313,8 +313,8 @@ export default function LendMoreSheet({
                 numberOfLines={2}
                 left={<PaperTextInput.Icon icon="note-text-outline" />}
                 style={styles.input}
-                disabled={loading}
-              />
+                disabled={loading} />
+              
 
               {/* Buttons */}
               <View style={styles.buttonRow}>
@@ -325,8 +325,8 @@ export default function LendMoreSheet({
                     onClose?.();
                   }}
                   style={[styles.button, { marginRight: 10 }]}
-                  disabled={loading}
-                >
+                  disabled={loading}>
+                  
                   Cancel
                 </PaperButton>
                 <PaperButton
@@ -335,8 +335,8 @@ export default function LendMoreSheet({
                   style={styles.button}
                   loading={loading}
                   disabled={loading}
-                  icon="hand-coin-outline"
-                >
+                  icon="hand-coin-outline">
+                  
                   Give Money
                 </PaperButton>
               </View>
@@ -355,8 +355,8 @@ export default function LendMoreSheet({
               setDate(selectedDate.toISOString().slice(0, 10));
             }
             setShowDatePicker(false);
-          }}
-        />
+          }} />
+        
       </Modal>
 
       {/* Source Picker Modal */}
@@ -375,34 +375,34 @@ export default function LendMoreSheet({
                 <MaterialCommunityIcons
                   name="close-circle"
                   size={28}
-                  color="#94A3B8"
-                />
+                  color="#94A3B8" />
+                
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
-              {sources.map((source) => (
-                <PickerItem
-                  key={source.id}
-                  icon="wallet-outline"
-                  iconColor="#16A34A"
-                  iconBg="#DCFCE7"
-                  selected={source.id === sourceId}
-                  title={source.name}
-                  subtitle="Payment Account"
-                  onPress={() => {
-                    setSourceId(source.id);
-                    setErrors((p) => ({ ...p, source: null }));
-                    setShowSourcePicker(false);
-                  }}
-                />
-              ))}
+              {sources.map((source) =>
+              <PickerItem
+                key={source.id}
+                icon="wallet-outline"
+                iconColor="#16A34A"
+                iconBg="#DCFCE7"
+                selected={source.id === sourceId}
+                title={source.name}
+                subtitle="Payment Account"
+                onPress={() => {
+                  setSourceId(source.id);
+                  setErrors((p) => ({ ...p, source: null }));
+                  setShowSourcePicker(false);
+                }} />
+
+              )}
               <View style={{ height: 10 }} />
             </ScrollView>
             <PaperButton
               mode="outlined"
               style={{ marginTop: 12, borderRadius: 14 }}
-              onPress={() => setShowSourcePicker(false)}
-            >
+              onPress={() => setShowSourcePicker(false)}>
+              
               Close
             </PaperButton>
           </View>
@@ -425,52 +425,52 @@ export default function LendMoreSheet({
                 <MaterialCommunityIcons
                   name="close-circle"
                   size={28}
-                  color="#94A3B8"
-                />
+                  color="#94A3B8" />
+                
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
-              {categories.map((category) => (
-                <PickerItem
-                  key={category.id}
-                  icon={category.icon || "shape-outline"}
-                  iconColor={category.color || "#EA580C"}
-                  iconBg={(category.color || "#EA580C") + "20"}
-                  selected={category.id === categoryId}
-                  title={category.name}
-                  subtitle={
-                    category.type
-                      ? `${category.type} Category`
-                      : "Loan Category"
-                  }
-                  onPress={() => {
-                    setCategoryId(category.id);
-                    setErrors((p) => ({ ...p, category: null }));
-                    setShowCategoryPicker(false);
-                  }}
-                />
-              ))}
+              {categories.map((category) =>
+              <PickerItem
+                key={category.id}
+                icon={category.icon || "shape-outline"}
+                iconColor={category.color || "#EA580C"}
+                iconBg={(category.color || "#EA580C") + "20"}
+                selected={category.id === categoryId}
+                title={category.name}
+                subtitle={
+                category.type ?
+                `${category.type} Category` :
+                "Loan Category"
+                }
+                onPress={() => {
+                  setCategoryId(category.id);
+                  setErrors((p) => ({ ...p, category: null }));
+                  setShowCategoryPicker(false);
+                }} />
+
+              )}
               <View style={{ height: 10 }} />
             </ScrollView>
             <PaperButton
               mode="outlined"
               style={{ marginTop: 12, borderRadius: 14 }}
-              onPress={() => setShowCategoryPicker(false)}
-            >
+              onPress={() => setShowCategoryPicker(false)}>
+              
               Close
             </PaperButton>
           </View>
         </View>
       </Modal>
-    </>
-  );
+    </>);
+
 }
 
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(15,23,42,0.45)",
+    backgroundColor: "rgba(15,23,42,0.45)"
   },
   sheet: {
     backgroundColor: "#FFFFFF",
@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 40,
-    maxHeight: "90%",
+    maxHeight: "90%"
   },
   handleWrap: { alignItems: "center", marginBottom: 16 },
   handle: { width: 42, height: 5, borderRadius: 3, backgroundColor: "#D6D6D6" },
@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
     marginTop: -10,
     marginBottom: 10,
     marginLeft: 8,
-    fontWeight: "600",
+    fontWeight: "600"
   },
   buttonRow: { flexDirection: "row", marginTop: 8, marginBottom: 16 },
   button: { flex: 1, borderRadius: 16 },
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     minHeight: 72,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: "#E2E8F0"
   },
   fieldIcon: {
     width: 46,
@@ -516,28 +516,28 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 14,
+    marginRight: 14
   },
   fieldTitle: { color: "#64748B", fontSize: 12 },
   fieldValue: {
     marginTop: 4,
     fontWeight: "800",
     fontSize: 15,
-    color: "#111827",
+    color: "#111827"
   },
 
   // Picker modals
   pickerOverlay: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(15,23,42,0.45)",
+    backgroundColor: "rgba(15,23,42,0.45)"
   },
   pickerSheet: {
     backgroundColor: "#F8FAFC",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: 20,
-    maxHeight: "75%",
+    maxHeight: "75%"
   },
   pickerHandle: {
     width: 52,
@@ -545,14 +545,14 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: "#CBD5E1",
     alignSelf: "center",
-    marginBottom: 18,
+    marginBottom: 18
   },
   pickerHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 18,
+    marginBottom: 18
   },
   pickerTitle: { fontSize: 21, fontWeight: "900", color: "#111827" },
-  pickerSubtitle: { marginTop: 4, color: "#64748B" },
+  pickerSubtitle: { marginTop: 4, color: "#64748B" }
 });

@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import {
   TextInput as PaperInput,
-  Button as PaperButton,
-} from 'react-native-paper';
+  Button as PaperButton } from
+'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import IconPicker from './IconPicker';
 import ColorPickerModal from './ColorPickerModal';
 import FormModalShell from './FormModalShell';
-import FormControlButton from './FormControlButton';
-import formModalStyles from './formModalStyles';
+
+
 import { createCategory, updateCategory } from '../services/categories';
 import { suggestIconForText } from '../utils/iconSuggest';
 
@@ -19,7 +19,7 @@ export default function CategoryCreateModal({
   onCategoryCreated,
   onSave,
   editData,
-  currentType = 'expense',
+  currentType = 'expense'
 }) {
   const [action, setAction] = useState('');
   const [submitText, setSubmitText] = useState('');
@@ -79,9 +79,9 @@ export default function CategoryCreateModal({
           icon: selectedIcon,
           color: selectedColor,
           is_active:
-            editData.is_active !== undefined
-              ? editData.is_active
-              : 1,
+          editData.is_active !== undefined ?
+          editData.is_active :
+          1
         });
 
         if (onSave) {
@@ -90,7 +90,7 @@ export default function CategoryCreateModal({
             name: name.trim(),
             type,
             icon: selectedIcon,
-            color: selectedColor,
+            color: selectedColor
           });
         }
         if (onCategoryCreated) {
@@ -99,7 +99,7 @@ export default function CategoryCreateModal({
             name: name.trim(),
             type,
             icon: selectedIcon,
-            color: selectedColor,
+            color: selectedColor
           });
         }
       } else {
@@ -107,14 +107,14 @@ export default function CategoryCreateModal({
           name: name.trim(),
           type,
           icon: selectedIcon,
-          color: selectedColor,
+          color: selectedColor
         });
         const categoryResult = {
           id: newCategory,
           name: name.trim(),
           type,
           icon: selectedIcon,
-          color: selectedColor,
+          color: selectedColor
         };
         if (onCategoryCreated) {
           onCategoryCreated(categoryResult);
@@ -140,81 +140,81 @@ export default function CategoryCreateModal({
       iconColor={selectedColor}
       title={action}
       subtitle={
-        editData
-          ? 'Update your category details'
-          : 'Create a category for your finances'
+      editData ?
+      'Update your category details' :
+      'Create a category for your finances'
       }
       actions={
-        <View style={styles.footerActions}>
+      <View style={styles.footerActions}>
           <PaperButton
-            mode="outlined"
-            onPress={onClose}
-            disabled={saving}
-            style={styles.cancelButton}
-            contentStyle={styles.actionContent}
-            labelStyle={styles.cancelLabel}
-          >
+          mode="outlined"
+          onPress={onClose}
+          disabled={saving}
+          style={styles.cancelButton}
+          contentStyle={styles.actionContent}
+          labelStyle={styles.cancelLabel}>
+          
             Cancel
           </PaperButton>
           <PaperButton
-            mode="contained"
-            onPress={handleCreateCategory}
-            loading={saving}
-            disabled={saving}
-            style={[
-              styles.submitButton,
-              {
-                backgroundColor: isIncome
-                  ? '#36B37E'
-                  : '#4B7CF3',
-              },
-            ]}
-            contentStyle={styles.actionContent}
-            labelStyle={styles.submitLabel}
-          >
+          mode="contained"
+          onPress={handleCreateCategory}
+          loading={saving}
+          disabled={saving}
+          style={[
+          styles.submitButton,
+          {
+            backgroundColor: isIncome ?
+            '#36B37E' :
+            '#4B7CF3'
+          }]
+          }
+          contentStyle={styles.actionContent}
+          labelStyle={styles.submitLabel}>
+          
             {saving ? '' : submitText}
           </PaperButton>
         </View>
       }
       footer={
-        <>
+      <>
           <IconPicker
-            visible={showIconPicker}
-            onClose={() => setShowIconPicker(false)}
-            onSelect={setSelectedIcon}
-          />
+          visible={showIconPicker}
+          onClose={() => setShowIconPicker(false)}
+          onSelect={setSelectedIcon} />
+        
           <ColorPickerModal
-            visible={showColorPicker}
-            onClose={() => setShowColorPicker(false)}
-            onSelect={setSelectedColor}
-            currentColor={selectedColor}
-          />
+          visible={showColorPicker}
+          onClose={() => setShowColorPicker(false)}
+          onSelect={setSelectedColor}
+          currentColor={selectedColor} />
+        
         </>
-      }
-    >
+      }>
+      
       {/* ───────────── Live Preview ───────────── */}
       <View
         style={[
-          styles.previewCard,
-          {
-            backgroundColor: selectedColor + '0D',
-            borderColor: selectedColor + '25',
-          },
-        ]}
-      >
+        styles.previewCard,
+        {
+          backgroundColor: selectedColor + '0D',
+          borderColor: selectedColor + '25'
+        }]
+        }>
+        
         <View
           style={[
-            styles.previewIcon,
-            {
-              backgroundColor: selectedColor + '20',
-            },
-          ]}
-        >
+          styles.previewIcon,
+          {
+            backgroundColor: selectedColor + '20'
+          }]
+          }>
+          
           <MaterialCommunityIcons
             name={selectedIcon || 'tag'}
             size={30}
-            color={selectedColor}
-          />
+            color={selectedColor} />
+          
         </View>
 
         <View style={styles.previewInfo}>
@@ -224,22 +224,22 @@ export default function CategoryCreateModal({
 
           <Text
             numberOfLines={1}
-            style={styles.previewName}
-          >
+            style={styles.previewName}>
+            
             {name.trim() || 'Category name'}
           </Text>
 
           <View style={styles.previewTypeRow}>
             <View
               style={[
-                styles.previewDot,
-                {
-                  backgroundColor: isIncome
-                    ? '#36B37E'
-                    : '#E46A6A',
-                },
-              ]}
-            />
+              styles.previewDot,
+              {
+                backgroundColor: isIncome ?
+                '#36B37E' :
+                '#E46A6A'
+              }]
+              } />
+            
 
             <Text style={styles.previewType}>
               {isIncome ? 'Income' : 'Expense'}
@@ -249,24 +249,24 @@ export default function CategoryCreateModal({
 
         <View
           style={[
-            styles.previewTypeBadge,
-            {
-              backgroundColor: isIncome
-                ? '#E5F8EF'
-                : '#FDECEC',
-            },
-          ]}
-        >
+          styles.previewTypeBadge,
+          {
+            backgroundColor: isIncome ?
+            '#E5F8EF' :
+            '#FDECEC'
+          }]
+          }>
+          
           <Text
             style={[
-              styles.previewTypeBadgeText,
-              {
-                color: isIncome
-                  ? '#2F9B6D'
-                  : '#D95D5D',
-              },
-            ]}
-          >
+            styles.previewTypeBadgeText,
+            {
+              color: isIncome ?
+              '#2F9B6D' :
+              '#D95D5D'
+            }]
+            }>
+            
             {isIncome ? 'INCOME' : 'EXPENSE'}
           </Text>
         </View>
@@ -287,24 +287,24 @@ export default function CategoryCreateModal({
         mode="outlined"
         style={styles.input}
         outlineColor={
-          nameError ? '#E46A6A' : '#E1E6EB'
+        nameError ? '#E46A6A' : '#E1E6EB'
         }
         activeOutlineColor={selectedColor}
         error={nameError}
         disabled={saving}
         left={
-          <PaperInput.Icon
-            icon="tag-outline"
-            color="#9AA5B1"
-          />
-        }
-      />
+        <PaperInput.Icon
+          icon="tag-outline"
+          color="#9AA5B1" />
 
-      {nameError && (
-        <Text style={styles.errorText}>
+        } />
+      
+
+      {nameError &&
+      <Text style={styles.errorText}>
           Category name is required
         </Text>
-      )}
+      }
 
       {/* ───────────── Category Type ───────────── */}
       <Text style={styles.sectionLabel}>
@@ -317,41 +317,41 @@ export default function CategoryCreateModal({
           disabled={saving}
           onPress={() => setType('expense')}
           style={[
-            styles.typeOption,
-            type === 'expense' && styles.expenseActive,
-          ]}
-        >
+          styles.typeOption,
+          type === 'expense' && styles.expenseActive]
+          }>
+          
           <View
             style={[
-              styles.typeIcon,
-              {
-                backgroundColor:
-                  type === 'expense'
-                    ? '#FFE2E2'
-                    : '#F3F5F7',
-              },
-            ]}
-          >
+            styles.typeIcon,
+            {
+              backgroundColor:
+              type === 'expense' ?
+              '#FFE2E2' :
+              '#F3F5F7'
+            }]
+            }>
+            
             <MaterialCommunityIcons
               name="arrow-down"
               size={17}
               color={
-                type === 'expense'
-                  ? '#E46A6A'
-                  : '#8995A0'
-              }
-            />
+              type === 'expense' ?
+              '#E46A6A' :
+              '#8995A0'
+              } />
+            
           </View>
 
           <View style={styles.typeTextContainer}>
             <Text
               style={[
-                styles.typeTitle,
-                type === 'expense' && {
-                  color: '#D95D5D',
-                },
-              ]}
-            >
+              styles.typeTitle,
+              type === 'expense' && {
+                color: '#D95D5D'
+              }]
+              }>
+              
               Expense
             </Text>
 
@@ -360,13 +360,13 @@ export default function CategoryCreateModal({
             </Text>
           </View>
 
-          {type === 'expense' && (
-            <MaterialCommunityIcons
-              name="check-circle"
-              size={20}
-              color="#E46A6A"
-            />
-          )}
+          {type === 'expense' &&
+          <MaterialCommunityIcons
+            name="check-circle"
+            size={20}
+            color="#E46A6A" />
+
+          }
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -374,41 +374,41 @@ export default function CategoryCreateModal({
           disabled={saving}
           onPress={() => setType('income')}
           style={[
-            styles.typeOption,
-            type === 'income' && styles.incomeActive,
-          ]}
-        >
+          styles.typeOption,
+          type === 'income' && styles.incomeActive]
+          }>
+          
           <View
             style={[
-              styles.typeIcon,
-              {
-                backgroundColor:
-                  type === 'income'
-                    ? '#DDF6EA'
-                    : '#F3F5F7',
-              },
-            ]}
-          >
+            styles.typeIcon,
+            {
+              backgroundColor:
+              type === 'income' ?
+              '#DDF6EA' :
+              '#F3F5F7'
+            }]
+            }>
+            
             <MaterialCommunityIcons
               name="arrow-up"
               size={17}
               color={
-                type === 'income'
-                  ? '#36B37E'
-                  : '#8995A0'
-              }
-            />
+              type === 'income' ?
+              '#36B37E' :
+              '#8995A0'
+              } />
+            
           </View>
 
           <View style={styles.typeTextContainer}>
             <Text
               style={[
-                styles.typeTitle,
-                type === 'income' && {
-                  color: '#2F9B6D',
-                },
-              ]}
-            >
+              styles.typeTitle,
+              type === 'income' && {
+                color: '#2F9B6D'
+              }]
+              }>
+              
               Income
             </Text>
 
@@ -417,13 +417,13 @@ export default function CategoryCreateModal({
             </Text>
           </View>
 
-          {type === 'income' && (
-            <MaterialCommunityIcons
-              name="check-circle"
-              size={20}
-              color="#36B37E"
-            />
-          )}
+          {type === 'income' &&
+          <MaterialCommunityIcons
+            name="check-circle"
+            size={20}
+            color="#36B37E" />
+
+          }
         </TouchableOpacity>
       </View>
 
@@ -443,22 +443,22 @@ export default function CategoryCreateModal({
           activeOpacity={0.8}
           disabled={saving}
           onPress={() => setShowIconPicker(true)}
-          style={styles.controlCard}
-        >
+          style={styles.controlCard}>
+          
           <View
             style={[
-              styles.controlIcon,
-              {
-                backgroundColor:
-                  selectedColor + '15',
-              },
-            ]}
-          >
+            styles.controlIcon,
+            {
+              backgroundColor:
+              selectedColor + '15'
+            }]
+            }>
+            
             <MaterialCommunityIcons
               name={selectedIcon || 'tag'}
               size={21}
-              color={selectedColor}
-            />
+              color={selectedColor} />
+            
           </View>
 
           <View style={styles.controlText}>
@@ -474,24 +474,24 @@ export default function CategoryCreateModal({
           <MaterialCommunityIcons
             name="chevron-right"
             size={19}
-            color="#A4ADB6"
-          />
+            color="#A4ADB6" />
+          
         </TouchableOpacity>
 
         <TouchableOpacity
           activeOpacity={0.8}
           disabled={saving}
           onPress={() => setShowColorPicker(true)}
-          style={styles.controlCard}
-        >
+          style={styles.controlCard}>
+          
           <View
             style={[
-              styles.colorPreview,
-              {
-                backgroundColor: selectedColor,
-              },
-            ]}
-          />
+            styles.colorPreview,
+            {
+              backgroundColor: selectedColor
+            }]
+            } />
+          
 
           <View style={styles.controlText}>
             <Text style={styles.controlTitle}>
@@ -506,12 +506,12 @@ export default function CategoryCreateModal({
           <MaterialCommunityIcons
             name="chevron-right"
             size={19}
-            color="#A4ADB6"
-          />
+            color="#A4ADB6" />
+          
         </TouchableOpacity>
       </View>
-    </FormModalShell>
-  );
+    </FormModalShell>);
+
 }
 
 const styles = {
@@ -523,7 +523,7 @@ const styles = {
     paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 20
   },
 
   previewIcon: {
@@ -532,12 +532,12 @@ const styles = {
     borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 12
   },
 
   previewInfo: {
     flex: 1,
-    minWidth: 0,
+    minWidth: 0
   },
 
   previewLabel: {
@@ -545,45 +545,45 @@ const styles = {
     fontWeight: '900',
     color: '#9AA5AF',
     letterSpacing: 0.8,
-    marginBottom: 3,
+    marginBottom: 3
   },
 
   previewName: {
     fontSize: 16,
     fontWeight: '900',
-    color: '#293743',
+    color: '#293743'
   },
 
   previewTypeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 4
   },
 
   previewDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    marginRight: 5,
+    marginRight: 5
   },
 
   previewType: {
     fontSize: 10,
     color: '#8995A0',
-    fontWeight: '600',
+    fontWeight: '600'
   },
 
   previewTypeBadge: {
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 8,
-    marginLeft: 8,
+    marginLeft: 8
   },
 
   previewTypeBadgeText: {
     fontSize: 7,
     fontWeight: '900',
-    letterSpacing: 0.6,
+    letterSpacing: 0.6
   },
 
   sectionLabel: {
@@ -591,12 +591,12 @@ const styles = {
     fontWeight: '900',
     color: '#7F8B96',
     letterSpacing: 0.8,
-    marginBottom: 8,
+    marginBottom: 8
   },
 
   input: {
     backgroundColor: '#FFFFFF',
-    marginBottom: 4,
+    marginBottom: 4
   },
 
   errorText: {
@@ -604,12 +604,12 @@ const styles = {
     fontSize: 11,
     fontWeight: '600',
     marginTop: 3,
-    marginBottom: 9,
+    marginBottom: 9
   },
 
   typeSelector: {
     gap: 9,
-    marginBottom: 18,
+    marginBottom: 18
   },
 
   typeOption: {
@@ -621,17 +621,17 @@ const styles = {
     paddingHorizontal: 11,
     paddingVertical: 9,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
 
   expenseActive: {
     borderColor: '#F1BABA',
-    backgroundColor: '#FFF8F8',
+    backgroundColor: '#FFF8F8'
   },
 
   incomeActive: {
     borderColor: '#A9DFC6',
-    backgroundColor: '#F5FCF8',
+    backgroundColor: '#F5FCF8'
   },
 
   typeIcon: {
@@ -640,41 +640,41 @@ const styles = {
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 10
   },
 
   typeTextContainer: {
-    flex: 1,
+    flex: 1
   },
 
   typeTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#45525E',
+    color: '#45525E'
   },
 
   typeSubtitle: {
     fontSize: 10,
     color: '#9AA5AF',
-    marginTop: 2,
+    marginTop: 2
   },
 
   appearanceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'space-between'
   },
 
   appearanceHint: {
     fontSize: 10,
     color: '#A0AAB4',
-    marginBottom: 8,
+    marginBottom: 8
   },
 
   controls: {
     flexDirection: 'row',
     gap: 9,
-    marginBottom: 4,
+    marginBottom: 4
   },
 
   controlCard: {
@@ -686,7 +686,7 @@ const styles = {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 10,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
 
   controlIcon: {
@@ -695,7 +695,7 @@ const styles = {
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
+    marginRight: 8
   },
 
   colorPreview: {
@@ -703,53 +703,53 @@ const styles = {
     height: 25,
     borderRadius: 9,
     marginHorizontal: 5,
-    marginRight: 14,
+    marginRight: 14
   },
 
   controlText: {
     flex: 1,
-    minWidth: 0,
+    minWidth: 0
   },
 
   controlTitle: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#3D4B57',
+    color: '#3D4B57'
   },
 
   controlSubtitle: {
     fontSize: 9,
     color: '#9AA5AF',
-    marginTop: 2,
+    marginTop: 2
   },
 
   footerActions: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
 
   cancelButton: {
     borderRadius: 11,
     borderColor: '#DCE2E7',
-    marginRight: 8,
+    marginRight: 8
   },
 
   submitButton: {
-    borderRadius: 11,
+    borderRadius: 11
   },
 
   actionContent: {
     paddingVertical: 3,
-    paddingHorizontal: 7,
+    paddingHorizontal: 7
   },
 
   cancelLabel: {
     color: '#66737F',
-    fontWeight: '700',
+    fontWeight: '700'
   },
 
   submitLabel: {
     color: '#FFFFFF',
-    fontWeight: '800',
-  },
+    fontWeight: '800'
+  }
 };

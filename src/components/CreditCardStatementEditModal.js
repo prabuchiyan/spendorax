@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView } from 'react-native';
+import { ScrollView } from 'react-native';
 import { TextInput, Button } from 'react-native-paper';
 import FormModalShell from './FormModalShell';
 import formModalStyles from './formModalStyles';
@@ -8,7 +8,7 @@ export default function CreditCardStatementEditModal({
   visible,
   onClose,
   onSave,
-  editData,
+  editData
 }) {
   const [openingBalance, setOpeningBalance] = useState('0');
   const [fees, setFees] = useState('0');
@@ -18,7 +18,7 @@ export default function CreditCardStatementEditModal({
 
   useEffect(() => {
     if (!visible) return;
-    
+
     if (editData) {
       setOpeningBalance(String(editData.opening_balance || 0));
       setFees(String(editData.fees || 0));
@@ -41,7 +41,7 @@ export default function CreditCardStatementEditModal({
         opening_balance: parseFloat(openingBalance) || 0,
         fees: parseFloat(fees) || 0,
         interest: parseFloat(interest) || 0,
-        refunds: parseFloat(refunds) || 0,
+        refunds: parseFloat(refunds) || 0
       };
       await onSave(payload);
       onClose();
@@ -63,34 +63,34 @@ export default function CreditCardStatementEditModal({
       title="Edit Statement Details"
       subtitle="Manually adjust statement values"
       actions={
-        <>
+      <>
           <Button
-            onPress={onClose}
-            textColor="#666"
-            disabled={saving}
-          >
+          onPress={onClose}
+          textColor="#666"
+          disabled={saving}>
+          
             Cancel
           </Button>
           <Button
-            mode="contained"
-            onPress={handleSave}
-            loading={saving}
-            disabled={saving}
-            style={[
-              formModalStyles.saveBtn,
-              { backgroundColor: '#4B7CF3' },
-            ]}
-          >
+          mode="contained"
+          onPress={handleSave}
+          loading={saving}
+          disabled={saving}
+          style={[
+          formModalStyles.saveBtn,
+          { backgroundColor: '#4B7CF3' }]
+          }>
+          
             {saving ? 'Updating...' : 'Update'}
           </Button>
         </>
-      }
-    >
+      }>
+      
       <ScrollView
         style={{ maxHeight: 520 }}
         contentContainerStyle={{ paddingBottom: 16 }}
-        keyboardShouldPersistTaps="handled"
-      >
+        keyboardShouldPersistTaps="handled">
+        
         <TextInput
           label="Opening Balance"
           value={openingBalance}
@@ -98,8 +98,8 @@ export default function CreditCardStatementEditModal({
           mode="outlined"
           style={formModalStyles.input}
           keyboardType="numeric"
-          disabled={saving}
-        />
+          disabled={saving} />
+        
         <TextInput
           label="Fees"
           value={fees}
@@ -107,8 +107,8 @@ export default function CreditCardStatementEditModal({
           mode="outlined"
           style={formModalStyles.input}
           keyboardType="numeric"
-          disabled={saving}
-        />
+          disabled={saving} />
+        
         <TextInput
           label="Interest"
           value={interest}
@@ -116,8 +116,8 @@ export default function CreditCardStatementEditModal({
           mode="outlined"
           style={formModalStyles.input}
           keyboardType="numeric"
-          disabled={saving}
-        />
+          disabled={saving} />
+        
         <TextInput
           label="Refunds"
           value={refunds}
@@ -125,9 +125,9 @@ export default function CreditCardStatementEditModal({
           mode="outlined"
           style={formModalStyles.input}
           keyboardType="numeric"
-          disabled={saving}
-        />
+          disabled={saving} />
+        
       </ScrollView>
-    </FormModalShell>
-  );
+    </FormModalShell>);
+
 }

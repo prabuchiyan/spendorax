@@ -2,14 +2,14 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { TextInput as PaperTextInput, Button as PaperButton, Searchbar, Avatar, Chip } from 'react-native-paper';
+import { TextInput as PaperTextInput, Button as PaperButton, Searchbar, Chip } from 'react-native-paper';
 import IconPicker from '../components/IconPicker';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ColorPickerModal from '../components/ColorPickerModal';
 import { getCategories, softDeleteCategory, updateCategory } from '../services/categories';
 import Card from '../components/Card';
 import IconButton from '../components/IconButton';
-import { Colors, Spacing } from '../components/Theme';
+import { Colors } from '../components/Theme';
 import CategoryCreateModal from '../components/CategoryCreateModal';
 import FAB from '../components/FAB';
 import { useCategories, useAppDispatch } from '../redux/hooks';
@@ -45,19 +45,19 @@ export default function CategoriesScreen({ route, navigation }) {
   async function load() {
     const rows = await getCategories(true);
     dispatch(setCategories(rows));
-    
+
     const catMap = {};
-    rows.forEach(c => { catMap[c.id] = c; });
+    rows.forEach((c) => {catMap[c.id] = c;});
     dispatch(setCategoriesMap(catMap));
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {load();}, []);
 
   // If navigated with an editId param, start editing that category
   useEffect(() => {
     if (route && route.params && route.params.editId) {
       const id = route.params.editId;
-      const item = items.find(i => i.id === id);
+      const item = items.find((i) => i.id === id);
       if (item) startEdit(item);
     }
   }, [route, items]);
@@ -65,8 +65,8 @@ export default function CategoriesScreen({ route, navigation }) {
   const filteredItems = useMemo(() => {
     if (!searchQuery) return items;
     const q = searchQuery.toLowerCase();
-    return items.filter(item =>
-      (item.name || '').toLowerCase().includes(q)
+    return items.filter((item) =>
+    (item.name || '').toLowerCase().includes(q)
     );
   }, [items, searchQuery]);
 
@@ -154,7 +154,7 @@ export default function CategoriesScreen({ route, navigation }) {
       try {
         const re = new RegExp('\\b' + key + '\\b');
         if (re.test(t)) return chooseValid(suggestions[key]);
-      } catch (e) { }
+      } catch (e) {}
     }
     // 3) fuzzy token contains
     for (const token of tokens) {
@@ -209,13 +209,13 @@ export default function CategoriesScreen({ route, navigation }) {
               <MaterialCommunityIcons
                 name="arrow-down"
                 size={16}
-                color="#E46A6A"
-              />
+                color="#E46A6A" />
+              
             </View>
 
             <View>
               <Text style={styles.statValue}>
-                {items.filter(i => i.type === 'expense').length}
+                {items.filter((i) => i.type === 'expense').length}
               </Text>
               <Text style={styles.statLabel}>
                 Expenses
@@ -228,13 +228,13 @@ export default function CategoriesScreen({ route, navigation }) {
               <MaterialCommunityIcons
                 name="arrow-up"
                 size={16}
-                color="#36B37E"
-              />
+                color="#36B37E" />
+              
             </View>
 
             <View>
               <Text style={styles.statValue}>
-                {items.filter(i => i.type === 'income').length}
+                {items.filter((i) => i.type === 'income').length}
               </Text>
               <Text style={styles.statLabel}>
                 Income
@@ -253,8 +253,8 @@ export default function CategoriesScreen({ route, navigation }) {
           style={styles.searchBar}
           inputStyle={styles.searchInput}
           iconColor="#7A8794"
-          placeholderTextColor="#9AA5B1"
-        />
+          placeholderTextColor="#9AA5B1" />
+        
       </View>
 
       {/* ───────────── Category List ───────────── */}
@@ -263,12 +263,12 @@ export default function CategoriesScreen({ route, navigation }) {
         keyExtractor={(i) => String(i.id)}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
-          styles.listContent,
-          filteredItems.length === 0 && styles.emptyListContent
-        ]}
+        styles.listContent,
+        filteredItems.length === 0 && styles.emptyListContent]
+        }
         ListHeaderComponent={
-          filteredItems.length > 0 ? (
-            <View style={styles.listHeader}>
+        filteredItems.length > 0 ?
+        <View style={styles.listHeader}>
               <Text style={styles.listTitle}>
                 All Categories
               </Text>
@@ -276,17 +276,17 @@ export default function CategoriesScreen({ route, navigation }) {
               <Text style={styles.listCount}>
                 {filteredItems.length}
               </Text>
-            </View>
-          ) : null
+            </View> :
+        null
         }
         ListEmptyComponent={
-          <View style={styles.emptyState}>
+        <View style={styles.emptyState}>
             <View style={styles.emptyIconContainer}>
               <MaterialCommunityIcons
-                name="tag-multiple-outline"
-                size={38}
-                color="#9AA5B1"
-              />
+              name="tag-multiple-outline"
+              size={38}
+              color="#9AA5B1" />
+            
             </View>
 
             <Text style={styles.emptyTitle}>
@@ -294,45 +294,45 @@ export default function CategoriesScreen({ route, navigation }) {
             </Text>
 
             <Text style={styles.emptySubtitle}>
-              {searchQuery
-                ? 'Try searching with a different name'
-                : 'Create your first category to get started'}
+              {searchQuery ?
+            'Try searching with a different name' :
+            'Create your first category to get started'}
             </Text>
           </View>
         }
         initialNumToRender={15}
         windowSize={10}
-        renderItem={({ item }) => (
-          <Card style={styles.categoryCard}>
-            {editingId === item.id ? (
-              <View>
+        renderItem={({ item }) =>
+        <Card style={styles.categoryCard}>
+            {editingId === item.id ?
+          <View>
                 {/* Edit Preview */}
                 <View
-                  style={[
-                    styles.editPreview,
-                    {
-                      backgroundColor:
-                        editType === 'expense'
-                          ? '#FFF7F7'
-                          : '#F3FCF8'
-                    }
-                  ]}
-                >
+              style={[
+              styles.editPreview,
+              {
+                backgroundColor:
+                editType === 'expense' ?
+                '#FFF7F7' :
+                '#F3FCF8'
+              }]
+              }>
+              
                   <View style={styles.editPreviewLeft}>
                     <View
-                      style={[
-                        styles.editPreviewIcon,
-                        {
-                          backgroundColor:
-                            (editColor || '#4B7CF3') + '18'
-                        }
-                      ]}
-                    >
+                  style={[
+                  styles.editPreviewIcon,
+                  {
+                    backgroundColor:
+                    (editColor || '#4B7CF3') + '18'
+                  }]
+                  }>
+                  
                       <MaterialCommunityIcons
-                        name={editIcon || 'tag'}
-                        size={21}
-                        color={editColor || '#4B7CF3'}
-                      />
+                    name={editIcon || 'tag'}
+                    size={21}
+                    color={editColor || '#4B7CF3'} />
+                  
                     </View>
 
                     <View>
@@ -341,226 +341,226 @@ export default function CategoriesScreen({ route, navigation }) {
                       </Text>
 
                       <Text
-                        numberOfLines={1}
-                        style={[
-                          styles.editPreviewName,
-                          {
-                            color:
-                              editType === 'expense'
-                                ? '#E46A6A'
-                                : '#36B37E'
-                          }
-                        ]}
-                      >
+                    numberOfLines={1}
+                    style={[
+                    styles.editPreviewName,
+                    {
+                      color:
+                      editType === 'expense' ?
+                      '#E46A6A' :
+                      '#36B37E'
+                    }]
+                    }>
+                    
                         {editName || 'Category'}
                       </Text>
                     </View>
                   </View>
 
                   <View
-                    style={[
-                      styles.typeBadge,
-                      {
-                        backgroundColor:
-                          editType === 'expense'
-                            ? '#FEECEC'
-                            : '#E6F8EF'
-                      }
-                    ]}
-                  >
+                style={[
+                styles.typeBadge,
+                {
+                  backgroundColor:
+                  editType === 'expense' ?
+                  '#FEECEC' :
+                  '#E6F8EF'
+                }]
+                }>
+                
                     <Text
-                      style={[
-                        styles.typeBadgeText,
-                        {
-                          color:
-                            editType === 'expense'
-                              ? '#D95D5D'
-                              : '#2F9B6D'
-                        }
-                      ]}
-                    >
-                      {editType === 'expense'
-                        ? 'EXPENSE'
-                        : 'INCOME'}
+                  style={[
+                  styles.typeBadgeText,
+                  {
+                    color:
+                    editType === 'expense' ?
+                    '#D95D5D' :
+                    '#2F9B6D'
+                  }]
+                  }>
+                  
+                      {editType === 'expense' ?
+                  'EXPENSE' :
+                  'INCOME'}
                     </Text>
                   </View>
                 </View>
 
                 <PaperTextInput
-                  value={editName}
-                  onChangeText={handleEditNameChange}
-                  mode="outlined"
-                  style={styles.editInput}
-                  label="Category Name"
-                  outlineColor="#E2E7EC"
-                  activeOutlineColor="#4B7CF3"
-                />
+              value={editName}
+              onChangeText={handleEditNameChange}
+              mode="outlined"
+              style={styles.editInput}
+              label="Category Name"
+              outlineColor="#E2E7EC"
+              activeOutlineColor="#4B7CF3" />
+            
 
                 <View style={styles.editTypeRow}>
                   <Chip
-                    mode={
-                      editType === 'expense'
-                        ? 'flat'
-                        : 'outlined'
-                    }
-                    selected={editType === 'expense'}
-                    onPress={() => setEditType('expense')}
-                    style={[
-                      styles.typeChip,
-                      editType === 'expense' &&
-                      styles.expenseChipActive
-                    ]}
-                    selectedColor="#D95D5D"
-                  >
+                mode={
+                editType === 'expense' ?
+                'flat' :
+                'outlined'
+                }
+                selected={editType === 'expense'}
+                onPress={() => setEditType('expense')}
+                style={[
+                styles.typeChip,
+                editType === 'expense' &&
+                styles.expenseChipActive]
+                }
+                selectedColor="#D95D5D">
+                
                     Expense
                   </Chip>
 
                   <Chip
-                    mode={
-                      editType === 'income'
-                        ? 'flat'
-                        : 'outlined'
-                    }
-                    selected={editType === 'income'}
-                    onPress={() => setEditType('income')}
-                    style={[
-                      styles.typeChip,
-                      editType === 'income' &&
-                      styles.incomeChipActive
-                    ]}
-                    selectedColor="#2F9B6D"
-                  >
+                mode={
+                editType === 'income' ?
+                'flat' :
+                'outlined'
+                }
+                selected={editType === 'income'}
+                onPress={() => setEditType('income')}
+                style={[
+                styles.typeChip,
+                editType === 'income' &&
+                styles.incomeChipActive]
+                }
+                selectedColor="#2F9B6D">
+                
                     Income
                   </Chip>
                 </View>
 
                 <View style={styles.customizationRow}>
                   <TouchableOpacity
-                    activeOpacity={0.75}
-                    onPress={() =>
-                      setShowIconPickerForEdit(true)
-                    }
-                    style={[
-                      styles.iconSelector,
-                      {
-                        backgroundColor:
-                          (editColor || '#4B7CF3') + '15',
-                        borderColor:
-                          (editColor || '#4B7CF3') + '30'
-                      }
-                    ]}
-                  >
+                activeOpacity={0.75}
+                onPress={() =>
+                setShowIconPickerForEdit(true)
+                }
+                style={[
+                styles.iconSelector,
+                {
+                  backgroundColor:
+                  (editColor || '#4B7CF3') + '15',
+                  borderColor:
+                  (editColor || '#4B7CF3') + '30'
+                }]
+                }>
+                
                     <MaterialCommunityIcons
-                      name={editIcon || 'tag'}
-                      size={24}
-                      color={editColor || '#4B7CF3'}
-                    />
+                  name={editIcon || 'tag'}
+                  size={24}
+                  color={editColor || '#4B7CF3'} />
+                
                   </TouchableOpacity>
 
                   <IconButton
-                    label="Colors"
-                    icon="droplet"
-                    onPress={() =>
-                      setShowColorPickerForEdit(true)
-                    }
-                  />
+                label="Colors"
+                icon="droplet"
+                onPress={() =>
+                setShowColorPickerForEdit(true)
+                } />
+              
 
                   <IconButton
-                    label="Icon"
-                    icon="image"
-                    onPress={() =>
-                      setShowIconPickerForEdit(true)
-                    }
-                  />
+                label="Icon"
+                icon="image"
+                onPress={() =>
+                setShowIconPickerForEdit(true)
+                } />
+              
                 </View>
 
                 <View style={styles.editButtonsRow}>
                   <PaperButton
-                    mode="contained"
-                    onPress={saveEdit}
-                    style={[
-                      styles.saveButton,
-                      {
-                        backgroundColor:
-                          editType === 'expense'
-                            ? '#E46A6A'
-                            : '#36B37E'
-                      }
-                    ]}
-                    contentStyle={styles.buttonContent}
-                    labelStyle={styles.saveButtonLabel}
-                  >
+                mode="contained"
+                onPress={saveEdit}
+                style={[
+                styles.saveButton,
+                {
+                  backgroundColor:
+                  editType === 'expense' ?
+                  '#E46A6A' :
+                  '#36B37E'
+                }]
+                }
+                contentStyle={styles.buttonContent}
+                labelStyle={styles.saveButtonLabel}>
+                
                     Save
                   </PaperButton>
 
                   <View style={{ width: 10 }} />
 
                   <PaperButton
-                    mode="outlined"
-                    onPress={cancelEdit}
-                    style={styles.cancelButton}
-                    contentStyle={styles.buttonContent}
-                  >
+                mode="outlined"
+                onPress={cancelEdit}
+                style={styles.cancelButton}
+                contentStyle={styles.buttonContent}>
+                
                     Cancel
                   </PaperButton>
                 </View>
-              </View>
-            ) : (
-              <TouchableOpacity
-                activeOpacity={0.75}
-                onPress={() => {
-                  const parent = navigation.getParent();
+              </View> :
 
-                  parent?.navigate('CategoriesDetails', {
-                    categoryId: item.id,
-                    categoryName: item.name
-                  });
-                }}
-              >
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => {
+              const parent = navigation.getParent();
+
+              parent?.navigate('CategoriesDetails', {
+                categoryId: item.id,
+                categoryName: item.name
+              });
+            }}>
+            
                 <View style={styles.categoryRow}>
                   {/* Left */}
                   <View style={styles.categoryLeft}>
                     <View
-                      style={[
-                        styles.categoryIconWrapper,
-                        {
-                          backgroundColor:
-                            (item.color || '#4B7CF3') + '15'
-                        }
-                      ]}
-                    >
+                  style={[
+                  styles.categoryIconWrapper,
+                  {
+                    backgroundColor:
+                    (item.color || '#4B7CF3') + '15'
+                  }]
+                  }>
+                  
                       <MaterialCommunityIcons
-                        name={item.icon || 'tag'}
-                        size={22}
-                        color={item.color || '#4B7CF3'}
-                      />
+                    name={item.icon || 'tag'}
+                    size={22}
+                    color={item.color || '#4B7CF3'} />
+                  
                     </View>
 
                     <View style={styles.categoryInfo}>
                       <Text
-                        numberOfLines={1}
-                        style={styles.categoryName}
-                      >
+                    numberOfLines={1}
+                    style={styles.categoryName}>
+                    
                         {item.name}
                       </Text>
 
                       <View style={styles.categoryMeta}>
                         <View
-                          style={[
-                            styles.smallTypeDot,
-                            {
-                              backgroundColor:
-                                item.type === 'income'
-                                  ? '#36B37E'
-                                  : '#E46A6A'
-                            }
-                          ]}
-                        />
+                      style={[
+                      styles.smallTypeDot,
+                      {
+                        backgroundColor:
+                        item.type === 'income' ?
+                        '#36B37E' :
+                        '#E46A6A'
+                      }]
+                      } />
+                    
 
                         <Text style={styles.categoryType}>
-                          {item.type === 'income'
-                            ? 'Income'
-                            : 'Expense'}
+                          {item.type === 'income' ?
+                      'Income' :
+                      'Expense'}
                         </Text>
                       </View>
                     </View>
@@ -569,85 +569,85 @@ export default function CategoriesScreen({ route, navigation }) {
                   {/* Right */}
                   <View style={styles.categoryRight}>
                     <View
-                      style={[
-                        styles.typeBadge,
-                        {
-                          backgroundColor:
-                            item.type === 'income'
-                              ? '#E8F8F0'
-                              : '#FDEDED'
-                        }
-                      ]}
-                    >
+                  style={[
+                  styles.typeBadge,
+                  {
+                    backgroundColor:
+                    item.type === 'income' ?
+                    '#E8F8F0' :
+                    '#FDEDED'
+                  }]
+                  }>
+                  
                       <Text
-                        style={[
-                          styles.typeBadgeText,
-                          {
-                            color:
-                              item.type === 'income'
-                                ? '#2F9B6D'
-                                : '#D95D5D'
-                          }
-                        ]}
-                      >
-                        {item.type === 'income'
-                          ? 'INCOME'
-                          : 'EXPENSE'}
+                    style={[
+                    styles.typeBadgeText,
+                    {
+                      color:
+                      item.type === 'income' ?
+                      '#2F9B6D' :
+                      '#D95D5D'
+                    }]
+                    }>
+                    
+                        {item.type === 'income' ?
+                    'INCOME' :
+                    'EXPENSE'}
                       </Text>
                     </View>
 
                     <View style={styles.actionRow}>
                       <TouchableOpacity
-                        activeOpacity={0.7}
-                        onPress={() => {
-                          setEditCategory(item);
-                          setShowModal(true);
-                        }}
-                        style={styles.actionButton}
-                      >
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      setEditCategory(item);
+                      setShowModal(true);
+                    }}
+                    style={styles.actionButton}>
+                    
                         <Feather
-                          name="edit-2"
-                          size={15}
-                          color={Colors.primary}
-                        />
+                      name="edit-2"
+                      size={15}
+                      color={Colors.primary} />
+                    
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        activeOpacity={0.7}
-                        onPress={() => {
-                          setConfirmTargetId(item.id);
-                          setConfirmMessage(
-                            `Delete "${item.name}"?`
-                          );
-                          setConfirmVisible(true);
-                        }}
-                        style={[
-                          styles.actionButton,
-                          styles.deleteActionButton
-                        ]}
-                      >
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      setConfirmTargetId(item.id);
+                      setConfirmMessage(
+                        `Delete "${item.name}"?`
+                      );
+                      setConfirmVisible(true);
+                    }}
+                    style={[
+                    styles.actionButton,
+                    styles.deleteActionButton]
+                    }>
+                    
                         <Feather
-                          name="trash-2"
-                          size={15}
-                          color="#E46A6A"
-                        />
+                      name="trash-2"
+                      size={15}
+                      color="#E46A6A" />
+                    
                       </TouchableOpacity>
 
                       <View style={styles.arrowContainer}>
                         <Feather
-                          name="chevron-right"
-                          size={17}
-                          color="#B5BEC8"
-                        />
+                      name="chevron-right"
+                      size={17}
+                      color="#B5BEC8" />
+                    
                       </View>
                     </View>
                   </View>
                 </View>
               </TouchableOpacity>
-            )}
+          }
           </Card>
-        )}
-      />
+        } />
+      
 
       {/* ───────────── Delete Confirmation ───────────── */}
       <ConfirmDialog
@@ -665,52 +665,52 @@ export default function CategoriesScreen({ route, navigation }) {
 
           setConfirmVisible(false);
           setConfirmTargetId(null);
-        }}
-      />
+        }} />
+      
 
       {/* ───────────── Add Icon Picker ───────────── */}
       <IconPicker
         visible={showIconPickerForAdd}
         onClose={() =>
-          setShowIconPickerForAdd(false)
+        setShowIconPickerForAdd(false)
         }
         onSelect={(name) => {
           setSelectedIcon(name);
           setUserPickedIconAdd(true);
-        }}
-      />
+        }} />
+      
 
       {/* ───────────── Edit Icon Picker ───────────── */}
       <IconPicker
         visible={showIconPickerForEdit}
         onClose={() =>
-          setShowIconPickerForEdit(false)
+        setShowIconPickerForEdit(false)
         }
         onSelect={(name) => {
           setEditIcon(name);
           setUserPickedIconEdit(true);
-        }}
-      />
+        }} />
+      
 
       {/* ───────────── Add Color Picker ───────────── */}
       <ColorPickerModal
         visible={showColorPickerForAdd}
         onClose={() =>
-          setShowColorPickerForAdd(false)
+        setShowColorPickerForAdd(false)
         }
         onSelect={setSelectedColor}
-        currentColor={selectedColor}
-      />
+        currentColor={selectedColor} />
+      
 
       {/* ───────────── Edit Color Picker ───────────── */}
       <ColorPickerModal
         visible={showColorPickerForEdit}
         onClose={() =>
-          setShowColorPickerForEdit(false)
+        setShowColorPickerForEdit(false)
         }
         onSelect={setEditColor}
-        currentColor={editColor}
-      />
+        currentColor={editColor} />
+      
 
       {/* ───────────── Create / Edit Modal ───────────── */}
       <CategoryCreateModal
@@ -720,51 +720,51 @@ export default function CategoriesScreen({ route, navigation }) {
         onSave={() => {
           setShowModal(false);
           load();
-        }}
-      />
+        }} />
+      
 
       {/* ───────────── FAB ───────────── */}
       <FAB
         onPress={() => {
           setEditCategory(null);
           setShowModal(true);
-        }}
-      />
-    </View>
-  );
+        }} />
+      
+    </View>);
+
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F9FB',
+    backgroundColor: '#F7F9FB'
   },
 
   /* Header */
   headerSection: {
     paddingHorizontal: 16,
     paddingTop: 14,
-    paddingBottom: 10,
+    paddingBottom: 10
   },
 
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 14
   },
 
   pageTitle: {
     fontSize: 23,
     fontWeight: '900',
     color: '#24313D',
-    letterSpacing: -0.4,
+    letterSpacing: -0.4
   },
 
   pageSubtitle: {
     fontSize: 12,
     color: '#8A96A3',
-    marginTop: 3,
+    marginTop: 3
   },
 
   totalBadge: {
@@ -774,14 +774,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#EAF5EF',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 10
   },
 
   totalBadgeNumber: {
     fontSize: 19,
     fontWeight: '900',
     color: '#3F8F6B',
-    lineHeight: 21,
+    lineHeight: 21
   },
 
   totalBadgeLabel: {
@@ -789,13 +789,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#6DA68A',
     letterSpacing: 0.8,
-    marginTop: 2,
+    marginTop: 2
   },
 
   /* Stats */
   statsRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 10
   },
 
   statCard: {
@@ -805,15 +805,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
 
   expenseStat: {
-    backgroundColor: '#FFF3F3',
+    backgroundColor: '#FFF3F3'
   },
 
   incomeStat: {
-    backgroundColor: '#EFFAF5',
+    backgroundColor: '#EFFAF5'
   },
 
   statIconExpense: {
@@ -823,7 +823,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFE3E3',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 9,
+    marginRight: 9
   },
 
   statIconIncome: {
@@ -833,26 +833,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#DDF6EA',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 9,
+    marginRight: 9
   },
 
   statValue: {
     fontSize: 17,
     fontWeight: '900',
-    color: '#263440',
+    color: '#263440'
   },
 
   statLabel: {
     fontSize: 10,
     color: '#8B97A3',
     marginTop: 1,
-    fontWeight: '600',
+    fontWeight: '600'
   },
 
   /* Search */
   searchContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 6,
+    paddingBottom: 6
   },
 
   searchBar: {
@@ -861,23 +861,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     elevation: 0,
     borderWidth: 1,
-    borderColor: '#E7EBEF',
+    borderColor: '#E7EBEF'
   },
 
   searchInput: {
     fontSize: 13,
-    color: '#354250',
+    color: '#354250'
   },
 
   /* List */
   listContent: {
     paddingHorizontal: 16,
     paddingTop: 6,
-    paddingBottom: 110,
+    paddingBottom: 110
   },
 
   emptyListContent: {
-    flexGrow: 1,
+    flexGrow: 1
   },
 
   listHeader: {
@@ -885,13 +885,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 5,
     marginBottom: 9,
-    paddingHorizontal: 2,
+    paddingHorizontal: 2
   },
 
   listTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#42515E',
+    color: '#42515E'
   },
 
   listCount: {
@@ -905,7 +905,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontSize: 10,
     fontWeight: '800',
-    color: '#778491',
+    color: '#778491'
   },
 
   /* Category Card */
@@ -914,7 +914,7 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     paddingHorizontal: 0,
     borderRadius: 17,
-    overflow: 'hidden',
+    overflow: 'hidden'
   },
 
   categoryRow: {
@@ -923,14 +923,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'space-between'
   },
 
   categoryLeft: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    minWidth: 0,
+    minWidth: 0
   },
 
   categoryIconWrapper: {
@@ -939,60 +939,60 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 12
   },
 
   categoryInfo: {
     flex: 1,
-    minWidth: 0,
+    minWidth: 0
   },
 
   categoryName: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#293743',
+    color: '#293743'
   },
 
   categoryMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 5,
+    marginTop: 5
   },
 
   smallTypeDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    marginRight: 6,
+    marginRight: 6
   },
 
   categoryType: {
     fontSize: 11,
     color: '#8A96A2',
-    fontWeight: '600',
+    fontWeight: '600'
   },
 
   categoryRight: {
     alignItems: 'flex-end',
-    marginLeft: 8,
+    marginLeft: 8
   },
 
   typeBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 8
   },
 
   typeBadgeText: {
     fontSize: 8,
     fontWeight: '900',
-    letterSpacing: 0.6,
+    letterSpacing: 0.6
   },
 
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 7,
+    marginTop: 7
   },
 
   actionButton: {
@@ -1002,11 +1002,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F5FF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 5,
+    marginLeft: 5
   },
 
   deleteActionButton: {
-    backgroundColor: '#FFF1F1',
+    backgroundColor: '#FFF1F1'
   },
 
   arrowContainer: {
@@ -1014,7 +1014,7 @@ const styles = StyleSheet.create({
     height: 27,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 2,
+    marginLeft: 2
   },
 
   /* Edit */
@@ -1024,14 +1024,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'space-between'
   },
 
   editPreviewLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    minWidth: 0,
+    minWidth: 0
   },
 
   editPreviewIcon: {
@@ -1040,7 +1040,7 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 10
   },
 
   editPreviewCaption: {
@@ -1048,42 +1048,42 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#9AA4AE',
     letterSpacing: 0.7,
-    marginBottom: 2,
+    marginBottom: 2
   },
 
   editPreviewName: {
     fontSize: 15,
     fontWeight: '900',
-    maxWidth: 150,
+    maxWidth: 150
   },
 
   editInput: {
     marginBottom: 9,
-    backgroundColor: '#fff',
+    backgroundColor: '#fff'
   },
 
   editTypeRow: {
     flexDirection: 'row',
-    marginBottom: 10,
+    marginBottom: 10
   },
 
   typeChip: {
     marginRight: 7,
-    height: 36,
+    height: 36
   },
 
   expenseChipActive: {
-    backgroundColor: '#FEE4E4',
+    backgroundColor: '#FEE4E4'
   },
 
   incomeChipActive: {
-    backgroundColor: '#DDF6EA',
+    backgroundColor: '#DDF6EA'
   },
 
   customizationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 12
   },
 
   iconSelector: {
@@ -1093,31 +1093,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    marginRight: 9,
+    marginRight: 9
   },
 
   editButtonsRow: {
-    flexDirection: 'row',
+    flexDirection: 'row'
   },
 
   saveButton: {
     flex: 1,
-    borderRadius: 11,
+    borderRadius: 11
   },
 
   cancelButton: {
     flex: 1,
     borderRadius: 11,
-    borderColor: '#D8DEE4',
+    borderColor: '#D8DEE4'
   },
 
   buttonContent: {
-    paddingVertical: 3,
+    paddingVertical: 3
   },
 
   saveButtonLabel: {
     color: '#fff',
-    fontWeight: '800',
+    fontWeight: '800'
   },
 
   /* Empty */
@@ -1125,7 +1125,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 30,
-    paddingTop: 65,
+    paddingTop: 65
   },
 
   emptyIconContainer: {
@@ -1135,13 +1135,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#EDF1F4',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 16
   },
 
   emptyTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#465461',
+    color: '#465461'
   },
 
   emptySubtitle: {
@@ -1149,6 +1149,6 @@ const styles = StyleSheet.create({
     color: '#9AA5AF',
     textAlign: 'center',
     marginTop: 6,
-    lineHeight: 18,
-  },
+    lineHeight: 18
+  }
 });

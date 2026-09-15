@@ -8,7 +8,7 @@ import { getCategories, createCategory } from './categories';
 import { getSources, createSource } from './sources';
 import { getTransactions, createTransaction } from './transactions';
 import { getBudgets, createBudget } from './budgets';
-import { getBills, createBill, updateBill } from './bills';
+import { getBills } from './bills';
 import { getLoans } from './loans';
 import { getNotifications, updateNotification, getNotificationByType } from '../database/notifications';
 import { rescheduleAll } from './notificationService';
@@ -103,10 +103,10 @@ export async function exportBackup() {
       const txToBillId = {};
       for (const link of billLinkedTransactions) {
         if (
-          link.transaction_id != null &&
-          link.bill_id != null &&
-          txToBillId[link.transaction_id] === undefined
-        ) {
+        link.transaction_id != null &&
+        link.bill_id != null &&
+        txToBillId[link.transaction_id] === undefined)
+        {
           txToBillId[link.transaction_id] = link.bill_id;
         }
       }
@@ -143,8 +143,8 @@ export async function exportBackup() {
         credit_cards: creditCards,
         credit_card_statements: creditCardStatements,
         credit_card_payments: creditCardPayments,
-        notifications,
-      },
+        notifications
+      }
     };
 
     const backupJson = JSON.stringify(backupData);
@@ -183,7 +183,7 @@ export async function pickBackupFile() {
   try {
     const result = await DocumentPicker.getDocumentAsync({
       type: 'application/json',
-      copyToCacheDirectory: true,
+      copyToCacheDirectory: true
     });
 
     if (result.canceled || !result.assets || result.assets.length === 0) {
@@ -208,12 +208,12 @@ export async function pickBackupFile() {
     const backupData = JSON.parse(fileContent);
 
     const normalizedData = backupData.data || {};
-    const legacyCategoryBudgets = Array.isArray(normalizedData.categoryBudgets)
-      ? normalizedData.categoryBudgets
-      : [];
-    const categoryBudgets = Array.isArray(normalizedData.category_budgets)
-      ? normalizedData.category_budgets
-      : legacyCategoryBudgets;
+    const legacyCategoryBudgets = Array.isArray(normalizedData.categoryBudgets) ?
+    normalizedData.categoryBudgets :
+    [];
+    const categoryBudgets = Array.isArray(normalizedData.category_budgets) ?
+    normalizedData.category_budgets :
+    legacyCategoryBudgets;
 
     if (backupData.data) {
       backupData.data.category_budgets = categoryBudgets;
@@ -235,15 +235,15 @@ export async function pickBackupFile() {
     // -----------------------------
     if (backupData.version === 1) {
       const requiredKeys = [
-        'transactions',
-        'categories',
-        'sources',
-        'budgets',
-        'bills',
-        'loans',
-        'loan_payments',
-        'notifications'
-      ];
+      'transactions',
+      'categories',
+      'sources',
+      'budgets',
+      'bills',
+      'loans',
+      'loan_payments',
+      'notifications'];
+
 
       for (const key of requiredKeys) {
         if (!Array.isArray(backupData.data[key])) {
@@ -260,7 +260,7 @@ export async function pickBackupFile() {
       backupData.data.credit_card_statements ??= [];
       backupData.data.credit_card_payments ??= [];
       backupData.data.notifications ??=
-        backupData.data.notification_settings ?? [];
+      backupData.data.notification_settings ?? [];
 
       return backupData;
     }
@@ -270,16 +270,16 @@ export async function pickBackupFile() {
     // -----------------------------
     if (backupData.version >= 2) {
       const requiredKeys = [
-        'transactions',
-        'categories',
-        'sources',
-        'budgets',
-        'category_budgets',
-        'bills',
-        'bill_linked_transactions',
-        'loans',
-        'loan_payments',
-      ];
+      'transactions',
+      'categories',
+      'sources',
+      'budgets',
+      'category_budgets',
+      'bills',
+      'bill_linked_transactions',
+      'loans',
+      'loan_payments'];
+
 
       for (const key of requiredKeys) {
         const legacyKey = key === 'category_budgets' ? 'categoryBudgets' : key;
@@ -290,10 +290,10 @@ export async function pickBackupFile() {
 
       if (backupData.version >= 3) {
         const newKeys = [
-          'credit_cards',
-          'credit_card_statements',
-          'credit_card_payments',
-        ];
+        'credit_cards',
+        'credit_card_statements',
+        'credit_card_payments'];
+
         for (const key of newKeys) {
           if (!Array.isArray(backupData.data[key])) {
             throw new Error(`Missing required data: ${key}`);
@@ -328,9 +328,9 @@ const MOBILE_BATCH_SIZE = 25;
 const WEB_BATCH_SIZE = 100;
 
 function getBatchSize() {
-  return Platform.OS === 'web'
-    ? WEB_BATCH_SIZE
-    : MOBILE_BATCH_SIZE;
+  return Platform.OS === 'web' ?
+  WEB_BATCH_SIZE :
+  MOBILE_BATCH_SIZE;
 }
 
 async function yieldToUI() {
@@ -339,7 +339,7 @@ async function yieldToUI() {
   // React Native Web can leave runAfterInteractions unresolved,
   // which blocks the restore at "Initializing restore...".
   if (Platform.OS === 'web') {
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       setTimeout(resolve, 0);
     });
     return;
@@ -348,7 +348,7 @@ async function yieldToUI() {
   // Native:
   // Give React Native one frame, then wait until current
   // interactions/animations are completed.
-  await new Promise(resolve => {
+  await new Promise((resolve) => {
     if (typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(() => {
         InteractionManager.runAfterInteractions(() => {
@@ -364,25 +364,25 @@ async function beginDbTransaction() {
   try {
     await executeSql('BEGIN TRANSACTION');
   } catch (_) {
+
     // Web/localStorage shim ignores transactions
-  }
-}
+  }}
 
 async function commitDbTransaction() {
   try {
     await executeSql('COMMIT');
   } catch (_) {
+
     // Web/localStorage shim ignores transactions
-  }
-}
+  }}
 
 async function rollbackDbTransaction() {
   try {
     await executeSql('ROLLBACK');
   } catch (_) {
+
     // Web/localStorage shim ignores transactions
-  }
-}
+  }}
 
 /**
  * Generic batch processor
@@ -469,41 +469,41 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       const lns = await executeSql('SELECT * FROM loans');
       for (let i = 0; i < lns.rows.length; i++) originalData.loans.push(lns.rows.item(i));
     } catch (e) {
+
       // ignore if loans table missing
     }
-
     // Snapshot loan payments (if table exists)
     try {
       const lps = await executeSql('SELECT * FROM loan_payments');
       for (let i = 0; i < lps.rows.length; i++) originalData.loan_payments.push(lps.rows.item(i));
     } catch (e) {
+
       // ignore if table missing
     }
-
     // Snapshot credit cards (if table exists)
     try {
       const ccs = await executeSql('SELECT * FROM credit_cards');
       for (let i = 0; i < ccs.rows.length; i++) originalData.credit_cards.push(ccs.rows.item(i));
     } catch (e) {
+
       // ignore if table missing
     }
-
     // Snapshot credit card statements (if table exists)
     try {
       const ccs = await executeSql('SELECT * FROM credit_card_statements');
       for (let i = 0; i < ccs.rows.length; i++) originalData.credit_card_statements.push(ccs.rows.item(i));
     } catch (e) {
+
       // ignore if table missing
     }
-
     // Snapshot credit card payments (if table exists)
     try {
       const ccp = await executeSql('SELECT * FROM credit_card_payments');
       for (let i = 0; i < ccp.rows.length; i++) originalData.credit_card_payments.push(ccp.rows.item(i));
     } catch (e) {
+
       // ignore if table missing
-    }
-  } catch (snapshotErr) {
+    }} catch (snapshotErr) {
     console.error('Failed to snapshot original database:', snapshotErr);
   }
 
@@ -534,12 +534,12 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         await executeSql(
           `INSERT INTO bills (id, name, amount, due_date, status, is_recurring, recurrence_type, recurrence_interval, recurrence_end_date, category_id, source_id, reminder_days_before, last_reminded_at, auto_pay, notes, attachment_url, linked_transaction_id, paid_at, is_paid, created_at, updated_at, deleted_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [
-            bill.id, bill.name, bill.amount, bill.due_date, bill.status, bill.is_recurring,
-            bill.recurrence_type, bill.recurrence_interval, bill.recurrence_end_date,
-            bill.category_id, bill.source_id, bill.reminder_days_before, bill.last_reminded_at,
-            bill.auto_pay, bill.notes, bill.attachment_url, bill.linked_transaction_id,
-            bill.paid_at, bill.is_paid, bill.created_at, bill.updated_at, bill.deleted_at
-          ]
+          bill.id, bill.name, bill.amount, bill.due_date, bill.status, bill.is_recurring,
+          bill.recurrence_type, bill.recurrence_interval, bill.recurrence_end_date,
+          bill.category_id, bill.source_id, bill.reminder_days_before, bill.last_reminded_at,
+          bill.auto_pay, bill.notes, bill.attachment_url, bill.linked_transaction_id,
+          bill.paid_at, bill.is_paid, bill.created_at, bill.updated_at, bill.deleted_at]
+
         );
       }
 
@@ -565,13 +565,13 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           await executeSql(
             `INSERT INTO loans (id, loan_name, loan_type, lender, principal_amount, interest_rate, loan_start_date, loan_end_date, tenure_months, emi_amount, emi_day, outstanding_amount, principal_paid, interest_paid, total_paid, total_prepayment, remaining_months, status, notes, transaction_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
             [
-              loan.id, loan.loan_name, loan.loan_type, loan.lender, loan.principal_amount,
-              loan.interest_rate, loan.loan_start_date, loan.loan_end_date, loan.tenure_months,
-              loan.emi_amount, loan.emi_day, loan.outstanding_amount, loan.principal_paid,
-              loan.interest_paid, loan.total_paid, loan.total_prepayment, loan.remaining_months,
-              loan.status, loan.notes, loan.transaction_id || null,
-              loan.created_at, loan.updated_at
-            ]
+            loan.id, loan.loan_name, loan.loan_type, loan.lender, loan.principal_amount,
+            loan.interest_rate, loan.loan_start_date, loan.loan_end_date, loan.tenure_months,
+            loan.emi_amount, loan.emi_day, loan.outstanding_amount, loan.principal_paid,
+            loan.interest_paid, loan.total_paid, loan.total_prepayment, loan.remaining_months,
+            loan.status, loan.notes, loan.transaction_id || null,
+            loan.created_at, loan.updated_at]
+
           );
         } catch (e) {
           console.warn('Failed to restore loan', loan.id, e);
@@ -596,25 +596,25 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           await executeSql(
             `INSERT INTO credit_cards (id, name, bank, last4, network, credit_limit, outstanding, available_limit, statement_day, due_after_days, minimum_due_percent, currency, color, notes, status, source_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
             [
-              card.id,
-              card.name,
-              card.bank,
-              card.last4,
-              card.network,
-              card.credit_limit,
-              card.outstanding,
-              card.available_limit,
-              card.statement_day,
-              card.due_after_days,
-              card.minimum_due_percent,
-              card.currency,
-              card.color,
-              card.notes,
-              card.status,
-              card.source_id,
-              card.created_at,
-              card.updated_at,
-            ]
+            card.id,
+            card.name,
+            card.bank,
+            card.last4,
+            card.network,
+            card.credit_limit,
+            card.outstanding,
+            card.available_limit,
+            card.statement_day,
+            card.due_after_days,
+            card.minimum_due_percent,
+            card.currency,
+            card.color,
+            card.notes,
+            card.status,
+            card.source_id,
+            card.created_at,
+            card.updated_at]
+
           );
         } catch (e) {
           console.warn('Failed to restore credit card', card.id, e);
@@ -627,23 +627,23 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           await executeSql(
             `INSERT INTO credit_card_statements (id, card_id, statement_start, statement_end, statement_date, due_date, opening_balance, purchases, refunds, fees, interest, payments, closing_balance, minimum_due, status, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
             [
-              stmt.id,
-              stmt.card_id,
-              stmt.statement_start,
-              stmt.statement_end,
-              stmt.statement_date,
-              stmt.due_date,
-              stmt.opening_balance,
-              stmt.purchases,
-              stmt.refunds,
-              stmt.fees,
-              stmt.interest,
-              stmt.payments,
-              stmt.closing_balance,
-              stmt.minimum_due,
-              stmt.status,
-              stmt.created_at,
-            ]
+            stmt.id,
+            stmt.card_id,
+            stmt.statement_start,
+            stmt.statement_end,
+            stmt.statement_date,
+            stmt.due_date,
+            stmt.opening_balance,
+            stmt.purchases,
+            stmt.refunds,
+            stmt.fees,
+            stmt.interest,
+            stmt.payments,
+            stmt.closing_balance,
+            stmt.minimum_due,
+            stmt.status,
+            stmt.created_at]
+
           );
         } catch (e) {
           console.warn('Failed to restore credit card statement', stmt.id, e);
@@ -656,16 +656,16 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           await executeSql(
             `INSERT INTO credit_card_payments (id, card_id, statement_id, transaction_id, amount, payment_date, source_id, notes, created_at) VALUES (?,?,?,?,?,?,?,?,?)`,
             [
-              payment.id,
-              payment.card_id,
-              payment.statement_id,
-              payment.transaction_id,
-              payment.amount,
-              payment.payment_date,
-              payment.source_id,
-              payment.notes,
-              payment.created_at,
-            ]
+            payment.id,
+            payment.card_id,
+            payment.statement_id,
+            payment.transaction_id,
+            payment.amount,
+            payment.payment_date,
+            payment.source_id,
+            payment.notes,
+            payment.created_at]
+
           );
         } catch (e) {
           console.warn('Failed to restore credit card payment', payment.id, e);
@@ -718,19 +718,19 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       credit_card_statements = [],
       credit_card_payments = [],
       notifications = [],
-      notification_settings = [], // Backward compatibility
+      notification_settings = [] // Backward compatibility
     } = backupData.data || {};
 
     const restoredCategoryBudgets =
-      Array.isArray(category_budgets) && category_budgets.length > 0
-        ? category_budgets
-        : categoryBudgets;
+    Array.isArray(category_budgets) && category_budgets.length > 0 ?
+    category_budgets :
+    categoryBudgets;
 
     // Support old backups
     const restoredNotifications =
-      notifications.length > 0
-        ? notifications
-        : notification_settings;
+    notifications.length > 0 ?
+    notifications :
+    notification_settings;
 
     // ---------------------------------------------------------------
     // PRE-RESTORE DEDUPLICATION
@@ -751,13 +751,13 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           continue;
         }
         // Prefer paid bill with a linked transaction; tiebreak by higher id
-        const score = b => (b.is_paid ? 2 : 0) + (b.linked_transaction_id ? 1 : 0);
-        if (score(bill) > score(current) || (score(bill) === score(current) && bill.id > current.id)) {
+        const score = (b) => (b.is_paid ? 2 : 0) + (b.linked_transaction_id ? 1 : 0);
+        if (score(bill) > score(current) || score(bill) === score(current) && bill.id > current.id) {
           bestBySlot.set(key, bill);
         }
       }
 
-      const winnerSet = new Set(Array.from(bestBySlot.values()).map(b => b.id));
+      const winnerSet = new Set(Array.from(bestBySlot.values()).map((b) => b.id));
       const discardedToWinner = {};
       for (const bill of rawBills) {
         if (winnerSet.has(bill.id)) continue;
@@ -768,19 +768,19 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
 
       // Re-point bill_linked_transactions whose bill_id was discarded, then dedup pairs
       const seenPairs = new Set();
-      const fixedLinkedTxs = rawBillLinkedTxs
-        .map(item => ({
-          ...item,
-          bill_id: discardedToWinner[item.bill_id] !== undefined
-            ? discardedToWinner[item.bill_id]
-            : item.bill_id,
-        }))
-        .filter(item => {
-          const k = `${item.bill_id}|${item.transaction_id}`;
-          if (seenPairs.has(k)) return false;
-          seenPairs.add(k);
-          return true;
-        });
+      const fixedLinkedTxs = rawBillLinkedTxs.
+      map((item) => ({
+        ...item,
+        bill_id: discardedToWinner[item.bill_id] !== undefined ?
+        discardedToWinner[item.bill_id] :
+        item.bill_id
+      })).
+      filter((item) => {
+        const k = `${item.bill_id}|${item.transaction_id}`;
+        if (seenPairs.has(k)) return false;
+        seenPairs.add(k);
+        return true;
+      });
 
       console.log(
         `Bill dedup: ${rawBills.length} → ${bestBySlot.size} bills, ` +
@@ -790,38 +790,38 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       return {
         dedupedBills: Array.from(bestBySlot.values()),
         dedupedBillLinkedTxs: fixedLinkedTxs,
-        discardedToWinner,
+        discardedToWinner
       };
     };
 
     const { dedupedBills, dedupedBillLinkedTxs, discardedToWinner } =
-      deduplicateBills(bills, bill_linked_transactions);
+    deduplicateBills(bills, bill_linked_transactions);
 
     const cleanBills = dedupedBills;
     const cleanBillLinkedTxs = dedupedBillLinkedTxs;
 
-    const billsWithLinkedTx = cleanBills.filter(b => b.linked_transaction_id);
+    const billsWithLinkedTx = cleanBills.filter((b) => b.linked_transaction_id);
     const totalItems =
-      categories.length +
-      sources.length +
-      cleanBills.length +
-      transactions.length +
-      budgets.length +
-      billsWithLinkedTx.length +
-      loans.length +
-      loan_payments.length +
-      restoredCategoryBudgets.length +
-      cleanBillLinkedTxs.length +
-      credit_cards.length +
-      credit_card_statements.length +
-      credit_card_payments.length +
-      restoredNotifications.length;
+    categories.length +
+    sources.length +
+    cleanBills.length +
+    transactions.length +
+    budgets.length +
+    billsWithLinkedTx.length +
+    loans.length +
+    loan_payments.length +
+    restoredCategoryBudgets.length +
+    cleanBillLinkedTxs.length +
+    credit_cards.length +
+    credit_card_statements.length +
+    credit_card_payments.length +
+    restoredNotifications.length;
     let processedItems = 0;
 
     const updateProgress = (completedInChunk, stepMessage) => {
       processedItems += completedInChunk;
       if (totalItems > 0) {
-        const percentage = Math.min(99, Math.round((processedItems / totalItems) * 100));
+        const percentage = Math.min(99, Math.round(processedItems / totalItems * 100));
         safeOnProgress(percentage, `${stepMessage} (${processedItems}/${totalItems})`);
       }
     };
@@ -886,7 +886,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
     await processBatch(
       credit_cards,
       async (card) => {
-        const mappedSourceId = card.source_id ? (sourceMap[card.source_id] || null) : null;
+        const mappedSourceId = card.source_id ? sourceMap[card.source_id] || null : null;
 
         if (mode === 'merge') {
           const existing = await executeSql(
@@ -908,24 +908,24 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
             currency, color, notes, status, source_id, created_at, updated_at
           ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [
-            card.name,
-            card.bank,
-            card.last4,
-            card.network,
-            card.credit_limit,
-            card.outstanding,
-            card.available_limit,
-            card.statement_day,
-            card.due_after_days,
-            card.minimum_due_percent,
-            card.currency,
-            card.color,
-            card.notes,
-            card.status,
-            mappedSourceId,
-            now,
-            updatedAt,
-          ]
+          card.name,
+          card.bank,
+          card.last4,
+          card.network,
+          card.credit_limit,
+          card.outstanding,
+          card.available_limit,
+          card.statement_day,
+          card.due_after_days,
+          card.minimum_due_percent,
+          card.currency,
+          card.color,
+          card.notes,
+          card.status,
+          mappedSourceId,
+          now,
+          updatedAt]
+
         );
         cardMap[card.id] = res.insertId;
       },
@@ -967,9 +967,9 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
                AND due_date = ?
                AND IFNULL(parent_bill_id, 0) = IFNULL(?, 0)
              LIMIT 1`,
-            [bill.name, bill.due_date, bill.parent_bill_id
-              ? (billMap[bill.parent_bill_id] || bill.parent_bill_id)
-              : null]
+            [bill.name, bill.due_date, bill.parent_bill_id ?
+            billMap[bill.parent_bill_id] || bill.parent_bill_id :
+            null]
           );
 
           if (existing.rows.length > 0) {
@@ -996,31 +996,31 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
             parent_bill_id, created_at, updated_at, deleted_at
           ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [
-            bill.name,
-            bill.amount,
-            bill.due_date,
-            bill.status,
-            bill.is_recurring ? 1 : 0,
-            bill.recurrence_type || null,
-            bill.recurrence_interval || 1,
-            bill.recurrence_end_date || null,
-            categoryMap[bill.category_id] || null,
-            sourceMap[bill.source_id] || null,
-            bill.reminder_days_before ?? 2,
-            bill.last_reminded_at || null,
-            bill.auto_pay ? 1 : 0,
-            bill.notes || null,
-            bill.attachment_url || null,
-            null,                                    // linked_transaction_id — set in step 6
-            bill.paid_at || null,
-            bill.is_paid ? 1 : 0,
-            bill.parent_bill_id
-              ? (billMap[bill.parent_bill_id] || null)
-              : null,
-            bill.created_at || now,
-            bill.updated_at || now,
-            bill.deleted_at || null,
-          ]
+          bill.name,
+          bill.amount,
+          bill.due_date,
+          bill.status,
+          bill.is_recurring ? 1 : 0,
+          bill.recurrence_type || null,
+          bill.recurrence_interval || 1,
+          bill.recurrence_end_date || null,
+          categoryMap[bill.category_id] || null,
+          sourceMap[bill.source_id] || null,
+          bill.reminder_days_before ?? 2,
+          bill.last_reminded_at || null,
+          bill.auto_pay ? 1 : 0,
+          bill.notes || null,
+          bill.attachment_url || null,
+          null, // linked_transaction_id — set in step 6
+          bill.paid_at || null,
+          bill.is_paid ? 1 : 0,
+          bill.parent_bill_id ?
+          billMap[bill.parent_bill_id] || null :
+          null,
+          bill.created_at || now,
+          bill.updated_at || now,
+          bill.deleted_at || null]
+
         );
 
         billMap[bill.id] = res.insertId;
@@ -1033,8 +1033,8 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
     // 4. Loans
     const sortedLoans = [...loans].sort(
       (a, b) =>
-        new Date(a.loan_start_date) -
-        new Date(b.loan_start_date)
+      new Date(a.loan_start_date) -
+      new Date(b.loan_start_date)
     );
     await processBatch(
       sortedLoans,
@@ -1050,12 +1050,12 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
                 AND IFNULL(loan_direction, 'BORROWED') = ?
               LIMIT 1`,
             [
-              loan.loan_name,
-              loan.lender,
-              loan.principal_amount,
-              loan.loan_start_date,
-              loan.loan_direction || 'BORROWED'
-            ]
+            loan.loan_name,
+            loan.lender,
+            loan.principal_amount,
+            loan.loan_start_date,
+            loan.loan_direction || 'BORROWED']
+
           );
 
           if (existing.rows.length > 0) {
@@ -1075,18 +1075,18 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
                 remaining_months, status, notes, created_at, updated_at
             ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [
-            loan.loan_name, loan.loan_type, loan.lender,
-            loan.loan_direction || 'BORROWED',
-            loan.principal_amount, loan.interest_rate,
-            loan.loan_start_date, loan.loan_end_date,
-            loan.tenure_months, loan.emi_amount, loan.emi_day,
-            loan.outstanding_amount, loan.principal_paid,
-            loan.interest_paid, loan.total_paid,
-            loan.total_prepayment || 0, loan.remaining_months,
-            loan.status || 'Active', loan.notes,
-            loan.created_at || new Date().toISOString(),
-            loan.updated_at || new Date().toISOString()
-          ]
+          loan.loan_name, loan.loan_type, loan.lender,
+          loan.loan_direction || 'BORROWED',
+          loan.principal_amount, loan.interest_rate,
+          loan.loan_start_date, loan.loan_end_date,
+          loan.tenure_months, loan.emi_amount, loan.emi_day,
+          loan.outstanding_amount, loan.principal_paid,
+          loan.interest_paid, loan.total_paid,
+          loan.total_prepayment || 0, loan.remaining_months,
+          loan.status || 'Active', loan.notes,
+          loan.created_at || new Date().toISOString(),
+          loan.updated_at || new Date().toISOString()]
+
         );
 
         loanMap[loan.id] = res.insertId;
@@ -1110,7 +1110,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           // bill instances. Without bill_id, all those transactions collapse into one
           // restored row, leaving every other bill unlinked (the "duplicate unlinked bill"
           // symptom). bill_id is remapped via billMap before comparison.
-          const mappedBillId = tx.bill_id ? (billMap[tx.bill_id] || null) : null;
+          const mappedBillId = tx.bill_id ? billMap[tx.bill_id] || null : null;
           const existing = await executeSql(
             `SELECT id
               FROM transactions
@@ -1122,13 +1122,13 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
               AND IFNULL(bill_id,0) = IFNULL(?,0)
               LIMIT 1`,
             [
-              tx.type,
-              tx.amount,
-              tx.date,
-              tx.notes,
-              tx.loan_id ? (loanMap[tx.loan_id] || null) : null,
-              mappedBillId,
-            ]
+            tx.type,
+            tx.amount,
+            tx.date,
+            tx.notes,
+            tx.loan_id ? loanMap[tx.loan_id] || null : null,
+            mappedBillId]
+
           );
 
           if (existing.rows.length > 0) {
@@ -1143,8 +1143,8 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           // Remap foreign keys
           category_id: categoryMap[tx.category_id] || null,
           source_id: sourceMap[tx.source_id] || null,
-          bill_id: tx.bill_id ? (billMap[tx.bill_id] || null) : null,
-          loan_id: tx.loan_id ? (loanMap[tx.loan_id] || null) : null,
+          bill_id: tx.bill_id ? billMap[tx.bill_id] || null : null,
+          loan_id: tx.loan_id ? loanMap[tx.loan_id] || null : null,
 
           // Preserve loan metadata
           loan_payment_type: tx.loan_payment_type || null,
@@ -1158,7 +1158,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           direction: tx.direction || null,
 
           // Preserve counted/excluded flag — default to 1 if missing (old backups)
-          is_counted: tx.is_counted !== undefined ? tx.is_counted : 1,
+          is_counted: tx.is_counted !== undefined ? tx.is_counted : 1
         };
 
         try {
@@ -1234,22 +1234,22 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
             closing_balance, minimum_due, status, created_at
           ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [
-            newCardId,
-            statement.statement_start,
-            statement.statement_end,
-            statement.statement_date,
-            statement.due_date,
-            statement.opening_balance,
-            statement.purchases,
-            statement.refunds,
-            statement.fees,
-            statement.interest,
-            statement.payments,
-            statement.closing_balance,
-            statement.minimum_due,
-            statement.status,
-            statement.created_at || new Date().toISOString(),
-          ]
+          newCardId,
+          statement.statement_start,
+          statement.statement_end,
+          statement.statement_date,
+          statement.due_date,
+          statement.opening_balance,
+          statement.purchases,
+          statement.refunds,
+          statement.fees,
+          statement.interest,
+          statement.payments,
+          statement.closing_balance,
+          statement.minimum_due,
+          statement.status,
+          statement.created_at || new Date().toISOString()]
+
         );
         statementMap[statement.id] = insertRes.insertId;
       },
@@ -1265,9 +1265,9 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         const newCardId = cardMap[payment.card_id];
         if (!newCardId) return;
 
-        const newTransactionId = payment.transaction_id
-          ? (transactionMap[payment.transaction_id] || null)
-          : null;
+        const newTransactionId = payment.transaction_id ?
+        transactionMap[payment.transaction_id] || null :
+        null;
 
         if (mode === 'merge') {
           const existing = await executeSql(
@@ -1283,15 +1283,15 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
             source_id, notes, created_at
           ) VALUES (?,?,?,?,?,?,?,?)`,
           [
-            newCardId,
-            payment.statement_id ? (statementMap?.[payment.statement_id] || null) : null,
-            newTransactionId,
-            payment.amount,
-            payment.payment_date,
-            payment.source_id ? (sourceMap[payment.source_id] || null) : null,
-            payment.notes,
-            payment.created_at || new Date().toISOString(),
-          ]
+          newCardId,
+          payment.statement_id ? statementMap?.[payment.statement_id] || null : null,
+          newTransactionId,
+          payment.amount,
+          payment.payment_date,
+          payment.source_id ? sourceMap[payment.source_id] || null : null,
+          payment.notes,
+          payment.created_at || new Date().toISOString()]
+
         );
       },
       (count) => {
@@ -1323,11 +1323,11 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
            AND payment_type = ?
          LIMIT 1`,
               [
-                newLoanId,
-                payment.payment_date,
-                payment.payment_amount,
-                payment.payment_type
-              ]
+              newLoanId,
+              payment.payment_date,
+              payment.payment_amount,
+              payment.payment_type]
+
             );
 
             if (existing.rows.length > 0) {
@@ -1349,9 +1349,9 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           }
         }
 
-        const newTransactionId = payment.transaction_id
-          ? (transactionMap[payment.transaction_id] || null)
-          : null;
+        const newTransactionId = payment.transaction_id ?
+        transactionMap[payment.transaction_id] || null :
+        null;
 
         if (payment.transaction_id && !transactionMap[payment.transaction_id]) {
           console.warn(
@@ -1377,26 +1377,26 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       )
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
           [
-            newLoanId,
-            payment.payment_date,
-            payment.payment_amount,
-            payment.principal_component,
-            payment.interest_component,
-            payment.remaining_balance,
-            payment.payment_type,
-            payment.payment_source_id
-              ? (sourceMap[payment.payment_source_id] || null)
-              : null,
+          newLoanId,
+          payment.payment_date,
+          payment.payment_amount,
+          payment.principal_component,
+          payment.interest_component,
+          payment.remaining_balance,
+          payment.payment_type,
+          payment.payment_source_id ?
+          sourceMap[payment.payment_source_id] || null :
+          null,
 
-            payment.payment_category_id
-              ? (categoryMap[payment.payment_category_id] || null)
-              : null,
-            payment.transaction_id
-              ? (transactionMap[payment.transaction_id] || null)
-              : null,
-            payment.remarks,
-            payment.created_at
-          ]
+          payment.payment_category_id ?
+          categoryMap[payment.payment_category_id] || null :
+          null,
+          payment.transaction_id ?
+          transactionMap[payment.transaction_id] || null :
+          null,
+          payment.remarks,
+          payment.created_at]
+
         );
       },
       (count) => {
@@ -1417,9 +1417,9 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
          WHERE category_id = ?
            AND month = ?`,
             [
-              mappedCategoryId,
-              budget.month
-            ]
+            mappedCategoryId,
+            budget.month]
+
           );
 
           if (existing.rows.length > 0) {
@@ -1453,13 +1453,13 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       )
       VALUES (?,?,?,?,?,?)`,
           [
-            categoryMap[item.category_id] || null,
-            item.amount,
-            item.month,
-            item.year,
-            item.created_at || new Date().toISOString(),
-            item.updated_at || new Date().toISOString(),
-          ]
+          categoryMap[item.category_id] || null,
+          item.amount,
+          item.month,
+          item.year,
+          item.created_at || new Date().toISOString(),
+          item.updated_at || new Date().toISOString()]
+
         );
       },
       (count) => {
@@ -1501,10 +1501,10 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       )
       VALUES (?,?,?)`,
           [
-            newBillId,
-            newTransactionId,
-            item.linked_at || new Date().toISOString(),
-          ]
+          newBillId,
+          newTransactionId,
+          item.linked_at || new Date().toISOString()]
+
         );
       },
       (count) => {
@@ -1543,9 +1543,9 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           const isMinuteCorrupted = typeof ns.minute === 'string';
 
           // If corrupted, use safe defaults instead of skipping
-          const safeHour = isHourCorrupted ? 9 : (Number(ns.hour) || 0);
-          const safeMinute = isMinuteCorrupted ? 0 : (Number(ns.minute) || 0);
-          const safeEnabled = (ns.enabled === 1 || ns.enabled === true) ? 1 : 0;
+          const safeHour = isHourCorrupted ? 9 : Number(ns.hour) || 0;
+          const safeMinute = isMinuteCorrupted ? 0 : Number(ns.minute) || 0;
+          const safeEnabled = ns.enabled === 1 || ns.enabled === true ? 1 : 0;
 
           const existing = await getNotificationByType(ns.type);
           if (existing) {
@@ -1554,7 +1554,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
               hour: safeHour,
               minute: safeMinute,
               title: ns.title || existing.title,
-              body: ns.body || existing.body,
+              body: ns.body || existing.body
             });
           }
         } catch (e) {

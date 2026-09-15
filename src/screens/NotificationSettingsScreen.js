@@ -6,25 +6,25 @@ import {
   TouchableOpacity,
   StyleSheet,
   Switch,
-  Modal,
-  Platform,
-  Alert,
-} from "react-native";
+
+
+  Alert } from
+"react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Button as PaperButton } from "react-native-paper";
+
 import MuiDateTimePicker from "../components/MuiDateTimePicker";
 import {
   getNotifications,
-  updateNotification,
-} from "../database/notifications";
+  updateNotification } from
+"../database/notifications";
 import {
   scheduleNotification,
   cancelNotification,
-  requestPermission,
-  checkYesterdaySpend,
-  checkBillDue,
-  checkLoanEmi,
-} from "../services/notificationService";
+  requestPermission } from
+
+
+
+"../services/notificationService";
 
 const TYPE_META = {
   DAILY_SPEND: {
@@ -32,14 +32,14 @@ const TYPE_META = {
     color: "#7C3AED",
     bg: "#EDE9FE",
     label: "Daily Expense Reminder",
-    description: "Reminds you every day to log your expenses.",
+    description: "Reminds you every day to log your expenses."
   },
   YESTERDAY_SPEND: {
     icon: "calendar-clock",
     color: "#EA580C",
     bg: "#FED7AA",
     label: "Missed Expense Alert",
-    description: "Notifies if you didn't record any expense yesterday.",
+    description: "Notifies if you didn't record any expense yesterday."
   },
   BILL_DUE: {
     icon: "file-document-alert-outline",
@@ -47,15 +47,15 @@ const TYPE_META = {
     bg: "#FEE2E2",
     label: "Bill Due Reminder",
     description:
-      "Alerts you before bills are due based on reminder days set per bill.",
+    "Alerts you before bills are due based on reminder days set per bill."
   },
   LOAN_EMI: {
     icon: "bank-outline",
     color: "#2563EB",
     bg: "#DBEAFE",
     label: "Loan EMI Reminder",
-    description: "Reminds you on your EMI due day for each active loan.",
-  },
+    description: "Reminds you on your EMI due day for each active loan."
+  }
 };
 
 function pad(n) {
@@ -94,7 +94,7 @@ export default function NotificationSettingsScreen() {
         Alert.alert(
           "Permission Required",
           "Please enable notifications for SpendoraX in your device settings.",
-          [{ text: "OK" }],
+          [{ text: "OK" }]
         );
         return;
       }
@@ -109,12 +109,12 @@ export default function NotificationSettingsScreen() {
           body: notification.body,
           hour: notification.hour,
           minute: notification.minute,
-          payload: notification.payload,
+          payload: notification.payload
         });
         // Save enabled + identifier, hour/minute stay unchanged
         await updateNotification(notification.id, {
           enabled: 1,
-          notification_identifier: identifier,
+          notification_identifier: identifier
         });
       } else {
         if (notification.notification_identifier) {
@@ -122,7 +122,7 @@ export default function NotificationSettingsScreen() {
         }
         await updateNotification(notification.id, {
           enabled: 0,
-          notification_identifier: null,
+          notification_identifier: null
         });
       }
 
@@ -162,14 +162,14 @@ export default function NotificationSettingsScreen() {
           body: notification.body,
           hour,
           minute,
-          payload: notification.payload,
+          payload: notification.payload
         });
 
         // Save hour, minute AND new identifier together atomically
         await updateNotification(notification.id, {
           hour,
           minute,
-          notification_identifier: identifier,
+          notification_identifier: identifier
         });
       } else {
         // Not enabled — just save the time preference for when it gets enabled
@@ -192,15 +192,15 @@ export default function NotificationSettingsScreen() {
     <View style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+        showsVerticalScrollIndicator={false}>
+        
         {/* Header info */}
         <View style={styles.infoCard}>
           <MaterialCommunityIcons
             name="bell-ring-outline"
             size={24}
-            color="#7C3AED"
-          />
+            color="#7C3AED" />
+          
           <Text style={styles.infoText}>
             Enable reminders to stay on top of your expenses, bills, and loan
             EMIs. Each reminder can be scheduled at your preferred time.
@@ -213,7 +213,7 @@ export default function NotificationSettingsScreen() {
             color: "#64748B",
             bg: "#F1F5F9",
             label: notification.title,
-            description: notification.body,
+            description: notification.body
           };
           const isSaving = saving === notification.id;
           const isEnabled = Boolean(notification.enabled);
@@ -221,16 +221,16 @@ export default function NotificationSettingsScreen() {
           return (
             <View
               key={notification.id}
-              style={[styles.card, isEnabled && styles.cardActive]}
-            >
+              style={[styles.card, isEnabled && styles.cardActive]}>
+              
               {/* Icon + Label row */}
               <View style={styles.cardHeader}>
                 <View style={[styles.iconWrap, { backgroundColor: meta.bg }]}>
                   <MaterialCommunityIcons
                     name={meta.icon}
                     size={24}
-                    color={meta.color}
-                  />
+                    color={meta.color} />
+                  
                 </View>
                 <View style={{ flex: 1, marginLeft: 14 }}>
                   <Text style={styles.cardTitle}>{meta.label}</Text>
@@ -241,35 +241,35 @@ export default function NotificationSettingsScreen() {
                   onValueChange={() => handleToggle(notification)}
                   disabled={isSaving}
                   trackColor={{ false: "#E2E8F0", true: meta.color + "60" }}
-                  thumbColor={isEnabled ? meta.color : "#94A3B8"}
-                />
+                  thumbColor={isEnabled ? meta.color : "#94A3B8"} />
+                
               </View>
 
               {/* Time row — only shown when enabled */}
-              {isEnabled && (
-                <TouchableOpacity
-                  style={[styles.timeRow, { borderColor: meta.color + "40" }]}
-                  onPress={() => openTimePicker(notification)}
-                  activeOpacity={0.8}
-                >
+              {isEnabled &&
+              <TouchableOpacity
+                style={[styles.timeRow, { borderColor: meta.color + "40" }]}
+                onPress={() => openTimePicker(notification)}
+                activeOpacity={0.8}>
+                
                   <MaterialCommunityIcons
-                    name="clock-outline"
-                    size={18}
-                    color={meta.color}
-                  />
+                  name="clock-outline"
+                  size={18}
+                  color={meta.color} />
+                
                   <Text style={[styles.timeText, { color: meta.color }]}>
                     {formatTime(notification.hour, notification.minute)}
                   </Text>
                   <MaterialCommunityIcons
-                    name="pencil-outline"
-                    size={16}
-                    color={meta.color}
-                    style={{ marginLeft: "auto" }}
-                  />
+                  name="pencil-outline"
+                  size={16}
+                  color={meta.color}
+                  style={{ marginLeft: "auto" }} />
+                
                 </TouchableOpacity>
-              )}
-            </View>
-          );
+              }
+            </View>);
+
         })}
 
         <View style={{ height: 40 }} />
@@ -291,10 +291,10 @@ export default function NotificationSettingsScreen() {
             setShowTimePicker(false);
             setEditingId(null);
           }
-        }}
-      />
-    </View>
-  );
+        }} />
+      
+    </View>);
+
 }
 
 const styles = StyleSheet.create({
@@ -308,13 +308,13 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 16,
     marginBottom: 20,
-    gap: 12,
+    gap: 12
   },
   infoText: {
     flex: 1,
     fontSize: 13,
     color: "#4C1D95",
-    lineHeight: 20,
+    lineHeight: 20
   },
 
   card: {
@@ -328,33 +328,33 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 2 }
   },
   cardActive: {
     borderColor: "#C4B5FD",
-    backgroundColor: "#FDFCFF",
+    backgroundColor: "#FDFCFF"
   },
   cardHeader: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "center"
   },
   iconWrap: {
     width: 48,
     height: 48,
     borderRadius: 14,
     justifyContent: "center",
-    alignItems: "center",
+    alignItems: "center"
   },
   cardTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#111827",
+    color: "#111827"
   },
   cardDesc: {
     fontSize: 12,
     color: "#64748B",
     marginTop: 3,
-    lineHeight: 18,
+    lineHeight: 18
   },
 
   timeRow: {
@@ -366,24 +366,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderWidth: 1,
-    gap: 8,
+    gap: 8
   },
   timeText: {
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "700"
   },
 
   pickerOverlay: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(15,23,42,0.45)",
+    backgroundColor: "rgba(15,23,42,0.45)"
   },
   pickerSheet: {
     backgroundColor: "#FFF",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: 24,
-    paddingBottom: 40,
+    paddingBottom: 40
   },
   pickerHandle: {
     width: 42,
@@ -391,17 +391,17 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: "#D6D6D6",
     alignSelf: "center",
-    marginBottom: 16,
+    marginBottom: 16
   },
   pickerTitle: {
     fontSize: 20,
     fontWeight: "800",
     color: "#111827",
     marginBottom: 20,
-    textAlign: "center",
+    textAlign: "center"
   },
   pickerButtons: {
     flexDirection: "row",
-    marginTop: 24,
-  },
+    marginTop: 24
+  }
 });
