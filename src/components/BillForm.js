@@ -16,40 +16,31 @@ import {
   Chip,
   Switch,
 } from "react-native-paper";
-
-import DateTimePicker from "@react-native-community/datetimepicker";
+import MuiDateTimePicker from "./MuiDateTimePicker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-
 import { getCategories } from "../services/categories";
 import { getSources } from "../services/sources";
 import { createBill, updateBill } from "../services/bills";
 import { RECURRENCE_TYPES } from "../services/billUtils";
-import ManualDateTimePicker from "./ManualDateTimePicker";
 import { Colors } from "./Theme";
 
 function toDateStr(isoOrDate) {
   if (!isoOrDate) {
     return new Date().toISOString().slice(0, 10);
   }
-
   return String(isoOrDate).slice(0, 10);
 }
 
 function formatDisplayDate(dateString) {
   if (!dateString) return "";
-
   const parts = String(dateString).split("-").map(Number);
-
   if (parts.length !== 3 || parts.some(Number.isNaN)) {
     return dateString;
   }
-
   const date = new Date(parts[0], parts[1] - 1, parts[2]);
-
   if (Number.isNaN(date.getTime())) {
     return dateString;
   }
-
   return date.toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "short",
@@ -59,9 +50,7 @@ function formatDisplayDate(dateString) {
 
 function getRecurrenceLabel(type) {
   if (!type) return "Monthly";
-
   const value = String(type).toLowerCase();
-
   switch (value) {
     case "daily":
       return "Daily";
@@ -83,14 +72,8 @@ function getRecurrenceLabel(type) {
  * Do not use database icon names directly.
  * Invalid MaterialCommunityIcons names render as "?".
  */
-function SelectionRow({
-  type,
-  label,
-  value,
-  onPress,
-}) {
+function SelectionRow({ type, label, value, onPress }) {
   const isSource = type === "source";
-
   return (
     <TouchableOpacity
       activeOpacity={0.82}
@@ -101,31 +84,19 @@ function SelectionRow({
         style={[
           styles.selectionIcon,
           {
-            backgroundColor: isSource
-              ? "#EFF6FF"
-              : "#F5F3FF",
+            backgroundColor: isSource ? "#EFF6FF" : "#F5F3FF",
           },
         ]}
       >
         <MaterialCommunityIcons
-          name={
-            isSource
-              ? "wallet-outline"
-              : "tag-outline"
-          }
+          name={isSource ? "wallet-outline" : "tag-outline"}
           size={20}
-          color={
-            isSource
-              ? "#2563EB"
-              : "#7C3AED"
-          }
+          color={isSource ? "#2563EB" : "#7C3AED"}
         />
       </View>
 
       <View style={styles.selectionContent}>
-        <Text style={styles.selectionLabel}>
-          {label}
-        </Text>
+        <Text style={styles.selectionLabel}>{label}</Text>
 
         <Text
           style={styles.selectionValue}
@@ -136,40 +107,23 @@ function SelectionRow({
         </Text>
       </View>
 
-      <MaterialCommunityIcons
-        name="chevron-right"
-        size={21}
-        color="#94A3B8"
-      />
+      <MaterialCommunityIcons name="chevron-right" size={21} color="#94A3B8" />
     </TouchableOpacity>
   );
 }
 
-function SectionHeader({
-  icon,
-  title,
-  subtitle,
-}) {
+function SectionHeader({ icon, title, subtitle }) {
   return (
     <View style={styles.sectionHeader}>
       <View style={styles.sectionIcon}>
-        <MaterialCommunityIcons
-          name={icon}
-          size={18}
-          color={Colors.primary}
-        />
+        <MaterialCommunityIcons name={icon} size={18} color={Colors.primary} />
       </View>
 
       <View style={styles.sectionHeaderText}>
-        <Text style={styles.sectionTitle}>
-          {title}
-        </Text>
+        <Text style={styles.sectionTitle}>{title}</Text>
 
         {!!subtitle && (
-          <Text
-            style={styles.sectionSubtitle}
-            numberOfLines={1}
-          >
+          <Text style={styles.sectionSubtitle} numberOfLines={1}>
             {subtitle}
           </Text>
         )}
@@ -178,229 +132,99 @@ function SectionHeader({
   );
 }
 
-export default function BillForm({
-  bill,
-  onSaved,
-  onCancel,
-}) {
-  const { width: screenWidth } =
-    useWindowDimensions();
-
+export default function BillForm({ bill, onSaved, onCancel }) {
+  const { width: screenWidth } = useWindowDimensions();
   const isSmallPhone = screenWidth < 380;
-
   const isEdit = Boolean(bill?.id);
-
-  const [name, setName] = useState(
-    bill?.name || ""
+  const [name, setName] = useState(bill?.name || "");
+  const [amount, setAmount] = useState(bill ? String(bill.amount) : "");
+  const [dueDate, setDueDate] = useState(toDateStr(bill?.due_date));
+  const [categories, setCategories] = useState([]);
+  const [sources, setSources] = useState([]);
+  const [categoryId, setCategoryId] = useState(bill?.category_id || null);
+  const [sourceId, setSourceId] = useState(bill?.source_id || null);
+  const [isRecurring, setIsRecurring] = useState(Boolean(bill?.is_recurring));
+  const [recurrenceType, setRecurrenceType] = useState(
+    bill?.recurrence_type || "monthly",
   );
-
-  const [amount, setAmount] = useState(
-    bill ? String(bill.amount) : ""
+  const [recurrenceInterval, setRecurrenceInterval] = useState(
+    String(bill?.recurrence_interval || 1),
   );
-
-  const [dueDate, setDueDate] = useState(
-    toDateStr(bill?.due_date)
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState(
+    bill?.recurrence_end_date?.slice(0, 10) || "",
   );
-
-  const [categories, setCategories] =
-    useState([]);
-
-  const [sources, setSources] =
-    useState([]);
-
-  const [categoryId, setCategoryId] =
-    useState(bill?.category_id || null);
-
-  const [sourceId, setSourceId] =
-    useState(bill?.source_id || null);
-
-  const [isRecurring, setIsRecurring] =
-    useState(
-      Boolean(bill?.is_recurring)
-    );
-
-  const [recurrenceType, setRecurrenceType] =
-    useState(
-      bill?.recurrence_type || "monthly"
-    );
-
-  const [
-    recurrenceInterval,
-    setRecurrenceInterval,
-  ] = useState(
-    String(
-      bill?.recurrence_interval || 1
-    )
+  const [reminderDays, setReminderDays] = useState(
+    String(bill?.reminder_days_before ?? 2),
   );
-
-  const [
-    recurrenceEndDate,
-    setRecurrenceEndDate,
-  ] = useState(
-    bill?.recurrence_end_date?.slice(
-      0,
-      10
-    ) || ""
+  const [autoPay, setAutoPay] = useState(Boolean(bill?.auto_pay));
+  const [notes, setNotes] = useState(bill?.notes || "");
+  const [attachmentUrl, setAttachmentUrl] = useState(
+    bill?.attachment_url || "",
   );
-
-  const [reminderDays, setReminderDays] =
-    useState(
-      String(
-        bill?.reminder_days_before ?? 2
-      )
-    );
-
-  const [autoPay, setAutoPay] =
-    useState(
-      Boolean(bill?.auto_pay)
-    );
-
-  const [notes, setNotes] = useState(
-    bill?.notes || ""
-  );
-
-  const [
-    attachmentUrl,
-    setAttachmentUrl,
-  ] = useState(
-    bill?.attachment_url || ""
-  );
-
-  const [
-    showCategoryPicker,
-    setShowCategoryPicker,
-  ] = useState(false);
-
-  const [
-    showSourcePicker,
-    setShowSourcePicker,
-  ] = useState(false);
-
-  const [
-    showDuePicker,
-    setShowDuePicker,
-  ] = useState(false);
-
-  const [
-    showEndPicker,
-    setShowEndPicker,
-  ] = useState(false);
-
-  const [errors, setErrors] =
-    useState({});
-
-  const [
-    categorySearch,
-    setCategorySearch,
-  ] = useState("");
-
-  const [
-    sourceSearch,
-    setSourceSearch,
-  ] = useState("");
-
-  const [
-    showAdvanced,
-    setShowAdvanced,
-  ] = useState(
-    Boolean(notes || attachmentUrl)
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [showSourcePicker, setShowSourcePicker] = useState(false);
+  const [showDuePicker, setShowDuePicker] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [categorySearch, setCategorySearch] = useState("");
+  const [sourceSearch, setSourceSearch] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(
+    Boolean(notes || attachmentUrl),
   );
 
   useEffect(() => {
     (async () => {
       try {
-        const cats = (
-          await getCategories(true)
-        ).filter(
-          (c) => c.type === "expense"
+        const cats = (await getCategories(true)).filter(
+          (c) => c.type === "expense",
         );
-
         setCategories(cats);
-
-        const src =
-          await getSources(true);
-
+        const src = await getSources(true);
         setSources(src);
-
-        if (
-          !categoryId &&
-          cats.length
-        ) {
+        if (!categoryId && cats.length) {
           setCategoryId(cats[0].id);
         }
-
-        if (
-          !sourceId &&
-          src.length
-        ) {
+        if (!sourceId && src.length) {
           setSourceId(src[0].id);
         }
       } catch (error) {
-        console.error(
-          "Failed to load bill form data:",
-          error
-        );
+        console.error("Failed to load bill form data:", error);
       }
     })();
   }, []);
 
-  const selectedCategory =
-    categories.find(
-      (c) => c.id === categoryId
-    );
-
-  const selectedSource =
-    sources.find(
-      (s) => s.id === sourceId
-    );
-
-  const filteredCategories =
-    categories.filter((c) =>
-      String(c.name || "")
-        .toLowerCase()
-        .includes(
-          categorySearch.toLowerCase()
-        )
-    );
-
-  const filteredSources =
-    sources.filter((s) =>
-      String(s.name || "")
-        .toLowerCase()
-        .includes(
-          sourceSearch.toLowerCase()
-        )
-    );
+  const selectedCategory = categories.find((c) => c.id === categoryId);
+  const selectedSource = sources.find((s) => s.id === sourceId);
+  const filteredCategories = categories.filter((c) =>
+    String(c.name || "")
+      .toLowerCase()
+      .includes(categorySearch.toLowerCase()),
+  );
+  const filteredSources = sources.filter((s) =>
+    String(s.name || "")
+      .toLowerCase()
+      .includes(sourceSearch.toLowerCase()),
+  );
 
   function validate() {
     const next = {};
 
     if (!name.trim()) {
-      next.name =
-        "Bill name is required";
+      next.name = "Bill name is required";
     }
 
     const amt = parseFloat(amount);
 
-    if (
-      !amount ||
-      Number.isNaN(amt) ||
-      amt <= 0
-    ) {
-      next.amount =
-        "Enter a valid amount";
+    if (!amount || Number.isNaN(amt) || amt <= 0) {
+      next.amount = "Enter a valid amount";
     }
 
     if (!dueDate) {
-      next.dueDate =
-        "Due date is required";
+      next.dueDate = "Due date is required";
     }
 
     setErrors(next);
 
-    return (
-      Object.keys(next).length === 0
-    );
+    return Object.keys(next).length === 0;
   }
 
   const [submitting, setSubmitting] = useState(false);
@@ -417,45 +241,29 @@ export default function BillForm({
         due_date: dueDate,
         is_recurring: isRecurring,
 
-        recurrence_type: isRecurring
-          ? recurrenceType
-          : null,
+        recurrence_type: isRecurring ? recurrenceType : null,
 
         recurrence_interval: isRecurring
-          ? parseInt(
-            recurrenceInterval,
-            10
-          ) || 1
+          ? parseInt(recurrenceInterval, 10) || 1
           : 1,
 
         recurrence_end_date:
-          isRecurring &&
-            recurrenceEndDate
-            ? recurrenceEndDate
-            : null,
+          isRecurring && recurrenceEndDate ? recurrenceEndDate : null,
 
         category_id: categoryId,
         source_id: sourceId,
 
-        reminder_days_before:
-          parseInt(
-            reminderDays,
-            10
-          ) || 2,
+        reminder_days_before: parseInt(reminderDays, 10) || 2,
 
         auto_pay: autoPay,
 
         notes: notes || null,
 
-        attachment_url:
-          attachmentUrl || null,
+        attachment_url: attachmentUrl || null,
       };
 
       if (isEdit) {
-        await updateBill(
-          bill.id,
-          payload
-        );
+        await updateBill(bill.id, payload);
       } else {
         await createBill(payload);
       }
@@ -466,35 +274,20 @@ export default function BillForm({
     }
   }
 
-  const dueParts = dueDate
-    ? dueDate.split("-").map(Number)
+  const dueParts = dueDate ? dueDate.split("-").map(Number) : [];
+
+  const endParts = recurrenceEndDate
+    ? recurrenceEndDate.split("-").map(Number)
     : [];
 
-  const endParts =
-    recurrenceEndDate
-      ? recurrenceEndDate
-        .split("-")
-        .map(Number)
-      : [];
-
-  const recurrenceIntervalNumber =
-    parseInt(
-      recurrenceInterval,
-      10
-    ) || 1;
+  const recurrenceIntervalNumber = parseInt(recurrenceInterval, 10) || 1;
 
   const recurrenceText =
     recurrenceIntervalNumber === 1
-      ? `Every ${getRecurrenceLabel(
-        recurrenceType
-      ).toLowerCase()}`
+      ? `Every ${getRecurrenceLabel(recurrenceType).toLowerCase()}`
       : `Every ${recurrenceIntervalNumber} ${getRecurrenceLabel(
-        recurrenceType
-      ).toLowerCase()}${recurrenceIntervalNumber >
-        1
-        ? "s"
-        : ""
-      }`;
+          recurrenceType,
+        ).toLowerCase()}${recurrenceIntervalNumber > 1 ? "s" : ""}`;
 
   return (
     <View style={styles.container}>
@@ -507,9 +300,7 @@ export default function BillForm({
           style={[
             styles.headerIcon,
             {
-              backgroundColor: isEdit
-                ? "#F3E8FF"
-                : "#DBEAFE",
+              backgroundColor: isEdit ? "#F3E8FF" : "#DBEAFE",
             },
           ]}
         >
@@ -521,22 +312,12 @@ export default function BillForm({
         </View>
 
         <View style={styles.headerText}>
-          <Text
-            style={styles.headerTitle}
-            numberOfLines={1}
-          >
-            {isEdit
-              ? "Edit Bill"
-              : "Add Bill"}
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {isEdit ? "Edit Bill" : "Add Bill"}
           </Text>
 
-          <Text
-            style={styles.headerSubtitle}
-            numberOfLines={1}
-          >
-            {isEdit
-              ? "Update your bill"
-              : "Track your bill easily"}
+          <Text style={styles.headerSubtitle} numberOfLines={1}>
+            {isEdit ? "Update your bill" : "Track your bill easily"}
           </Text>
         </View>
 
@@ -546,11 +327,7 @@ export default function BillForm({
             onPress={onCancel}
             style={styles.closeButton}
           >
-            <MaterialCommunityIcons
-              name="close"
-              size={20}
-              color="#64748B"
-            />
+            <MaterialCommunityIcons name="close" size={20} color="#64748B" />
           </TouchableOpacity>
         )}
       </View>
@@ -559,13 +336,10 @@ export default function BillForm({
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingHorizontal:
-              isSmallPhone ? 10 : 14,
+            paddingHorizontal: isSmallPhone ? 10 : 14,
           },
         ]}
-        showsVerticalScrollIndicator={
-          false
-        }
+        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* ======================================================= */}
@@ -575,9 +349,7 @@ export default function BillForm({
         <View style={styles.card}>
           {/* NAME */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>
-              Bill name
-            </Text>
+            <Text style={styles.fieldLabel}>Bill name</Text>
 
             <PaperTextInput
               placeholder="e.g. Electricity Bill"
@@ -595,39 +367,20 @@ export default function BillForm({
               mode="outlined"
               dense
               style={styles.input}
-              outlineColor={
-                errors.name
-                  ? "#DC2626"
-                  : "#DCE3EC"
-              }
-              activeOutlineColor={
-                errors.name
-                  ? "#DC2626"
-                  : Colors.primary
-              }
-              left={
-                <PaperTextInput.Icon
-                  icon="pencil"
-                  color="#94A3B8"
-                />
-              }
+              outlineColor={errors.name ? "#DC2626" : "#DCE3EC"}
+              activeOutlineColor={errors.name ? "#DC2626" : Colors.primary}
+              left={<PaperTextInput.Icon icon="pencil" color="#94A3B8" />}
             />
 
             {!!errors.name && (
-              <Text
-                style={styles.errorText}
-              >
-                {errors.name}
-              </Text>
+              <Text style={styles.errorText}>{errors.name}</Text>
             )}
           </View>
 
           {/* AMOUNT */}
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>
-              Amount
-            </Text>
+            <Text style={styles.fieldLabel}>Amount</Text>
 
             <PaperTextInput
               placeholder="0.00"
@@ -646,54 +399,30 @@ export default function BillForm({
               mode="outlined"
               dense
               style={styles.amountInput}
-              outlineColor={
-                errors.amount
-                  ? "#DC2626"
-                  : "#DCE3EC"
-              }
-              activeOutlineColor={
-                errors.amount
-                  ? "#DC2626"
-                  : Colors.primary
-              }
-              left={
-                <PaperTextInput.Icon
-                  icon="currency-inr"
-                  color="#16A34A"
-                />
-              }
+              outlineColor={errors.amount ? "#DC2626" : "#DCE3EC"}
+              activeOutlineColor={errors.amount ? "#DC2626" : Colors.primary}
+              left={<PaperTextInput.Icon icon="currency-inr" color="#16A34A" />}
             />
 
             {!!errors.amount && (
-              <Text
-                style={styles.errorText}
-              >
-                {errors.amount}
-              </Text>
+              <Text style={styles.errorText}>{errors.amount}</Text>
             )}
           </View>
 
           {/* DUE DATE */}
 
           <View style={styles.fieldGroupLast}>
-            <Text style={styles.fieldLabel}>
-              Due date
-            </Text>
+            <Text style={styles.fieldLabel}>Due date</Text>
 
             <TouchableOpacity
               activeOpacity={0.82}
-              onPress={() =>
-                setShowDuePicker(true)
-              }
+              onPress={() => setShowDuePicker(true)}
               style={[
                 styles.dateField,
-                errors.dueDate &&
-                styles.dateFieldError,
+                errors.dueDate && styles.dateFieldError,
               ]}
             >
-              <View
-                style={styles.dateIconBox}
-              >
+              <View style={styles.dateIconBox}>
                 <MaterialCommunityIcons
                   name="calendar-month-outline"
                   size={21}
@@ -701,31 +430,15 @@ export default function BillForm({
                 />
               </View>
 
-              <View
-                style={styles.dateContent}
-              >
-                <Text
-                  style={
-                    styles.dateSmallLabel
-                  }
-                >
-                  Due date
-                </Text>
+              <View style={styles.dateContent}>
+                <Text style={styles.dateSmallLabel}>Due date</Text>
 
                 <Text
-                  style={[
-                    styles.dateText,
-                    !dueDate &&
-                    styles.placeholderText,
-                  ]}
+                  style={[styles.dateText, !dueDate && styles.placeholderText]}
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
-                  {dueDate
-                    ? formatDisplayDate(
-                      dueDate
-                    )
-                    : "Select due date"}
+                  {dueDate ? formatDisplayDate(dueDate) : "Select due date"}
                 </Text>
               </View>
 
@@ -737,11 +450,7 @@ export default function BillForm({
             </TouchableOpacity>
 
             {!!errors.dueDate && (
-              <Text
-                style={styles.errorText}
-              >
-                {errors.dueDate}
-              </Text>
+              <Text style={styles.errorText}>{errors.dueDate}</Text>
             )}
           </View>
         </View>
@@ -760,29 +469,17 @@ export default function BillForm({
           <SelectionRow
             type="source"
             label="Payment source"
-            value={
-              selectedSource?.name ||
-              "Select account"
-            }
-            onPress={() =>
-              setShowSourcePicker(true)
-            }
+            value={selectedSource?.name || "Select account"}
+            onPress={() => setShowSourcePicker(true)}
           />
 
-          <View
-            style={styles.selectionDivider}
-          />
+          <View style={styles.selectionDivider} />
 
           <SelectionRow
             type="category"
             label="Category"
-            value={
-              selectedCategory?.name ||
-              "Select category"
-            }
-            onPress={() =>
-              setShowCategoryPicker(true)
-            }
+            value={selectedCategory?.name || "Select category"}
+            onPress={() => setShowCategoryPicker(true)}
           />
         </View>
 
@@ -804,164 +501,86 @@ export default function BillForm({
               style={[
                 styles.settingIcon,
                 {
-                  backgroundColor:
-                    "#F5F3FF",
+                  backgroundColor: "#F5F3FF",
                 },
               ]}
             >
-              <MaterialCommunityIcons
-                name="repeat"
-                size={20}
-                color="#7C3AED"
-              />
+              <MaterialCommunityIcons name="repeat" size={20} color="#7C3AED" />
             </View>
 
-            <View
-              style={styles.settingContent}
-            >
-              <Text
-                style={styles.settingTitle}
-              >
-                Recurring bill
-              </Text>
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>Recurring bill</Text>
 
-              <Text
-                style={styles.settingSubtitle}
-                numberOfLines={1}
-              >
-                {isRecurring
-                  ? recurrenceText
-                  : "One-time bill"}
+              <Text style={styles.settingSubtitle} numberOfLines={1}>
+                {isRecurring ? recurrenceText : "One-time bill"}
               </Text>
             </View>
 
             <Switch
               value={isRecurring}
-              onValueChange={
-                setIsRecurring
-              }
+              onValueChange={setIsRecurring}
               color={Colors.primary}
             />
           </View>
 
           {isRecurring && (
-            <View
-              style={styles.recurringBox}
-            >
-              <Text
-                style={styles.subLabel}
-              >
-                Repeat frequency
-              </Text>
+            <View style={styles.recurringBox}>
+              <Text style={styles.subLabel}>Repeat frequency</Text>
 
               <ScrollView
                 horizontal
-                showsHorizontalScrollIndicator={
-                  false
-                }
-                contentContainerStyle={
-                  styles.chipContainer
-                }
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipContainer}
               >
-                {RECURRENCE_TYPES.map(
-                  (t) => {
-                    const selected =
-                      recurrenceType ===
-                      t;
+                {RECURRENCE_TYPES.map((t) => {
+                  const selected = recurrenceType === t;
 
-                    return (
-                      <Chip
-                        key={t}
-                        selected={
-                          selected
-                        }
-                        onPress={() =>
-                          setRecurrenceType(
-                            t
-                          )
-                        }
-                        compact
-                        style={[
-                          styles.chip,
-                          selected &&
-                          styles.chipSelected,
-                        ]}
-                        textStyle={[
-                          styles.chipText,
-                          selected &&
-                          styles.chipTextSelected,
-                        ]}
-                      >
-                        {getRecurrenceLabel(
-                          t
-                        )}
-                      </Chip>
-                    );
-                  }
-                )}
+                  return (
+                    <Chip
+                      key={t}
+                      selected={selected}
+                      onPress={() => setRecurrenceType(t)}
+                      compact
+                      style={[styles.chip, selected && styles.chipSelected]}
+                      textStyle={[
+                        styles.chipText,
+                        selected && styles.chipTextSelected,
+                      ]}
+                    >
+                      {getRecurrenceLabel(t)}
+                    </Chip>
+                  );
+                })}
               </ScrollView>
 
-              <View
-                style={
-                  styles.recurringFields
-                }
-              >
+              <View style={styles.recurringFields}>
                 {/* INTERVAL */}
 
-                <View
-                  style={
-                    styles.recurringField
-                  }
-                >
-                  <Text
-                    style={styles.subLabel}
-                  >
-                    Every
-                  </Text>
+                <View style={styles.recurringField}>
+                  <Text style={styles.subLabel}>Every</Text>
 
                   <PaperTextInput
-                    value={
-                      recurrenceInterval
-                    }
-                    onChangeText={
-                      setRecurrenceInterval
-                    }
+                    value={recurrenceInterval}
+                    onChangeText={setRecurrenceInterval}
                     keyboardType="numeric"
                     mode="outlined"
                     dense
                     style={styles.input}
                     left={
-                      <PaperTextInput.Icon
-                        icon="numeric"
-                        color="#7C3AED"
-                      />
+                      <PaperTextInput.Icon icon="numeric" color="#7C3AED" />
                     }
                   />
                 </View>
 
                 {/* END DATE */}
 
-                <View
-                  style={
-                    styles.recurringField
-                  }
-                >
-                  <Text
-                    style={styles.subLabel}
-                  >
-                    End date
-                  </Text>
+                <View style={styles.recurringField}>
+                  <Text style={styles.subLabel}>End date</Text>
 
                   <TouchableOpacity
                     activeOpacity={0.8}
-                    onPress={() =>
-                      setShowEndPicker(
-                        true
-                      )
-                    }
-                    style={
-                      styles.endDateField
-                    }
+                    onPress={() => setShowEndPicker(true)}
+                    style={styles.endDateField}
                   >
                     <MaterialCommunityIcons
                       name="calendar-outline"
@@ -972,15 +591,12 @@ export default function BillForm({
                     <Text
                       style={[
                         styles.endDateText,
-                        !recurrenceEndDate &&
-                        styles.placeholderText,
+                        !recurrenceEndDate && styles.placeholderText,
                       ]}
                       numberOfLines={1}
                     >
                       {recurrenceEndDate
-                        ? formatDisplayDate(
-                          recurrenceEndDate
-                        )
+                        ? formatDisplayDate(recurrenceEndDate)
                         : "Never"}
                     </Text>
 
@@ -997,18 +613,12 @@ export default function BillForm({
 
           {/* REMINDER */}
 
-          <View
-            style={[
-              styles.settingRow,
-              styles.topBorder,
-            ]}
-          >
+          <View style={[styles.settingRow, styles.topBorder]}>
             <View
               style={[
                 styles.settingIcon,
                 {
-                  backgroundColor:
-                    "#FFF7ED",
+                  backgroundColor: "#FFF7ED",
                 },
               ]}
             >
@@ -1019,61 +629,36 @@ export default function BillForm({
               />
             </View>
 
-            <View
-              style={styles.settingContent}
-            >
-              <Text
-                style={styles.settingTitle}
-              >
-                Reminder
-              </Text>
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>Reminder</Text>
 
-              <Text
-                style={styles.settingSubtitle}
-                numberOfLines={1}
-              >
+              <Text style={styles.settingSubtitle} numberOfLines={1}>
                 Notify before due date
               </Text>
             </View>
 
-            <View
-              style={styles.reminderBox}
-            >
+            <View style={styles.reminderBox}>
               <PaperTextInput
                 value={reminderDays}
-                onChangeText={
-                  setReminderDays
-                }
+                onChangeText={setReminderDays}
                 keyboardType="numeric"
                 mode="outlined"
                 dense
-                style={
-                  styles.reminderInput
-                }
+                style={styles.reminderInput}
               />
 
-              <Text
-                style={styles.daysText}
-              >
-                days
-              </Text>
+              <Text style={styles.daysText}>days</Text>
             </View>
           </View>
 
           {/* AUTO PAY */}
 
-          <View
-            style={[
-              styles.settingRow,
-              styles.topBorder,
-            ]}
-          >
+          <View style={[styles.settingRow, styles.topBorder]}>
             <View
               style={[
                 styles.settingIcon,
                 {
-                  backgroundColor:
-                    "#F0FDF4",
+                  backgroundColor: "#F0FDF4",
                 },
               ]}
             >
@@ -1084,19 +669,10 @@ export default function BillForm({
               />
             </View>
 
-            <View
-              style={styles.settingContent}
-            >
-              <Text
-                style={styles.settingTitle}
-              >
-                Auto-pay
-              </Text>
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>Auto-pay</Text>
 
-              <Text
-                style={styles.settingSubtitle}
-                numberOfLines={1}
-              >
+              <Text style={styles.settingSubtitle} numberOfLines={1}>
                 Automatic payment enabled
               </Text>
             </View>
@@ -1115,19 +691,11 @@ export default function BillForm({
 
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={() =>
-            setShowAdvanced(
-              !showAdvanced
-            )
-          }
+          onPress={() => setShowAdvanced(!showAdvanced)}
           style={styles.optionalToggle}
         >
-          <View
-            style={styles.optionalLeft}
-          >
-            <View
-              style={styles.optionalIcon}
-            >
+          <View style={styles.optionalLeft}>
+            <View style={styles.optionalIcon}>
               <MaterialCommunityIcons
                 name="dots-horizontal"
                 size={19}
@@ -1135,29 +703,15 @@ export default function BillForm({
               />
             </View>
 
-            <View
-              style={styles.optionalText}
-            >
-              <Text
-                style={styles.optionalTitle}
-              >
-                Additional details
-              </Text>
+            <View style={styles.optionalText}>
+              <Text style={styles.optionalTitle}>Additional details</Text>
 
-              <Text
-                style={styles.optionalSubtitle}
-              >
-                Notes and attachment
-              </Text>
+              <Text style={styles.optionalSubtitle}>Notes and attachment</Text>
             </View>
           </View>
 
           <MaterialCommunityIcons
-            name={
-              showAdvanced
-                ? "chevron-up"
-                : "chevron-down"
-            }
+            name={showAdvanced ? "chevron-up" : "chevron-down"}
             size={21}
             color="#94A3B8"
           />
@@ -1166,11 +720,7 @@ export default function BillForm({
         {showAdvanced && (
           <View style={styles.card}>
             <View style={styles.fieldGroup}>
-              <Text
-                style={styles.fieldLabel}
-              >
-                Notes
-              </Text>
+              <Text style={styles.fieldLabel}>Notes</Text>
 
               <PaperTextInput
                 placeholder="Add a note..."
@@ -1180,36 +730,22 @@ export default function BillForm({
                 dense
                 multiline
                 numberOfLines={3}
-                style={[
-                  styles.input,
-                  styles.notesInput,
-                ]}
+                style={[styles.input, styles.notesInput]}
               />
             </View>
 
-            <View
-              style={styles.fieldGroupLast}
-            >
-              <Text
-                style={styles.fieldLabel}
-              >
-                Attachment URL
-              </Text>
+            <View style={styles.fieldGroupLast}>
+              <Text style={styles.fieldLabel}>Attachment URL</Text>
 
               <PaperTextInput
                 placeholder="Optional attachment link"
                 value={attachmentUrl}
-                onChangeText={
-                  setAttachmentUrl
-                }
+                onChangeText={setAttachmentUrl}
                 mode="outlined"
                 dense
                 style={styles.input}
                 left={
-                  <PaperTextInput.Icon
-                    icon="link-variant"
-                    color="#94A3B8"
-                  />
+                  <PaperTextInput.Icon icon="link-variant" color="#94A3B8" />
                 }
               />
             </View>
@@ -1225,23 +761,13 @@ export default function BillForm({
             mode="contained"
             onPress={submit}
             style={styles.saveButton}
-            contentStyle={
-              styles.saveButtonContent
-            }
-            labelStyle={
-              styles.saveButtonLabel
-            }
-            icon={
-              isEdit
-                ? "content-save-outline"
-                : "check"
-            }
+            contentStyle={styles.saveButtonContent}
+            labelStyle={styles.saveButtonLabel}
+            icon={isEdit ? "content-save-outline" : "check"}
             disabled={submitting}
             loading={submitting}
           >
-            {isEdit
-              ? "Save Changes"
-              : "Add Bill"}
+            {isEdit ? "Save Changes" : "Add Bill"}
           </PaperButton>
 
           {!!onCancel && (
@@ -1250,11 +776,7 @@ export default function BillForm({
               onPress={onCancel}
               style={styles.cancelButton}
             >
-              <Text
-                style={styles.cancelText}
-              >
-                Cancel
-              </Text>
+              <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -1270,51 +792,28 @@ export default function BillForm({
         visible={showCategoryPicker}
         transparent
         animationType="slide"
-        onRequestClose={() =>
-          setShowCategoryPicker(false)
-        }
+        onRequestClose={() => setShowCategoryPicker(false)}
       >
         <View style={styles.modalOverlay}>
           <View
             style={[
               styles.bottomSheet,
               {
-                maxHeight:
-                  isSmallPhone
-                    ? "82%"
-                    : "72%",
+                maxHeight: isSmallPhone ? "82%" : "72%",
               },
             ]}
           >
-            <View
-              style={styles.sheetHandle}
-            />
+            <View style={styles.sheetHandle} />
 
-            <View
-              style={styles.sheetHeader}
-            >
-              <View
-                style={styles.sheetHeaderText}
-              >
-                <Text
-                  style={styles.sheetTitle}
-                >
-                  Select Category
-                </Text>
+            <View style={styles.sheetHeader}>
+              <View style={styles.sheetHeaderText}>
+                <Text style={styles.sheetTitle}>Select Category</Text>
 
-                <Text
-                  style={styles.sheetSubtitle}
-                >
-                  Choose a category
-                </Text>
+                <Text style={styles.sheetSubtitle}>Choose a category</Text>
               </View>
 
               <TouchableOpacity
-                onPress={() =>
-                  setShowCategoryPicker(
-                    false
-                  )
-                }
+                onPress={() => setShowCategoryPicker(false)}
                 style={styles.sheetClose}
               >
                 <MaterialCommunityIcons
@@ -1328,28 +827,17 @@ export default function BillForm({
             <PaperTextInput
               placeholder="Search categories"
               value={categorySearch}
-              onChangeText={
-                setCategorySearch
-              }
+              onChangeText={setCategorySearch}
               mode="outlined"
               dense
               style={styles.searchInput}
-              left={
-                <PaperTextInput.Icon
-                  icon="magnify"
-                  color="#94A3B8"
-                />
-              }
+              left={<PaperTextInput.Icon icon="magnify" color="#94A3B8" />}
               right={
                 categorySearch ? (
                   <PaperTextInput.Icon
                     icon="close-circle"
                     color="#94A3B8"
-                    onPress={() =>
-                      setCategorySearch(
-                        ""
-                      )
-                    }
+                    onPress={() => setCategorySearch("")}
                   />
                 ) : null
               }
@@ -1358,118 +846,78 @@ export default function BillForm({
             <ScrollView
               style={styles.pickerList}
               keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={
-                false
-              }
+              showsVerticalScrollIndicator={false}
             >
-              {filteredCategories.length ===
-                0 ? (
-                <View
-                  style={styles.noResults}
-                >
+              {filteredCategories.length === 0 ? (
+                <View style={styles.noResults}>
                   <MaterialCommunityIcons
                     name="tag-off-outline"
                     size={34}
                     color="#CBD5E1"
                   />
 
-                  <Text
-                    style={
-                      styles.noResultsTitle
-                    }
-                  >
-                    No categories found
-                  </Text>
+                  <Text style={styles.noResultsTitle}>No categories found</Text>
                 </View>
               ) : (
-                filteredCategories.map(
-                  (c) => {
-                    const selected =
-                      c.id ===
-                      categoryId;
+                filteredCategories.map((c) => {
+                  const selected = c.id === categoryId;
 
-                    return (
-                      <TouchableOpacity
-                        key={c.id}
-                        activeOpacity={
-                          0.8
-                        }
-                        onPress={() => {
-                          setCategoryId(
-                            c.id
-                          );
-                          setShowCategoryPicker(
-                            false
-                          );
-                          setCategorySearch(
-                            ""
-                          );
-                        }}
+                  return (
+                    <TouchableOpacity
+                      key={c.id}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        setCategoryId(c.id);
+                        setShowCategoryPicker(false);
+                        setCategorySearch("");
+                      }}
+                      style={[
+                        styles.pickerItem,
+                        selected && styles.pickerItemSelected,
+                      ]}
+                    >
+                      <View
                         style={[
-                          styles.pickerItem,
-                          selected &&
-                          styles.pickerItemSelected,
+                          styles.pickerItemIcon,
+                          {
+                            backgroundColor: selected ? "#EDE9FE" : "#F8FAFC",
+                          },
                         ]}
                       >
-                        <View
-                          style={[
-                            styles.pickerItemIcon,
-                            {
-                              backgroundColor:
-                                selected
-                                  ? "#EDE9FE"
-                                  : "#F8FAFC",
-                            },
-                          ]}
-                        >
-                          <MaterialCommunityIcons
-                            name="tag-outline"
-                            size={21}
-                            color={
-                              selected
-                                ? "#7C3AED"
-                                : "#64748B"
-                            }
-                          />
-                        </View>
+                        <MaterialCommunityIcons
+                          name="tag-outline"
+                          size={21}
+                          color={selected ? "#7C3AED" : "#64748B"}
+                        />
+                      </View>
 
-                        <Text
-                          style={[
-                            styles.pickerItemText,
-                            selected &&
-                            styles.pickerItemTextSelected,
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {c.name}
-                        </Text>
+                      <Text
+                        style={[
+                          styles.pickerItemText,
+                          selected && styles.pickerItemTextSelected,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {c.name}
+                      </Text>
 
-                        {selected && (
-                          <MaterialCommunityIcons
-                            name="check-circle"
-                            size={21}
-                            color={
-                              Colors.primary
-                            }
-                          />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  }
-                )
+                      {selected && (
+                        <MaterialCommunityIcons
+                          name="check-circle"
+                          size={21}
+                          color={Colors.primary}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })
               )}
             </ScrollView>
 
             <PaperButton
               mode="outlined"
-              onPress={() =>
-                setShowCategoryPicker(
-                  false
-                )
-              }
-              style={
-                styles.sheetDoneButton
-              }
+              onPress={() => setShowCategoryPicker(false)}
+              style={styles.sheetDoneButton}
             >
               Close
             </PaperButton>
@@ -1485,51 +933,30 @@ export default function BillForm({
         visible={showSourcePicker}
         transparent
         animationType="slide"
-        onRequestClose={() =>
-          setShowSourcePicker(false)
-        }
+        onRequestClose={() => setShowSourcePicker(false)}
       >
         <View style={styles.modalOverlay}>
           <View
             style={[
               styles.bottomSheet,
               {
-                maxHeight:
-                  isSmallPhone
-                    ? "82%"
-                    : "72%",
+                maxHeight: isSmallPhone ? "82%" : "72%",
               },
             ]}
           >
-            <View
-              style={styles.sheetHandle}
-            />
+            <View style={styles.sheetHandle} />
 
-            <View
-              style={styles.sheetHeader}
-            >
-              <View
-                style={styles.sheetHeaderText}
-              >
-                <Text
-                  style={styles.sheetTitle}
-                >
-                  Payment Source
-                </Text>
+            <View style={styles.sheetHeader}>
+              <View style={styles.sheetHeaderText}>
+                <Text style={styles.sheetTitle}>Payment Source</Text>
 
-                <Text
-                  style={styles.sheetSubtitle}
-                >
+                <Text style={styles.sheetSubtitle}>
                   Choose the account to pay from
                 </Text>
               </View>
 
               <TouchableOpacity
-                onPress={() =>
-                  setShowSourcePicker(
-                    false
-                  )
-                }
+                onPress={() => setShowSourcePicker(false)}
                 style={styles.sheetClose}
               >
                 <MaterialCommunityIcons
@@ -1543,26 +970,17 @@ export default function BillForm({
             <PaperTextInput
               placeholder="Search accounts"
               value={sourceSearch}
-              onChangeText={
-                setSourceSearch
-              }
+              onChangeText={setSourceSearch}
               mode="outlined"
               dense
               style={styles.searchInput}
-              left={
-                <PaperTextInput.Icon
-                  icon="magnify"
-                  color="#94A3B8"
-                />
-              }
+              left={<PaperTextInput.Icon icon="magnify" color="#94A3B8" />}
               right={
                 sourceSearch ? (
                   <PaperTextInput.Icon
                     icon="close-circle"
                     color="#94A3B8"
-                    onPress={() =>
-                      setSourceSearch("")
-                    }
+                    onPress={() => setSourceSearch("")}
                   />
                 ) : null
               }
@@ -1571,117 +989,78 @@ export default function BillForm({
             <ScrollView
               style={styles.pickerList}
               keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={
-                false
-              }
+              showsVerticalScrollIndicator={false}
             >
-              {filteredSources.length ===
-                0 ? (
-                <View
-                  style={styles.noResults}
-                >
+              {filteredSources.length === 0 ? (
+                <View style={styles.noResults}>
                   <MaterialCommunityIcons
                     name="wallet-outline"
                     size={34}
                     color="#CBD5E1"
                   />
 
-                  <Text
-                    style={
-                      styles.noResultsTitle
-                    }
-                  >
-                    No accounts found
-                  </Text>
+                  <Text style={styles.noResultsTitle}>No accounts found</Text>
                 </View>
               ) : (
-                filteredSources.map(
-                  (s) => {
-                    const selected =
-                      s.id === sourceId;
+                filteredSources.map((s) => {
+                  const selected = s.id === sourceId;
 
-                    return (
-                      <TouchableOpacity
-                        key={s.id}
-                        activeOpacity={
-                          0.8
-                        }
-                        onPress={() => {
-                          setSourceId(
-                            s.id
-                          );
-                          setShowSourcePicker(
-                            false
-                          );
-                          setSourceSearch(
-                            ""
-                          );
-                        }}
+                  return (
+                    <TouchableOpacity
+                      key={s.id}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        setSourceId(s.id);
+                        setShowSourcePicker(false);
+                        setSourceSearch("");
+                      }}
+                      style={[
+                        styles.pickerItem,
+                        selected && styles.pickerItemSelected,
+                      ]}
+                    >
+                      <View
                         style={[
-                          styles.pickerItem,
-                          selected &&
-                          styles.pickerItemSelected,
+                          styles.pickerItemIcon,
+                          {
+                            backgroundColor: selected ? "#DBEAFE" : "#F8FAFC",
+                          },
                         ]}
                       >
-                        <View
-                          style={[
-                            styles.pickerItemIcon,
-                            {
-                              backgroundColor:
-                                selected
-                                  ? "#DBEAFE"
-                                  : "#F8FAFC",
-                            },
-                          ]}
-                        >
-                          <MaterialCommunityIcons
-                            name="wallet-outline"
-                            size={21}
-                            color={
-                              selected
-                                ? "#2563EB"
-                                : "#64748B"
-                            }
-                          />
-                        </View>
+                        <MaterialCommunityIcons
+                          name="wallet-outline"
+                          size={21}
+                          color={selected ? "#2563EB" : "#64748B"}
+                        />
+                      </View>
 
-                        <Text
-                          style={[
-                            styles.pickerItemText,
-                            selected &&
-                            styles.pickerItemTextSelected,
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {s.name}
-                        </Text>
+                      <Text
+                        style={[
+                          styles.pickerItemText,
+                          selected && styles.pickerItemTextSelected,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {s.name}
+                      </Text>
 
-                        {selected && (
-                          <MaterialCommunityIcons
-                            name="check-circle"
-                            size={21}
-                            color={
-                              Colors.primary
-                            }
-                          />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  }
-                )
+                      {selected && (
+                        <MaterialCommunityIcons
+                          name="check-circle"
+                          size={21}
+                          color={Colors.primary}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })
               )}
             </ScrollView>
 
             <PaperButton
               mode="outlined"
-              onPress={() =>
-                setShowSourcePicker(
-                  false
-                )
-              }
-              style={
-                styles.sheetDoneButton
-              }
+              onPress={() => setShowSourcePicker(false)}
+              style={styles.sheetDoneButton}
             >
               Close
             </PaperButton>
@@ -1693,256 +1072,40 @@ export default function BillForm({
       {/* DUE DATE PICKER                                           */}
       {/* ========================================================= */}
 
-      {showDuePicker &&
-        Platform.OS !== "web" ? (
-        <DateTimePicker
-          value={
-            dueDate
-              ? new Date(
-                `${dueDate}T00:00:00`
-              )
-              : new Date()
+      <MuiDateTimePicker
+        visible={showDuePicker}
+        initialDate={dueDate ? new Date(`${dueDate}T00:00:00`) : new Date()}
+        onClose={() => setShowDuePicker(false)}
+        onSelect={(selectedDate) => {
+          if (selectedDate) {
+            setDueDate(selectedDate.toISOString().slice(0, 10));
+            if (errors.dueDate) {
+              setErrors((prev) => ({ ...prev, dueDate: undefined }));
+            }
           }
-          mode="date"
-          display={
-            Platform.OS === "ios"
-              ? "spinner"
-              : "default"
-          }
-          onChange={(
-            event,
-            selectedDate
-          ) => {
-            if (
-              Platform.OS ===
-              "android"
-            ) {
-              setShowDuePicker(false);
-
-              if (
-                event.type ===
-                "dismissed"
-              ) {
-                return;
-              }
-            }
-
-            if (selectedDate) {
-              const y =
-                selectedDate.getFullYear();
-
-              const m = String(
-                selectedDate.getMonth() +
-                1
-              ).padStart(2, "0");
-
-              const d = String(
-                selectedDate.getDate()
-              ).padStart(2, "0");
-
-              setDueDate(
-                `${y}-${m}-${d}`
-              );
-
-              if (errors.dueDate) {
-                setErrors((prev) => ({
-                  ...prev,
-                  dueDate: undefined,
-                }));
-              }
-            }
-
-            if (
-              Platform.OS === "ios"
-            ) {
-              setShowDuePicker(false);
-            }
-          }}
-        />
-      ) : (
-        <Modal
-          visible={showDuePicker}
-          transparent
-          animationType="fade"
-          onRequestClose={() =>
-            setShowDuePicker(false)
-          }
-        >
-          <View
-            style={
-              styles.modalOverlayCenter
-            }
-          >
-            <View
-              style={styles.dateModal}
-            >
-              <Text
-                style={styles.dateModalTitle}
-              >
-                Due Date
-              </Text>
-
-              <Text
-                style={
-                  styles.dateModalSubtitle
-                }
-              >
-                Select when this bill is due
-              </Text>
-
-              <ManualDateTimePicker
-                year={
-                  dueParts[0] ||
-                  new Date().getFullYear()
-                }
-                month={
-                  dueParts[1] ||
-                  new Date().getMonth() +
-                  1
-                }
-                day={
-                  dueParts[2] ||
-                  new Date().getDate()
-                }
-                hour={0}
-                minute={0}
-                onChange={(y, m, d) => {
-                  const ds = `${y}-${String(
-                    m
-                  ).padStart(2, "0")}-${String(
-                    d
-                  ).padStart(2, "0")}`;
-
-                  setDueDate(ds);
-
-                  if (errors.dueDate) {
-                    setErrors((prev) => ({
-                      ...prev,
-                      dueDate: undefined,
-                    }));
-                  }
-                }}
-                onClose={() =>
-                  setShowDuePicker(false)
-                }
-              />
-
-              <PaperButton
-                mode="contained"
-                onPress={() =>
-                  setShowDuePicker(false)
-                }
-                style={
-                  styles.dateDoneButton
-                }
-              >
-                Done
-              </PaperButton>
-            </View>
-          </View>
-        </Modal>
-      )}
+          setShowDuePicker(false);
+        }}
+      />
 
       {/* ========================================================= */}
       {/* RECURRENCE END DATE                                       */}
       {/* ========================================================= */}
 
-      <Modal
+      <MuiDateTimePicker
         visible={showEndPicker}
-        transparent
-        animationType="fade"
-        onRequestClose={() =>
-          setShowEndPicker(false)
+        initialDate={
+          recurrenceEndDate
+            ? new Date(`${recurrenceEndDate}T00:00:00`)
+            : new Date()
         }
-      >
-        <View
-          style={
-            styles.modalOverlayCenter
+        onClose={() => setShowEndPicker(false)}
+        onSelect={(selectedDate) => {
+          if (selectedDate) {
+            setRecurrenceEndDate(selectedDate.toISOString().slice(0, 10));
           }
-        >
-          <View style={styles.dateModal}>
-            <Text
-              style={styles.dateModalTitle}
-            >
-              Recurrence End Date
-            </Text>
-
-            <Text
-              style={
-                styles.dateModalSubtitle
-              }
-            >
-              Leave empty if this bill never ends
-            </Text>
-
-            <ManualDateTimePicker
-              year={
-                endParts[0] ||
-                new Date().getFullYear()
-              }
-              month={
-                endParts[1] ||
-                new Date().getMonth() + 1
-              }
-              day={
-                endParts[2] ||
-                new Date().getDate()
-              }
-              hour={0}
-              minute={0}
-              onChange={(y, m, d) => {
-                setRecurrenceEndDate(
-                  `${y}-${String(m).padStart(
-                    2,
-                    "0"
-                  )}-${String(d).padStart(
-                    2,
-                    "0"
-                  )}`
-                );
-              }}
-              onClose={() =>
-                setShowEndPicker(false)
-              }
-            />
-
-            <View
-              style={
-                styles.dateModalActions
-              }
-            >
-              {!!recurrenceEndDate && (
-                <PaperButton
-                  mode="text"
-                  onPress={() => {
-                    setRecurrenceEndDate(
-                      ""
-                    );
-                    setShowEndPicker(
-                      false
-                    );
-                  }}
-                  textColor="#DC2626"
-                >
-                  Never
-                </PaperButton>
-              )}
-
-              <PaperButton
-                mode="contained"
-                onPress={() =>
-                  setShowEndPicker(false)
-                }
-                style={
-                  styles.dateDoneButton
-                }
-              >
-                Done
-              </PaperButton>
-            </View>
-          </View>
-        </View>
-      </Modal>
+          setShowEndPicker(false);
+        }}
+      />
     </View>
   );
 }
@@ -1954,8 +1117,7 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor:
-      Colors.background,
+    backgroundColor: Colors.background,
   },
 
   scrollContent: {
@@ -2415,8 +1577,7 @@ const styles = StyleSheet.create({
   saveButton: {
     width: "100%",
     borderRadius: 13,
-    backgroundColor:
-      Colors.primary,
+    backgroundColor: Colors.primary,
   },
 
   saveButtonContent: {
@@ -2446,8 +1607,7 @@ const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor:
-      "rgba(15, 23, 42, 0.42)",
+    backgroundColor: "rgba(15, 23, 42, 0.42)",
     justifyContent: "flex-end",
   },
 
@@ -2573,8 +1733,7 @@ const styles = StyleSheet.create({
 
   modalOverlayCenter: {
     flex: 1,
-    backgroundColor:
-      "rgba(15, 23, 42, 0.42)",
+    backgroundColor: "rgba(15, 23, 42, 0.42)",
     justifyContent: "center",
     padding: 14,
   },

@@ -12,14 +12,21 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Button as PaperButton } from "react-native-paper";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import ManualDateTimePicker from "../components/ManualDateTimePicker";
+import MuiDateTimePicker from "../components/MuiDateTimePicker";
 import { recordPayment, recordPrepayment, getLoans } from "../services/loans";
 import { getSources } from "../services/sources";
 import { getCategories } from "../services/categories";
 import Card from "../components/Card";
 
-function FieldCard({ icon, title, value, color = "#2563EB", onPress, error, disabled = false }) {
+function FieldCard({
+  icon,
+  title,
+  value,
+  color = "#2563EB",
+  onPress,
+  error,
+  disabled = false,
+}) {
   const hasError = !!error;
 
   return (
@@ -1207,129 +1214,19 @@ export default function LoanPaymentScreen({ route, navigation }) {
           </View>
         </Modal>
 
-        {/* Date & Time Picker - Android */}
-        {showDatePicker && Platform.OS === "android" && (
-          <DateTimePicker
-            key={datePickerMode}
-            value={safeDate(transactionDate)}
-            mode={datePickerMode}
-            display={datePickerMode === "date" ? "calendar" : "clock"}
-            is24Hour={false}
-            maximumDate={datePickerMode === "date" ? new Date() : undefined}
-            onChange={handleNativeDateTimeChange}
-          />
-        )}
-
-        {/* Date & Time Picker - iOS */}
-        {showDatePicker && Platform.OS === "ios" && (
-          <Modal
-            visible={showDatePicker}
-            transparent
-            animationType="slide"
-            onRequestClose={closeDatePicker}
-          >
-            <View style={styles.dateOverlay}>
-              <View style={styles.dateSheet}>
-                <View style={styles.pickerHandle} />
-
-                <Text style={styles.dateTitle}>
-                  {datePickerMode === "date" ? "Select Date" : "Select Time"}
-                </Text>
-
-                <Text style={styles.dateSubtitle}>
-                  {formatDateTime(transactionDate)}
-                </Text>
-
-                <DateTimePicker
-                  value={safeDate(transactionDate)}
-                  mode={datePickerMode}
-                  display="spinner"
-                  is24Hour={false}
-                  maximumDate={
-                    datePickerMode === "date" ? new Date() : undefined
-                  }
-                  onChange={handleNativeDateTimeChange}
-                />
-
-                <View style={styles.dateActions}>
-                  <PaperButton
-                    mode="outlined"
-                    onPress={closeDatePicker}
-                    style={styles.dateAction}
-                  >
-                    Cancel
-                  </PaperButton>
-
-                  <PaperButton
-                    mode="contained"
-                    onPress={() => {
-                      if (datePickerMode === "date") {
-                        setDatePickerMode("time");
-                      } else {
-                        closeDatePicker();
-                      }
-                    }}
-                    style={styles.dateAction}
-                  >
-                    {datePickerMode === "date" ? "Next" : "Done"}
-                  </PaperButton>
-                </View>
-              </View>
-            </View>
-          </Modal>
-        )}
-
-        {/* Date & Time Picker - Web */}
-        {showDatePicker && Platform.OS === "web" && (
-          <Modal
-            visible={showDatePicker}
-            transparent
-            animationType="fade"
-            onRequestClose={closeDatePicker}
-          >
-            <View style={styles.webDateOverlay}>
-              <View style={styles.webDateCard}>
-                <View style={styles.webDateHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.webDateTitle}>Pick Date & Time</Text>
-
-                    <Text style={styles.webDateSubtitle}>
-                      {formatDateTime(transactionDate)}
-                    </Text>
-                  </View>
-
-                  <TouchableOpacity onPress={closeDatePicker}>
-                    <MaterialCommunityIcons
-                      name="close-circle"
-                      size={28}
-                      color="#94A3B8"
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                <ManualDateTimePicker
-                  year={safeDate(transactionDate).getFullYear()}
-                  month={safeDate(transactionDate).getMonth() + 1}
-                  day={safeDate(transactionDate).getDate()}
-                  hour={safeDate(transactionDate).getHours()}
-                  minute={safeDate(transactionDate).getMinutes()}
-                  onChange={(year, month, day, hour, minute) => {
-                    const nextDate = new Date(
-                      year,
-                      month - 1,
-                      day,
-                      hour,
-                      minute,
-                    );
-
-                    setTransactionDate(nextDate.toISOString());
-                  }}
-                  onClose={closeDatePicker}
-                />
-              </View>
-            </View>
-          </Modal>
-        )}
+        {/* Date & Time Picker */}
+        <MuiDateTimePicker
+          visible={showDatePicker}
+          disableFutureDates={true}
+          initialDate={safeDate(transactionDate)}
+          onClose={closeDatePicker}
+          onSelect={(selectedDate) => {
+            if (selectedDate) {
+              setTransactionDate(selectedDate.toISOString());
+            }
+            closeDatePicker();
+          }}
+        />
       </ScrollView>
     </View>
   );

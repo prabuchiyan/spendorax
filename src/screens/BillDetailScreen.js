@@ -19,8 +19,7 @@ import {
   TextInput as PaperTextInput,
 } from "react-native-paper";
 import { Dimensions, Platform } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import ManualDateTimePicker from "../components/ManualDateTimePicker";
+import MuiDateTimePicker from "../components/MuiDateTimePicker";
 import PremiumRoundedBarChart from "../components/PremiumRoundedBarChart";
 import {
   getBillById,
@@ -51,10 +50,7 @@ import {
 import { getCreditCards, payCreditCardBill } from "../services/creditCards";
 import { usePageLoader } from "../context/PageLoaderContext";
 import { onStatementPaid } from "../services/creditCardScheduler";
-import {
-  setBills,
-  setBillsSummary,
-} from "../redux/slices/billSlice";
+import { setBills, setBillsSummary } from "../redux/slices/billSlice";
 import { setCategoriesMap } from "../redux/slices/categorySlice";
 import {
   useAppDispatch,
@@ -211,10 +207,10 @@ function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
                 >
                   {tx.date
                     ? new Date(tx.date).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })
                     : "—"}
                   {tx.source_name ? ` • ${tx.source_name}` : ""}
                 </Text>
@@ -413,12 +409,12 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
       const amount = String(tx.amount || "").toLowerCase();
       const date = tx.date
         ? new Date(tx.date)
-          .toLocaleDateString("en-IN", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          })
-          .toLowerCase()
+            .toLocaleDateString("en-IN", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })
+            .toLowerCase()
         : "";
       return (
         notes.includes(query) ||
@@ -520,11 +516,7 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
             placeholder="Search transactions..."
             value={search}
             onChangeText={setSearch}
-            left={
-              <PaperTextInput.Icon
-                icon="magnify"
-              />
-            }
+            left={<PaperTextInput.Icon icon="magnify" />}
             right={
               search ? (
                 <PaperTextInput.Icon
@@ -622,8 +614,9 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
                       width: 42,
                       height: 42,
                       borderRadius: 21,
-                      backgroundColor: `${tx.category_color || Colors.primary
-                        }20`,
+                      backgroundColor: `${
+                        tx.category_color || Colors.primary
+                      }20`,
                       alignItems: "center",
                       justifyContent: "center",
                       marginRight: 10,
@@ -659,17 +652,15 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
                     >
                       {tx.date
                         ? new Date(tx.date).toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })
                         : "—"}
 
                       {tx.source_name ? ` · ${tx.source_name}` : ""}
 
-                      {tx.category_name
-                        ? ` · ${tx.category_name}`
-                        : ""}
+                      {tx.category_name ? ` · ${tx.category_name}` : ""}
                     </Text>
                   </View>
                   {/* Amount */}
@@ -787,57 +778,15 @@ function OccurrenceEditModal({ visible, occurrence, onSave, onClose }) {
         </View>
       </View>
 
-      {showDuePicker && Platform.OS !== "web" ? (
-        <DateTimePicker
-          value={new Date(dueDate || Date.now())}
-          mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={(event, selectedDate) => {
-            if (Platform.OS === "android") {
-              setShowDuePicker(false);
-              if (event.type === "dismissed") return;
-            }
-            if (selectedDate)
-              setDueDate(selectedDate.toISOString().slice(0, 10));
-            if (Platform.OS === "ios") setShowDuePicker(false);
-          }}
-        />
-      ) : (
-        <Modal visible={showDuePicker} transparent animationType="fade">
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: "center",
-              padding: 16,
-            }}
-          >
-            <View
-              style={{ backgroundColor: "#fff", borderRadius: 12, padding: 16 }}
-            >
-              <Text style={{ fontWeight: "700", marginBottom: 12 }}>
-                Due date
-              </Text>
-              <ManualDateTimePicker
-                year={dueParts[0] || new Date().getFullYear()}
-                month={dueParts[1] || new Date().getMonth() + 1}
-                day={dueParts[2] || new Date().getDate()}
-                hour={0}
-                minute={0}
-                onChange={(y, m, d) =>
-                  setDueDate(
-                    `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
-                  )
-                }
-                onClose={() => setShowDuePicker(false)}
-              />
-              <PaperButton onPress={() => setShowDuePicker(false)}>
-                Done
-              </PaperButton>
-            </View>
-          </View>
-        </Modal>
-      )}
+      <MuiDateTimePicker
+        visible={showDuePicker}
+        initialDate={dueDate ? new Date(dueDate) : new Date()}
+        onClose={() => setShowDuePicker(false)}
+        onSelect={(selectedDate) => {
+          if (selectedDate) setDueDate(selectedDate.toISOString().slice(0, 10));
+          setShowDuePicker(false);
+        }}
+      />
     </Modal>
   );
 }
@@ -1016,18 +965,35 @@ export default function BillDetailScreen({ route, navigation }) {
       });
       dispatch(setCategoriesMap(categoryMap));
       dispatch(setBills(s || []));
-      dispatch(setBillsSummary({
-        totalThisMonth: s.reduce((sum, row) => sum + Number(row.amount || 0), 0),
-        totalPaid: s.reduce((sum, row) => sum + Number(row.paid_amount || 0), 0),
-        overdueAmount: s
-          .filter((row) => row.status === BILL_STATUS.OVERDUE)
-          .reduce((sum, row) => sum + Number(row.amount || 0), 0),
-        overdueCount: s.filter((row) => row.status === BILL_STATUS.OVERDUE).length,
-        upcoming7: s
-          .filter((row) => row.status !== BILL_STATUS.PAID && row.status !== BILL_STATUS.SKIPPED)
-          .reduce((sum, row) => sum + Number(row.amount || 0), 0),
-        upcoming3Count: s.filter((row) => row.status !== BILL_STATUS.PAID && row.status !== BILL_STATUS.SKIPPED).length,
-      }));
+      dispatch(
+        setBillsSummary({
+          totalThisMonth: s.reduce(
+            (sum, row) => sum + Number(row.amount || 0),
+            0,
+          ),
+          totalPaid: s.reduce(
+            (sum, row) => sum + Number(row.paid_amount || 0),
+            0,
+          ),
+          overdueAmount: s
+            .filter((row) => row.status === BILL_STATUS.OVERDUE)
+            .reduce((sum, row) => sum + Number(row.amount || 0), 0),
+          overdueCount: s.filter((row) => row.status === BILL_STATUS.OVERDUE)
+            .length,
+          upcoming7: s
+            .filter(
+              (row) =>
+                row.status !== BILL_STATUS.PAID &&
+                row.status !== BILL_STATUS.SKIPPED,
+            )
+            .reduce((sum, row) => sum + Number(row.amount || 0), 0),
+          upcoming3Count: s.filter(
+            (row) =>
+              row.status !== BILL_STATUS.PAID &&
+              row.status !== BILL_STATUS.SKIPPED,
+          ).length,
+        }),
+      );
 
       if (b?.category_id)
         setCategory(cats.find((c) => c.id === b.category_id) || null);
@@ -1060,11 +1026,13 @@ export default function BillDetailScreen({ route, navigation }) {
           null;
       }
       setSelectedOcc(occ);
-      
+
       if (occ && s.length > 5) {
-        const idx = s.findIndex(o => o.id === occ.id);
+        const idx = s.findIndex((o) => o.id === occ.id);
         if (idx !== -1) {
-          setChartOffset(Math.max(0, Math.min(s.length - 5, s.length - 3 - idx)));
+          setChartOffset(
+            Math.max(0, Math.min(s.length - 5, s.length - 3 - idx)),
+          );
         }
       } else {
         setChartOffset(0);
@@ -1382,20 +1350,48 @@ export default function BillDetailScreen({ route, navigation }) {
           >
             Bill History
           </Text>
-          <View style={{ width: '100%', alignItems: 'center', justifyContent: 'center' }}>
-            <TouchableOpacity 
-              onPress={() => setChartOffset(prev => Math.min(Math.max(0, chartData.length - 5), prev + 1))} 
-              style={{ 
-                position: 'absolute', left: 0, zIndex: 10,
-                width: 34, height: 34, borderRadius: 17, 
-                backgroundColor: 'rgba(255,255,255,0.85)', 
-                alignItems: 'center', justifyContent: 'center',
-                shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
-                opacity: chartData.length <= 5 || chartOffset >= chartData.length - 5 ? 0.3 : 1
-              }} 
-              disabled={chartData.length <= 5 || chartOffset >= chartData.length - 5}
+          <View
+            style={{
+              width: "100%",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <TouchableOpacity
+              onPress={() =>
+                setChartOffset((prev) =>
+                  Math.min(Math.max(0, chartData.length - 5), prev + 1),
+                )
+              }
+              style={{
+                position: "absolute",
+                left: 0,
+                zIndex: 10,
+                width: 34,
+                height: 34,
+                borderRadius: 17,
+                backgroundColor: "rgba(255,255,255,0.85)",
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 3,
+                opacity:
+                  chartData.length <= 5 || chartOffset >= chartData.length - 5
+                    ? 0.3
+                    : 1,
+              }}
+              disabled={
+                chartData.length <= 5 || chartOffset >= chartData.length - 5
+              }
             >
-              <MaterialCommunityIcons name="chevron-left" size={20} color={Colors.text} />
+              <MaterialCommunityIcons
+                name="chevron-left"
+                size={20}
+                color={Colors.text}
+              />
             </TouchableOpacity>
 
             <PremiumRoundedBarChart
@@ -1417,19 +1413,32 @@ export default function BillDetailScreen({ route, navigation }) {
               }}
             />
 
-            <TouchableOpacity 
-              onPress={() => setChartOffset(prev => Math.max(0, prev - 1))} 
-              style={{ 
-                position: 'absolute', right: 0, zIndex: 10,
-                width: 34, height: 34, borderRadius: 17, 
-                backgroundColor: 'rgba(255,255,255,0.85)', 
-                alignItems: 'center', justifyContent: 'center',
-                shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
-                opacity: chartOffset === 0 ? 0.3 : 1
+            <TouchableOpacity
+              onPress={() => setChartOffset((prev) => Math.max(0, prev - 1))}
+              style={{
+                position: "absolute",
+                right: 0,
+                zIndex: 10,
+                width: 34,
+                height: 34,
+                borderRadius: 17,
+                backgroundColor: "rgba(255,255,255,0.85)",
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 3,
+                opacity: chartOffset === 0 ? 0.3 : 1,
               }}
               disabled={chartOffset === 0}
             >
-              <MaterialCommunityIcons name="chevron-right" size={20} color={Colors.text} />
+              <MaterialCommunityIcons
+                name="chevron-right"
+                size={20}
+                color={Colors.text}
+              />
             </TouchableOpacity>
           </View>
         </Card>

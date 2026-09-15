@@ -16,7 +16,7 @@ import {
   Switch,
 } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import MuiDateTimePicker from "../components/MuiDateTimePicker";
 import ConfirmDialog from "../components/ConfirmDialog";
 
 import {
@@ -36,32 +36,142 @@ import { getCategories } from "../services/categories";
 
 const LOAN_TYPES = [
   { key: "Home", label: "Home Loan", icon: "home-outline", color: "#3B82F6" },
-  { key: "Vehicle", label: "Vehicle Loan", icon: "car-outline", color: "#F59E0B" },
-  { key: "Two Wheeler", label: "Two Wheeler", icon: "motorbike", color: "#F97316" },
-  { key: "Personal", label: "Personal Loan", icon: "account-cash-outline", color: "#8B5CF6" },
-  { key: "Education", label: "Education Loan", icon: "school-outline", color: "#10B981" },
-  { key: "Business", label: "Business Loan", icon: "briefcase-outline", color: "#6366F1" },
+  {
+    key: "Vehicle",
+    label: "Vehicle Loan",
+    icon: "car-outline",
+    color: "#F59E0B",
+  },
+  {
+    key: "Two Wheeler",
+    label: "Two Wheeler",
+    icon: "motorbike",
+    color: "#F97316",
+  },
+  {
+    key: "Personal",
+    label: "Personal Loan",
+    icon: "account-cash-outline",
+    color: "#8B5CF6",
+  },
+  {
+    key: "Education",
+    label: "Education Loan",
+    icon: "school-outline",
+    color: "#10B981",
+  },
+  {
+    key: "Business",
+    label: "Business Loan",
+    icon: "briefcase-outline",
+    color: "#6366F1",
+  },
   { key: "Gold", label: "Gold Loan", icon: "gold", color: "#EAB308" },
-  { key: "Property", label: "Loan Against Property", icon: "office-building-outline", color: "#06B6D4" },
-  { key: "Mortgage", label: "Mortgage", icon: "home-city-outline", color: "#14B8A6" },
-  { key: "Credit Card", label: "Credit Card", icon: "credit-card-outline", color: "#EF4444" },
-  { key: "Overdraft", label: "Overdraft", icon: "bank-transfer-out", color: "#F43F5E" },
-  { key: "Line of Credit", label: "Line of Credit", icon: "cash-multiple", color: "#84CC16" },
-  { key: "Consumer", label: "Consumer Durable", icon: "washing-machine", color: "#D946EF" },
-  { key: "Medical", label: "Medical Loan", icon: "medical-bag", color: "#EC4899" },
-  { key: "Agriculture", label: "Agriculture Loan", icon: "sprout-outline", color: "#22C55E" },
-  { key: "Friend", label: "Friend", icon: "account-heart-outline", color: "#0EA5E9" },
-  { key: "Family", label: "Family", icon: "account-group-outline", color: "#3B82F6" },
-  { key: "Employee", label: "Employee", icon: "account-tie-outline", color: "#64748B" },
-  { key: "Employer", label: "Employer", icon: "briefcase-account-outline", color: "#334155" },
-  { key: "Customer", label: "Customer", icon: "account-outline", color: "#A855F7" },
+  {
+    key: "Property",
+    label: "Loan Against Property",
+    icon: "office-building-outline",
+    color: "#06B6D4",
+  },
+  {
+    key: "Mortgage",
+    label: "Mortgage",
+    icon: "home-city-outline",
+    color: "#14B8A6",
+  },
+  {
+    key: "Credit Card",
+    label: "Credit Card",
+    icon: "credit-card-outline",
+    color: "#EF4444",
+  },
+  {
+    key: "Overdraft",
+    label: "Overdraft",
+    icon: "bank-transfer-out",
+    color: "#F43F5E",
+  },
+  {
+    key: "Line of Credit",
+    label: "Line of Credit",
+    icon: "cash-multiple",
+    color: "#84CC16",
+  },
+  {
+    key: "Consumer",
+    label: "Consumer Durable",
+    icon: "washing-machine",
+    color: "#D946EF",
+  },
+  {
+    key: "Medical",
+    label: "Medical Loan",
+    icon: "medical-bag",
+    color: "#EC4899",
+  },
+  {
+    key: "Agriculture",
+    label: "Agriculture Loan",
+    icon: "sprout-outline",
+    color: "#22C55E",
+  },
+  {
+    key: "Friend",
+    label: "Friend",
+    icon: "account-heart-outline",
+    color: "#0EA5E9",
+  },
+  {
+    key: "Family",
+    label: "Family",
+    icon: "account-group-outline",
+    color: "#3B82F6",
+  },
+  {
+    key: "Employee",
+    label: "Employee",
+    icon: "account-tie-outline",
+    color: "#64748B",
+  },
+  {
+    key: "Employer",
+    label: "Employer",
+    icon: "briefcase-account-outline",
+    color: "#334155",
+  },
+  {
+    key: "Customer",
+    label: "Customer",
+    icon: "account-outline",
+    color: "#A855F7",
+  },
   { key: "Vendor", label: "Vendor", icon: "store-outline", color: "#F59E0B" },
-  { key: "Supplier", label: "Supplier", icon: "truck-outline", color: "#F97316" },
-  { key: "Partner", label: "Business Partner", icon: "handshake-outline", color: "#6366F1" },
+  {
+    key: "Supplier",
+    label: "Supplier",
+    icon: "truck-outline",
+    color: "#F97316",
+  },
+  {
+    key: "Partner",
+    label: "Business Partner",
+    icon: "handshake-outline",
+    color: "#6366F1",
+  },
   { key: "Bank", label: "Bank Loan", icon: "bank-outline", color: "#0284C7" },
-  { key: "Finance", label: "Finance Company", icon: "finance", color: "#0D9488" },
+  {
+    key: "Finance",
+    label: "Finance Company",
+    icon: "finance",
+    color: "#0D9488",
+  },
   { key: "NBFC", label: "NBFC", icon: "domain", color: "#4F46E5" },
-  { key: "Other", label: "Other", icon: "dots-horizontal-circle-outline", color: "#94A3B8" },
+  {
+    key: "Other",
+    label: "Other",
+    icon: "dots-horizontal-circle-outline",
+    color: "#94A3B8",
+  },
 ];
 /* =========================================================
    DIRECTION CONFIG
@@ -289,31 +399,19 @@ const LOAN_FIELD_CONFIG = {
 };
 
 function getLoanFieldConfig(loanType, loanData, editId) {
-  const base =
-    LOAN_FIELD_CONFIG[loanType] ||
-    LOAN_FIELD_CONFIG.Other;
+  const base = LOAN_FIELD_CONFIG[loanType] || LOAN_FIELD_CONFIG.Other;
 
   const hasValue = (value) =>
-    value !== undefined &&
-    value !== null &&
-    String(value).trim() !== "";
+    value !== undefined && value !== null && String(value).trim() !== "";
 
   return {
-    interest:
-      base.interest ||
-      (!!editId && hasValue(loanData.interest_rate)),
+    interest: base.interest || (!!editId && hasValue(loanData.interest_rate)),
 
-    tenure:
-      base.tenure ||
-      (!!editId && hasValue(loanData.tenure_months)),
+    tenure: base.tenure || (!!editId && hasValue(loanData.tenure_months)),
 
-    emi:
-      base.emi ||
-      (!!editId && hasValue(loanData.emi_amount)),
+    emi: base.emi || (!!editId && hasValue(loanData.emi_amount)),
 
-    dueDay:
-      base.dueDay ||
-      (!!editId && hasValue(loanData.emi_day)),
+    dueDay: base.dueDay || (!!editId && hasValue(loanData.emi_day)),
 
     // Always show outstanding while editing.
     outstanding: !!editId,
@@ -330,9 +428,7 @@ function asDate(value) {
   }
 
   if (value instanceof Date) {
-    return Number.isNaN(value.getTime())
-      ? new Date()
-      : value;
+    return Number.isNaN(value.getTime()) ? new Date() : value;
   }
 
   const stringValue = String(value).trim();
@@ -342,10 +438,7 @@ function asDate(value) {
     return parsed;
   }
 
-  console.warn(
-    "[LoanForm] Invalid loan_start_date:",
-    value
-  );
+  console.warn("[LoanForm] Invalid loan_start_date:", value);
 
   return new Date();
 }
@@ -371,9 +464,7 @@ function formatDateTime(value) {
 
   let hours = d.getHours();
 
-  const minutes = String(
-    d.getMinutes()
-  ).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
 
   const ampm = hours >= 12 ? "PM" : "AM";
 
@@ -400,19 +491,10 @@ function getInitialDate(value) {
    MAIN SCREEN
 ========================================================= */
 
-export default function LoanFormScreen({
-  navigation,
-  route,
-}) {
-  const rawId =
-    route?.params?.id ??
-    route?.params?.loanId;
+export default function LoanFormScreen({ navigation, route }) {
+  const rawId = route?.params?.id ?? route?.params?.loanId;
 
-  const editId =
-    rawId != null &&
-      rawId !== ""
-      ? Number(rawId)
-      : null;
+  const editId = rawId != null && rawId !== "" ? Number(rawId) : null;
 
   const [loanData, setLoanData] = useState({
     loan_name: "",
@@ -431,76 +513,53 @@ export default function LoanFormScreen({
 
   const [errors, setErrors] = useState({});
 
-  const [loadingLoan, setLoadingLoan] =
-    useState(!!editId);
+  const [loadingLoan, setLoadingLoan] = useState(!!editId);
 
-  const [submitting, setSubmitting] =
-    useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const [deleting, setDeleting] =
-    useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [hasEmi, setHasEmi] = useState(false);
 
   /* Pickers */
 
-  const [showTypePicker, setShowTypePicker] =
-    useState(false);
+  const [showTypePicker, setShowTypePicker] = useState(false);
 
-  const [showStartPicker, setShowStartPicker] =
-    useState(false);
+  const [showStartPicker, setShowStartPicker] = useState(false);
 
-  const [showDueDayPicker, setShowDueDayPicker] =
-    useState(false);
+  const [showDueDayPicker, setShowDueDayPicker] = useState(false);
 
-  const [showConfirmDelete, setShowConfirmDelete] =
-    useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   /* Type */
 
-  const [loanTypeSearch, setLoanTypeSearch] =
-    useState("");
+  const [loanTypeSearch, setLoanTypeSearch] = useState("");
 
   /* Sources */
 
   const [sources, setSources] = useState([]);
   const [sourceId, setSourceId] = useState(null);
-  const [showSourcePicker, setShowSourcePicker] =
-    useState(false);
-  const [sourceSearch, setSourceSearch] =
-    useState("");
+  const [showSourcePicker, setShowSourcePicker] = useState(false);
+  const [sourceSearch, setSourceSearch] = useState("");
 
   /* Categories */
 
-  const [categoryId, setCategoryId] =
-    useState(null);
+  const [categoryId, setCategoryId] = useState(null);
 
-  const [categories, setCategories] =
-    useState([]);
+  const [categories, setCategories] = useState([]);
 
-  const [showCategoryPicker, setShowCategoryPicker] =
-    useState(false);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
-  const [categorySearch, setCategorySearch] =
-    useState("");
+  const [categorySearch, setCategorySearch] = useState("");
 
   /* Date */
 
-  const [pickerMode, setPickerMode] =
-    useState("date");
+  const [pickerMode, setPickerMode] = useState("date");
 
   const cfg =
-    DIRECTION_CONFIG[
-    loanData.loan_direction
-    ] ||
-    DIRECTION_CONFIG.BORROWED;
+    DIRECTION_CONFIG[loanData.loan_direction] || DIRECTION_CONFIG.BORROWED;
 
-  const fieldConfig =
-    getLoanFieldConfig(
-      loanData.loan_type,
-      loanData,
-      editId
-    );
+  const fieldConfig = getLoanFieldConfig(loanData.loan_type, loanData, editId);
 
   /* =========================================================
      LOAD EDIT LOAN
@@ -526,59 +585,36 @@ export default function LoanFormScreen({
         setLoanData({
           loan_name: d.loan_name || "",
 
-          loan_type:
-            d.loan_type || "Other",
+          loan_type: d.loan_type || "Other",
 
-          lender:
-            d.lender || "",
+          lender: d.lender || "",
 
-          loan_direction:
-            d.loan_direction || "BORROWED",
+          loan_direction: d.loan_direction || "BORROWED",
 
           principal_amount:
-            d.principal_amount != null
-              ? String(d.principal_amount)
-              : "",
+            d.principal_amount != null ? String(d.principal_amount) : "",
 
           interest_rate:
-            d.interest_rate != null
-              ? String(d.interest_rate)
-              : "0",
+            d.interest_rate != null ? String(d.interest_rate) : "0",
 
-          loan_start_date:
-            getInitialDate(
-              d.loan_start_date
-            ),
+          loan_start_date: getInitialDate(d.loan_start_date),
 
-          tenure_months:
-            d.tenure_months != null
-              ? String(d.tenure_months)
-              : "",
+          tenure_months: d.tenure_months != null ? String(d.tenure_months) : "",
 
-          emi_amount:
-            d.emi_amount != null
-              ? String(d.emi_amount)
-              : "",
+          emi_amount: d.emi_amount != null ? String(d.emi_amount) : "",
 
-          emi_day:
-            d.emi_day != null
-              ? String(d.emi_day)
-              : "",
+          emi_day: d.emi_day != null ? String(d.emi_day) : "",
 
           outstanding_amount:
-            d.outstanding_amount != null
-              ? String(d.outstanding_amount)
-              : "",
+            d.outstanding_amount != null ? String(d.outstanding_amount) : "",
 
-          notes:
-            d.notes || "",
+          notes: d.notes || "",
 
           created_at: d.created_at,
           updated_at: d.updated_at,
           status: d.status,
 
-          principal_paid:
-            d.principal_paid || 0,
+          principal_paid: d.principal_paid || 0,
         });
 
         if (d.source_id != null) {
@@ -598,16 +634,11 @@ export default function LoanFormScreen({
           setHasEmi(true);
         }
       } catch (e) {
-        console.error(
-          "Failed to load loan:",
-          e
-        );
+        console.error("Failed to load loan:", e);
 
         if (mounted) {
           setErrors({
-            form:
-              e?.message ||
-              "Failed to load loan",
+            form: e?.message || "Failed to load loan",
           });
         }
       } finally {
@@ -641,20 +672,11 @@ export default function LoanFormScreen({
 
         setSources(src || []);
 
-        if (
-          !editId &&
-          src?.length > 0
-        ) {
-          setSourceId(
-            (previous) =>
-              previous ?? src[0].id
-          );
+        if (!editId && src?.length > 0) {
+          setSourceId((previous) => previous ?? src[0].id);
         }
       } catch (e) {
-        console.warn(
-          "Failed to load sources",
-          e
-        );
+        console.warn("Failed to load sources", e);
       }
     }
 
@@ -674,8 +696,7 @@ export default function LoanFormScreen({
 
     async function loadCategories() {
       try {
-        const cats =
-          await getCategories(true);
+        const cats = await getCategories(true);
 
         if (!mounted) {
           return;
@@ -683,10 +704,7 @@ export default function LoanFormScreen({
 
         setCategories(cats || []);
       } catch (e) {
-        console.warn(
-          "Failed to load categories",
-          e
-        );
+        console.warn("Failed to load categories", e);
       }
     }
 
@@ -727,67 +745,45 @@ export default function LoanFormScreen({
   function validate() {
     const next = {};
 
-    if (
-      !loanData.loan_name ||
-      !loanData.loan_name.trim()
-    ) {
-      next.loan_name =
-        "Loan name is required";
+    if (!loanData.loan_name || !loanData.loan_name.trim()) {
+      next.loan_name = "Loan name is required";
     }
 
-    const principal = parseFloat(
-      loanData.principal_amount
-    );
+    const principal = parseFloat(loanData.principal_amount);
 
     if (
       !loanData.principal_amount ||
       Number.isNaN(principal) ||
       principal <= 0
     ) {
-      next.principal_amount =
-        "Enter a valid amount";
+      next.principal_amount = "Enter a valid amount";
     }
 
-    const interestRate = parseFloat(
-      loanData.interest_rate
-    );
+    const interestRate = parseFloat(loanData.interest_rate);
 
     if (
       loanData.interest_rate === "" ||
       Number.isNaN(interestRate) ||
       interestRate < 0
     ) {
-      next.interest_rate =
-        "Enter a valid interest rate";
+      next.interest_rate = "Enter a valid interest rate";
     }
 
-    if (
-      loanData.emi_amount &&
-      Number.isNaN(
-        parseFloat(
-          loanData.emi_amount
-        )
-      )
-    ) {
-      next.emi_amount =
-        "Invalid EMI amount";
+    if (loanData.emi_amount && Number.isNaN(parseFloat(loanData.emi_amount))) {
+      next.emi_amount = "Invalid EMI amount";
     }
 
     if (!editId && !sourceId) {
-      next.sourceId =
-        "Select an account";
+      next.sourceId = "Select an account";
     }
 
     if (!editId && !categoryId) {
-      next.categoryId =
-        "Select a category";
+      next.categoryId = "Select a category";
     }
 
     setErrors(next);
 
-    return (
-      Object.keys(next).length === 0
-    );
+    return Object.keys(next).length === 0;
   }
 
   /* =========================================================
@@ -795,10 +791,7 @@ export default function LoanFormScreen({
   ========================================================= */
 
   async function submit() {
-    if (
-      submitting ||
-      deleting
-    ) {
+    if (submitting || deleting) {
       return;
     }
 
@@ -809,34 +802,19 @@ export default function LoanFormScreen({
     let normalizedStartDate;
 
     try {
-      const parsedStartDate =
-        asDate(
-          loanData.loan_start_date
-        );
+      const parsedStartDate = asDate(loanData.loan_start_date);
 
-      if (
-        Number.isNaN(
-          parsedStartDate.getTime()
-        )
-      ) {
-        throw new Error(
-          "Invalid loan start date"
-        );
+      if (Number.isNaN(parsedStartDate.getTime())) {
+        throw new Error("Invalid loan start date");
       }
 
-      normalizedStartDate =
-        parsedStartDate.toISOString();
+      normalizedStartDate = parsedStartDate.toISOString();
     } catch (e) {
-      console.error(
-        "Invalid loan start date:",
-        loanData.loan_start_date,
-        e
-      );
+      console.error("Invalid loan start date:", loanData.loan_start_date, e);
 
       setErrors((prev) => ({
         ...prev,
-        loan_start_date:
-          "Please select a valid date",
+        loan_start_date: "Please select a valid date",
       }));
 
       return;
@@ -863,66 +841,31 @@ export default function LoanFormScreen({
     const payload = {};
 
     allowed.forEach((key) => {
-      const value =
-        loanData[key];
+      const value = loanData[key];
 
-      if (
-        value !== undefined &&
-        value !== null &&
-        String(value) !== ""
-      ) {
+      if (value !== undefined && value !== null && String(value) !== "") {
         payload[key] = value;
       }
     });
 
-    if (
-      payload.principal_amount !==
-      undefined
-    ) {
-      payload.principal_amount =
-        Number(
-          payload.principal_amount
-        );
+    if (payload.principal_amount !== undefined) {
+      payload.principal_amount = Number(payload.principal_amount);
     }
 
-    if (
-      payload.interest_rate !==
-      undefined
-    ) {
-      payload.interest_rate =
-        Number(
-          payload.interest_rate || 0
-        );
+    if (payload.interest_rate !== undefined) {
+      payload.interest_rate = Number(payload.interest_rate || 0);
     }
 
-    if (
-      payload.tenure_months !==
-      undefined
-    ) {
-      payload.tenure_months =
-        Number(
-          payload.tenure_months || 0
-        );
+    if (payload.tenure_months !== undefined) {
+      payload.tenure_months = Number(payload.tenure_months || 0);
     }
 
-    if (
-      payload.emi_amount !==
-      undefined
-    ) {
-      payload.emi_amount =
-        Number(
-          payload.emi_amount || 0
-        );
+    if (payload.emi_amount !== undefined) {
+      payload.emi_amount = Number(payload.emi_amount || 0);
     }
 
-    if (
-      payload.emi_day !==
-      undefined
-    ) {
-      payload.emi_day =
-        Number(
-          payload.emi_day || 0
-        );
+    if (payload.emi_day !== undefined) {
+      payload.emi_day = Number(payload.emi_day || 0);
     }
 
     if (!hasEmi) {
@@ -939,46 +882,31 @@ export default function LoanFormScreen({
       }
     }
 
-    payload.loan_start_date =
-      normalizedStartDate;
+    payload.loan_start_date = normalizedStartDate;
 
     /* Source & Category */
 
     if (!editId && sourceId) {
-      payload.source_id =
-        sourceId;
+      payload.source_id = sourceId;
     }
 
     if (!editId && categoryId) {
-      payload.category_id =
-        categoryId;
+      payload.category_id = categoryId;
     }
 
     /* Outstanding */
 
     if (editId) {
-      const principalPaid =
-        Number(
-          loanData.principal_paid ||
-          0
-        );
+      const principalPaid = Number(loanData.principal_paid || 0);
 
-      if (
-        payload.principal_amount !==
-        undefined &&
-        principalPaid === 0
-      ) {
-        payload.outstanding_amount =
-          payload.principal_amount;
+      if (payload.principal_amount !== undefined && principalPaid === 0) {
+        payload.outstanding_amount = payload.principal_amount;
       }
     } else if (
-      payload.outstanding_amount ===
-      undefined &&
-      payload.principal_amount !==
-      undefined
+      payload.outstanding_amount === undefined &&
+      payload.principal_amount !== undefined
     ) {
-      payload.outstanding_amount =
-        payload.principal_amount;
+      payload.outstanding_amount = payload.principal_amount;
     }
 
     /* Save */
@@ -986,41 +914,27 @@ export default function LoanFormScreen({
     try {
       setSubmitting(true);
 
-      await new Promise(
-        (resolve) => {
-          requestAnimationFrame(
-            resolve
-          );
-        }
-      );
+      await new Promise((resolve) => {
+        requestAnimationFrame(resolve);
+      });
 
       console.log(
         "[LoanForm] Saving loan_start_date:",
-        payload.loan_start_date
+        payload.loan_start_date,
       );
 
       if (editId) {
-        await updateLoan(
-          editId,
-          payload
-        );
+        await updateLoan(editId, payload);
       } else {
-        await createLoan(
-          payload
-        );
+        await createLoan(payload);
       }
 
       navigation.goBack();
     } catch (e) {
-      console.error(
-        "Save loan failed:",
-        e
-      );
+      console.error("Save loan failed:", e);
 
       setErrors({
-        form:
-          e?.message ||
-          "Failed to save loan",
+        form: e?.message || "Failed to save loan",
       });
     } finally {
       setSubmitting(false);
@@ -1032,10 +946,7 @@ export default function LoanFormScreen({
   ========================================================= */
 
   async function confirmDelete() {
-    if (
-      !editId ||
-      deleting
-    ) {
+    if (!editId || deleting) {
       return;
     }
 
@@ -1048,17 +959,12 @@ export default function LoanFormScreen({
 
       navigation.popToTop();
     } catch (e) {
-      console.error(
-        "Delete loan failed:",
-        e
-      );
+      console.error("Delete loan failed:", e);
 
       setShowConfirmDelete(false);
 
       setErrors({
-        form:
-          e?.message ||
-          "Failed to delete loan",
+        form: e?.message || "Failed to delete loan",
       });
     } finally {
       setDeleting(false);
@@ -1077,106 +983,62 @@ export default function LoanFormScreen({
      FILTERS
   ========================================================= */
 
-  const filteredLoanTypes =
-    useMemo(() => {
-      const search =
-        loanTypeSearch
-          .trim()
-          .toLowerCase();
+  const filteredLoanTypes = useMemo(() => {
+    const search = loanTypeSearch.trim().toLowerCase();
 
-      if (!search) {
-        return LOAN_TYPES;
-      }
+    if (!search) {
+      return LOAN_TYPES;
+    }
 
-      return LOAN_TYPES.filter(
-        (item) =>
-          item.label
-            .toLowerCase()
-            .includes(search)
-      );
-    }, [loanTypeSearch]);
-
-  const filteredSources =
-    useMemo(() => {
-      const search =
-        sourceSearch
-          .trim()
-          .toLowerCase();
-
-      if (!search) {
-        return sources;
-      }
-
-      return sources.filter(
-        (source) =>
-          String(
-            source.name || ""
-          )
-            .toLowerCase()
-            .includes(search)
-      );
-    }, [
-      sources,
-      sourceSearch,
-    ]);
-
-  const directionCategories =
-    useMemo(() => {
-      const expectedType =
-        loanData.loan_direction ===
-          "LENT"
-          ? "expense"
-          : "income";
-
-      return categories.filter(
-        (category) =>
-          String(
-            category.type || ""
-          ).toLowerCase() ===
-          expectedType
-      );
-    }, [
-      categories,
-      loanData.loan_direction,
-    ]);
-
-  const filteredCategories =
-    useMemo(() => {
-      const search =
-        categorySearch
-          .trim()
-          .toLowerCase();
-
-      if (!search) {
-        return directionCategories;
-      }
-
-      return directionCategories.filter(
-        (category) =>
-          String(
-            category.name || ""
-          )
-            .toLowerCase()
-            .includes(search)
-      );
-    }, [
-      directionCategories,
-      categorySearch,
-    ]);
-
-  const selectedSource =
-    sources.find(
-      (source) =>
-        Number(source.id) ===
-        Number(sourceId)
+    return LOAN_TYPES.filter((item) =>
+      item.label.toLowerCase().includes(search),
     );
+  }, [loanTypeSearch]);
 
-  const selectedCategory =
-    categories.find(
-      (category) =>
-        Number(category.id) ===
-        Number(categoryId)
+  const filteredSources = useMemo(() => {
+    const search = sourceSearch.trim().toLowerCase();
+
+    if (!search) {
+      return sources;
+    }
+
+    return sources.filter((source) =>
+      String(source.name || "")
+        .toLowerCase()
+        .includes(search),
     );
+  }, [sources, sourceSearch]);
+
+  const directionCategories = useMemo(() => {
+    const expectedType =
+      loanData.loan_direction === "LENT" ? "expense" : "income";
+
+    return categories.filter(
+      (category) => String(category.type || "").toLowerCase() === expectedType,
+    );
+  }, [categories, loanData.loan_direction]);
+
+  const filteredCategories = useMemo(() => {
+    const search = categorySearch.trim().toLowerCase();
+
+    if (!search) {
+      return directionCategories;
+    }
+
+    return directionCategories.filter((category) =>
+      String(category.name || "")
+        .toLowerCase()
+        .includes(search),
+    );
+  }, [directionCategories, categorySearch]);
+
+  const selectedSource = sources.find(
+    (source) => Number(source.id) === Number(sourceId),
+  );
+
+  const selectedCategory = categories.find(
+    (category) => Number(category.id) === Number(categoryId),
+  );
 
   /* =========================================================
      DATE PICKER
@@ -1196,14 +1058,8 @@ export default function LoanFormScreen({
     setPickerMode("date");
   }
 
-  function handleNativeDateChange(
-    event,
-    selectedDate
-  ) {
-    if (
-      event?.type ===
-      "dismissed"
-    ) {
+  function handleNativeDateChange(event, selectedDate) {
+    if (event?.type === "dismissed") {
       closeStartDatePicker();
       return;
     }
@@ -1212,33 +1068,21 @@ export default function LoanFormScreen({
       return;
     }
 
-    const existingDate =
-      new Date(
-        loanData.loan_start_date
-      );
+    const existingDate = new Date(loanData.loan_start_date);
 
-    const newDate =
-      new Date(selectedDate);
+    const newDate = new Date(selectedDate);
 
-    if (
-      pickerMode === "date"
-    ) {
+    if (pickerMode === "date") {
       newDate.setHours(
         existingDate.getHours(),
         existingDate.getMinutes(),
         0,
-        0
+        0,
       );
 
-      setField(
-        "loan_start_date",
-        newDate.toISOString()
-      );
+      setField("loan_start_date", newDate.toISOString());
 
-      if (
-        Platform.OS ===
-        "android"
-      ) {
+      if (Platform.OS === "android") {
         setShowStartPicker(false);
 
         setTimeout(() => {
@@ -1252,22 +1096,11 @@ export default function LoanFormScreen({
       return;
     }
 
-    const timeDate =
-      new Date(
-        loanData.loan_start_date
-      );
+    const timeDate = new Date(loanData.loan_start_date);
 
-    timeDate.setHours(
-      selectedDate.getHours(),
-      selectedDate.getMinutes(),
-      0,
-      0
-    );
+    timeDate.setHours(selectedDate.getHours(), selectedDate.getMinutes(), 0, 0);
 
-    setField(
-      "loan_start_date",
-      timeDate.toISOString()
-    );
+    setField("loan_start_date", timeDate.toISOString());
 
     closeStartDatePicker();
   }
@@ -1278,23 +1111,10 @@ export default function LoanFormScreen({
 
   if (loadingLoan) {
     return (
-      <View
-        style={
-          styles.loaderContainer
-        }
-      >
-        <ActivityIndicator
-          size="large"
-          color="#2563EB"
-        />
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#2563EB" />
 
-        <Text
-          style={
-            styles.loaderText
-          }
-        >
-          Loading loan...
-        </Text>
+        <Text style={styles.loaderText}>Loading loan...</Text>
       </View>
     );
   }
@@ -1304,18 +1124,14 @@ export default function LoanFormScreen({
   ========================================================= */
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.screen}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
-        contentContainerStyle={
-          styles.content
-        }
+        contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={
-          false
-        }
+        showsVerticalScrollIndicator={false}
       >
         {/* =================================================
             TOP HEADER
@@ -1323,21 +1139,12 @@ export default function LoanFormScreen({
 
         <View style={styles.topHeader}>
           <View style={styles.headerTextWrap}>
-            <Text
-              style={styles.title}
-            >
-              {editId
-                ? `Edit ${cfg.label}`
-                : `New ${cfg.label}`}
+            <Text style={styles.title}>
+              {editId ? `Edit ${cfg.label}` : `New ${cfg.label}`}
             </Text>
 
-            <Text
-              style={
-                styles.subtitle
-              }
-            >
-              {loanData.loan_direction ===
-                "BORROWED"
+            <Text style={styles.subtitle}>
+              {loanData.loan_direction === "BORROWED"
                 ? "Track money you borrowed"
                 : "Track money you lent"}
             </Text>
@@ -1347,17 +1154,13 @@ export default function LoanFormScreen({
             style={[
               styles.headerIcon,
               {
-                backgroundColor:
-                  cfg.accentLight,
+                backgroundColor: cfg.accentLight,
               },
             ]}
           >
             <MaterialCommunityIcons
               name={
-                loanData.loan_direction ===
-                  "BORROWED"
-                  ? "bank-outline"
-                  : "cash"
+                loanData.loan_direction === "BORROWED" ? "bank-outline" : "cash"
               }
               size={23}
               color={cfg.color}
@@ -1370,22 +1173,14 @@ export default function LoanFormScreen({
         ================================================= */}
 
         {errors.form ? (
-          <View
-            style={styles.formError}
-          >
+          <View style={styles.formError}>
             <MaterialCommunityIcons
               name="alert-circle-outline"
               size={19}
               color="#DC2626"
             />
 
-            <Text
-              style={
-                styles.formErrorText
-              }
-            >
-              {errors.form}
-            </Text>
+            <Text style={styles.formErrorText}>{errors.form}</Text>
           </View>
         ) : null}
 
@@ -1393,46 +1188,26 @@ export default function LoanFormScreen({
             BORROW / LEND SWITCH
         ================================================= */}
 
-        <View
-          style={
-            styles.segmentContainer
-          }
-        >
-          {[
-            "BORROWED",
-            "LENT",
-          ].map((direction) => {
-            const active =
-              loanData.loan_direction ===
-              direction;
+        <View style={styles.segmentContainer}>
+          {["BORROWED", "LENT"].map((direction) => {
+            const active = loanData.loan_direction === direction;
 
-            const color =
-              DIRECTION_CONFIG[
-                direction
-              ].color;
+            const color = DIRECTION_CONFIG[direction].color;
 
             return (
               <TouchableOpacity
                 key={direction}
                 activeOpacity={0.8}
-                disabled={
-                  submitting
-                }
+                disabled={submitting}
                 onPress={() => {
-                  setField(
-                    "loan_direction",
-                    direction
-                  );
+                  setField("loan_direction", direction);
 
-                  setCategoryId(
-                    null
-                  );
+                  setCategoryId(null);
                 }}
                 style={[
                   styles.segment,
                   active && {
-                    backgroundColor:
-                      color,
+                    backgroundColor: color,
                   },
                 ]}
               >
@@ -1444,10 +1219,7 @@ export default function LoanFormScreen({
                     },
                   ]}
                 >
-                  {direction ===
-                    "BORROWED"
-                    ? "I Borrowed"
-                    : "I Lent"}
+                  {direction === "BORROWED" ? "I Borrowed" : "I Lent"}
                 </Text>
               </TouchableOpacity>
             );
@@ -1458,82 +1230,51 @@ export default function LoanFormScreen({
             MAIN FORM
         ================================================= */}
 
-        <View
-          style={styles.formCard}
-        >
+        <View style={styles.formCard}>
           {/* NAME */}
 
           <CompactInput
             label={
-              loanData.loan_direction ===
-                "BORROWED"
-                ? "Loan name"
-                : "Lend name"
+              loanData.loan_direction === "BORROWED" ? "Loan name" : "Lend name"
             }
-            value={
-              loanData.loan_name
-            }
-            onChangeText={(text) =>
-              setField(
-                "loan_name",
-                text
-              )
-            }
+            value={loanData.loan_name}
+            onChangeText={(text) => setField("loan_name", text)}
             placeholder={
-              loanData.loan_direction ===
-                "BORROWED"
+              loanData.loan_direction === "BORROWED"
                 ? "Home Loan"
                 : "Money lent to Ravi"
             }
             icon="file-document-outline"
             disabled={submitting}
-            error={
-              errors.loan_name
-            }
+            error={errors.loan_name}
           />
 
           {/* TYPE */}
           <CompactSelect
             label="Type"
             value={
-              LOAN_TYPES.find(
-                (item) =>
-                  item.key === loanData.loan_type
-              )?.label || loanData.loan_type
+              LOAN_TYPES.find((item) => item.key === loanData.loan_type)
+                ?.label || loanData.loan_type
             }
             icon={
-              LOAN_TYPES.find(
-                (item) =>
-                  item.key === loanData.loan_type
-              )?.icon || "bank-outline"
+              LOAN_TYPES.find((item) => item.key === loanData.loan_type)
+                ?.icon || "bank-outline"
             }
             onPress={() => setShowTypePicker(true)}
             disabled={submitting}
             color={
-              LOAN_TYPES.find(
-                (item) =>
-                  item.key === loanData.loan_type
-              )?.color || cfg.color
+              LOAN_TYPES.find((item) => item.key === loanData.loan_type)
+                ?.color || cfg.color
             }
           />
 
           {/* PERSON */}
           <CompactInput
-            label={
-              cfg.personLabel
-            }
-            value={
-              loanData.lender
-            }
-            onChangeText={(text) =>
-              setField(
-                "lender",
-                text
-              )
-            }
+            label={cfg.personLabel}
+            value={loanData.lender}
+            onChangeText={(text) => setField("lender", text)}
             placeholder={
-              loanData.loan_direction ===
-                "BORROWED"
+              loanData.loan_direction === "BORROWED"
                 ? "Who gave you the money?"
                 : "Who received the money?"
             }
@@ -1544,35 +1285,27 @@ export default function LoanFormScreen({
           {/* AMOUNT */}
 
           <CompactInput
-            label={
-              cfg.amountLabel
-            }
-            value={
-              loanData.principal_amount
-            }
-            onChangeText={(text) =>
-              setField(
-                "principal_amount",
-                text
-              )
-            }
+            label={cfg.amountLabel}
+            value={loanData.principal_amount}
+            onChangeText={(text) => setField("principal_amount", text)}
             keyboardType="numeric"
             placeholder="0"
             icon="cash"
             disabled={submitting}
-            error={
-              errors.principal_amount
-            }
-            accent={
-              cfg.color
-            }
+            error={errors.principal_amount}
+            accent={cfg.color}
             large
           />
 
           {/* EMI TOGGLE */}
           <View style={styles.switchRow}>
             <View style={styles.switchLabelWrap}>
-              <MaterialCommunityIcons name="calendar-sync-outline" size={20} color="#64748B" style={{ marginRight: 8 }} />
+              <MaterialCommunityIcons
+                name="calendar-sync-outline"
+                size={20}
+                color="#64748B"
+                style={{ marginRight: 8 }}
+              />
               <Text style={styles.switchLabel}>Has EMI Options</Text>
             </View>
             <Switch
@@ -1613,9 +1346,7 @@ export default function LoanFormScreen({
             <>
               <CompactInput
                 label={
-                  loanData.loan_direction === "BORROWED"
-                    ? "EMI"
-                    : "Instalment"
+                  loanData.loan_direction === "BORROWED" ? "EMI" : "Instalment"
                 }
                 value={loanData.emi_amount}
                 onChangeText={(text) => setField("emi_amount", text)}
@@ -1629,9 +1360,7 @@ export default function LoanFormScreen({
               <CompactSelect
                 label="Due day"
                 value={
-                  loanData.emi_day
-                    ? `Day ${loanData.emi_day}`
-                    : "Select day"
+                  loanData.emi_day ? `Day ${loanData.emi_day}` : "Select day"
                 }
                 icon="calendar"
                 onPress={() => setShowDueDayPicker(true)}
@@ -1645,18 +1374,13 @@ export default function LoanFormScreen({
 
           <CompactSelect
             label={
-              loanData.loan_direction ===
-                "BORROWED"
+              loanData.loan_direction === "BORROWED"
                 ? "Start date"
                 : "Date lent"
             }
-            value={formatDateTime(
-              loanData.loan_start_date
-            )}
+            value={formatDateTime(loanData.loan_start_date)}
             icon="calendar"
-            onPress={
-              openStartDatePicker
-            }
+            onPress={openStartDatePicker}
             disabled={submitting}
             color={cfg.color}
           />
@@ -1666,24 +1390,13 @@ export default function LoanFormScreen({
           {fieldConfig.outstanding ? (
             <CompactInput
               label="Outstanding"
-              value={
-                loanData.outstanding_amount
-              }
-              onChangeText={(text) =>
-                setField(
-                  "outstanding_amount",
-                  text
-                )
-              }
+              value={loanData.outstanding_amount}
+              onChangeText={(text) => setField("outstanding_amount", text)}
               keyboardType="numeric"
               placeholder="Outstanding amount"
               icon="wallet-outline"
-              disabled={
-                submitting
-              }
-              accent={
-                "#16A34A"
-              }
+              disabled={submitting}
+              accent={"#16A34A"}
             />
           ) : null}
 
@@ -1691,19 +1404,9 @@ export default function LoanFormScreen({
 
           {!editId ? (
             <>
-              <View
-                style={
-                  styles.divider
-                }
-              />
+              <View style={styles.divider} />
 
-              <Text
-                style={
-                  styles.subSectionTitle
-                }
-              >
-                Transaction setup
-              </Text>
+              <Text style={styles.subSectionTitle}>Transaction setup</Text>
 
               <CompactSelect
                 label={cfg.sourceLabel}
@@ -1731,41 +1434,23 @@ export default function LoanFormScreen({
         <View style={styles.actionRow}>
           <TouchableOpacity
             activeOpacity={0.8}
-            disabled={
-              submitting ||
-              deleting
-            }
+            disabled={submitting || deleting}
             onPress={handleCancel}
             style={styles.cancelButton}
           >
-            <Text
-              style={
-                styles.cancelButtonText
-              }
-            >
-              Cancel
-            </Text>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
 
           <PaperButton
             mode="contained"
             onPress={submit}
             loading={submitting}
-            disabled={
-              submitting ||
-              deleting
-            }
+            disabled={submitting || deleting}
             buttonColor={cfg.color}
             textColor="#FFFFFF"
             style={styles.saveButton}
-            contentStyle={
-              styles.saveButtonContent
-            }
-            icon={
-              submitting
-                ? undefined
-                : "check"
-            }
+            contentStyle={styles.saveButtonContent}
+            icon={submitting ? undefined : "check"}
           >
             {submitting
               ? editId
@@ -1780,16 +1465,9 @@ export default function LoanFormScreen({
         {editId ? (
           <TouchableOpacity
             activeOpacity={0.75}
-            disabled={
-              submitting ||
-              deleting
-            }
-            onPress={() =>
-              setShowConfirmDelete(true)
-            }
-            style={
-              styles.deleteAction
-            }
+            disabled={submitting || deleting}
+            onPress={() => setShowConfirmDelete(true)}
+            style={styles.deleteAction}
           >
             <MaterialCommunityIcons
               name="delete-outline"
@@ -1797,21 +1475,11 @@ export default function LoanFormScreen({
               color="#DC2626"
             />
 
-            <Text
-              style={
-                styles.deleteActionText
-              }
-            >
-              Delete this loan
-            </Text>
+            <Text style={styles.deleteActionText}>Delete this loan</Text>
           </TouchableOpacity>
         ) : null}
 
-        <View
-          style={
-            styles.bottomSpace
-          }
-        />
+        <View style={styles.bottomSpace} />
       </ScrollView>
 
       {/* =====================================================
@@ -1819,22 +1487,13 @@ export default function LoanFormScreen({
       ===================================================== */}
 
       <ConfirmDialog
-        visible={
-          showConfirmDelete
-        }
+        visible={showConfirmDelete}
         title={`Delete ${cfg.label}?`}
         message={`This will permanently delete this ${cfg.label.toLowerCase()}, all payments, and all linked transactions. This cannot be undone.`}
         confirmLabel={`Delete ${cfg.label}`}
         cancelLabel="Cancel"
-        onConfirm={
-          confirmDelete
-        }
-        onCancel={() =>
-          !deleting &&
-          setShowConfirmDelete(
-            false
-          )
-        }
+        onConfirm={confirmDelete}
+        onCancel={() => !deleting && setShowConfirmDelete(false)}
       />
 
       {/* =====================================================
@@ -1854,48 +1513,22 @@ export default function LoanFormScreen({
           style={styles.sheetOverlay}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View
-            style={
-              styles.sheet
-            }
-          >
-            <View
-              style={
-                styles.sheetHandle
-              }
-            />
+          <View style={styles.sheet}>
+            <View style={styles.sheetHandle} />
 
-            <View
-              style={
-                styles.sheetHeader
-              }
-            >
+            <View style={styles.sheetHeader}>
               <View>
-                <Text
-                  style={
-                    styles.sheetTitle
-                  }
-                >
-                  Loan type
-                </Text>
+                <Text style={styles.sheetTitle}>Loan type</Text>
 
-                <Text
-                  style={
-                    styles.sheetSubtitle
-                  }
-                >
+                <Text style={styles.sheetSubtitle}>
                   Choose the type that best matches
                 </Text>
               </View>
 
               <TouchableOpacity
                 onPress={() => {
-                  setLoanTypeSearch(
-                    ""
-                  );
-                  setShowTypePicker(
-                    false
-                  );
+                  setLoanTypeSearch("");
+                  setShowTypePicker(false);
                 }}
               >
                 <MaterialCommunityIcons
@@ -1908,142 +1541,100 @@ export default function LoanFormScreen({
 
             <PaperTextInput
               mode="outlined"
-              value={
-                loanTypeSearch
-              }
-              onChangeText={
-                setLoanTypeSearch
-              }
+              value={loanTypeSearch}
+              onChangeText={setLoanTypeSearch}
               placeholder="Search type"
-              left={
-                <PaperTextInput.Icon
-                  icon="magnify"
-                />
-              }
+              left={<PaperTextInput.Icon icon="magnify" />}
               right={
                 loanTypeSearch ? (
                   <PaperTextInput.Icon
                     icon="close"
-                    onPress={() =>
-                      setLoanTypeSearch(
-                        ""
-                      )
-                    }
+                    onPress={() => setLoanTypeSearch("")}
                   />
                 ) : null
               }
-              style={
-                styles.searchInput
-              }
+              style={styles.searchInput}
               dense
             />
 
             <ScrollView
-              style={
-                styles.sheetScroll
-              }
+              style={styles.sheetScroll}
               keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={
-                false
-              }
+              showsVerticalScrollIndicator={false}
             >
-              {filteredLoanTypes.length ===
-                0 ? (
+              {filteredLoanTypes.length === 0 ? (
                 <EmptyPickerState
                   icon="format-list-bulleted"
                   text="No type found"
                 />
               ) : (
-                filteredLoanTypes.map(
-                  (type) => {
-                    const selected =
-                      loanData.loan_type ===
-                      type.key;
+                filteredLoanTypes.map((type) => {
+                  const selected = loanData.loan_type === type.key;
 
-                    return (
-                      <TouchableOpacity
-                        key={
-                          type.key
-                        }
-                        activeOpacity={
-                          0.8
-                        }
-                        onPress={() => {
-                          setField(
-                            "loan_type",
-                            type.key
-                          );
+                  return (
+                    <TouchableOpacity
+                      key={type.key}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        setField("loan_type", type.key);
 
-                          setLoanTypeSearch(
-                            ""
-                          );
+                        setLoanTypeSearch("");
 
-                          setShowTypePicker(
-                            false
-                          );
-                        }}
+                        setShowTypePicker(false);
+                      }}
+                      style={[
+                        styles.simplePickerItem,
+                        selected && {
+                          backgroundColor: cfg.accentLight,
+                          borderColor: cfg.color,
+                        },
+                      ]}
+                    >
+                      <View
                         style={[
-                          styles.simplePickerItem,
-                          selected && {
-                            backgroundColor:
-                              cfg.accentLight,
-                            borderColor:
-                              cfg.color,
+                          styles.simplePickerIcon,
+                          {
+                            backgroundColor: selected
+                              ? type.color || cfg.color
+                              : `${type.color || cfg.color}18`,
                           },
                         ]}
                       >
-                        <View
-                          style={[
-                            styles.simplePickerIcon,
-                            {
-                              backgroundColor: selected
-                                ? type.color || cfg.color
-                                : `${type.color || cfg.color}18`,
-                            },
-                          ]}
-                        >
-                          <MaterialCommunityIcons
-                            name={type.icon || "bank-outline"}
-                            size={20}
-                            color={selected ? "#FFFFFF" : type.color || cfg.color}
-                          />
-                        </View>
+                        <MaterialCommunityIcons
+                          name={type.icon || "bank-outline"}
+                          size={20}
+                          color={selected ? "#FFFFFF" : type.color || cfg.color}
+                        />
+                      </View>
 
-                        <Text
-                          style={[
-                            styles.simplePickerText,
-                            selected && {
-                              color:
-                                cfg.color,
-                              fontWeight:
-                                "700",
-                            },
-                          ]}
-                        >
-                          {
-                            type.label
-                          }
-                        </Text>
+                      <Text
+                        style={[
+                          styles.simplePickerText,
+                          selected && {
+                            color: cfg.color,
+                            fontWeight: "700",
+                          },
+                        ]}
+                      >
+                        {type.label}
+                      </Text>
 
-                        {selected ? (
-                          <MaterialCommunityIcons
-                            name="check-circle"
-                            size={20}
-                            color={
-                              cfg.color
-                            }
-                          />
-                        ) : (
-                          <MaterialCommunityIcons
-                            name="chevron-right"
-                            size={20}
-                            color="#CBD5E1"
-                          />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  }
-                )
+                      {selected ? (
+                        <MaterialCommunityIcons
+                          name="check-circle"
+                          size={20}
+                          color={cfg.color}
+                        />
+                      ) : (
+                        <MaterialCommunityIcons
+                          name="chevron-right"
+                          size={20}
+                          color="#CBD5E1"
+                        />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })
               )}
 
               <View style={{ height: 16 }} />
@@ -2057,63 +1648,25 @@ export default function LoanFormScreen({
       ===================================================== */}
 
       <Modal
-        visible={
-          showDueDayPicker
-        }
+        visible={showDueDayPicker}
         transparent
         animationType="slide"
-        onRequestClose={() =>
-          setShowDueDayPicker(
-            false
-          )
-        }
+        onRequestClose={() => setShowDueDayPicker(false)}
       >
-        <View
-          style={
-            styles.sheetOverlay
-          }
-        >
-          <View
-            style={
-              styles.smallSheet
-            }
-          >
-            <View
-              style={
-                styles.sheetHandle
-              }
-            />
+        <View style={styles.sheetOverlay}>
+          <View style={styles.smallSheet}>
+            <View style={styles.sheetHandle} />
 
-            <View
-              style={
-                styles.sheetHeader
-              }
-            >
+            <View style={styles.sheetHeader}>
               <View>
-                <Text
-                  style={
-                    styles.sheetTitle
-                  }
-                >
-                  Payment day
-                </Text>
+                <Text style={styles.sheetTitle}>Payment day</Text>
 
-                <Text
-                  style={
-                    styles.sheetSubtitle
-                  }
-                >
+                <Text style={styles.sheetSubtitle}>
                   Select the monthly due day
                 </Text>
               </View>
 
-              <TouchableOpacity
-                onPress={() =>
-                  setShowDueDayPicker(
-                    false
-                  )
-                }
-              >
+              <TouchableOpacity onPress={() => setShowDueDayPicker(false)}>
                 <MaterialCommunityIcons
                   name="close"
                   size={22}
@@ -2182,48 +1735,22 @@ export default function LoanFormScreen({
           style={styles.sheetOverlay}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View
-            style={
-              styles.sheet
-            }
-          >
-            <View
-              style={
-                styles.sheetHandle
-              }
-            />
+          <View style={styles.sheet}>
+            <View style={styles.sheetHandle} />
 
-            <View
-              style={
-                styles.sheetHeader
-              }
-            >
+            <View style={styles.sheetHeader}>
               <View>
-                <Text
-                  style={
-                    styles.sheetTitle
-                  }
-                >
-                  {cfg.sourceLabel}
-                </Text>
+                <Text style={styles.sheetTitle}>{cfg.sourceLabel}</Text>
 
-                <Text
-                  style={
-                    styles.sheetSubtitle
-                  }
-                >
+                <Text style={styles.sheetSubtitle}>
                   Select the account used for this transaction
                 </Text>
               </View>
 
               <TouchableOpacity
                 onPress={() => {
-                  setSourceSearch(
-                    ""
-                  );
-                  setShowSourcePicker(
-                    false
-                  );
+                  setSourceSearch("");
+                  setShowSourcePicker(false);
                 }}
               >
                 <MaterialCommunityIcons
@@ -2236,180 +1763,117 @@ export default function LoanFormScreen({
 
             <PaperTextInput
               mode="outlined"
-              value={
-                sourceSearch
-              }
-              onChangeText={
-                setSourceSearch
-              }
+              value={sourceSearch}
+              onChangeText={setSourceSearch}
               placeholder="Search account"
-              left={
-                <PaperTextInput.Icon
-                  icon="magnify"
-                />
-              }
+              left={<PaperTextInput.Icon icon="magnify" />}
               right={
                 sourceSearch ? (
                   <PaperTextInput.Icon
                     icon="close"
-                    onPress={() =>
-                      setSourceSearch(
-                        ""
-                      )
-                    }
+                    onPress={() => setSourceSearch("")}
                   />
                 ) : null
               }
-              style={
-                styles.searchInput
-              }
+              style={styles.searchInput}
               dense
             />
 
             <ScrollView
-              style={
-                styles.sheetScroll
-              }
+              style={styles.sheetScroll}
               keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={
-                false
-              }
+              showsVerticalScrollIndicator={false}
             >
-              {filteredSources.length ===
-                0 ? (
+              {filteredSources.length === 0 ? (
                 <EmptyPickerState
                   icon="wallet-outline"
                   text={
-                    sourceSearch
-                      ? "No account found"
-                      : "No accounts available"
+                    sourceSearch ? "No account found" : "No accounts available"
                   }
                 />
               ) : (
-                filteredSources.map(
-                  (source) => {
-                    const selected =
-                      Number(
-                        source.id
-                      ) ===
-                      Number(
-                        sourceId
-                      );
+                filteredSources.map((source) => {
+                  const selected = Number(source.id) === Number(sourceId);
 
-                    const color =
-                      source.color ||
-                      cfg.color;
+                  const color = source.color || cfg.color;
 
-                    return (
-                      <TouchableOpacity
-                        key={
-                          source.id
+                  return (
+                    <TouchableOpacity
+                      key={source.id}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        setSourceId(source.id);
+
+                        setSourceSearch("");
+
+                        setShowSourcePicker(false);
+
+                        if (errors.sourceId) {
+                          setErrors((previous) => {
+                            const next = {
+                              ...previous,
+                            };
+
+                            delete next.sourceId;
+
+                            return next;
+                          });
                         }
-                        activeOpacity={
-                          0.8
-                        }
-                        onPress={() => {
-                          setSourceId(
-                            source.id
-                          );
-
-                          setSourceSearch(
-                            ""
-                          );
-
-                          setShowSourcePicker(
-                            false
-                          );
-
-                          if (
-                            errors.sourceId
-                          ) {
-                            setErrors(
-                              (
-                                previous
-                              ) => {
-                                const next =
-                                {
-                                  ...previous,
-                                };
-
-                                delete next.sourceId;
-
-                                return next;
-                              }
-                            );
-                          }
-                        }}
+                      }}
+                      style={[
+                        styles.simplePickerItem,
+                        selected && {
+                          backgroundColor: `${color}12`,
+                          borderColor: color,
+                        },
+                      ]}
+                    >
+                      <View
                         style={[
-                          styles.simplePickerItem,
-                          selected && {
-                            backgroundColor:
-                              `${color}12`,
-                            borderColor:
-                              color,
+                          styles.simplePickerIcon,
+                          {
+                            backgroundColor: `${color}18`,
                           },
                         ]}
                       >
-                        <View
+                        <MaterialCommunityIcons
+                          name={source.icon || "wallet-outline"}
+                          size={20}
+                          color={color}
+                        />
+                      </View>
+
+                      <View style={styles.pickerTextWrap}>
+                        <Text
+                          numberOfLines={1}
                           style={[
-                            styles.simplePickerIcon,
-                            {
-                              backgroundColor:
-                                `${color}18`,
+                            styles.simplePickerText,
+                            selected && {
+                              color: color,
+                              fontWeight: "700",
                             },
                           ]}
                         >
-                          <MaterialCommunityIcons
-                            name={source.icon || "wallet-outline"}
-                            size={20}
-                            color={color}
-                          />
-                        </View>
+                          {source.name}
+                        </Text>
+                      </View>
 
-                        <View
-                          style={
-                            styles.pickerTextWrap
-                          }
-                        >
-                          <Text
-                            numberOfLines={
-                              1
-                            }
-                            style={[
-                              styles.simplePickerText,
-                              selected && {
-                                color:
-                                  color,
-                                fontWeight:
-                                  "700",
-                              },
-                            ]}
-                          >
-                            {
-                              source.name
-                            }
-                          </Text>
-                        </View>
-
-                        {selected ? (
-                          <MaterialCommunityIcons
-                            name="check-circle"
-                            size={20}
-                            color={
-                              color
-                            }
-                          />
-                        ) : (
-                          <MaterialCommunityIcons
-                            name="chevron-right"
-                            size={20}
-                            color="#CBD5E1"
-                          />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  }
-                )
+                      {selected ? (
+                        <MaterialCommunityIcons
+                          name="check-circle"
+                          size={20}
+                          color={color}
+                        />
+                      ) : (
+                        <MaterialCommunityIcons
+                          name="chevron-right"
+                          size={20}
+                          color="#CBD5E1"
+                        />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })
               )}
 
               <View style={{ height: 16 }} />
@@ -2435,48 +1899,22 @@ export default function LoanFormScreen({
           style={styles.sheetOverlay}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View
-            style={
-              styles.sheet
-            }
-          >
-            <View
-              style={
-                styles.sheetHandle
-              }
-            />
+          <View style={styles.sheet}>
+            <View style={styles.sheetHandle} />
 
-            <View
-              style={
-                styles.sheetHeader
-              }
-            >
+            <View style={styles.sheetHeader}>
               <View>
-                <Text
-                  style={
-                    styles.sheetTitle
-                  }
-                >
-                  {cfg.categoryLabel}
-                </Text>
+                <Text style={styles.sheetTitle}>{cfg.categoryLabel}</Text>
 
-                <Text
-                  style={
-                    styles.sheetSubtitle
-                  }
-                >
+                <Text style={styles.sheetSubtitle}>
                   Choose the transaction category
                 </Text>
               </View>
 
               <TouchableOpacity
                 onPress={() => {
-                  setCategorySearch(
-                    ""
-                  );
-                  setShowCategoryPicker(
-                    false
-                  );
+                  setCategorySearch("");
+                  setShowCategoryPicker(false);
                 }}
               >
                 <MaterialCommunityIcons
@@ -2489,47 +1927,28 @@ export default function LoanFormScreen({
 
             <PaperTextInput
               mode="outlined"
-              value={
-                categorySearch
-              }
-              onChangeText={
-                setCategorySearch
-              }
+              value={categorySearch}
+              onChangeText={setCategorySearch}
               placeholder="Search category"
-              left={
-                <PaperTextInput.Icon
-                  icon="magnify"
-                />
-              }
+              left={<PaperTextInput.Icon icon="magnify" />}
               right={
                 categorySearch ? (
                   <PaperTextInput.Icon
                     icon="close"
-                    onPress={() =>
-                      setCategorySearch(
-                        ""
-                      )
-                    }
+                    onPress={() => setCategorySearch("")}
                   />
                 ) : null
               }
-              style={
-                styles.searchInput
-              }
+              style={styles.searchInput}
               dense
             />
 
             <ScrollView
-              style={
-                styles.sheetScroll
-              }
+              style={styles.sheetScroll}
               keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={
-                false
-              }
+              showsVerticalScrollIndicator={false}
             >
-              {filteredCategories.length ===
-                0 ? (
+              {filteredCategories.length === 0 ? (
                 <EmptyPickerState
                   icon="tag-outline"
                   text={
@@ -2539,130 +1958,88 @@ export default function LoanFormScreen({
                   }
                 />
               ) : (
-                filteredCategories.map(
-                  (category) => {
-                    const selected =
-                      Number(
-                        category.id
-                      ) ===
-                      Number(
-                        categoryId
-                      );
+                filteredCategories.map((category) => {
+                  const selected = Number(category.id) === Number(categoryId);
 
-                    const color =
-                      category.color ||
-                      cfg.color;
+                  const color = category.color || cfg.color;
 
-                    return (
-                      <TouchableOpacity
-                        key={
-                          category.id
+                  return (
+                    <TouchableOpacity
+                      key={category.id}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        setCategoryId(category.id);
+
+                        setCategorySearch("");
+
+                        setShowCategoryPicker(false);
+
+                        if (errors.categoryId) {
+                          setErrors((previous) => {
+                            const next = {
+                              ...previous,
+                            };
+
+                            delete next.categoryId;
+
+                            return next;
+                          });
                         }
-                        activeOpacity={
-                          0.8
-                        }
-                        onPress={() => {
-                          setCategoryId(
-                            category.id
-                          );
-
-                          setCategorySearch(
-                            ""
-                          );
-
-                          setShowCategoryPicker(
-                            false
-                          );
-
-                          if (
-                            errors.categoryId
-                          ) {
-                            setErrors(
-                              (
-                                previous
-                              ) => {
-                                const next =
-                                {
-                                  ...previous,
-                                };
-
-                                delete next.categoryId;
-
-                                return next;
-                              }
-                            );
-                          }
-                        }}
+                      }}
+                      style={[
+                        styles.simplePickerItem,
+                        selected && {
+                          backgroundColor: `${color}12`,
+                          borderColor: color,
+                        },
+                      ]}
+                    >
+                      <View
                         style={[
-                          styles.simplePickerItem,
-                          selected && {
-                            backgroundColor:
-                              `${color}12`,
-                            borderColor:
-                              color,
+                          styles.simplePickerIcon,
+                          {
+                            backgroundColor: `${color}18`,
                           },
                         ]}
                       >
-                        <View
+                        <MaterialCommunityIcons
+                          name={category.icon || "shape-outline"}
+                          size={20}
+                          color={color}
+                        />
+                      </View>
+
+                      <View style={styles.pickerTextWrap}>
+                        <Text
+                          numberOfLines={1}
                           style={[
-                            styles.simplePickerIcon,
-                            {
-                              backgroundColor:
-                                `${color}18`,
+                            styles.simplePickerText,
+                            selected && {
+                              color: color,
+                              fontWeight: "700",
                             },
                           ]}
                         >
-                          <MaterialCommunityIcons
-                            name={category.icon || "shape-outline"}
-                            size={20}
-                            color={color}
-                          />
-                        </View>
+                          {category.name}
+                        </Text>
+                      </View>
 
-                        <View
-                          style={
-                            styles.pickerTextWrap
-                          }
-                        >
-                          <Text
-                            numberOfLines={
-                              1
-                            }
-                            style={[
-                              styles.simplePickerText,
-                              selected && {
-                                color:
-                                  color,
-                                fontWeight:
-                                  "700",
-                              },
-                            ]}
-                          >
-                            {
-                              category.name
-                            }
-                          </Text>
-                        </View>
-
-                        {selected ? (
-                          <MaterialCommunityIcons
-                            name="check-circle"
-                            size={20}
-                            color={
-                              color
-                            }
-                          />
-                        ) : (
-                          <MaterialCommunityIcons
-                            name="chevron-right"
-                            size={20}
-                            color="#CBD5E1"
-                          />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  }
-                )
+                      {selected ? (
+                        <MaterialCommunityIcons
+                          name="check-circle"
+                          size={20}
+                          color={color}
+                        />
+                      ) : (
+                        <MaterialCommunityIcons
+                          name="chevron-right"
+                          size={20}
+                          color="#CBD5E1"
+                        />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })
               )}
 
               <View style={{ height: 16 }} />
@@ -2675,254 +2052,17 @@ export default function LoanFormScreen({
           DATE PICKER
       ===================================================== */}
 
-      {showStartPicker
-        ? (() => {
-          if (
-            Platform.OS ===
-            "android"
-          ) {
-            return (
-              <DateTimePicker
-                value={
-                  new Date(
-                    loanData.loan_start_date
-                  )
-                }
-                mode={
-                  pickerMode
-                }
-                display={
-                  pickerMode ===
-                    "date"
-                    ? "calendar"
-                    : "clock"
-                }
-                is24Hour={false}
-                onChange={
-                  handleNativeDateChange
-                }
-              />
-            );
+      <MuiDateTimePicker
+        visible={showStartPicker}
+        initialDate={new Date(loanData.loan_start_date || new Date())}
+        onClose={closeStartDatePicker}
+        onSelect={(selectedDate) => {
+          if (selectedDate) {
+            setField("loan_start_date", selectedDate.toISOString());
           }
-
-          if (
-            Platform.OS ===
-            "ios"
-          ) {
-            return (
-              <Modal
-                visible={
-                  showStartPicker
-                }
-                transparent
-                animationType="slide"
-                onRequestClose={
-                  closeStartDatePicker
-                }
-              >
-                <View
-                  style={
-                    styles.dateSheetOverlay
-                  }
-                >
-                  <View
-                    style={
-                      styles.dateSheet
-                    }
-                  >
-                    <View
-                      style={
-                        styles.sheetHandle
-                      }
-                    />
-
-                    <Text
-                      style={
-                        styles.datePickerTitle
-                      }
-                    >
-                      {pickerMode ===
-                        "date"
-                        ? "Select Date"
-                        : "Select Time"}
-                    </Text>
-
-                    <View
-                      style={
-                        styles.nativePickerWrap
-                      }
-                    >
-                      <DateTimePicker
-                        value={
-                          new Date(
-                            loanData.loan_start_date
-                          )
-                        }
-                        mode={
-                          pickerMode
-                        }
-                        display="spinner"
-                        is24Hour={
-                          false
-                        }
-                        onChange={
-                          handleNativeDateChange
-                        }
-                      />
-                    </View>
-
-                    <View
-                      style={
-                        styles.dateButtonRow
-                      }
-                    >
-                      <PaperButton
-                        mode="outlined"
-                        onPress={
-                          closeStartDatePicker
-                        }
-                        style={
-                          styles.dateActionButton
-                        }
-                      >
-                        Cancel
-                      </PaperButton>
-
-                      <PaperButton
-                        mode="contained"
-                        buttonColor={
-                          cfg.color
-                        }
-                        textColor="#FFFFFF"
-                        onPress={() => {
-                          if (
-                            pickerMode ===
-                            "date"
-                          ) {
-                            setPickerMode(
-                              "time"
-                            );
-                          } else {
-                            closeStartDatePicker();
-                          }
-                        }}
-                        style={
-                          styles.dateActionButton
-                        }
-                      >
-                        {pickerMode ===
-                          "date"
-                          ? "Next"
-                          : "Done"}
-                      </PaperButton>
-                    </View>
-                  </View>
-                </View>
-              </Modal>
-            );
-          }
-
-          /* WEB */
-
-          return (
-            <Modal
-              visible={
-                showStartPicker
-              }
-              transparent
-              animationType="fade"
-              onRequestClose={
-                closeStartDatePicker
-              }
-            >
-              <View
-                style={
-                  styles.webDateOverlay
-                }
-              >
-                <View
-                  style={
-                    styles.webDateCard
-                  }
-                >
-                  <View
-                    style={
-                      styles.sheetHeader
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.sheetTitle
-                      }
-                    >
-                      Pick date & time
-                    </Text>
-
-                    <TouchableOpacity
-                      onPress={
-                        closeStartDatePicker
-                      }
-                    >
-                      <MaterialCommunityIcons
-                        name="close"
-                        size={22}
-                        color="#64748B"
-                      />
-                    </TouchableOpacity>
-                  </View>
-
-                  {(() => {
-                    const dt =
-                      new Date(
-                        loanData.loan_start_date ||
-                        new Date().toISOString()
-                      );
-
-                    const ManualDateTimePicker =
-                      require(
-                        "../components/ManualDateTimePicker"
-                      ).default;
-
-                    return (
-                      <ManualDateTimePicker
-                        year={dt.getFullYear()}
-                        month={
-                          dt.getMonth() +
-                          1
-                        }
-                        day={dt.getDate()}
-                        hour={dt.getHours()}
-                        minute={dt.getMinutes()}
-                        onChange={(
-                          y,
-                          m,
-                          d,
-                          h,
-                          min
-                        ) =>
-                          setField(
-                            "loan_start_date",
-                            new Date(
-                              y,
-                              m - 1,
-                              d,
-                              h,
-                              min
-                            ).toISOString()
-                          )
-                        }
-                        onClose={
-                          closeStartDatePicker
-                        }
-                      />
-                    );
-                  })()}
-                </View>
-              </View>
-            </Modal>
-          );
-        })()
-        : null}
+          closeStartDatePicker();
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -2944,54 +2084,23 @@ function CompactInput({
   large,
 }) {
   return (
-    <View
-      style={
-        styles.fieldWrap
-      }
-    >
+    <View style={styles.fieldWrap}>
       <PaperTextInput
         mode="outlined"
         dense
         label={label}
         value={value}
-        onChangeText={
-          onChangeText
-        }
-        placeholder={
-          placeholder
-        }
-        keyboardType={
-          keyboardType
-        }
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        keyboardType={keyboardType}
         disabled={disabled}
         error={!!error}
-        left={
-          <PaperTextInput.Icon
-            icon={icon}
-            color={
-              accent || "#64748B"
-            }
-          />
-        }
-        style={[
-          styles.input,
-          large &&
-          styles.largeInput,
-        ]}
-        outlineStyle={
-          styles.inputOutline
-        }
+        left={<PaperTextInput.Icon icon={icon} color={accent || "#64748B"} />}
+        style={[styles.input, large && styles.largeInput]}
+        outlineStyle={styles.inputOutline}
       />
 
-      {error ? (
-        <Text
-          style={
-            styles.fieldError
-          }
-        >
-          {error}
-        </Text>
-      ) : null}
+      {error ? <Text style={styles.fieldError}>{error}</Text> : null}
     </View>
   );
 }
@@ -3010,11 +2119,7 @@ function CompactSelect({
   error,
 }) {
   return (
-    <View
-      style={
-        styles.fieldWrap
-      }
-    >
+    <View style={styles.fieldWrap}>
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={onPress}
@@ -3027,39 +2132,15 @@ function CompactSelect({
           value={value}
           editable={false}
           error={!!error}
-          left={
-            <PaperTextInput.Icon
-              icon={icon}
-              color={
-                color || "#64748B"
-              }
-            />
-          }
-          right={
-            <PaperTextInput.Icon
-              icon="chevron-down"
-              color="#94A3B8"
-            />
-          }
-          style={
-            styles.input
-          }
-          outlineStyle={
-            styles.inputOutline
-          }
+          left={<PaperTextInput.Icon icon={icon} color={color || "#64748B"} />}
+          right={<PaperTextInput.Icon icon="chevron-down" color="#94A3B8" />}
+          style={styles.input}
+          outlineStyle={styles.inputOutline}
           pointerEvents="none"
         />
       </TouchableOpacity>
 
-      {error ? (
-        <Text
-          style={
-            styles.fieldError
-          }
-        >
-          {error}
-        </Text>
-      ) : null}
+      {error ? <Text style={styles.fieldError}>{error}</Text> : null}
     </View>
   );
 }
@@ -3068,571 +2149,549 @@ function CompactSelect({
    EMPTY PICKER
 ========================================================= */
 
-function EmptyPickerState({
-  icon,
-  text,
-}) {
+function EmptyPickerState({ icon, text }) {
   return (
-    <View
-      style={
-        styles.emptyPicker
-      }
-    >
-      <View
-        style={
-          styles.emptyPickerIcon
-        }
-      >
-        <MaterialCommunityIcons
-          name={icon}
-          size={28}
-          color="#94A3B8"
-        />
+    <View style={styles.emptyPicker}>
+      <View style={styles.emptyPickerIcon}>
+        <MaterialCommunityIcons name={icon} size={28} color="#94A3B8" />
       </View>
 
-      <Text
-        style={
-          styles.emptyPickerText
-        }
-      >
-        {text}
-      </Text>
+      <Text style={styles.emptyPickerText}>{text}</Text>
     </View>
   );
 }
 
-const styles =
-  StyleSheet.create({
-    screen: {
-      flex: 1,
-      backgroundColor: "#F5F7FB",
-    },
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: "#F5F7FB",
+  },
 
-    content: {
-      paddingHorizontal: 12,
-      paddingTop: 10,
-      paddingBottom: 18,
-    },
+  content: {
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 18,
+  },
 
-    /* =====================================================
+  /* =====================================================
        HEADER
     ===================================================== */
 
-    topHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 10,
-    },
+  topHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
 
-    headerTextWrap: {
-      flex: 1,
-      minWidth: 0,
-      paddingRight: 8,
-    },
+  headerTextWrap: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 8,
+  },
 
-    title: {
-      fontSize: 21,
-      lineHeight: 26,
-      fontWeight: "800",
-      color: "#111827",
-      letterSpacing: -0.3,
-    },
+  title: {
+    fontSize: 21,
+    lineHeight: 26,
+    fontWeight: "800",
+    color: "#111827",
+    letterSpacing: -0.3,
+  },
 
-    subtitle: {
-      marginTop: 2,
-      fontSize: 12,
-      lineHeight: 16,
-      color: "#64748B",
-      fontWeight: "500",
-    },
+  subtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    lineHeight: 16,
+    color: "#64748B",
+    fontWeight: "500",
+  },
 
-    headerIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: 0,
-    },
+  headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
 
-    /* =====================================================
+  /* =====================================================
        ERROR
     ===================================================== */
 
-    formError: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: "#FFF1F2",
-      borderWidth: 1,
-      borderColor: "#FECDD3",
-      borderRadius: 11,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-      marginBottom: 9,
-    },
+  formError: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF1F2",
+    borderWidth: 1,
+    borderColor: "#FECDD3",
+    borderRadius: 11,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 9,
+  },
 
-    formErrorText: {
-      flex: 1,
-      marginLeft: 7,
-      color: "#BE123C",
-      fontSize: 12,
-      lineHeight: 16,
-      fontWeight: "600",
-    },
+  formErrorText: {
+    flex: 1,
+    marginLeft: 7,
+    color: "#BE123C",
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "600",
+  },
 
-    /* =====================================================
+  /* =====================================================
        BORROW / LEND
     ===================================================== */
 
-    segmentContainer: {
-      flexDirection: "row",
-      backgroundColor: "#E9EDF5",
-      borderRadius: 12,
-      padding: 3,
-      marginBottom: 9,
-    },
+  segmentContainer: {
+    flexDirection: "row",
+    backgroundColor: "#E9EDF5",
+    borderRadius: 12,
+    padding: 3,
+    marginBottom: 9,
+  },
 
-    segment: {
-      flex: 1,
-      minHeight: 38,
-      borderRadius: 9,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingHorizontal: 8,
-    },
+  segment: {
+    flex: 1,
+    minHeight: 38,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
 
-    segmentText: {
-      fontSize: 13,
-      lineHeight: 17,
-      fontWeight: "700",
-      color: "#64748B",
-    },
+  segmentText: {
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: "700",
+    color: "#64748B",
+  },
 
-    /* =====================================================
+  /* =====================================================
        FORM
     ===================================================== */
 
-    formCard: {
-      backgroundColor: "#FFFFFF",
-      borderRadius: 15,
-      paddingHorizontal: 10,
-      paddingTop: 10,
-      paddingBottom: 3,
-      borderWidth: 1,
-      borderColor: "#E2E8F0",
+  formCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 15,
+    paddingHorizontal: 10,
+    paddingTop: 10,
+    paddingBottom: 3,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
 
-      shadowColor: "#0F172A",
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.04,
-      shadowRadius: 6,
-      elevation: 1,
+    shadowColor: "#0F172A",
+    shadowOffset: {
+      width: 0,
+      height: 2,
     },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
 
-    /* =====================================================
+  /* =====================================================
        INPUTS
     ===================================================== */
 
-    fieldWrap: {
-      width: "100%",
-      marginBottom: 8,
-    },
+  fieldWrap: {
+    width: "100%",
+    marginBottom: 8,
+  },
 
-    input: {
-      backgroundColor: "#FFFFFF",
-      fontSize: 14,
-      height: 50,
-    },
+  input: {
+    backgroundColor: "#FFFFFF",
+    fontSize: 14,
+    height: 50,
+  },
 
-    largeInput: {
-      height: 52,
-    },
+  largeInput: {
+    height: 52,
+  },
 
-    inputOutline: {
-      borderRadius: 11,
-      borderWidth: 1,
-      borderColor: "#D7DDE7",
-    },
+  inputOutline: {
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: "#D7DDE7",
+  },
 
-    fieldError: {
-      color: "#DC2626",
-      fontSize: 11,
-      lineHeight: 15,
-      marginTop: 3,
-      marginLeft: 4,
-      fontWeight: "600",
-    },
+  fieldError: {
+    color: "#DC2626",
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 3,
+    marginLeft: 4,
+    fontWeight: "600",
+  },
 
-    /* =====================================================
+  /* =====================================================
        IMPORTANT:
        Don't squeeze fields too much on mobile.
        They will still sit side-by-side on wider screens.
     ===================================================== */
 
-    row: {
-      flexDirection: "row",
-      gap: 8,
-      alignItems: "flex-start",
-      width: "100%",
-    },
+  row: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "flex-start",
+    width: "100%",
+  },
 
-    half: {
-      flex: 1,
-      minWidth: 0,
-    },
+  half: {
+    flex: 1,
+    minWidth: 0,
+  },
 
-    divider: {
-      height: 1,
-      backgroundColor: "#EEF0F4",
-      marginTop: 2,
-      marginBottom: 9,
-    },
+  divider: {
+    height: 1,
+    backgroundColor: "#EEF0F4",
+    marginTop: 2,
+    marginBottom: 9,
+  },
 
-    subSectionTitle: {
-      fontSize: 12,
-      lineHeight: 16,
-      fontWeight: "800",
-      color: "#475569",
-      marginBottom: 7,
-    },
+  subSectionTitle: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "800",
+    color: "#475569",
+    marginBottom: 7,
+  },
 
-    switchRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 4,
-      marginTop: 8,
-      marginBottom: 12,
-    },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 4,
+    marginTop: 8,
+    marginBottom: 12,
+  },
 
-    switchLabelWrap: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
+  switchLabelWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
 
-    switchLabel: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: "#334155",
-    },
+  switchLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#334155",
+  },
 
-    /* =====================================================
+  /* =====================================================
        ACTION BUTTONS
     ===================================================== */
 
-    actionRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      marginTop: 11,
-    },
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 11,
+  },
 
-    saveButton: {
-      flex: 1,
-      marginTop: 0,
-      borderRadius: 11,
-    },
+  saveButton: {
+    flex: 1,
+    marginTop: 0,
+    borderRadius: 11,
+  },
 
-    saveButtonContent: {
-      minHeight: 46,
-    },
+  saveButtonContent: {
+    minHeight: 46,
+  },
 
-    cancelButton: {
-      width: 96,
-      minHeight: 46,
-      borderRadius: 11,
-      borderWidth: 1,
-      borderColor: "#CBD5E1",
-      backgroundColor: "#FFFFFF",
-      alignItems: "center",
-      justifyContent: "center",
-    },
+  cancelButton: {
+    width: 96,
+    minHeight: 46,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
-    cancelButtonText: {
-      fontSize: 13,
-      fontWeight: "700",
-      color: "#475569",
-    },
+  cancelButtonText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#475569",
+  },
 
-    /* =====================================================
+  /* =====================================================
        DELETE
     ===================================================== */
 
-    deleteAction: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      alignSelf: "center",
-      marginTop: 7,
-      paddingHorizontal: 10,
-      paddingVertical: 7,
-    },
+  deleteAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    marginTop: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
 
-    deleteActionText: {
-      marginLeft: 5,
-      fontSize: 12,
-      lineHeight: 16,
-      fontWeight: "700",
-      color: "#DC2626",
-    },
+  deleteActionText: {
+    marginLeft: 5,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "700",
+    color: "#DC2626",
+  },
 
-    /* =====================================================
+  /* =====================================================
        LOADING
     ===================================================== */
 
-    loaderContainer: {
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      backgroundColor: "#F5F7FB",
-    },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F5F7FB",
+  },
 
-    loaderText: {
-      marginTop: 10,
-      fontSize: 13,
-      lineHeight: 18,
-      fontWeight: "600",
-      color: "#64748B",
-    },
+  loaderText: {
+    marginTop: 10,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "600",
+    color: "#64748B",
+  },
 
-    /* =====================================================
+  /* =====================================================
        PICKER SHEETS
     ===================================================== */
 
-    sheetOverlay: {
-      flex: 1,
-      justifyContent: "flex-end",
-      backgroundColor: "rgba(15,23,42,0.42)",
-    },
+  sheetOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(15,23,42,0.42)",
+  },
 
-    sheet: {
-      backgroundColor: "#FFFFFF",
-      borderTopLeftRadius: 22,
-      borderTopRightRadius: 22,
-      paddingHorizontal: 14,
-      paddingTop: 9,
-      paddingBottom: Platform.OS === "ios" ? 40 : 24,
-      maxHeight: "90%",
-    },
+  sheet: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 14,
+    paddingTop: 9,
+    paddingBottom: Platform.OS === "ios" ? 40 : 24,
+    maxHeight: "90%",
+  },
 
-    smallSheet: {
-      backgroundColor: "#FFFFFF",
-      borderTopLeftRadius: 22,
-      borderTopRightRadius: 22,
-      paddingHorizontal: 14,
-      paddingTop: 9,
-      paddingBottom: Platform.OS === "ios" ? 40 : 24,
-      maxHeight: "80%",
-    },
+  smallSheet: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 14,
+    paddingTop: 9,
+    paddingBottom: Platform.OS === "ios" ? 40 : 24,
+    maxHeight: "80%",
+  },
 
-    sheetHandle: {
-      alignSelf: "center",
-      width: 36,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: "#D1D5DB",
-      marginBottom: 12,
-    },
+  sheetHandle: {
+    alignSelf: "center",
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#D1D5DB",
+    marginBottom: 12,
+  },
 
-    sheetHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 9,
-    },
+  sheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 9,
+  },
 
-    sheetTitle: {
-      fontSize: 17,
-      lineHeight: 22,
-      fontWeight: "800",
-      color: "#111827",
-    },
+  sheetTitle: {
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: "800",
+    color: "#111827",
+  },
 
-    sheetSubtitle: {
-      marginTop: 2,
-      fontSize: 11,
-      lineHeight: 15,
-      color: "#94A3B8",
-    },
+  sheetSubtitle: {
+    marginTop: 2,
+    fontSize: 11,
+    lineHeight: 15,
+    color: "#94A3B8",
+  },
 
-    searchInput: {
-      backgroundColor: "#FFFFFF",
-      marginBottom: 8,
-      height: 46,
-    },
+  searchInput: {
+    backgroundColor: "#FFFFFF",
+    marginBottom: 8,
+    height: 46,
+  },
 
-    sheetScroll: {
-      flexShrink: 1,
-      width: "100%",
-    },
+  sheetScroll: {
+    flexShrink: 1,
+    width: "100%",
+  },
 
-    /* =====================================================
+  /* =====================================================
        PICKER ITEMS
     ===================================================== */
 
-    simplePickerItem: {
-      flexDirection: "row",
-      alignItems: "center",
-      minHeight: 54,
-      paddingHorizontal: 8,
-      paddingVertical: 7,
-      marginBottom: 6,
-      borderRadius: 11,
-      borderWidth: 1,
-      borderColor: "#E5E7EB",
-      backgroundColor: "#FFFFFF",
-    },
+  simplePickerItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 54,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+    marginBottom: 6,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
+  },
 
-    simplePickerIcon: {
-      width: 35,
-      height: 35,
-      borderRadius: 10,
-      alignItems: "center",
-      justifyContent: "center",
-      marginRight: 9,
-      flexShrink: 0,
-    },
+  simplePickerIcon: {
+    width: 35,
+    height: 35,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 9,
+    flexShrink: 0,
+  },
 
-    simplePickerText: {
-      flex: 1,
-      minWidth: 0,
-      fontSize: 13,
-      lineHeight: 18,
-      fontWeight: "600",
-      color: "#334155",
-      paddingRight: 5,
-    },
+  simplePickerText: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "600",
+    color: "#334155",
+    paddingRight: 5,
+  },
 
-    pickerTextWrap: {
-      flex: 1,
-      minWidth: 0,
-      paddingRight: 4,
-    },
+  pickerTextWrap: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 4,
+  },
 
-    /* =====================================================
+  /* =====================================================
        EMPTY
     ===================================================== */
 
-    emptyPicker: {
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: 42,
-      paddingHorizontal: 20,
-    },
+  emptyPicker: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 42,
+    paddingHorizontal: 20,
+  },
 
-    emptyPickerIcon: {
-      width: 56,
-      height: 56,
-      borderRadius: 17,
-      backgroundColor: "#F1F5F9",
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: 9,
-    },
+  emptyPickerIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 17,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 9,
+  },
 
-    emptyPickerText: {
-      color: "#94A3B8",
-      fontSize: 12,
-      lineHeight: 17,
-      fontWeight: "600",
-      textAlign: "center",
-    },
+  emptyPickerText: {
+    color: "#94A3B8",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "600",
+    textAlign: "center",
+  },
 
-    /* =====================================================
+  /* =====================================================
        DAY PICKER
     ===================================================== */
 
-    dayGrid: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      justifyContent: "center",
-      paddingTop: 4,
-      gap: 8,
-    },
+  dayGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    paddingTop: 4,
+    gap: 8,
+  },
 
-    dayTile: {
-      width: 44,
-      height: 44,
-      borderRadius: 11,
-      borderWidth: 1,
-      borderColor: "#E2E8F0",
-      backgroundColor: "#F8FAFC",
-      alignItems: "center",
-      justifyContent: "center",
-    },
+  dayTile: {
+    width: 44,
+    height: 44,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#F8FAFC",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
-    dayText: {
-      fontSize: 13,
-      lineHeight: 17,
-      fontWeight: "700",
-      color: "#475569",
-    },
+  dayText: {
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: "700",
+    color: "#475569",
+  },
 
-    /* =====================================================
+  /* =====================================================
        DATE
     ===================================================== */
 
-    dateSheetOverlay: {
-      flex: 1,
-      justifyContent: "flex-end",
-      backgroundColor: "rgba(15,23,42,0.42)",
-    },
+  dateSheetOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(15,23,42,0.42)",
+  },
 
-    dateSheet: {
-      backgroundColor: "#FFFFFF",
-      borderTopLeftRadius: 22,
-      borderTopRightRadius: 22,
-      paddingHorizontal: 14,
-      paddingTop: 11,
-      paddingBottom: 25,
-    },
+  dateSheet: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 14,
+    paddingTop: 11,
+    paddingBottom: 25,
+  },
 
-    datePickerTitle: {
-      fontSize: 17,
-      lineHeight: 22,
-      fontWeight: "800",
-      color: "#111827",
-      textAlign: "center",
-      marginBottom: 10,
-    },
+  datePickerTitle: {
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: "800",
+    color: "#111827",
+    textAlign: "center",
+    marginBottom: 10,
+  },
 
-    nativePickerWrap: {
-      alignItems: "center",
-      justifyContent: "center",
-      minHeight: 90,
-    },
+  nativePickerWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 90,
+  },
 
-    dateButtonRow: {
-      flexDirection: "row",
-      marginTop: 12,
-      gap: 8,
-    },
+  dateButtonRow: {
+    flexDirection: "row",
+    marginTop: 12,
+    gap: 8,
+  },
 
-    dateActionButton: {
-      flex: 1,
-      borderRadius: 10,
-    },
+  dateActionButton: {
+    flex: 1,
+    borderRadius: 10,
+  },
 
-    /* =====================================================
+  /* =====================================================
        WEB DATE PICKER
     ===================================================== */
 
-    webDateOverlay: {
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      backgroundColor: "rgba(15,23,42,0.42)",
-      padding: 14,
-    },
+  webDateOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(15,23,42,0.42)",
+    padding: 14,
+  },
 
-    webDateCard: {
-      width: "100%",
-      maxWidth: 500,
-      backgroundColor: "#FFFFFF",
-      borderRadius: 17,
-      padding: 14,
-    },
-  });
+  webDateCard: {
+    width: "100%",
+    maxWidth: 500,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 17,
+    padding: 14,
+  },
+});
