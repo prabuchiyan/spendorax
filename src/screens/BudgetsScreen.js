@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, FlatList } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+
 import { TextInput as PaperInput, Button, Avatar, IconButton } from 'react-native-paper';
 import { createBudget, getBudgetsForMonth, updateBudget } from '../services/budgets';
 import { saveCategoryBudget, deleteCategoryBudget, getCategoryBudgetSummary, copyCategoryBudgets } from '../services/categoryBudgets';
@@ -51,11 +51,11 @@ export default function BudgetsScreen({ route, navigation }) {
   const selectedMonth = selectedMonthDate.getMonth() + 1;
   const selectedYear = selectedMonthDate.getFullYear();
   const isCurrentMonthSelected =
-    selectedMonth === currentMonth &&
-    selectedYear === currentYear;
+  selectedMonth === currentMonth &&
+  selectedYear === currentYear;
   const hasCurrentMonthCategoryBudgets =
-    isCurrentMonthSelected &&
-    reduxCategoryBudgets.length > 0;
+  isCurrentMonthSelected &&
+  reduxCategoryBudgets.length > 0;
 
   /*
    * Copy is available ONLY when:
@@ -64,8 +64,8 @@ export default function BudgetsScreen({ route, navigation }) {
    * 2. Current month has NO category budgets
    */
   const shouldShowCopyOption =
-    isCurrentMonthSelected &&
-    reduxCategoryBudgets.length === 0;
+  isCurrentMonthSelected &&
+  reduxCategoryBudgets.length === 0;
   const monthCarousel = useMemo(() => {
     const current = new Date(
       currentYear,
@@ -94,9 +94,9 @@ export default function BudgetsScreen({ route, navigation }) {
       const rows = await getBudgetsForMonth();
 
       const general =
-        rows.find(
-          (r) => r.category_id == null
-        ) || rows[0];
+      rows.find(
+        (r) => r.category_id == null
+      ) || rows[0];
 
       if (general) {
         setCurrentBudgetId(general.id);
@@ -112,12 +112,12 @@ export default function BudgetsScreen({ route, navigation }) {
 
       // Load categories
       const cats =
-        await getCategories(true);
+      await getCategories(true);
 
       const safeCategories =
-        Array.isArray(cats)
-          ? cats
-          : [];
+      Array.isArray(cats) ?
+      cats :
+      [];
 
       const cmap = {};
 
@@ -150,7 +150,7 @@ export default function BudgetsScreen({ route, navigation }) {
   }
   useEffect(() => {
     load();
-    const unsub = navigation.addListener('focus', () => { load(); });
+    const unsub = navigation.addListener('focus', () => {load();});
     return unsub;
   }, [navigation]);
 
@@ -185,19 +185,19 @@ export default function BudgetsScreen({ route, navigation }) {
     );
 
     const rows = await getBudgetsForMonth();
-    const general = rows.find(r => r.category_id == null);
+    const general = rows.find((r) => r.category_id == null);
 
     if (general) {
       await updateBudget(general.id, {
         category_id: null,
         monthly_limit: totalCategoryBudgets,
-        month: null,
+        month: null
       });
     } else if (totalCategoryBudgets > 0) {
       const id = await createBudget({
         monthly_limit: totalCategoryBudgets,
         category_id: null,
-        month: null,
+        month: null
       });
 
       setCurrentBudgetId(id);
@@ -228,9 +228,9 @@ export default function BudgetsScreen({ route, navigation }) {
     return true;
   }
 
-  const filteredCategories = categories.filter(c =>
-    c.name.toLowerCase().includes(searchText.toLowerCase()) &&
-    !categoryBudgets.some(b => b.categoryId === c.id)
+  const filteredCategories = categories.filter((c) =>
+  c.name.toLowerCase().includes(searchText.toLowerCase()) &&
+  !categoryBudgets.some((b) => b.categoryId === c.id)
   );
 
   async function handleDeleteCategoryBudget(id) {
@@ -278,18 +278,18 @@ export default function BudgetsScreen({ route, navigation }) {
       1
     );
     const fromMonth =
-      previousDate.getMonth() + 1;
+    previousDate.getMonth() + 1;
     const fromYear =
-      previousDate.getFullYear();
+    previousDate.getFullYear();
     try {
       const copied =
-        await copyCategoryBudgets({
-          fromMonth,
-          fromYear,
-          toMonth: currentMonth,
-          toYear: currentYear,
-          overwrite: false,
-        });
+      await copyCategoryBudgets({
+        fromMonth,
+        fromYear,
+        toMonth: currentMonth,
+        toYear: currentYear,
+        overwrite: false
+      });
       if (copied.length === 0) {
         alert(
           `No category budgets were found in ${getMonthLabel(previousDate)} to copy.`
@@ -303,10 +303,10 @@ export default function BudgetsScreen({ route, navigation }) {
         currentYear
       );
       alert(
-        `Copied ${copied.length} category ${copied.length === 1
-          ? 'budget'
-          : 'budgets'
-        } from ${getMonthLabel(previousDate)} to ${getMonthLabel(currentMonthDate)}.`
+        `Copied ${copied.length} category ${copied.length === 1 ?
+        'budget' :
+        'budgets'} from ${
+        getMonthLabel(previousDate)} to ${getMonthLabel(currentMonthDate)}.`
       );
     } catch (error) {
       console.error(
@@ -342,8 +342,8 @@ export default function BudgetsScreen({ route, navigation }) {
             borderBottomWidth: tab === 'overall' ? 3 : 0,
             borderBottomColor: '#36B37E',
             alignItems: 'center'
-          }}
-        >
+          }}>
+          
           <Text style={{ fontWeight: tab === 'overall' ? '700' : '500', color: tab === 'overall' ? '#36B37E' : '#666' }}>
             Overall Budget
           </Text>
@@ -356,8 +356,8 @@ export default function BudgetsScreen({ route, navigation }) {
             borderBottomWidth: tab === 'category' ? 3 : 0,
             borderBottomColor: '#36B37E',
             alignItems: 'center'
-          }}
-        >
+          }}>
+          
           <Text style={{ fontWeight: tab === 'category' ? '700' : '500', color: tab === 'category' ? '#36B37E' : '#666' }}>
             Category Budget
           </Text>
@@ -365,8 +365,8 @@ export default function BudgetsScreen({ route, navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 80 }}>
-        {tab === 'overall' ? (
-          <Card>
+        {tab === 'overall' ?
+        <Card>
             <View style={{ alignItems: 'center' }}>
               <Avatar.Icon size={56} icon="cash" style={{ backgroundColor: '#E8F7EF', marginBottom: 12 }} />
               <Text style={{ fontSize: 22, fontWeight: '800', marginBottom: 6 }}>Monthly Budget</Text>
@@ -379,16 +379,16 @@ export default function BudgetsScreen({ route, navigation }) {
                 </View>
 
                 <PaperInput
-                  label="Monthly limit"
-                  mode="outlined"
-                  value={limit}
-                  keyboardType="numeric"
-                  onChangeText={setLimit}
-                  placeholder="e.g. 50,000"
-                  style={{ backgroundColor: 'white', width: '100%' }}
-                  theme={{ colors: { primary: '#36B37E' } }}
-                  outlineColor="#eee"
-                />
+                label="Monthly limit"
+                mode="outlined"
+                value={limit}
+                keyboardType="numeric"
+                onChangeText={setLimit}
+                placeholder="e.g. 50,000"
+                style={{ backgroundColor: 'white', width: '100%' }}
+                theme={{ colors: { primary: '#36B37E' } }}
+                outlineColor="#eee" />
+              
 
                 <Button mode="contained" onPress={setNow} style={{ marginTop: 18, paddingVertical: 12, borderRadius: 10, width: '100%' }} contentStyle={{ paddingVertical: 6 }}>
                   Set Now
@@ -397,109 +397,109 @@ export default function BudgetsScreen({ route, navigation }) {
                 <Text style={{ color: '#999', fontSize: 12, marginTop: 10, textAlign: 'center' }}>This will create or update your general monthly budget.</Text>
               </View>
             </View>
-          </Card>
-        ) : (
-          <>
+          </Card> :
+
+        <>
             <Card style={{ marginBottom: 12 }}>
               <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 12,
-                }}
-              >
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 12
+              }}>
+              
                 <TouchableOpacity
-                  onPress={() => moveMonthBy(-1)}
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 21,
-                    backgroundColor: '#F3F9F6',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
+                onPress={() => moveMonthBy(-1)}
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 21,
+                  backgroundColor: '#F3F9F6',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                
                   <Text
-                    style={{
-                      fontSize: 22,
-                      fontWeight: '700',
-                      color: '#36B37E',
-                    }}
-                  >
+                  style={{
+                    fontSize: 22,
+                    fontWeight: '700',
+                    color: '#36B37E'
+                  }}>
+                  
                     ‹
                   </Text>
                 </TouchableOpacity>
 
                 <View
-                  style={{
-                    alignItems: 'center',
-                    flex: 1,
-                  }}
-                >
+                style={{
+                  alignItems: 'center',
+                  flex: 1
+                }}>
+                
                   <Text
-                    style={{
-                      fontSize: 18,
-                      fontWeight: '800',
-                      color: '#1F2937',
-                    }}
-                  >
+                  style={{
+                    fontSize: 18,
+                    fontWeight: '800',
+                    color: '#1F2937'
+                  }}>
+                  
                     {getMonthLabel(selectedMonthDate)}
                   </Text>
 
-                  {isCurrentMonthSelected && (
-                    <View
-                      style={{
-                        marginTop: 4,
-                        paddingHorizontal: 9,
-                        paddingVertical: 3,
-                        borderRadius: 10,
-                        backgroundColor: '#E8F7EF',
-                      }}
-                    >
+                  {isCurrentMonthSelected &&
+                <View
+                  style={{
+                    marginTop: 4,
+                    paddingHorizontal: 9,
+                    paddingVertical: 3,
+                    borderRadius: 10,
+                    backgroundColor: '#E8F7EF'
+                  }}>
+                  
                       <Text
-                        style={{
-                          fontSize: 10,
-                          fontWeight: '800',
-                          color: '#1B5E20',
-                        }}
-                      >
+                    style={{
+                      fontSize: 10,
+                      fontWeight: '800',
+                      color: '#1B5E20'
+                    }}>
+                    
                         CURRENT MONTH
                       </Text>
                     </View>
-                  )}
+                }
                 </View>
 
                 <TouchableOpacity
-                  onPress={() => moveMonthBy(1)}
-                  disabled={
-                    selectedMonthDate.getTime() >=
-                    currentMonthDate.getTime()
-                  }
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 21,
-                    backgroundColor:
-                      selectedMonthDate.getTime() >=
-                        currentMonthDate.getTime()
-                        ? '#F3F4F6'
-                        : '#F3F9F6',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
+                onPress={() => moveMonthBy(1)}
+                disabled={
+                selectedMonthDate.getTime() >=
+                currentMonthDate.getTime()
+                }
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 21,
+                  backgroundColor:
+                  selectedMonthDate.getTime() >=
+                  currentMonthDate.getTime() ?
+                  '#F3F4F6' :
+                  '#F3F9F6',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                
                   <Text
-                    style={{
-                      fontSize: 22,
-                      fontWeight: '700',
-                      color:
-                        selectedMonthDate.getTime() >=
-                          currentMonthDate.getTime()
-                          ? '#B8BEC6'
-                          : '#36B37E',
-                    }}
-                  >
+                  style={{
+                    fontSize: 22,
+                    fontWeight: '700',
+                    color:
+                    selectedMonthDate.getTime() >=
+                    currentMonthDate.getTime() ?
+                    '#B8BEC6' :
+                    '#36B37E'
+                  }}>
+                  
                     ›
                   </Text>
                 </TouchableOpacity>
@@ -507,63 +507,63 @@ export default function BudgetsScreen({ route, navigation }) {
 
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 6 }}>
                 {monthCarousel.map((monthDate) => {
-                  const isActive = monthDate.getMonth() === selectedMonthDate.getMonth() && monthDate.getFullYear() === selectedMonthDate.getFullYear();
-                  return (
-                    <TouchableOpacity
-                      key={`${monthDate.getFullYear()}-${monthDate.getMonth()}`}
-                      onPress={() => setSelectedMonthDate(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1))}
-                      style={{
-                        width: 140,
-                        marginRight: 12,
-                        paddingVertical: 12,
-                        paddingHorizontal: 14,
-                        borderRadius: 16,
-                        borderWidth: 1,
-                        borderColor: isActive ? '#36B37E' : '#E5E7EB',
-                        backgroundColor: isActive ? '#E8F7EF' : '#F9FAFB',
-                        alignItems: 'center',
-                      }}
-                    >
+                const isActive = monthDate.getMonth() === selectedMonthDate.getMonth() && monthDate.getFullYear() === selectedMonthDate.getFullYear();
+                return (
+                  <TouchableOpacity
+                    key={`${monthDate.getFullYear()}-${monthDate.getMonth()}`}
+                    onPress={() => setSelectedMonthDate(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1))}
+                    style={{
+                      width: 140,
+                      marginRight: 12,
+                      paddingVertical: 12,
+                      paddingHorizontal: 14,
+                      borderRadius: 16,
+                      borderWidth: 1,
+                      borderColor: isActive ? '#36B37E' : '#E5E7EB',
+                      backgroundColor: isActive ? '#E8F7EF' : '#F9FAFB',
+                      alignItems: 'center'
+                    }}>
+                    
                       <Text style={{ fontSize: 12, color: isActive ? '#1B5E20' : '#6B7280', fontWeight: '700' }}>
                         {monthDate.toLocaleDateString('en-IN', { month: 'short' })}
                       </Text>
                       <Text style={{ fontSize: 14, fontWeight: '800', color: isActive ? '#1B5E20' : '#111827', marginTop: 4 }}>
                         {monthDate.getFullYear()}
                       </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                    </TouchableOpacity>);
+
+              })}
               </ScrollView>
 
-              {isCurrentMonthSelected ? (
-                shouldShowCopyOption ? (
-                  <View
-                    style={{
-                      marginTop: 14,
-                      borderRadius: 16,
-                      backgroundColor: '#F3F9FF',
-                      borderWidth: 1,
-                      borderColor: '#D9EAFF',
-                      padding: 16,
-                    }}
-                  >
+              {isCurrentMonthSelected ?
+            shouldShowCopyOption ?
+            <View
+              style={{
+                marginTop: 14,
+                borderRadius: 16,
+                backgroundColor: '#F3F9FF',
+                borderWidth: 1,
+                borderColor: '#D9EAFF',
+                padding: 16
+              }}>
+              
                     <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                      }}
-                    >
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center'
+                }}>
+                
                       <View
-                        style={{
-                          width: 42,
-                          height: 42,
-                          borderRadius: 21,
-                          backgroundColor: '#E3F0FF',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginRight: 12,
-                        }}
-                      >
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 21,
+                    backgroundColor: '#E3F0FF',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 12
+                  }}>
+                  
                         <Text style={{ fontSize: 20 }}>
                           📋
                         </Text>
@@ -571,23 +571,23 @@ export default function BudgetsScreen({ route, navigation }) {
 
                       <View style={{ flex: 1 }}>
                         <Text
-                          style={{
-                            fontSize: 15,
-                            fontWeight: '800',
-                            color: '#1F2937',
-                          }}
-                        >
+                    style={{
+                      fontSize: 15,
+                      fontWeight: '800',
+                      color: '#1F2937'
+                    }}>
+                    
                           Start with last month's budgets
                         </Text>
 
                         <Text
-                          style={{
-                            marginTop: 4,
-                            color: '#667085',
-                            fontSize: 12,
-                            lineHeight: 18,
-                          }}
-                        >
+                    style={{
+                      marginTop: 4,
+                      color: '#667085',
+                      fontSize: 12,
+                      lineHeight: 18
+                    }}>
+                    
                           Your current month has no category
                           budgets yet. Copy last month's limits
                           to get started quickly.
@@ -596,309 +596,309 @@ export default function BudgetsScreen({ route, navigation }) {
                     </View>
 
                     <Button
-                      mode="contained"
-                      icon="content-copy"
-                      onPress={handleCopyPreviousMonth}
-                      style={{
-                        marginTop: 14,
-                        borderRadius: 10,
-                      }}
-                      contentStyle={{
-                        paddingVertical: 4,
-                      }}
-                    >
+                mode="contained"
+                icon="content-copy"
+                onPress={handleCopyPreviousMonth}
+                style={{
+                  marginTop: 14,
+                  borderRadius: 10
+                }}
+                contentStyle={{
+                  paddingVertical: 4
+                }}>
+                
                       Copy Previous Month
                     </Button>
-                  </View>
-                ) : (
-                  <View
-                    style={{
-                      marginTop: 14,
-                      borderRadius: 16,
-                      backgroundColor: '#F5FBF7',
-                      borderWidth: 1,
-                      borderColor: '#D7F1DD',
-                      padding: 15,
-                    }}
-                  >
+                  </View> :
+
+            <View
+              style={{
+                marginTop: 14,
+                borderRadius: 16,
+                backgroundColor: '#F5FBF7',
+                borderWidth: 1,
+                borderColor: '#D7F1DD',
+                padding: 15
+              }}>
+              
                     <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                      }}
-                    >
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center'
+                }}>
+                
                       <Text
-                        style={{
-                          fontSize: 20,
-                          marginRight: 10,
-                        }}
-                      >
+                  style={{
+                    fontSize: 20,
+                    marginRight: 10
+                  }}>
+                  
                         ✓
                       </Text>
 
                       <View style={{ flex: 1 }}>
                         <Text
-                          style={{
-                            color: '#166534',
-                            fontWeight: '800',
-                            fontSize: 14,
-                          }}
-                        >
+                    style={{
+                      color: '#166534',
+                      fontWeight: '800',
+                      fontSize: 14
+                    }}>
+                    
                           Category budgets are set
                         </Text>
 
                         <Text
-                          style={{
-                            marginTop: 3,
-                            color: '#4B5563',
-                            fontSize: 12,
-                          }}
-                        >
+                    style={{
+                      marginTop: 3,
+                      color: '#4B5563',
+                      fontSize: 12
+                    }}>
+                    
                           You already have category budgets
                           for this month.
                         </Text>
                       </View>
                     </View>
-                  </View>
-                )
-              ) : (
-                <View
-                  style={{
-                    marginTop: 14,
-                    borderRadius: 16,
-                    backgroundColor: '#F9FAFB',
-                    borderWidth: 1,
-                    borderColor: '#E5E7EB',
-                    padding: 15,
-                  }}
-                >
+                  </View> :
+
+
+            <View
+              style={{
+                marginTop: 14,
+                borderRadius: 16,
+                backgroundColor: '#F9FAFB',
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+                padding: 15
+              }}>
+              
                   <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                    }}
-                  >
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center'
+                }}>
+                
                     <Text
-                      style={{
-                        fontSize: 20,
-                        marginRight: 10,
-                      }}
-                    >
+                  style={{
+                    fontSize: 20,
+                    marginRight: 10
+                  }}>
+                  
                       📅
                     </Text>
 
                     <View style={{ flex: 1 }}>
                       <Text
-                        style={{
-                          color: '#374151',
-                          fontWeight: '800',
-                          fontSize: 14,
-                        }}
-                      >
+                    style={{
+                      color: '#374151',
+                      fontWeight: '800',
+                      fontSize: 14
+                    }}>
+                    
                         Viewing {getMonthLabel(selectedMonthDate)}
                       </Text>
 
                       <Text
-                        style={{
-                          marginTop: 3,
-                          color: '#6B7280',
-                          fontSize: 12,
-                        }}
-                      >
+                    style={{
+                      marginTop: 3,
+                      color: '#6B7280',
+                      fontSize: 12
+                    }}>
+                    
                         Copying budgets is available only for
                         the current month.
                       </Text>
                     </View>
                   </View>
                 </View>
-              )}
+            }
             </Card>
 
             {/* CATEGORY BUDGETS */}
-            {categoryBudgets.length > 0 ? (
-              <View style={{ marginTop: 4 }}>
+            {categoryBudgets.length > 0 ?
+          <View style={{ marginTop: 4 }}>
                 {/* Section Header */}
                 <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginBottom: 12,
-                    paddingHorizontal: 2,
-                  }}
-                >
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 12,
+                paddingHorizontal: 2
+              }}>
+              
                   <View>
                     <Text
-                      style={{
-                        fontSize: 18,
-                        fontWeight: '800',
-                        color: '#172033',
-                      }}
-                    >
+                  style={{
+                    fontSize: 18,
+                    fontWeight: '800',
+                    color: '#172033'
+                  }}>
+                  
                       Category Budgets
                     </Text>
 
                     <Text
-                      style={{
-                        fontSize: 12,
-                        color: '#7B8794',
-                        marginTop: 3,
-                      }}
-                    >
+                  style={{
+                    fontSize: 12,
+                    color: '#7B8794',
+                    marginTop: 3
+                  }}>
+                  
                       Track your spending limits
                     </Text>
                   </View>
 
                   <View
-                    style={{
-                      minWidth: 38,
-                      height: 30,
-                      paddingHorizontal: 10,
-                      borderRadius: 15,
-                      backgroundColor: '#F0F8F4',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
+                style={{
+                  minWidth: 38,
+                  height: 30,
+                  paddingHorizontal: 10,
+                  borderRadius: 15,
+                  backgroundColor: '#F0F8F4',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                
                     <Text
-                      style={{
-                        fontSize: 12,
-                        fontWeight: '800',
-                        color: '#238B5A',
-                      }}
-                    >
+                  style={{
+                    fontSize: 12,
+                    fontWeight: '800',
+                    color: '#238B5A'
+                  }}>
+                  
                       {categoryBudgets.length}
                     </Text>
                   </View>
                 </View>
 
                 {categoryBudgets.map((budget) => {
-                  const percentage = Number(budget.percentage || 0);
+              const percentage = Number(budget.percentage || 0);
 
-                  const isExceeded = budget.exceeded;
-                  const isWarning = !isExceeded && percentage >= 80;
+              const isExceeded = budget.exceeded;
+              const isWarning = !isExceeded && percentage >= 80;
 
-                  let barColor = '#36B37E';
-                  let statusColor = '#36B37E';
+              let barColor = '#36B37E';
+              let statusColor = '#36B37E';
 
-                  if (isExceeded) {
-                    barColor = '#E46A6A';
-                    statusColor = '#D64545';
-                  } else if (isWarning) {
-                    barColor = '#FFB020';
-                    statusColor = '#C58A00';
+              if (isExceeded) {
+                barColor = '#E46A6A';
+                statusColor = '#D64545';
+              } else if (isWarning) {
+                barColor = '#FFB020';
+                statusColor = '#C58A00';
+              }
+
+              const progressWidth = Math.min(
+                100,
+                Math.max(0, percentage)
+              );
+
+              return (
+                <TouchableOpacity
+                  key={budget.id}
+                  activeOpacity={0.88}
+                  onPress={() =>
+                  navigation.navigate('CategoriesDetails', {
+                    categoryId: budget.categoryId,
+                    categoryName: budget.categoryName
+                  })
                   }
-
-                  const progressWidth = Math.min(
-                    100,
-                    Math.max(0, percentage)
-                  );
-
-                  return (
-                    <TouchableOpacity
-                      key={budget.id}
-                      activeOpacity={0.88}
-                      onPress={() =>
-                        navigation.navigate('CategoriesDetails', {
-                          categoryId: budget.categoryId,
-                          categoryName: budget.categoryName,
-                        })
-                      }
-                      style={{
-                        marginBottom: 10,
-                        backgroundColor: '#FFFFFF',
-                        borderRadius: 16,
-                        borderWidth: 1,
-                        borderColor: '#E8ECF0',
-                        overflow: 'hidden',
-                        elevation: 1,
-                        shadowColor: '#000',
-                        shadowOffset: {
-                          width: 0,
-                          height: 1,
-                        },
-                        shadowOpacity: 0.04,
-                        shadowRadius: 3,
-                      }}
-                    >
+                  style={{
+                    marginBottom: 10,
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: '#E8ECF0',
+                    overflow: 'hidden',
+                    elevation: 1,
+                    shadowColor: '#000',
+                    shadowOffset: {
+                      width: 0,
+                      height: 1
+                    },
+                    shadowOpacity: 0.04,
+                    shadowRadius: 3
+                  }}>
+                  
                       {/* Category accent */}
                       <View
-                        style={{
-                          position: 'absolute',
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: 4,
-                          backgroundColor:
-                            budget.color || '#36B37E',
-                        }}
-                      />
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: 4,
+                      backgroundColor:
+                      budget.color || '#36B37E'
+                    }} />
+                  
 
                       <View
-                        style={{
-                          paddingVertical: 11,
-                          paddingHorizontal: 12,
-                          paddingLeft: 14,
-                        }}
-                      >
+                    style={{
+                      paddingVertical: 11,
+                      paddingHorizontal: 12,
+                      paddingLeft: 14
+                    }}>
+                    
                         {/* Main row */}
                         <View
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                          }}
-                        >
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center'
+                      }}>
+                      
                           {/* Icon */}
                           <View
-                            style={{
-                              width: 42,
-                              height: 42,
-                              borderRadius: 13,
-                              backgroundColor:
-                                budget.color
-                                  ? `${budget.color}18`
-                                  : '#E8F7EF',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              marginRight: 10,
-                            }}
-                          >
+                        style={{
+                          width: 42,
+                          height: 42,
+                          borderRadius: 13,
+                          backgroundColor:
+                          budget.color ?
+                          `${budget.color}18` :
+                          '#E8F7EF',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginRight: 10
+                        }}>
+                        
                             <Avatar.Icon
-                              size={38}
-                              icon={budget.icon}
-                              color={budget.color || '#36B37E'}
-                              style={{
-                                backgroundColor: 'transparent',
-                              }}
-                            />
+                          size={38}
+                          icon={budget.icon}
+                          color={budget.color || '#36B37E'}
+                          style={{
+                            backgroundColor: 'transparent'
+                          }} />
+                        
                           </View>
 
                           {/* Category + amount */}
                           <View
-                            style={{
-                              flex: 1,
-                              minWidth: 0,
-                            }}
-                          >
+                        style={{
+                          flex: 1,
+                          minWidth: 0
+                        }}>
+                        
                             <Text
-                              numberOfLines={1}
-                              style={{
-                                fontSize: 15,
-                                fontWeight: '800',
-                                color: '#172033',
-                              }}
-                            >
+                          numberOfLines={1}
+                          style={{
+                            fontSize: 15,
+                            fontWeight: '800',
+                            color: '#172033'
+                          }}>
+                          
                               {budget.categoryName}
                             </Text>
 
                             <Text
-                              numberOfLines={1}
-                              style={{
-                                marginTop: 3,
-                                fontSize: 11,
-                                color: '#7B8794',
-                              }}
-                            >
+                          numberOfLines={1}
+                          style={{
+                            marginTop: 3,
+                            fontSize: 11,
+                            color: '#7B8794'
+                          }}>
+                          
                               ₹{Number(budget.spent || 0).toLocaleString('en-IN')}
                               {' / '}
                               ₹{Number(budget.budget || 0).toLocaleString('en-IN')}
@@ -907,227 +907,227 @@ export default function BudgetsScreen({ route, navigation }) {
 
                           {/* Percentage */}
                           <View
-                            style={{
-                              alignItems: 'flex-end',
-                              marginLeft: 6,
-                              marginRight: 4,
-                            }}
-                          >
+                        style={{
+                          alignItems: 'flex-end',
+                          marginLeft: 6,
+                          marginRight: 4
+                        }}>
+                        
                             <Text
-                              style={{
-                                fontSize: 17,
-                                fontWeight: '900',
-                                color: statusColor,
-                              }}
-                            >
+                          style={{
+                            fontSize: 17,
+                            fontWeight: '900',
+                            color: statusColor
+                          }}>
+                          
                               {Math.round(percentage)}%
                             </Text>
 
                             <Text
-                              style={{
-                                marginTop: 1,
-                                fontSize: 9,
-                                fontWeight: '700',
-                                color: statusColor,
-                              }}
-                            >
-                              {isExceeded
-                                ? 'OVER'
-                                : isWarning
-                                  ? 'NEAR LIMIT'
-                                  : 'ON TRACK'}
+                          style={{
+                            marginTop: 1,
+                            fontSize: 9,
+                            fontWeight: '700',
+                            color: statusColor
+                          }}>
+                          
+                              {isExceeded ?
+                          'OVER' :
+                          isWarning ?
+                          'NEAR LIMIT' :
+                          'ON TRACK'}
                             </Text>
                           </View>
 
                           {/* EDIT */}
                           <TouchableOpacity
-                            activeOpacity={0.7}
-                            onPress={(event) => {
-                              event?.stopPropagation?.();
+                        activeOpacity={0.7}
+                        onPress={(event) => {
+                          event?.stopPropagation?.();
 
-                              setEditBudget(budget);
+                          setEditBudget(budget);
 
-                              setSelectedCategory({
-                                id: budget.categoryId,
-                                name: budget.categoryName,
-                                icon: budget.icon,
-                                color: budget.color,
-                              });
+                          setSelectedCategory({
+                            id: budget.categoryId,
+                            name: budget.categoryName,
+                            icon: budget.icon,
+                            color: budget.color
+                          });
 
-                              setCategoryBudgetAmount(
-                                String(budget.budget)
-                              );
+                          setCategoryBudgetAmount(
+                            String(budget.budget)
+                          );
 
-                              setSearchText('');
-                              setShowCategoryDropdown(false);
-                              setShowModal(true);
-                            }}
-                            style={{
-                              width: 34,
-                              height: 34,
-                              borderRadius: 10,
-                              backgroundColor: '#F1F5F3',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              marginLeft: 5,
-                            }}
-                          >
+                          setSearchText('');
+                          setShowCategoryDropdown(false);
+                          setShowModal(true);
+                        }}
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 10,
+                          backgroundColor: '#F1F5F3',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginLeft: 5
+                        }}>
+                        
                             <IconButton
-                              icon="pencil"
-                              size={17}
-                              iconColor="#287A57"
-                              style={{
-                                margin: 0,
-                              }}
-                            />
+                          icon="pencil"
+                          size={17}
+                          iconColor="#287A57"
+                          style={{
+                            margin: 0
+                          }} />
+                        
                           </TouchableOpacity>
 
                           {/* DELETE */}
                           <TouchableOpacity
-                            activeOpacity={0.7}
-                            onPress={(event) => {
-                              event?.stopPropagation?.();
+                        activeOpacity={0.7}
+                        onPress={(event) => {
+                          event?.stopPropagation?.();
 
-                              handleDeleteCategoryBudget(
-                                budget.id
-                              );
-                            }}
-                            style={{
-                              width: 34,
-                              height: 34,
-                              borderRadius: 10,
-                              backgroundColor: '#FFF2F2',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              marginLeft: 5,
-                            }}
-                          >
+                          handleDeleteCategoryBudget(
+                            budget.id
+                          );
+                        }}
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 10,
+                          backgroundColor: '#FFF2F2',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginLeft: 5
+                        }}>
+                        
                             <IconButton
-                              icon="trash-can-outline"
-                              size={17}
-                              iconColor="#D64545"
-                              style={{
-                                margin: 0,
-                              }}
-                            />
+                          icon="trash-can-outline"
+                          size={17}
+                          iconColor="#D64545"
+                          style={{
+                            margin: 0
+                          }} />
+                        
                           </TouchableOpacity>
                         </View>
 
                         {/* Compact progress */}
                         <View
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            marginTop: 9,
-                          }}
-                        >
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        marginTop: 9
+                      }}>
+                      
                           <View
-                            style={{
-                              flex: 1,
-                              height: 6,
-                              borderRadius: 3,
-                              backgroundColor: '#EEF1F3',
-                              overflow: 'hidden',
-                            }}
-                          >
+                        style={{
+                          flex: 1,
+                          height: 6,
+                          borderRadius: 3,
+                          backgroundColor: '#EEF1F3',
+                          overflow: 'hidden'
+                        }}>
+                        
                             <View
-                              style={{
-                                width: `${progressWidth}%`,
-                                height: '100%',
-                                backgroundColor: barColor,
-                                borderRadius: 3,
-                              }}
-                            />
+                          style={{
+                            width: `${progressWidth}%`,
+                            height: '100%',
+                            backgroundColor: barColor,
+                            borderRadius: 3
+                          }} />
+                        
                           </View>
 
                           <Text
-                            style={{
-                              marginLeft: 8,
-                              fontSize: 10,
-                              fontWeight: '700',
-                              color: isExceeded
-                                ? '#D64545'
-                                : '#7B8794',
-                            }}
-                          >
-                            {isExceeded
-                              ? `₹${Math.abs(
-                                Number(budget.remaining || 0)
-                              ).toLocaleString('en-IN')} over`
-                              : `₹${Number(
-                                budget.remaining || 0
-                              ).toLocaleString('en-IN')} left`}
+                        style={{
+                          marginLeft: 8,
+                          fontSize: 10,
+                          fontWeight: '700',
+                          color: isExceeded ?
+                          '#D64545' :
+                          '#7B8794'
+                        }}>
+                        
+                            {isExceeded ?
+                        `₹${Math.abs(
+                          Number(budget.remaining || 0)
+                        ).toLocaleString('en-IN')} over` :
+                        `₹${Number(
+                          budget.remaining || 0
+                        ).toLocaleString('en-IN')} left`}
                           </Text>
                         </View>
                       </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            ) : (
-              <Card
-                style={{
-                  marginTop: 4,
-                  borderRadius: 20,
-                }}
-              >
+                    </TouchableOpacity>);
+
+            })}
+              </View> :
+
+          <Card
+            style={{
+              marginTop: 4,
+              borderRadius: 20
+            }}>
+            
                 <View
-                  style={{
-                    alignItems: 'center',
-                    paddingVertical: 26,
-                    paddingHorizontal: 18,
-                  }}
-                >
+              style={{
+                alignItems: 'center',
+                paddingVertical: 26,
+                paddingHorizontal: 18
+              }}>
+              
                   <View
-                    style={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: 22,
-                      backgroundColor: '#F0F8F4',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: 14,
-                    }}
-                  >
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 22,
+                  backgroundColor: '#F0F8F4',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 14
+                }}>
+                
                     <Text
-                      style={{
-                        fontSize: 30,
-                      }}
-                    >
+                  style={{
+                    fontSize: 30
+                  }}>
+                  
                       🎯
                     </Text>
                   </View>
 
                   <Text
-                    style={{
-                      fontSize: 17,
-                      fontWeight: '800',
-                      color: '#172033',
-                      textAlign: 'center',
-                    }}
-                  >
+                style={{
+                  fontSize: 17,
+                  fontWeight: '800',
+                  color: '#172033',
+                  textAlign: 'center'
+                }}>
+                
                     No category budgets yet
                   </Text>
 
                   <Text
-                    style={{
-                      marginTop: 7,
-                      fontSize: 13,
-                      lineHeight: 20,
-                      color: '#7B8794',
-                      textAlign: 'center',
-                      maxWidth: 320,
-                    }}
-                  >
+                style={{
+                  marginTop: 7,
+                  fontSize: 13,
+                  lineHeight: 20,
+                  color: '#7B8794',
+                  textAlign: 'center',
+                  maxWidth: 320
+                }}>
+                
                     Create spending limits for individual
                     categories to understand exactly where
                     your money is going.
                   </Text>
                 </View>
               </Card>
-            )}
+          }
           </>
-        )}
+        }
       </ScrollView>
 
       <BudgetCreateModal
@@ -1151,21 +1151,21 @@ export default function BudgetsScreen({ route, navigation }) {
         searchText={searchText}
         setSearchText={setSearchText}
         filteredCategories={filteredCategories}
-        handleSaveBudget={handleSaveBudget}
-      />
+        handleSaveBudget={handleSaveBudget} />
+      
 
-      {tab === 'category' && (
-        <FAB
-          onPress={() => {
-            setEditBudget(null);
-            setSelectedCategory(null);
-            setCategoryBudgetAmount('');
-            setSearchText('');
-            setShowCategoryDropdown(false);
-            setShowModal(true);
-          }}
-        />
-      )}
+      {tab === 'category' &&
+      <FAB
+        onPress={() => {
+          setEditBudget(null);
+          setSelectedCategory(null);
+          setCategoryBudgetAmount('');
+          setSearchText('');
+          setShowCategoryDropdown(false);
+          setShowModal(true);
+        }} />
+
+      }
 
       <ConfirmDialog
         visible={confirmVisible}
@@ -1175,8 +1175,8 @@ export default function BudgetsScreen({ route, navigation }) {
           setConfirmVisible(false);
           setDeletingBudgetId(null);
         }}
-        onConfirm={confirmDeleteCategoryBudget}
-      />
-    </View>
-  );
+        onConfirm={confirmDeleteCategoryBudget} />
+      
+    </View>);
+
 }

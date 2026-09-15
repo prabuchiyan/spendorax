@@ -3,26 +3,26 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+  StyleSheet } from
+'react-native';
 import { formatAmount } from '../utils/numberUtils';
 import {
   TextInput,
-  Button,
-} from 'react-native-paper';
+  Button } from
+'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { createSource, updateSource } from '../services/sources';
 import IconPicker from './IconPicker';
 import ColorPickerModal from './ColorPickerModal';
 import FormModalShell from './FormModalShell';
-import formModalStyles from './formModalStyles';
+
 
 export default function SourceCreateModal({
   visible,
   onClose,
   onSave,
   onSourceCreated,
-  editData,
+  editData
 }) {
   const [name, setName] = useState('');
   const [initial, setInitial] = useState('0');
@@ -68,7 +68,7 @@ export default function SourceCreateModal({
       initial_balance: parseFloat(initial) || 0,
       icon,
       color,
-      is_active: 1,
+      is_active: 1
     };
     setSaving(true);
     try {
@@ -106,70 +106,70 @@ export default function SourceCreateModal({
       title={editData ? 'Edit Account' : 'New Account'}
       subtitle="Manage your source details"
       actions={
-        <View style={styles.footerActions}>
+      <View style={styles.footerActions}>
           <Button
-            onPress={onClose}
-            textColor="#666"
-            disabled={saving}
-            style={styles.cancelButton}
-          >
+          onPress={onClose}
+          textColor="#666"
+          disabled={saving}
+          style={styles.cancelButton}>
+          
             Cancel
           </Button>
           <Button
-            mode="contained"
-            onPress={handleSave}
-            loading={saving}
-            disabled={saving}
-            buttonColor={color}
-            textColor="#FFFFFF"
-            style={styles.saveButton}
-            contentStyle={styles.saveButtonContent}
-          >
+          mode="contained"
+          onPress={handleSave}
+          loading={saving}
+          disabled={saving}
+          buttonColor={color}
+          textColor="#FFFFFF"
+          style={styles.saveButton}
+          contentStyle={styles.saveButtonContent}>
+          
             {saving ? '' : editData ? 'Update' : 'Create'}
           </Button>
         </View>
       }
       footer={
-        <>
+      <>
           <IconPicker
-            visible={showIconPicker}
-            onClose={() => setShowIconPicker(false)}
-            onSelect={setIcon}
-          />
+          visible={showIconPicker}
+          onClose={() => setShowIconPicker(false)}
+          onSelect={setIcon} />
+        
           <ColorPickerModal
-            visible={showColorPicker}
-            onClose={() => setShowColorPicker(false)}
-            onSelect={setColor}
-            currentColor={color}
-          />
+          visible={showColorPicker}
+          onClose={() => setShowColorPicker(false)}
+          onSelect={setColor}
+          currentColor={color} />
+        
         </>
-      }
-    >
+      }>
+      
       {/* =========================
-          ACCOUNT PREVIEW
-      ========================== */}
+           ACCOUNT PREVIEW
+        ========================== */}
       <View
         style={[
-          styles.previewCard,
-          {
-            borderColor: `${color}35`,
-            backgroundColor: `${color}0D`,
-          },
-        ]}
-      >
+        styles.previewCard,
+        {
+          borderColor: `${color}35`,
+          backgroundColor: `${color}0D`
+        }]
+        }>
+        
         <View
           style={[
-            styles.previewIcon,
-            {
-              backgroundColor: color,
-            },
-          ]}
-        >
+          styles.previewIcon,
+          {
+            backgroundColor: color
+          }]
+          }>
+          
           <MaterialCommunityIcons
             name={icon}
             size={27}
-            color="#FFFFFF"
-          />
+            color="#FFFFFF" />
+          
         </View>
 
         <View style={styles.previewInfo}>
@@ -179,8 +179,8 @@ export default function SourceCreateModal({
 
           <Text
             style={styles.previewName}
-            numberOfLines={1}
-          >
+            numberOfLines={1}>
+            
             {displayName}
           </Text>
 
@@ -191,38 +191,38 @@ export default function SourceCreateModal({
 
         <View
           style={[
-            styles.previewBadge,
-            {
-              backgroundColor: `${color}18`,
-            },
-          ]}
-        >
+          styles.previewBadge,
+          {
+            backgroundColor: `${color}18`
+          }]
+          }>
+          
           <MaterialCommunityIcons
             name="wallet-outline"
             size={15}
-            color={color}
-          />
+            color={color} />
+          
         </View>
       </View>
 
       {/* =========================
-          ACCOUNT DETAILS
-      ========================== */}
+           ACCOUNT DETAILS
+        ========================== */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View
             style={[
-              styles.sectionIcon,
-              {
-                backgroundColor: `${color}15`,
-              },
-            ]}
-          >
+            styles.sectionIcon,
+            {
+              backgroundColor: `${color}15`
+            }]
+            }>
+            
             <MaterialCommunityIcons
               name="text-box-outline"
               size={18}
-              color={color}
-            />
+              color={color} />
+            
           </View>
 
           <View>
@@ -244,14 +244,14 @@ export default function SourceCreateModal({
           style={styles.input}
           disabled={saving}
           left={
-            <TextInput.Icon
-              icon="wallet-outline"
-              color={color}
-            />
+          <TextInput.Icon
+            icon="wallet-outline"
+            color={color} />
+
           }
           outlineColor="#E2E5EA"
-          activeOutlineColor={color}
-        />
+          activeOutlineColor={color} />
+        
 
         <TextInput
           label="Initial Balance"
@@ -262,34 +262,34 @@ export default function SourceCreateModal({
           style={styles.input}
           disabled={saving}
           left={
-            <TextInput.Icon
-              icon="currency-inr"
-              color={color}
-            />
+          <TextInput.Icon
+            icon="currency-inr"
+            color={color} />
+
           }
           outlineColor="#E2E5EA"
-          activeOutlineColor={color}
-        />
+          activeOutlineColor={color} />
+        
       </View>
 
       {/* =========================
-          APPEARANCE
-      ========================== */}
+           APPEARANCE
+        ========================== */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View
             style={[
-              styles.sectionIcon,
-              {
-                backgroundColor: `${color}15`,
-              },
-            ]}
-          >
+            styles.sectionIcon,
+            {
+              backgroundColor: `${color}15`
+            }]
+            }>
+            
             <MaterialCommunityIcons
               name="palette-outline"
               size={18}
-              color={color}
-            />
+              color={color} />
+            
           </View>
 
           <View>
@@ -310,25 +310,25 @@ export default function SourceCreateModal({
             onPress={() => setShowIconPicker(true)}
             disabled={saving}
             style={[
-              styles.appearanceCard,
-              {
-                borderColor: `${color}30`,
-              },
-            ]}
-          >
+            styles.appearanceCard,
+            {
+              borderColor: `${color}30`
+            }]
+            }>
+            
             <View
               style={[
-                styles.appearanceIcon,
-                {
-                  backgroundColor: `${color}15`,
-                },
-              ]}
-            >
+              styles.appearanceIcon,
+              {
+                backgroundColor: `${color}15`
+              }]
+              }>
+              
               <MaterialCommunityIcons
                 name={icon}
                 size={23}
-                color={color}
-              />
+                color={color} />
+              
             </View>
 
             <View style={styles.appearanceText}>
@@ -344,8 +344,8 @@ export default function SourceCreateModal({
             <MaterialCommunityIcons
               name="chevron-right"
               size={20}
-              color="#9CA3AF"
-            />
+              color="#9CA3AF" />
+            
           </TouchableOpacity>
 
           {/* COLOR */}
@@ -354,28 +354,28 @@ export default function SourceCreateModal({
             onPress={() => setShowColorPicker(true)}
             disabled={saving}
             style={[
-              styles.appearanceCard,
-              {
-                borderColor: `${color}30`,
-              },
-            ]}
-          >
+            styles.appearanceCard,
+            {
+              borderColor: `${color}30`
+            }]
+            }>
+            
             <View
               style={[
-                styles.appearanceIcon,
-                {
-                  backgroundColor: `${color}18`,
-                },
-              ]}
-            >
+              styles.appearanceIcon,
+              {
+                backgroundColor: `${color}18`
+              }]
+              }>
+              
               <View
                 style={[
-                  styles.colorDot,
-                  {
-                    backgroundColor: color,
-                  },
-                ]}
-              />
+                styles.colorDot,
+                {
+                  backgroundColor: color
+                }]
+                } />
+              
             </View>
 
             <View style={styles.appearanceText}>
@@ -391,13 +391,13 @@ export default function SourceCreateModal({
             <MaterialCommunityIcons
               name="chevron-right"
               size={20}
-              color="#9CA3AF"
-            />
+              color="#9CA3AF" />
+            
           </TouchableOpacity>
         </View>
       </View>
-    </FormModalShell>
-  );
+    </FormModalShell>);
+
 }
 
 const styles = StyleSheet.create({
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 18,
     borderWidth: 1,
-    marginBottom: 20,
+    marginBottom: 20
   },
   previewIcon: {
     width: 54,
@@ -418,28 +418,28 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 13,
+    marginRight: 13
   },
   previewInfo: {
-    flex: 1,
+    flex: 1
   },
   previewLabel: {
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1,
     color: '#9CA3AF',
-    marginBottom: 3,
+    marginBottom: 3
   },
   previewName: {
     fontSize: 17,
     fontWeight: '800',
     color: '#1F2937',
-    marginBottom: 3,
+    marginBottom: 3
   },
   previewBalance: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#6B7280',
+    color: '#6B7280'
   },
   previewBadge: {
     width: 34,
@@ -447,18 +447,18 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
+    marginLeft: 8
   },
   /* =========================
      SECTION
   ========================== */
   section: {
-    marginBottom: 20,
+    marginBottom: 20
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 13,
+    marginBottom: 13
   },
   sectionIcon: {
     width: 38,
@@ -466,30 +466,30 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 10
   },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#1F2937',
+    color: '#1F2937'
   },
   sectionSubtitle: {
     fontSize: 11,
     color: '#9CA3AF',
-    marginTop: 2,
+    marginTop: 2
   },
   /* =========================
      INPUT
   ========================== */
   input: {
     marginBottom: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFFFFF'
   },
   /* =========================
      APPEARANCE
   ========================== */
   appearanceRow: {
-    gap: 10,
+    gap: 10
   },
   appearanceCard: {
     minHeight: 66,
@@ -498,7 +498,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFFFFF'
   },
   appearanceIcon: {
     width: 42,
@@ -506,41 +506,41 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 11,
+    marginRight: 11
   },
   appearanceText: {
-    flex: 1,
+    flex: 1
   },
   appearanceLabel: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#1F2937',
+    color: '#1F2937'
   },
   appearanceValue: {
     fontSize: 11,
     color: '#9CA3AF',
-    marginTop: 2,
+    marginTop: 2
   },
   colorDot: {
     width: 21,
     height: 21,
-    borderRadius: 11,
+    borderRadius: 11
   },
   /* =========================
      FOOTER
   ========================== */
   footerActions: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   cancelButton: {
-    marginRight: 4,
+    marginRight: 4
   },
   saveButton: {
     borderRadius: 12,
-    minWidth: 105,
+    minWidth: 105
   },
   saveButtonContent: {
-    height: 44,
-  },
+    height: 44
+  }
 });

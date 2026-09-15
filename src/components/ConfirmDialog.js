@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+
 import { Portal, Dialog, Paragraph, Button } from 'react-native-paper';
 
 export default function ConfirmDialog({ visible, title, message, confirmLabel = 'Delete', cancelLabel = 'Cancel', onConfirm, onCancel }) {
@@ -15,6 +15,6 @@ export default function ConfirmDialog({ visible, title, message, confirmLabel = 
           <Button onPress={onConfirm}>{confirmLabel}</Button>
         </Dialog.Actions>
       </Dialog>
-    </Portal>
-  );
+    </Portal>);
+
 }

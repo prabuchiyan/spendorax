@@ -14,9 +14,7 @@ export function calculateInterestComponent(balance, annualRatePercent) {
   return +(Number(balance || 0) * r).toFixed(2);
 }
 
-export function calculatePrincipalComponent(emiAmount, interestComponent) {
-  return +(Number(emiAmount || 0) - Number(interestComponent || 0)).toFixed(2);
-}
+
 
 export function calculateRemainingMonths(balance, emi, annualRatePercent) {
   // rough estimate: iterate until balance <= 0
@@ -61,7 +59,6 @@ export function generateAmortizationSchedule(principal, annualRatePercent, tenur
 export default {
   calculateEMI,
   calculateInterestComponent,
-  calculatePrincipalComponent,
   calculateRemainingMonths,
   generateAmortizationSchedule
 };

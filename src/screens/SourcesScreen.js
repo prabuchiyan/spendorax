@@ -5,15 +5,15 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+  StyleSheet } from
+'react-native';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
-import { Searchbar, Avatar } from 'react-native-paper';
+import { Searchbar } from 'react-native-paper';
 import { getSources, deleteSource } from '../services/sources';
 import { getTransactions } from '../services/transactions';
 import Card from '../components/Card';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { Colors, Spacing } from '../components/Theme';
+import { Colors } from '../components/Theme';
 import SourceCreateModal from '../components/SourceCreateModal';
 import FAB from '../components/FAB';
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
@@ -56,16 +56,16 @@ export default function SourcesScreen({ route, navigation }) {
       return acc;
     }, {});
 
-    const updated = sources.map(s => {
+    const updated = sources.map((s) => {
       const id = s.id;
 
       const balance =
-        Number(s.initial_balance || 0) +
-        Number(balanceMap[id] || 0);
+      Number(s.initial_balance || 0) +
+      Number(balanceMap[id] || 0);
 
       return {
         ...s,
-        balance,
+        balance
       };
     });
 
@@ -89,8 +89,8 @@ export default function SourcesScreen({ route, navigation }) {
 
     const q = searchQuery.toLowerCase();
 
-    return items.filter(item =>
-      (item.name || '').toLowerCase().includes(q)
+    return items.filter((item) =>
+    (item.name || '').toLowerCase().includes(q)
     );
   }, [items, searchQuery]);
 
@@ -103,13 +103,13 @@ export default function SourcesScreen({ route, navigation }) {
 
   const positiveAccounts = useMemo(() => {
     return items.filter(
-      item => Number(item.balance || 0) >= 0
+      (item) => Number(item.balance || 0) >= 0
     ).length;
   }, [items]);
 
   const negativeAccounts = useMemo(() => {
     return items.filter(
-      item => Number(item.balance || 0) < 0
+      (item) => Number(item.balance || 0) < 0
     ).length;
   }, [items]);
 
@@ -124,8 +124,8 @@ export default function SourcesScreen({ route, navigation }) {
     <View style={styles.container}>
 
       {/* =====================================================
-          HEADER / SUMMARY
-      ====================================================== */}
+           HEADER / SUMMARY
+        ====================================================== */}
       <View style={styles.headerSection}>
         <View style={styles.titleRow}>
           <View style={styles.titleContainer}>
@@ -150,8 +150,8 @@ export default function SourcesScreen({ route, navigation }) {
         </View>
 
         {/* =====================================================
-            ACCOUNT STATS
-        ====================================================== */}
+             ACCOUNT STATS
+          ====================================================== */}
         <View style={styles.statsRow}>
 
           <View style={[styles.statCard, styles.activeStat]}>
@@ -159,8 +159,8 @@ export default function SourcesScreen({ route, navigation }) {
               <MaterialCommunityIcons
                 name="cash-plus"
                 size={17}
-                color="#4B7CF3"
-              />
+                color="#4B7CF3" />
+              
             </View>
 
             <View>
@@ -179,8 +179,8 @@ export default function SourcesScreen({ route, navigation }) {
               <MaterialCommunityIcons
                 name="cash-minus"
                 size={17}
-                color="#E46A6A"
-              />
+                color="#E46A6A" />
+              
             </View>
 
             <View>
@@ -198,8 +198,8 @@ export default function SourcesScreen({ route, navigation }) {
       </View>
 
       {/* =====================================================
-          SEARCH
-      ====================================================== */}
+           SEARCH
+        ====================================================== */}
       <View style={styles.searchContainer}>
         <Searchbar
           placeholder="Search accounts"
@@ -208,25 +208,25 @@ export default function SourcesScreen({ route, navigation }) {
           style={styles.searchBar}
           inputStyle={styles.searchInput}
           iconColor="#7A8794"
-          placeholderTextColor="#9AA5B1"
-        />
+          placeholderTextColor="#9AA5B1" />
+        
       </View>
 
       {/* =====================================================
-          ACCOUNT LIST
-      ====================================================== */}
+           ACCOUNT LIST
+        ====================================================== */}
       <FlatList
         data={filteredItems}
-        keyExtractor={item => String(item.id)}
+        keyExtractor={(item) => String(item.id)}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
-          styles.listContent,
-          filteredItems.length === 0 &&
-            styles.emptyListContent,
-        ]}
+        styles.listContent,
+        filteredItems.length === 0 &&
+        styles.emptyListContent]
+        }
         ListHeaderComponent={
-          filteredItems.length > 0 ? (
-            <View style={styles.listHeader}>
+        filteredItems.length > 0 ?
+        <View style={styles.listHeader}>
               <Text style={styles.listTitle}>
                 All Accounts
               </Text>
@@ -234,17 +234,17 @@ export default function SourcesScreen({ route, navigation }) {
               <Text style={styles.listCount}>
                 {filteredItems.length}
               </Text>
-            </View>
-          ) : null
+            </View> :
+        null
         }
         ListEmptyComponent={
-          <View style={styles.emptyState}>
+        <View style={styles.emptyState}>
             <View style={styles.emptyIconContainer}>
               <MaterialCommunityIcons
-                name="wallet-outline"
-                size={39}
-                color="#9AA5B1"
-              />
+              name="wallet-outline"
+              size={39}
+              color="#9AA5B1" />
+            
             </View>
 
             <Text style={styles.emptyTitle}>
@@ -252,9 +252,9 @@ export default function SourcesScreen({ route, navigation }) {
             </Text>
 
             <Text style={styles.emptySubtitle}>
-              {searchQuery
-                ? 'Try searching with a different name'
-                : 'Create your first account to get started'}
+              {searchQuery ?
+            'Try searching with a different name' :
+            'Create your first account to get started'}
             </Text>
           </View>
         }
@@ -266,7 +266,7 @@ export default function SourcesScreen({ route, navigation }) {
           const isNegative = itemBalance < 0;
 
           const itemColor =
-            item.color || '#4B7CF3';
+          item.color || '#4B7CF3';
 
           return (
             <Card style={styles.accountCard}>
@@ -278,39 +278,39 @@ export default function SourcesScreen({ route, navigation }) {
 
                   parent?.navigate('SourcesDetails', {
                     sourceId: item.id,
-                    sourceName: item.name,
+                    sourceName: item.name
                   });
-                }}
-              >
+                }}>
+                
                 <View style={styles.accountRow}>
 
                   {/* =================================================
-                      LEFT
-                  ================================================== */}
+                       LEFT
+                    ================================================== */}
                   <View style={styles.accountLeft}>
 
                     <View
                       style={[
-                        styles.accountIconWrapper,
-                        {
-                          backgroundColor:
-                            `${itemColor}15`,
-                        },
-                      ]}
-                    >
+                      styles.accountIconWrapper,
+                      {
+                        backgroundColor:
+                        `${itemColor}15`
+                      }]
+                      }>
+                      
                       <MaterialCommunityIcons
                         name={item.icon || 'cash'}
                         size={23}
-                        color={itemColor}
-                      />
+                        color={itemColor} />
+                      
                     </View>
 
                     <View style={styles.accountInfo}>
 
                       <Text
                         numberOfLines={1}
-                        style={styles.accountName}
-                      >
+                        style={styles.accountName}>
+                        
                         {item.name}
                       </Text>
 
@@ -318,20 +318,20 @@ export default function SourcesScreen({ route, navigation }) {
 
                         <View
                           style={[
-                            styles.statusDot,
-                            {
-                              backgroundColor:
-                                isNegative
-                                  ? '#E46A6A'
-                                  : '#36B37E',
-                            },
-                          ]}
-                        />
+                          styles.statusDot,
+                          {
+                            backgroundColor:
+                            isNegative ?
+                            '#E46A6A' :
+                            '#36B37E'
+                          }]
+                          } />
+                        
 
                         <Text style={styles.accountMetaText}>
-                          {isNegative
-                            ? 'Negative balance'
-                            : 'Available balance'}
+                          {isNegative ?
+                          'Negative balance' :
+                          'Available balance'}
                         </Text>
 
                       </View>
@@ -340,24 +340,24 @@ export default function SourcesScreen({ route, navigation }) {
                   </View>
 
                   {/* =================================================
-                      RIGHT
-                  ================================================== */}
+                       RIGHT
+                    ================================================== */}
                   <View style={styles.accountRight}>
 
                     <Text
                       numberOfLines={1}
                       style={[
-                        styles.accountBalance,
-                        {
-                          color: isNegative
-                            ? '#D95D5D'
-                            : '#2F9B6D',
-                        },
-                      ]}
-                    >
-                      {balanceVisible
-                        ? `₹${formatAmount(itemBalance)}`
-                        : '••••••'}
+                      styles.accountBalance,
+                      {
+                        color: isNegative ?
+                        '#D95D5D' :
+                        '#2F9B6D'
+                      }]
+                      }>
+                      
+                      {balanceVisible ?
+                      `₹${formatAmount(itemBalance)}` :
+                      '••••••'}
                     </Text>
 
                     <View style={styles.balanceCaptionRow}>
@@ -367,17 +367,17 @@ export default function SourcesScreen({ route, navigation }) {
 
                       <MaterialCommunityIcons
                         name={
-                          isNegative
-                            ? 'arrow-down'
-                            : 'arrow-up'
+                        isNegative ?
+                        'arrow-down' :
+                        'arrow-up'
                         }
                         size={12}
                         color={
-                          isNegative
-                            ? '#D95D5D'
-                            : '#2F9B6D'
-                        }
-                      />
+                        isNegative ?
+                        '#D95D5D' :
+                        '#2F9B6D'
+                        } />
+                      
                     </View>
 
                   </View>
@@ -385,16 +385,16 @@ export default function SourcesScreen({ route, navigation }) {
                 </View>
 
                 {/* =================================================
-                    ACTION BAR
-                ================================================== */}
+                     ACTION BAR
+                  ================================================== */}
                 <View style={styles.accountBottom}>
 
                   <View style={styles.initialBalanceInfo}>
                     <MaterialCommunityIcons
                       name="bank-outline"
                       size={14}
-                      color="#9AA5B1"
-                    />
+                      color="#9AA5B1" />
+                    
 
                     <Text style={styles.initialBalanceText}>
                       Initial ₹
@@ -412,13 +412,13 @@ export default function SourcesScreen({ route, navigation }) {
                         setEditSource(item);
                         setShowModal(true);
                       }}
-                      style={styles.actionButton}
-                    >
+                      style={styles.actionButton}>
+                      
                       <Feather
                         name="edit-2"
                         size={15}
-                        color={Colors.primary}
-                      />
+                        color={Colors.primary} />
+                      
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -428,23 +428,23 @@ export default function SourcesScreen({ route, navigation }) {
                         setConfirmVisible(true);
                       }}
                       style={[
-                        styles.actionButton,
-                        styles.deleteActionButton,
-                      ]}
-                    >
+                      styles.actionButton,
+                      styles.deleteActionButton]
+                      }>
+                      
                       <Feather
                         name="trash-2"
                         size={15}
-                        color="#E46A6A"
-                      />
+                        color="#E46A6A" />
+                      
                     </TouchableOpacity>
 
                     <View style={styles.arrowContainer}>
                       <Feather
                         name="chevron-right"
                         size={17}
-                        color="#B5BEC8"
-                      />
+                        color="#B5BEC8" />
+                      
                     </View>
 
                   </View>
@@ -453,14 +453,14 @@ export default function SourcesScreen({ route, navigation }) {
 
               </TouchableOpacity>
 
-            </Card>
-          );
-        }}
-      />
+            </Card>);
+
+        }} />
+      
 
       {/* =====================================================
-          DELETE CONFIRMATION
-      ====================================================== */}
+           DELETE CONFIRMATION
+        ====================================================== */}
       <ConfirmDialog
         visible={confirmVisible}
         title="Delete Account"
@@ -476,12 +476,12 @@ export default function SourcesScreen({ route, navigation }) {
 
           setConfirmVisible(false);
           setConfirmTargetId(null);
-        }}
-      />
+        }} />
+      
 
       {/* =====================================================
-          CREATE / EDIT MODAL
-      ====================================================== */}
+           CREATE / EDIT MODAL
+        ====================================================== */}
       <SourceCreateModal
         visible={showModal}
         onClose={() => setShowModal(false)}
@@ -489,21 +489,21 @@ export default function SourcesScreen({ route, navigation }) {
         onSave={() => {
           setShowModal(false);
           load();
-        }}
-      />
+        }} />
+      
 
       {/* =====================================================
-          FAB
-      ====================================================== */}
+           FAB
+        ====================================================== */}
       <FAB
         onPress={() => {
           setEditSource(null);
           setShowModal(true);
-        }}
-      />
+        }} />
+      
 
-    </View>
-  );
+    </View>);
+
 }
 
 const styles = StyleSheet.create({
@@ -514,7 +514,7 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor: '#F7F9FB',
+    backgroundColor: '#F7F9FB'
   },
 
   /* ==========================================================
@@ -524,31 +524,31 @@ const styles = StyleSheet.create({
   headerSection: {
     paddingHorizontal: 16,
     paddingTop: 14,
-    paddingBottom: 10,
+    paddingBottom: 10
   },
 
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 14
   },
 
   titleContainer: {
-    flex: 1,
+    flex: 1
   },
 
   pageTitle: {
     fontSize: 23,
     fontWeight: '900',
     color: '#24313D',
-    letterSpacing: -0.4,
+    letterSpacing: -0.4
   },
 
   pageSubtitle: {
     fontSize: 12,
     color: '#8A96A3',
-    marginTop: 3,
+    marginTop: 3
   },
 
   totalBadge: {
@@ -558,14 +558,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#EAF5EF',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 10
   },
 
   totalBadgeNumber: {
     fontSize: 19,
     fontWeight: '900',
     color: '#3F8F6B',
-    lineHeight: 21,
+    lineHeight: 21
   },
 
   totalBadgeLabel: {
@@ -573,7 +573,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#6DA68A',
     letterSpacing: 0.7,
-    marginTop: 2,
+    marginTop: 2
   },
 
   /* ==========================================================
@@ -582,7 +582,7 @@ const styles = StyleSheet.create({
 
   statsRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 10
   },
 
   statCard: {
@@ -592,15 +592,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     paddingVertical: 9,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
 
   activeStat: {
-    backgroundColor: '#F0F5FF',
+    backgroundColor: '#F0F5FF'
   },
 
   negativeStat: {
-    backgroundColor: '#FFF3F3',
+    backgroundColor: '#FFF3F3'
   },
 
   statIconBlue: {
@@ -610,7 +610,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0E9FF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 9,
+    marginRight: 9
   },
 
   statIconRed: {
@@ -620,20 +620,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFE3E3',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 9,
+    marginRight: 9
   },
 
   statValue: {
     fontSize: 17,
     fontWeight: '900',
-    color: '#263440',
+    color: '#263440'
   },
 
   statLabel: {
     fontSize: 10,
     color: '#8B97A3',
     marginTop: 1,
-    fontWeight: '600',
+    fontWeight: '600'
   },
 
   /* ==========================================================
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
 
   searchContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 6,
+    paddingBottom: 6
   },
 
   searchBar: {
@@ -651,12 +651,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     elevation: 0,
     borderWidth: 1,
-    borderColor: '#E7EBEF',
+    borderColor: '#E7EBEF'
   },
 
   searchInput: {
     fontSize: 13,
-    color: '#354250',
+    color: '#354250'
   },
 
   /* ==========================================================
@@ -666,11 +666,11 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 16,
     paddingTop: 6,
-    paddingBottom: 110,
+    paddingBottom: 110
   },
 
   emptyListContent: {
-    flexGrow: 1,
+    flexGrow: 1
   },
 
   listHeader: {
@@ -678,13 +678,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 5,
     marginBottom: 9,
-    paddingHorizontal: 2,
+    paddingHorizontal: 2
   },
 
   listTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#42515E',
+    color: '#42515E'
   },
 
   listCount: {
@@ -698,7 +698,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontSize: 10,
     fontWeight: '800',
-    color: '#778491',
+    color: '#778491'
   },
 
   /* ==========================================================
@@ -710,7 +710,7 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     paddingHorizontal: 0,
     borderRadius: 17,
-    overflow: 'hidden',
+    overflow: 'hidden'
   },
 
   accountRow: {
@@ -720,14 +720,14 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'space-between'
   },
 
   accountLeft: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    minWidth: 0,
+    minWidth: 0
   },
 
   accountIconWrapper: {
@@ -736,54 +736,54 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 12
   },
 
   accountInfo: {
     flex: 1,
-    minWidth: 0,
+    minWidth: 0
   },
 
   accountName: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#293743',
+    color: '#293743'
   },
 
   accountMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 5,
+    marginTop: 5
   },
 
   statusDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    marginRight: 6,
+    marginRight: 6
   },
 
   accountMetaText: {
     fontSize: 11,
     color: '#8A96A2',
-    fontWeight: '600',
+    fontWeight: '600'
   },
 
   accountRight: {
     alignItems: 'flex-end',
     marginLeft: 8,
-    maxWidth: '45%',
+    maxWidth: '45%'
   },
 
   accountBalance: {
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '900'
   },
 
   balanceCaptionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 3,
+    marginTop: 3
   },
 
   balanceCaption: {
@@ -791,7 +791,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#A0A9B2',
     letterSpacing: 0.7,
-    marginRight: 3,
+    marginRight: 3
   },
 
   /* ==========================================================
@@ -805,25 +805,25 @@ const styles = StyleSheet.create({
     borderTopColor: '#F0F2F4',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'space-between'
   },
 
   initialBalanceInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    flex: 1
   },
 
   initialBalanceText: {
     fontSize: 10,
     color: '#9AA5B1',
     fontWeight: '600',
-    marginLeft: 5,
+    marginLeft: 5
   },
 
   actionRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
 
   actionButton: {
@@ -833,11 +833,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F5FF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 5,
+    marginLeft: 5
   },
 
   deleteActionButton: {
-    backgroundColor: '#FFF1F1',
+    backgroundColor: '#FFF1F1'
   },
 
   arrowContainer: {
@@ -845,7 +845,7 @@ const styles = StyleSheet.create({
     height: 27,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 2,
+    marginLeft: 2
   },
 
   /* ==========================================================
@@ -856,7 +856,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 30,
-    paddingTop: 65,
+    paddingTop: 65
   },
 
   emptyIconContainer: {
@@ -866,13 +866,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#EDF1F4',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 16
   },
 
   emptyTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#465461',
+    color: '#465461'
   },
 
   emptySubtitle: {
@@ -880,6 +880,6 @@ const styles = StyleSheet.create({
     color: '#9AA5AF',
     textAlign: 'center',
     marginTop: 6,
-    lineHeight: 18,
-  },
+    lineHeight: 18
+  }
 });

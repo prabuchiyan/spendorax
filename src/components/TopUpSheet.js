@@ -13,8 +13,7 @@ import {
   TextInput as PaperTextInput,
   Button as PaperButton,
 } from "react-native-paper";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import ManualDateTimePicker from "../components/ManualDateTimePicker";
+import MuiDateTimePicker from "../components/MuiDateTimePicker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { recordTopUp } from "../services/loans";
@@ -45,7 +44,14 @@ function formatDateTime(value) {
 }
 
 // Field Card
-function FieldCard({ icon, title, value, color = "#2563EB", onPress, disabled = false }) {
+function FieldCard({
+  icon,
+  title,
+  value,
+  color = "#2563EB",
+  onPress,
+  disabled = false,
+}) {
   return (
     <TouchableOpacity
       activeOpacity={0.85}
@@ -494,97 +500,19 @@ export default function TopUpSheet({
 
         {/* DATE & TIME PICKER */}
 
-        {showDatePicker && (
-          <>
-            {/* WEB Manual picker shown as popup */}
-            {Platform.OS === "web" && (
-              <Modal
-                visible={showDatePicker}
-                transparent
-                animationType="fade"
-                onRequestClose={() => {
-                  setShowDatePicker(false);
-                  setDatePickerMode("date");
-                }}
-              >
-                <View style={styles.webDateOverlay}>
-                  <View style={styles.webDateCard}>
-                    <View style={styles.webDateHeader}>
-                      <View
-                        style={{
-                          flex: 1,
-                        }}
-                      >
-                        <Text style={styles.webDateTitle}>
-                          Pick Date & Time
-                        </Text>
-                        <Text style={styles.webDateSubtitle}>
-                          {formatDateTime(date)}
-                        </Text>
-                      </View>
-
-                      <TouchableOpacity
-                        onPress={() => {
-                          setShowDatePicker(false);
-
-                          setDatePickerMode("date");
-                        }}
-                      >
-                        <MaterialCommunityIcons
-                          name="close-circle"
-                          size={28}
-                          color="#94A3B8"
-                        />
-                      </TouchableOpacity>
-                    </View>
-
-                    <ManualDateTimePicker
-                      year={safeDate(date).getFullYear()}
-                      month={safeDate(date).getMonth() + 1}
-                      day={safeDate(date).getDate()}
-                      hour={safeDate(date).getHours()}
-                      minute={safeDate(date).getMinutes()}
-                      onChange={(year, month, day, hour, minute) => {
-                        const nextDate = new Date(
-                          year,
-                          month - 1,
-                          day,
-                          hour,
-                          minute,
-                        );
-
-                        setDate(nextDate.toISOString());
-                      }}
-                      onClose={() => {
-                        setShowDatePicker(false);
-                        setDatePickerMode("date");
-                      }}
-                    />
-                  </View>
-                </View>
-              </Modal>
-            )}
-
-            {/* MOBILE
-                Android / iOS native picker */}
-            {Platform.OS !== "web" && (
-              <DateTimePicker
-                value={safeDate(date)}
-                mode={datePickerMode}
-                display={
-                  Platform.OS === "ios"
-                    ? "spinner"
-                    : datePickerMode === "date"
-                      ? "calendar"
-                      : "clock"
-                }
-                is24Hour={false}
-                maximumDate={datePickerMode === "date" ? new Date() : undefined}
-                onChange={handleNativeDateTimeChange}
-              />
-            )}
-          </>
-        )}
+        {/* Date Picker */}
+        <MuiDateTimePicker
+          visible={showDatePicker}
+          disableFutureDates={true}
+          initialDate={safeDate(date)}
+          onClose={() => setShowDatePicker(false)}
+          onSelect={(selectedDate) => {
+            if (selectedDate) {
+              setDate(selectedDate.toISOString());
+            }
+            setShowDatePicker(false);
+          }}
+        />
       </Modal>
 
       {/* Source Picker */}
@@ -820,7 +748,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#111827",
   },
-// Picker Modals
+  // Picker Modals
   pickerOverlay: {
     flex: 1,
     justifyContent: "flex-end",

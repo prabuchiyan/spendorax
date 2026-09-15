@@ -8,19 +8,18 @@ import {
   TouchableOpacity,
   Modal,
   ActivityIndicator,
-  Alert,
-} from "react-native";
+  Alert } from
+"react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   Button as PaperButton,
-  Chip,
-  Divider,
-  TextInput as PaperTextInput,
-} from "react-native-paper";
-import { Dimensions, Platform } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import ManualDateTimePicker from "../components/ManualDateTimePicker";
+
+
+  TextInput as PaperTextInput } from
+"react-native-paper";
+import { Dimensions } from "react-native";
+import MuiDateTimePicker from "../components/MuiDateTimePicker";
 import PremiumRoundedBarChart from "../components/PremiumRoundedBarChart";
 import {
   getBillById,
@@ -34,8 +33,8 @@ import {
   linkAdditionalTransaction,
   removeTransactionFromBill,
   updateBill,
-  createBill,
-} from "../services/bills";
+  createBill } from
+"../services/bills";
 import { getCategories } from "../services/categories";
 import { getSources } from "../services/sources";
 import Card from "../components/Card";
@@ -46,22 +45,19 @@ import {
   formatCurrency,
   formatDueDate,
   getBillDisplayStatus,
-  BILL_STATUS,
-} from "../services/billUtils";
+  BILL_STATUS } from
+"../services/billUtils";
 import { getCreditCards, payCreditCardBill } from "../services/creditCards";
 import { usePageLoader } from "../context/PageLoaderContext";
 import { onStatementPaid } from "../services/creditCardScheduler";
-import {
-  setBills,
-  setBillsSummary,
-} from "../redux/slices/billSlice";
+import { setBills, setBillsSummary } from "../redux/slices/billSlice";
 import { setCategoriesMap } from "../redux/slices/categorySlice";
 import {
   useAppDispatch,
   useBills,
   useBillsSummary,
-  useCategoriesMap,
-} from "../redux/hooks";
+  useCategoriesMap } from
+"../redux/hooks";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -75,22 +71,22 @@ function DetailRow({ label, value }) {
         justifyContent: "space-between",
         paddingVertical: 10,
         borderBottomWidth: 1,
-        borderBottomColor: "#EEF1F6",
-      }}
-    >
+        borderBottomColor: "#EEF1F6"
+      }}>
+      
       <Text style={{ color: Colors.muted, flex: 1 }}>{label}</Text>
       <Text
         style={{
           color: Colors.text,
           fontWeight: "600",
           flex: 1.5,
-          textAlign: "right",
-        }}
-      >
+          textAlign: "right"
+        }}>
+        
         {value}
       </Text>
-    </View>
-  );
+    </View>);
+
 }
 
 function StatusBadge({ display }) {
@@ -102,14 +98,14 @@ function StatusBadge({ display }) {
         paddingVertical: 4,
         borderRadius: 20,
         backgroundColor: `${display.color}20`,
-        marginTop: 6,
-      }}
-    >
+        marginTop: 6
+      }}>
+      
       <Text style={{ color: display.color, fontWeight: "700", fontSize: 13 }}>
         {display.label}
       </Text>
-    </View>
-  );
+    </View>);
+
 }
 
 function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
@@ -120,9 +116,9 @@ function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
           flexDirection: "row",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: 14,
-        }}
-      >
+          marginBottom: 14
+        }}>
+        
         <View>
           <Text style={{ fontSize: 17, fontWeight: "800", color: Colors.text }}>
             Linked Transactions
@@ -131,129 +127,129 @@ function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
             {linkedTxs.length} transaction{linkedTxs.length !== 1 ? "s" : ""}
           </Text>
         </View>
-        {onAddMore && (
-          <TouchableOpacity
-            onPress={onAddMore}
-            style={{
-              backgroundColor: Colors.primary,
-              width: 42,
-              height: 42,
-              borderRadius: 21,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
+        {onAddMore &&
+        <TouchableOpacity
+          onPress={onAddMore}
+          style={{
+            backgroundColor: Colors.primary,
+            width: 42,
+            height: 42,
+            borderRadius: 21,
+            justifyContent: "center",
+            alignItems: "center"
+          }}>
+          
             <MaterialCommunityIcons name="plus" size={24} color="#fff" />
           </TouchableOpacity>
-        )}
+        }
       </View>
 
-      {linkedTxs.length === 0 ? (
-        <View style={{ paddingVertical: 40, alignItems: "center" }}>
+      {linkedTxs.length === 0 ?
+      <View style={{ paddingVertical: 40, alignItems: "center" }}>
           <MaterialCommunityIcons name="link-off" size={46} color="#CFCFCF" />
           <Text
-            style={{ marginTop: 8, fontWeight: "700", color: Colors.muted }}
-          >
+          style={{ marginTop: 8, fontWeight: "700", color: Colors.muted }}>
+          
             No linked transactions
           </Text>
           <Text
-            style={{
-              marginTop: 4,
-              fontSize: 12,
-              color: Colors.muted,
-              textAlign: "center",
-            }}
-          >
+          style={{
+            marginTop: 4,
+            fontSize: 12,
+            color: Colors.muted,
+            textAlign: "center"
+          }}>
+          
             Link a payment to automatically mark this bill as paid.
           </Text>
-        </View>
-      ) : (
-        linkedTxs.map((tx) => (
-          <View
-            key={tx.id}
-            style={{
-              marginBottom: 10,
-              borderRadius: 16,
-              backgroundColor: "#FAFAFA",
-              padding: 14,
-            }}
-          >
+        </View> :
+
+      linkedTxs.map((tx) =>
+      <View
+        key={tx.id}
+        style={{
+          marginBottom: 10,
+          borderRadius: 16,
+          backgroundColor: "#FAFAFA",
+          padding: 14
+        }}>
+        
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <View
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 24,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  backgroundColor: `${tx.category_color || Colors.primary}20`,
-                }}
-              >
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: `${tx.category_color || Colors.primary}20`
+            }}>
+            
                 <MaterialCommunityIcons
-                  name={tx.category_icon || "cash"}
-                  color={tx.category_color || Colors.primary}
-                  size={24}
-                />
+              name={tx.category_icon || "cash"}
+              color={tx.category_color || Colors.primary}
+              size={24} />
+            
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text
-                  numberOfLines={1}
-                  style={{
-                    fontSize: 15,
-                    fontWeight: "700",
-                    color: Colors.text,
-                  }}
-                >
+              numberOfLines={1}
+              style={{
+                fontSize: 15,
+                fontWeight: "700",
+                color: Colors.text
+              }}>
+              
                   {tx.notes || "No Notes"}
                 </Text>
                 <Text
-                  style={{ marginTop: 3, fontSize: 12, color: Colors.muted }}
-                >
-                  {tx.date
-                    ? new Date(tx.date).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })
-                    : "—"}
+              style={{ marginTop: 3, fontSize: 12, color: Colors.muted }}>
+              
+                  {tx.date ?
+              new Date(tx.date).toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "short",
+                year: "numeric"
+              }) :
+              "—"}
                   {tx.source_name ? ` • ${tx.source_name}` : ""}
                 </Text>
                 <Text
-                  style={{
-                    marginTop: 6,
-                    fontSize: 17,
-                    fontWeight: "800",
-                    color: Colors.text,
-                  }}
-                >
+              style={{
+                marginTop: 6,
+                fontSize: 17,
+                fontWeight: "800",
+                color: Colors.text
+              }}>
+              
                   {formatCurrency(tx.amount)}
                 </Text>
               </View>
-              {onUnlink && (
-                <TouchableOpacity
-                  onPress={() => onUnlink(tx)}
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 21,
-                    backgroundColor: "#FFECEC",
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                >
+              {onUnlink &&
+          <TouchableOpacity
+            onPress={() => onUnlink(tx)}
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 21,
+              backgroundColor: "#FFECEC",
+              justifyContent: "center",
+              alignItems: "center"
+            }}>
+            
                   <MaterialCommunityIcons
-                    name="link-variant-remove"
-                    size={22}
-                    color="#F44336"
-                  />
+              name="link-variant-remove"
+              size={22}
+              color="#F44336" />
+            
                 </TouchableOpacity>
-              )}
+          }
             </View>
           </View>
-        ))
-      )}
-    </Card>
-  );
+      )
+      }
+    </Card>);
+
 }
 
 function OccurrenceList({ series, selectedId, onSelect }) {
@@ -265,9 +261,9 @@ function OccurrenceList({ series, selectedId, onSelect }) {
           flexDirection: "row",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: 15,
-        }}
-      >
+          marginBottom: 15
+        }}>
+        
         <View>
           <Text style={{ fontWeight: "800", fontSize: 17, color: Colors.text }}>
             Timeline
@@ -279,8 +275,8 @@ function OccurrenceList({ series, selectedId, onSelect }) {
         <MaterialCommunityIcons
           name="calendar-month"
           size={24}
-          color={Colors.primary}
-        />
+          color={Colors.primary} />
+        
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         {series.map((occ) => {
@@ -300,39 +296,39 @@ function OccurrenceList({ series, selectedId, onSelect }) {
                 paddingVertical: 14,
                 paddingHorizontal: 10,
                 backgroundColor: selected ? display.color : "#F6F7FB",
-                alignItems: "center",
-              }}
-            >
+                alignItems: "center"
+              }}>
+              
               <Text
                 style={{
                   color: selected ? "#fff" : Colors.muted,
                   fontSize: 11,
-                  fontWeight: "700",
-                }}
-              >
+                  fontWeight: "700"
+                }}>
+                
                 {month}
               </Text>
               <Text
                 style={{
                   fontSize: 24,
                   fontWeight: "900",
-                  color: selected ? "#fff" : Colors.text,
-                }}
-              >
+                  color: selected ? "#fff" : Colors.text
+                }}>
+                
                 {day}
               </Text>
               <View
                 style={{
                   marginTop: 8,
-                  alignItems: "center",
-                }}
-              >
+                  alignItems: "center"
+                }}>
+                
                 <Text
                   style={{
                     fontSize: 10,
-                    color: selected ? "#fff" : Colors.muted,
-                  }}
-                >
+                    color: selected ? "#fff" : Colors.muted
+                  }}>
+                  
                   Due
                 </Text>
 
@@ -340,9 +336,9 @@ function OccurrenceList({ series, selectedId, onSelect }) {
                   style={{
                     fontSize: 12,
                     fontWeight: "700",
-                    color: selected ? "#fff" : Colors.text,
-                  }}
-                >
+                    color: selected ? "#fff" : Colors.text
+                  }}>
+                  
                   {formatCurrency(occ.amount)}
                 </Text>
 
@@ -350,9 +346,9 @@ function OccurrenceList({ series, selectedId, onSelect }) {
                   style={{
                     marginTop: 4,
                     fontSize: 10,
-                    color: selected ? "#fff" : Colors.muted,
-                  }}
-                >
+                    color: selected ? "#fff" : Colors.muted
+                  }}>
+                  
                   Paid
                 </Text>
 
@@ -360,32 +356,32 @@ function OccurrenceList({ series, selectedId, onSelect }) {
                   style={{
                     fontSize: 12,
                     fontWeight: "700",
-                    color: selected ? "#fff" : "#2DBE60",
-                  }}
-                >
+                    color: selected ? "#fff" : "#2DBE60"
+                  }}>
+                  
                   {formatCurrency(occ.paid_amount || 0)}
                 </Text>
               </View>
               <MaterialCommunityIcons
                 name={
-                  display.label === "Paid"
-                    ? "check-circle"
-                    : display.label === "Skipped"
-                      ? "skip-next-circle"
-                      : display.label === "Overdue"
-                        ? "alert-circle"
-                        : "clock-outline"
+                display.label === "Paid" ?
+                "check-circle" :
+                display.label === "Skipped" ?
+                "skip-next-circle" :
+                display.label === "Overdue" ?
+                "alert-circle" :
+                "clock-outline"
                 }
                 size={18}
                 color={selected ? "#fff" : display.color}
-                style={{ marginTop: 6 }}
-              />
-            </TouchableOpacity>
-          );
+                style={{ marginTop: 6 }} />
+              
+            </TouchableOpacity>);
+
         })}
       </ScrollView>
-    </Card>
-  );
+    </Card>);
+
 }
 
 function LinkTransactionModal({ visible, bill, onLink, onClose }) {
@@ -397,10 +393,10 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
     if (!visible || !bill) return;
     setSearch("");
     setLoading(true);
-    Promise.all([getTransactionsForBillLink(bill), getSources(true)])
-      .then(([txs]) => setCandidates(txs))
-      .catch(() => setCandidates([]))
-      .finally(() => setLoading(false));
+    Promise.all([getTransactionsForBillLink(bill), getSources(true)]).
+    then(([txs]) => setCandidates(txs)).
+    catch(() => setCandidates([])).
+    finally(() => setLoading(false));
   }, [visible, bill?.id]);
 
   const filteredCandidates = React.useMemo(() => {
@@ -411,22 +407,22 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
       const source = String(tx.source_name || "").toLowerCase();
       const category = String(tx.category_name || "").toLowerCase();
       const amount = String(tx.amount || "").toLowerCase();
-      const date = tx.date
-        ? new Date(tx.date)
-          .toLocaleDateString("en-IN", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          })
-          .toLowerCase()
-        : "";
+      const date = tx.date ?
+      new Date(tx.date).
+      toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      }).
+      toLowerCase() :
+      "";
       return (
         notes.includes(query) ||
         source.includes(query) ||
         category.includes(query) ||
         amount.includes(query) ||
-        date.includes(query)
-      );
+        date.includes(query));
+
     });
   }, [candidates, search]);
 
@@ -435,50 +431,50 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
       visible={visible}
       transparent
       animationType="slide"
-      onRequestClose={onClose}
-    >
+      onRequestClose={onClose}>
+      
       <View
         style={{
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.45)",
-          justifyContent: "flex-end",
-        }}
-      >
+          justifyContent: "flex-end"
+        }}>
+        
         <View
           style={{
             backgroundColor: "#fff",
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
             maxHeight: "78%",
-            padding: 16,
-          }}
-        >
+            padding: 16
+          }}>
+          
           {/* Header */}
           <View
             style={{
               flexDirection: "row",
               justifyContent: "space-between",
               alignItems: "center",
-              marginBottom: 4,
-            }}
-          >
+              marginBottom: 4
+            }}>
+            
             <View style={{ flex: 1 }}>
               <Text
                 style={{
                   fontWeight: "800",
                   fontSize: 17,
-                  color: Colors.text,
-                }}
-              >
+                  color: Colors.text
+                }}>
+                
                 Link Transaction
               </Text>
               <Text
                 style={{
                   color: Colors.muted,
                   fontSize: 12,
-                  marginTop: 2,
-                }}
-              >
+                  marginTop: 2
+                }}>
+                
                 {filteredCandidates.length} transaction
                 {filteredCandidates.length !== 1 ? "s" : ""} available
               </Text>
@@ -491,14 +487,14 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
                 borderRadius: 19,
                 backgroundColor: "#F4F5F8",
                 justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
+                alignItems: "center"
+              }}>
+              
               <MaterialCommunityIcons
                 name="close"
                 size={22}
-                color={Colors.muted}
-              />
+                color={Colors.muted} />
+              
             </TouchableOpacity>
           </View>
 
@@ -508,9 +504,9 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
               color: Colors.muted,
               fontSize: 13,
               marginTop: 8,
-              marginBottom: 12,
-            }}
-          >
+              marginBottom: 12
+            }}>
+            
             Select an expense transaction to link with "{bill?.name}"
           </Text>
 
@@ -520,185 +516,180 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
             placeholder="Search transactions..."
             value={search}
             onChangeText={setSearch}
-            left={
-              <PaperTextInput.Icon
-                icon="magnify"
-              />
-            }
+            left={<PaperTextInput.Icon icon="magnify" />}
             right={
-              search ? (
-                <PaperTextInput.Icon
-                  icon="close-circle"
-                  onPress={() => setSearch("")}
-                />
-              ) : null
+            search ?
+            <PaperTextInput.Icon
+              icon="close-circle"
+              onPress={() => setSearch("")} /> :
+
+            null
             }
             style={{
               backgroundColor: "#fff",
-              marginBottom: 12,
+              marginBottom: 12
             }}
             outlineColor="#E4E7EC"
-            activeOutlineColor={Colors.primary}
-          />
+            activeOutlineColor={Colors.primary} />
+          
 
           {/* Transaction list */}
-          {loading ? (
-            <ActivityIndicator
-              size="large"
-              color={Colors.primary}
-              style={{ marginVertical: 30 }}
-            />
-          ) : filteredCandidates.length === 0 ? (
-            <View
-              style={{
-                alignItems: "center",
-                justifyContent: "center",
-                paddingVertical: 35,
-              }}
-            >
+          {loading ?
+          <ActivityIndicator
+            size="large"
+            color={Colors.primary}
+            style={{ marginVertical: 30 }} /> :
+
+          filteredCandidates.length === 0 ?
+          <View
+            style={{
+              alignItems: "center",
+              justifyContent: "center",
+              paddingVertical: 35
+            }}>
+            
               <MaterialCommunityIcons
-                name={search ? "magnify-close" : "receipt-text-remove-outline"}
-                size={46}
-                color="#CFCFCF"
-              />
+              name={search ? "magnify-close" : "receipt-text-remove-outline"}
+              size={46}
+              color="#CFCFCF" />
+            
 
               <Text
-                style={{
-                  color: Colors.muted,
-                  textAlign: "center",
-                  marginTop: 10,
-                  fontWeight: "600",
-                }}
-              >
-                {search
-                  ? "No transactions match your search."
-                  : "No matching transactions found."}
+              style={{
+                color: Colors.muted,
+                textAlign: "center",
+                marginTop: 10,
+                fontWeight: "600"
+              }}>
+              
+                {search ?
+              "No transactions match your search." :
+              "No matching transactions found."}
               </Text>
 
-              {search && (
-                <TouchableOpacity
-                  onPress={() => setSearch("")}
-                  style={{
-                    marginTop: 12,
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 18,
-                    backgroundColor: `${Colors.primary}12`,
-                  }}
-                >
+              {search &&
+            <TouchableOpacity
+              onPress={() => setSearch("")}
+              style={{
+                marginTop: 12,
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                borderRadius: 18,
+                backgroundColor: `${Colors.primary}12`
+              }}>
+              
                   <Text
-                    style={{
-                      color: Colors.primary,
-                      fontWeight: "700",
-                      fontSize: 13,
-                    }}
-                  >
+                style={{
+                  color: Colors.primary,
+                  fontWeight: "700",
+                  fontSize: 13
+                }}>
+                
                     Clear Search
                   </Text>
                 </TouchableOpacity>
-              )}
-            </View>
-          ) : (
-            <FlatList
-              data={filteredCandidates}
-              keyExtractor={(t) => String(t.id)}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              renderItem={({ item: tx }) => (
-                <TouchableOpacity
-                  onPress={() => onLink(tx)}
-                  activeOpacity={0.7}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    paddingVertical: 12,
-                    borderBottomWidth: 1,
-                    borderBottomColor: "#EEF1F6",
-                  }}
-                >
+            }
+            </View> :
+
+          <FlatList
+            data={filteredCandidates}
+            keyExtractor={(t) => String(t.id)}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item: tx }) =>
+            <TouchableOpacity
+              onPress={() => onLink(tx)}
+              activeOpacity={0.7}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingVertical: 12,
+                borderBottomWidth: 1,
+                borderBottomColor: "#EEF1F6"
+              }}>
+              
                   {/* Icon */}
                   <View
-                    style={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 21,
-                      backgroundColor: `${tx.category_color || Colors.primary
-                        }20`,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginRight: 10,
-                    }}
-                  >
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 21,
+                  backgroundColor: `${
+                  tx.category_color || Colors.primary}20`,
+
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 10
+                }}>
+                
                     <MaterialCommunityIcons
-                      name={tx.category_icon || "cash"}
-                      size={19}
-                      color={tx.category_color || Colors.primary}
-                    />
+                  name={tx.category_icon || "cash"}
+                  size={19}
+                  color={tx.category_color || Colors.primary} />
+                
                   </View>
 
                   {/* Details */}
                   <View style={{ flex: 1 }}>
                     <Text
-                      style={{
-                        fontWeight: "700",
-                        color: Colors.text,
-                        fontSize: 14,
-                      }}
-                      numberOfLines={1}
-                    >
+                  style={{
+                    fontWeight: "700",
+                    color: Colors.text,
+                    fontSize: 14
+                  }}
+                  numberOfLines={1}>
+                  
                       {tx.notes || "(no notes)"}
                     </Text>
 
                     <Text
-                      style={{
-                        color: Colors.muted,
-                        fontSize: 12,
-                        marginTop: 3,
-                      }}
-                      numberOfLines={1}
-                    >
-                      {tx.date
-                        ? new Date(tx.date).toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })
-                        : "—"}
+                  style={{
+                    color: Colors.muted,
+                    fontSize: 12,
+                    marginTop: 3
+                  }}
+                  numberOfLines={1}>
+                  
+                      {tx.date ?
+                  new Date(tx.date).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric"
+                  }) :
+                  "—"}
 
                       {tx.source_name ? ` · ${tx.source_name}` : ""}
 
-                      {tx.category_name
-                        ? ` · ${tx.category_name}`
-                        : ""}
+                      {tx.category_name ? ` · ${tx.category_name}` : ""}
                     </Text>
                   </View>
                   {/* Amount */}
                   <Text
-                    style={{
-                      fontWeight: "800",
-                      color: "#E46A6A",
-                      marginLeft: 8,
-                      fontSize: 15,
-                    }}
-                  >
+                style={{
+                  fontWeight: "800",
+                  color: "#E46A6A",
+                  marginLeft: 8,
+                  fontSize: 15
+                }}>
+                
                     {formatCurrency(tx.amount)}
                   </Text>
                 </TouchableOpacity>
-              )}
-            />
-          )}
+            } />
+
+          }
           {/* Cancel */}
           <PaperButton
             mode="outlined"
             onPress={onClose}
-            style={{ marginTop: 10 }}
-          >
+            style={{ marginTop: 10 }}>
+            
             Cancel
           </PaperButton>
         </View>
       </View>
-    </Modal>
-  );
+    </Modal>);
+
 }
 
 function OccurrenceEditModal({ visible, occurrence, onSave, onClose }) {
@@ -720,19 +711,19 @@ function OccurrenceEditModal({ visible, occurrence, onSave, onClose }) {
       visible={visible}
       transparent
       animationType="slide"
-      onRequestClose={onClose}
-    >
+      onRequestClose={onClose}>
+      
       <View
         style={{
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.45)",
           justifyContent: "center",
-          padding: 16,
-        }}
-      >
+          padding: 16
+        }}>
+        
         <View
-          style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20 }}
-        >
+          style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20 }}>
+          
           <Text style={{ fontWeight: "700", fontSize: 18, marginBottom: 16 }}>
             Edit Occurrence
           </Text>
@@ -744,8 +735,8 @@ function OccurrenceEditModal({ visible, occurrence, onSave, onClose }) {
             onChangeText={setAmount}
             keyboardType="numeric"
             mode="outlined"
-            style={{ marginBottom: 16, backgroundColor: "#fff" }}
-          />
+            style={{ marginBottom: 16, backgroundColor: "#fff" }} />
+          
           <Text style={{ fontSize: 13, color: Colors.muted, marginBottom: 6 }}>
             Due Date
           </Text>
@@ -756,20 +747,20 @@ function OccurrenceEditModal({ visible, occurrence, onSave, onClose }) {
               mode="outlined"
               style={{ marginBottom: 20, backgroundColor: "#fff" }}
               right={
-                <PaperTextInput.Icon
-                  icon="calendar"
-                  onPress={() => setShowDuePicker(true)}
-                />
-              }
-            />
+              <PaperTextInput.Icon
+                icon="calendar"
+                onPress={() => setShowDuePicker(true)} />
+
+              } />
+            
           </TouchableOpacity>
           <View
             style={{
               flexDirection: "row",
               justifyContent: "flex-end",
-              gap: 10,
-            }}
-          >
+              gap: 10
+            }}>
+            
             <PaperButton mode="text" onPress={onClose}>
               Cancel
             </PaperButton>
@@ -779,75 +770,33 @@ function OccurrenceEditModal({ visible, occurrence, onSave, onClose }) {
                 const amt = parseFloat(amount);
                 if (!amount || isNaN(amt) || amt <= 0 || !dueDate) return;
                 onSave(amt, dueDate);
-              }}
-            >
+              }}>
+              
               Save
             </PaperButton>
           </View>
         </View>
       </View>
 
-      {showDuePicker && Platform.OS !== "web" ? (
-        <DateTimePicker
-          value={new Date(dueDate || Date.now())}
-          mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={(event, selectedDate) => {
-            if (Platform.OS === "android") {
-              setShowDuePicker(false);
-              if (event.type === "dismissed") return;
-            }
-            if (selectedDate)
-              setDueDate(selectedDate.toISOString().slice(0, 10));
-            if (Platform.OS === "ios") setShowDuePicker(false);
-          }}
-        />
-      ) : (
-        <Modal visible={showDuePicker} transparent animationType="fade">
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: "center",
-              padding: 16,
-            }}
-          >
-            <View
-              style={{ backgroundColor: "#fff", borderRadius: 12, padding: 16 }}
-            >
-              <Text style={{ fontWeight: "700", marginBottom: 12 }}>
-                Due date
-              </Text>
-              <ManualDateTimePicker
-                year={dueParts[0] || new Date().getFullYear()}
-                month={dueParts[1] || new Date().getMonth() + 1}
-                day={dueParts[2] || new Date().getDate()}
-                hour={0}
-                minute={0}
-                onChange={(y, m, d) =>
-                  setDueDate(
-                    `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
-                  )
-                }
-                onClose={() => setShowDuePicker(false)}
-              />
-              <PaperButton onPress={() => setShowDuePicker(false)}>
-                Done
-              </PaperButton>
-            </View>
-          </View>
-        </Modal>
-      )}
-    </Modal>
-  );
+      <MuiDateTimePicker
+        visible={showDuePicker}
+        initialDate={dueDate ? new Date(dueDate) : new Date()}
+        onClose={() => setShowDuePicker(false)}
+        onSelect={(selectedDate) => {
+          if (selectedDate) setDueDate(selectedDate.toISOString().slice(0, 10));
+          setShowDuePicker(false);
+        }} />
+      
+    </Modal>);
+
 }
 
 function isCreditCardBill(bill) {
   return (
-    typeof bill?.notes === "string" &&
-    (bill.notes.startsWith("Recurring payment template for") ||
-      bill.notes.startsWith("Statement "))
-  );
+    typeof bill?.notes === "string" && (
+    bill.notes.startsWith("Recurring payment template for") ||
+    bill.notes.startsWith("Statement ")));
+
 }
 
 // ─── main screen ─────────────────────────────────────────────────────────────
@@ -886,7 +835,7 @@ export default function BillDetailScreen({ route, navigation }) {
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [rawId]),
+    }, [rawId])
   );
 
   // ── hook 16 ───────────────────────────────────────────────────────────────
@@ -912,10 +861,10 @@ export default function BillDetailScreen({ route, navigation }) {
         id: occ.id,
         label: date.toLocaleDateString("en", {
           month: "short",
-          year: "2-digit",
+          year: "2-digit"
         }), // Jan 26, Feb 26, Jan 27...
         due: Number(occ.amount || 0),
-        paid: Number(occ.paid_amount || 0),
+        paid: Number(occ.paid_amount || 0)
       };
     });
   }, [series]);
@@ -947,7 +896,7 @@ export default function BillDetailScreen({ route, navigation }) {
   const paymentPercentage = React.useMemo(() => {
     if (totalDueAmount === 0) return 0;
 
-    return Math.min(100, (totalPaidAmount / totalDueAmount) * 100);
+    return Math.min(100, totalPaidAmount / totalDueAmount * 100);
   }, [totalDueAmount, totalPaidAmount]);
 
   const reduxCategory = categoriesMap?.[bill?.category_id] || category;
@@ -958,8 +907,8 @@ export default function BillDetailScreen({ route, navigation }) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
+      </View>);
+
   }
 
   if (editing) {
@@ -979,9 +928,9 @@ export default function BillDetailScreen({ route, navigation }) {
             hidePageLoader();
           }
         }}
-        onCancel={() => setEditing(false)}
-      />
-    );
+        onCancel={() => setEditing(false)} />);
+
+
   }
 
   // ── helpers / actions ─────────────────────────────────────────────────────
@@ -1001,11 +950,11 @@ export default function BillDetailScreen({ route, navigation }) {
       setResolvedTemplateId(templateId);
 
       const [b, s, cats, srcs] = await Promise.all([
-        getBillById(templateId),
-        getBillSeries(templateId),
-        getCategories(true),
-        getSources(true),
-      ]);
+      getBillById(templateId),
+      getBillSeries(templateId),
+      getCategories(true),
+      getSources(true)]
+      );
 
       setBill(b);
       setSeries(s);
@@ -1016,23 +965,40 @@ export default function BillDetailScreen({ route, navigation }) {
       });
       dispatch(setCategoriesMap(categoryMap));
       dispatch(setBills(s || []));
-      dispatch(setBillsSummary({
-        totalThisMonth: s.reduce((sum, row) => sum + Number(row.amount || 0), 0),
-        totalPaid: s.reduce((sum, row) => sum + Number(row.paid_amount || 0), 0),
-        overdueAmount: s
-          .filter((row) => row.status === BILL_STATUS.OVERDUE)
-          .reduce((sum, row) => sum + Number(row.amount || 0), 0),
-        overdueCount: s.filter((row) => row.status === BILL_STATUS.OVERDUE).length,
-        upcoming7: s
-          .filter((row) => row.status !== BILL_STATUS.PAID && row.status !== BILL_STATUS.SKIPPED)
-          .reduce((sum, row) => sum + Number(row.amount || 0), 0),
-        upcoming3Count: s.filter((row) => row.status !== BILL_STATUS.PAID && row.status !== BILL_STATUS.SKIPPED).length,
-      }));
+      dispatch(
+        setBillsSummary({
+          totalThisMonth: s.reduce(
+            (sum, row) => sum + Number(row.amount || 0),
+            0
+          ),
+          totalPaid: s.reduce(
+            (sum, row) => sum + Number(row.paid_amount || 0),
+            0
+          ),
+          overdueAmount: s.
+          filter((row) => row.status === BILL_STATUS.OVERDUE).
+          reduce((sum, row) => sum + Number(row.amount || 0), 0),
+          overdueCount: s.filter((row) => row.status === BILL_STATUS.OVERDUE).
+          length,
+          upcoming7: s.
+          filter(
+            (row) =>
+            row.status !== BILL_STATUS.PAID &&
+            row.status !== BILL_STATUS.SKIPPED
+          ).
+          reduce((sum, row) => sum + Number(row.amount || 0), 0),
+          upcoming3Count: s.filter(
+            (row) =>
+            row.status !== BILL_STATUS.PAID &&
+            row.status !== BILL_STATUS.SKIPPED
+          ).length
+        })
+      );
 
       if (b?.category_id)
-        setCategory(cats.find((c) => c.id === b.category_id) || null);
+      setCategory(cats.find((c) => c.id === b.category_id) || null);
       if (b?.source_id)
-        setSource(srcs.find((ss) => ss.id === b.source_id) || null);
+      setSource(srcs.find((ss) => ss.id === b.source_id) || null);
 
       // Select the right occurrence
       let occ = null;
@@ -1046,25 +1012,27 @@ export default function BillDetailScreen({ route, navigation }) {
       if (!occ) {
         const now = new Date();
         occ =
-          s.find((o) => {
-            if (!o.due_date) return false;
-            const d = new Date(o.due_date);
-            return (
-              d.getFullYear() === now.getFullYear() &&
-              d.getMonth() === now.getMonth() &&
-              o.status !== BILL_STATUS.PAID &&
-              o.status !== BILL_STATUS.SKIPPED
-            );
-          }) ||
-          s[s.length - 1] ||
-          null;
+        s.find((o) => {
+          if (!o.due_date) return false;
+          const d = new Date(o.due_date);
+          return (
+            d.getFullYear() === now.getFullYear() &&
+            d.getMonth() === now.getMonth() &&
+            o.status !== BILL_STATUS.PAID &&
+            o.status !== BILL_STATUS.SKIPPED);
+
+        }) ||
+        s[s.length - 1] ||
+        null;
       }
       setSelectedOcc(occ);
-      
+
       if (occ && s.length > 5) {
-        const idx = s.findIndex(o => o.id === occ.id);
+        const idx = s.findIndex((o) => o.id === occ.id);
         if (idx !== -1) {
-          setChartOffset(Math.max(0, Math.min(s.length - 5, s.length - 3 - idx)));
+          setChartOffset(
+            Math.max(0, Math.min(s.length - 5, s.length - 3 - idx))
+          );
         }
       } else {
         setChartOffset(0);
@@ -1076,8 +1044,8 @@ export default function BillDetailScreen({ route, navigation }) {
           setSelectedLabel(
             new Date(occ.due_date).toLocaleDateString("en", {
               month: "short",
-              year: "2-digit",
-            }),
+              year: "2-digit"
+            })
           );
         }
       }
@@ -1096,8 +1064,8 @@ export default function BillDetailScreen({ route, navigation }) {
     const updatedSeries = await getBillSeries(billId);
     setSeries(updatedSeries);
     const occ =
-      updatedSeries.find((o) => Number(o.id) === Number(selectedOcc?.id)) ||
-      null;
+    updatedSeries.find((o) => Number(o.id) === Number(selectedOcc?.id)) ||
+    null;
     setSelectedOcc(occ);
     setLinkedTxs(occ ? await getBillLinkedTransactions(occ.id) : []);
   }
@@ -1110,14 +1078,14 @@ export default function BillDetailScreen({ route, navigation }) {
       const cards = await getCreditCards(false);
       const card = cards.find(
         (c) =>
-          Number(c.payment_bill_id) === Number(targetBill.id) ||
-          Number(c.payment_bill_id) === Number(targetBill.parent_bill_id),
+        Number(c.payment_bill_id) === Number(targetBill.id) ||
+        Number(c.payment_bill_id) === Number(targetBill.parent_bill_id)
       );
 
       // Normal bill
       if (!card) {
         await markBillPaid(targetBill.id, {
-          source_id: targetBill.source_id,
+          source_id: targetBill.source_id
         });
         await load();
         hidePageLoader();
@@ -1127,7 +1095,7 @@ export default function BillDetailScreen({ route, navigation }) {
       // Credit card bill
       const sources = await getSources(true);
       setPaymentSources(
-        sources.filter((s) => Number(s.id) !== Number(card.source_id)),
+        sources.filter((s) => Number(s.id) !== Number(card.source_id))
       );
       setSelectedCreditCard(card);
       setPaymentSourceSearch("");
@@ -1192,8 +1160,8 @@ export default function BillDetailScreen({ route, navigation }) {
     setSelectedLabel(
       new Date(occ.due_date).toLocaleDateString("en", {
         month: "short",
-        year: "2-digit",
-      }),
+        year: "2-digit"
+      })
     );
   }
 
@@ -1209,22 +1177,22 @@ export default function BillDetailScreen({ route, navigation }) {
        * occurrence instead.
        */
       if (
-        selectedOcc.id === bill.id &&
-        bill.is_recurring &&
-        !isCreditCardBill(bill)
-      ) {
+      selectedOcc.id === bill.id &&
+      bill.is_recurring &&
+      !isCreditCardBill(bill))
+      {
         await createBill({
           ...bill,
           amount: newAmount,
           due_date: newDueDate,
           is_recurring: 0,
           recurrence_type: null,
-          parent_bill_id: bill.id,
+          parent_bill_id: bill.id
         });
       } else {
         await updateBill(selectedOcc.id, {
           amount: newAmount,
-          due_date: newDueDate,
+          due_date: newDueDate
         });
       }
       setShowEditOcc(false);
@@ -1240,8 +1208,8 @@ export default function BillDetailScreen({ route, navigation }) {
   const activeBill = selectedOcc || bill;
   const display = getBillDisplayStatus(activeBill);
   const isPaidOrSkipped =
-    activeBill.status === BILL_STATUS.PAID ||
-    activeBill.status === BILL_STATUS.SKIPPED;
+  activeBill.status === BILL_STATUS.PAID ||
+  activeBill.status === BILL_STATUS.SKIPPED;
   // A generated bill can be paid at any time.
   // Payment is no longer restricted to the bill's due month.
 
@@ -1250,8 +1218,8 @@ export default function BillDetailScreen({ route, navigation }) {
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 120 }}
-      >
+        contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 120 }}>
+        
         {/* Bill Summary */}
         <Card style={{ marginBottom: 12, borderRadius: 20 }}>
           <Text
@@ -1259,9 +1227,9 @@ export default function BillDetailScreen({ route, navigation }) {
               fontSize: 18,
               fontWeight: "800",
               color: Colors.text,
-              marginBottom: 18,
-            }}
-          >
+              marginBottom: 18
+            }}>
+            
             Bill Summary
           </Text>
 
@@ -1270,9 +1238,9 @@ export default function BillDetailScreen({ route, navigation }) {
               style={{
                 fontSize: 34,
                 fontWeight: "900",
-                color: "#2DBE60",
-              }}
-            >
+                color: "#2DBE60"
+              }}>
+              
               {formatCurrency(totalPaidAmount)}
             </Text>
 
@@ -1280,9 +1248,9 @@ export default function BillDetailScreen({ route, navigation }) {
               style={{
                 color: Colors.muted,
                 fontWeight: "600",
-                marginTop: 4,
-              }}
-            >
+                marginTop: 4
+              }}>
+              
               Total Amount Paid
             </Text>
           </View>
@@ -1290,15 +1258,15 @@ export default function BillDetailScreen({ route, navigation }) {
           <View
             style={{
               flexDirection: "row",
-              justifyContent: "space-between",
-            }}
-          >
+              justifyContent: "space-between"
+            }}>
+            
             <View style={styles.summaryTile}>
               <MaterialCommunityIcons
                 name="check-circle"
                 size={26}
-                color="#2DBE60"
-              />
+                color="#2DBE60" />
+              
 
               <Text style={styles.summaryValue}>{paidCount}</Text>
 
@@ -1309,8 +1277,8 @@ export default function BillDetailScreen({ route, navigation }) {
               <MaterialCommunityIcons
                 name="clock-outline"
                 size={26}
-                color="#FF9800"
-              />
+                color="#FF9800" />
+              
 
               <Text style={styles.summaryValue}>
                 {formatCurrency(pendingAmount)}
@@ -1323,8 +1291,8 @@ export default function BillDetailScreen({ route, navigation }) {
               <MaterialCommunityIcons
                 name="receipt"
                 size={26}
-                color={Colors.primary}
-              />
+                color={Colors.primary} />
+              
 
               <Text style={styles.summaryValue}>{series.length}</Text>
 
@@ -1334,24 +1302,24 @@ export default function BillDetailScreen({ route, navigation }) {
 
           <View
             style={{
-              marginTop: 20,
-            }}
-          >
+              marginTop: 20
+            }}>
+            
             <View
               style={{
                 height: 10,
                 borderRadius: 6,
                 backgroundColor: "#ECECEC",
-                overflow: "hidden",
-              }}
-            >
+                overflow: "hidden"
+              }}>
+              
               <View
                 style={{
                   width: `${paymentPercentage}%`,
                   height: "100%",
-                  backgroundColor: "#2DBE60",
-                }}
-              />
+                  backgroundColor: "#2DBE60"
+                }} />
+              
             </View>
 
             <Text
@@ -1359,9 +1327,9 @@ export default function BillDetailScreen({ route, navigation }) {
                 marginTop: 8,
                 textAlign: "center",
                 color: Colors.muted,
-                fontWeight: "600",
-              }}
-            >
+                fontWeight: "600"
+              }}>
+              
               {formatCurrency(totalPaidAmount)} of{" "}
               {formatCurrency(totalDueAmount)} Paid
             </Text>
@@ -1370,32 +1338,60 @@ export default function BillDetailScreen({ route, navigation }) {
 
         {/* Chart */}
         <Card
-          style={{ marginBottom: 12, borderRadius: 20, overflow: "hidden" }}
-        >
+          style={{ marginBottom: 12, borderRadius: 20, overflow: "hidden" }}>
+          
           <Text
             style={{
               fontWeight: "800",
               fontSize: 17,
               color: Colors.text,
-              marginBottom: 10,
-            }}
-          >
+              marginBottom: 10
+            }}>
+            
             Bill History
           </Text>
-          <View style={{ width: '100%', alignItems: 'center', justifyContent: 'center' }}>
-            <TouchableOpacity 
-              onPress={() => setChartOffset(prev => Math.min(Math.max(0, chartData.length - 5), prev + 1))} 
-              style={{ 
-                position: 'absolute', left: 0, zIndex: 10,
-                width: 34, height: 34, borderRadius: 17, 
-                backgroundColor: 'rgba(255,255,255,0.85)', 
-                alignItems: 'center', justifyContent: 'center',
-                shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
-                opacity: chartData.length <= 5 || chartOffset >= chartData.length - 5 ? 0.3 : 1
-              }} 
-              disabled={chartData.length <= 5 || chartOffset >= chartData.length - 5}
-            >
-              <MaterialCommunityIcons name="chevron-left" size={20} color={Colors.text} />
+          <View
+            style={{
+              width: "100%",
+              alignItems: "center",
+              justifyContent: "center"
+            }}>
+            
+            <TouchableOpacity
+              onPress={() =>
+              setChartOffset((prev) =>
+              Math.min(Math.max(0, chartData.length - 5), prev + 1)
+              )
+              }
+              style={{
+                position: "absolute",
+                left: 0,
+                zIndex: 10,
+                width: 34,
+                height: 34,
+                borderRadius: 17,
+                backgroundColor: "rgba(255,255,255,0.85)",
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 3,
+                opacity:
+                chartData.length <= 5 || chartOffset >= chartData.length - 5 ?
+                0.3 :
+                1
+              }}
+              disabled={
+              chartData.length <= 5 || chartOffset >= chartData.length - 5
+              }>
+              
+              <MaterialCommunityIcons
+                name="chevron-left"
+                size={20}
+                color={Colors.text} />
+              
             </TouchableOpacity>
 
             <PremiumRoundedBarChart
@@ -1414,22 +1410,35 @@ export default function BillDetailScreen({ route, navigation }) {
                 if (match) {
                   handleSelectOccurrence(match);
                 }
-              }}
-            />
+              }} />
+            
 
-            <TouchableOpacity 
-              onPress={() => setChartOffset(prev => Math.max(0, prev - 1))} 
-              style={{ 
-                position: 'absolute', right: 0, zIndex: 10,
-                width: 34, height: 34, borderRadius: 17, 
-                backgroundColor: 'rgba(255,255,255,0.85)', 
-                alignItems: 'center', justifyContent: 'center',
-                shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+            <TouchableOpacity
+              onPress={() => setChartOffset((prev) => Math.max(0, prev - 1))}
+              style={{
+                position: "absolute",
+                right: 0,
+                zIndex: 10,
+                width: 34,
+                height: 34,
+                borderRadius: 17,
+                backgroundColor: "rgba(255,255,255,0.85)",
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 3,
                 opacity: chartOffset === 0 ? 0.3 : 1
               }}
-              disabled={chartOffset === 0}
-            >
-              <MaterialCommunityIcons name="chevron-right" size={20} color={Colors.text} />
+              disabled={chartOffset === 0}>
+              
+              <MaterialCommunityIcons
+                name="chevron-right"
+                size={20}
+                color={Colors.text} />
+              
             </TouchableOpacity>
           </View>
         </Card>
@@ -1440,17 +1449,17 @@ export default function BillDetailScreen({ route, navigation }) {
             marginBottom: 12,
             borderRadius: 22,
             overflow: "hidden",
-            padding: 0,
-          }}
-        >
+            padding: 0
+          }}>
+          
           <View
             style={{
               backgroundColor: `${display.color}12`,
               padding: 18,
               flexDirection: "row",
-              alignItems: "center",
-            }}
-          >
+              alignItems: "center"
+            }}>
+            
             <View
               style={{
                 width: 64,
@@ -1458,29 +1467,29 @@ export default function BillDetailScreen({ route, navigation }) {
                 borderRadius: 32,
                 backgroundColor: `${display.color}25`,
                 justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
+                alignItems: "center"
+              }}>
+              
               <MaterialCommunityIcons
                 name={reduxCategory?.icon || "receipt"}
                 size={30}
-                color={display.color}
-              />
+                color={display.color} />
+              
             </View>
             <View style={{ flex: 1, marginLeft: 15 }}>
               <Text
                 numberOfLines={1}
-                style={{ fontSize: 19, fontWeight: "800", color: Colors.text }}
-              >
+                style={{ fontSize: 19, fontWeight: "800", color: Colors.text }}>
+                
                 {bill.name}
               </Text>
               <View style={{ marginTop: 8 }}>
                 <Text
                   style={{
                     fontSize: 13,
-                    color: Colors.muted,
-                  }}
-                >
+                    color: Colors.muted
+                  }}>
+                  
                   Due Amount
                 </Text>
 
@@ -1488,9 +1497,9 @@ export default function BillDetailScreen({ route, navigation }) {
                   style={{
                     fontSize: 30,
                     fontWeight: "900",
-                    color: display.color,
-                  }}
-                >
+                    color: display.color
+                  }}>
+                  
                   {formatCurrency(activeBill.amount)}
                 </Text>
 
@@ -1498,9 +1507,9 @@ export default function BillDetailScreen({ route, navigation }) {
                   style={{
                     marginTop: 8,
                     fontSize: 13,
-                    color: Colors.muted,
-                  }}
-                >
+                    color: Colors.muted
+                  }}>
+                  
                   Paid Amount
                 </Text>
 
@@ -1508,9 +1517,9 @@ export default function BillDetailScreen({ route, navigation }) {
                   style={{
                     fontSize: 24,
                     fontWeight: "800",
-                    color: "#2DBE60",
-                  }}
-                >
+                    color: "#2DBE60"
+                  }}>
+                  
                   {formatCurrency(activeBill.paid_amount || 0)}
                 </Text>
               </View>
@@ -1521,12 +1530,12 @@ export default function BillDetailScreen({ route, navigation }) {
                   backgroundColor: display.color,
                   paddingHorizontal: 12,
                   paddingVertical: 5,
-                  borderRadius: 20,
-                }}
-              >
+                  borderRadius: 20
+                }}>
+                
                 <Text
-                  style={{ color: "#fff", fontWeight: "700", fontSize: 12 }}
-                >
+                  style={{ color: "#fff", fontWeight: "700", fontSize: 12 }}>
+                  
                   {display.label}
                 </Text>
               </View>
@@ -1535,37 +1544,37 @@ export default function BillDetailScreen({ route, navigation }) {
 
           <View style={{ flexDirection: "row", flexWrap: "wrap", padding: 14 }}>
             {[
-              {
-                icon: "calendar",
-                label: "Due",
-                value: formatDueDate(activeBill.due_date),
-              },
-              {
-                icon: reduxCategory?.icon || "shape",
-                label: "Category",
-                value: reduxCategory?.name || "-",
-              },
-              { icon: "bank", label: "Source", value: source?.name || "-" },
-              {
-                icon: "repeat",
-                label: "Repeat",
-                value: bill.is_recurring
-                  ? `${bill.recurrence_interval || 1} ${bill.recurrence_type}`
-                  : "No",
-              },
-            ].map(({ icon, label, value }) => (
-              <View key={label} style={styles.infoTile}>
+            {
+              icon: "calendar",
+              label: "Due",
+              value: formatDueDate(activeBill.due_date)
+            },
+            {
+              icon: reduxCategory?.icon || "shape",
+              label: "Category",
+              value: reduxCategory?.name || "-"
+            },
+            { icon: "bank", label: "Source", value: source?.name || "-" },
+            {
+              icon: "repeat",
+              label: "Repeat",
+              value: bill.is_recurring ?
+              `${bill.recurrence_interval || 1} ${bill.recurrence_type}` :
+              "No"
+            }].
+            map(({ icon, label, value }) =>
+            <View key={label} style={styles.infoTile}>
                 <MaterialCommunityIcons
-                  name={icon}
-                  color={Colors.primary}
-                  size={18}
-                />
+                name={icon}
+                color={Colors.primary}
+                size={18} />
+              
                 <Text style={styles.infoTitle}>{label}</Text>
                 <Text numberOfLines={1} style={styles.infoValue}>
                   {value}
                 </Text>
               </View>
-            ))}
+            )}
           </View>
         </Card>
 
@@ -1573,26 +1582,26 @@ export default function BillDetailScreen({ route, navigation }) {
         <LinkedTransactionsCard
           linkedTxs={linkedTxs}
           onAddMore={() => setShowLinkModal(true)}
-          onUnlink={handleUnlinkTransaction}
-        />
+          onUnlink={handleUnlinkTransaction} />
+        
 
         {/* Occurrence timeline */}
         <OccurrenceList
           series={series}
           selectedId={selectedOcc?.id}
-          onSelect={handleSelectOccurrence}
-        />
+          onSelect={handleSelectOccurrence} />
+        
 
         {/* Dialogs */}
         <ConfirmDialog
           visible={confirmVisible}
           title={
-            confirmAction === "delete_occ" ? "Delete Occurrence" : "Skip Bill"
+          confirmAction === "delete_occ" ? "Delete Occurrence" : "Skip Bill"
           }
           message={
-            confirmAction === "delete_occ"
-              ? `Delete the occurrence for ${formatDueDate(activeBill.due_date)}? It won't be recreated.`
-              : `Skip "${activeBill.name}" for ${formatDueDate(activeBill.due_date)}?`
+          confirmAction === "delete_occ" ?
+          `Delete the occurrence for ${formatDueDate(activeBill.due_date)}? It won't be recreated.` :
+          `Skip "${activeBill.name}" for ${formatDueDate(activeBill.due_date)}?`
           }
           confirmLabel={confirmAction === "skip" ? "Skip" : "Delete"}
           onCancel={() => {
@@ -1604,7 +1613,7 @@ export default function BillDetailScreen({ route, navigation }) {
               showPageLoader();
               if (confirmAction === "delete_occ") {
                 const isTemplate =
-                  activeBill.id === bill?.id && bill?.is_recurring;
+                activeBill.id === bill?.id && bill?.is_recurring;
                 if (isTemplate) {
                   // Template occurrence:
                   // create tombstone child and delete it.
@@ -1612,7 +1621,7 @@ export default function BillDetailScreen({ route, navigation }) {
                     ...bill,
                     is_recurring: 0,
                     recurrence_type: null,
-                    parent_bill_id: bill.id,
+                    parent_bill_id: bill.id
                   });
                   await deleteBill(newId);
                 } else {
@@ -1633,132 +1642,132 @@ export default function BillDetailScreen({ route, navigation }) {
               setConfirmAction(null);
               hidePageLoader();
             }
-          }}
-        />
+          }} />
+        
 
         <LinkTransactionModal
           visible={showLinkModal}
           bill={activeBill}
           onLink={handleLinkTransaction}
-          onClose={() => setShowLinkModal(false)}
-        />
+          onClose={() => setShowLinkModal(false)} />
+        
 
         <OccurrenceEditModal
           visible={showEditOcc}
           occurrence={selectedOcc}
           onSave={handleSaveOccurrence}
-          onClose={() => setShowEditOcc(false)}
-        />
+          onClose={() => setShowEditOcc(false)} />
+        
       </ScrollView>
 
       {/* Bottom action bar */}
       <View style={styles.bottomBar}>
-        {!isPaidOrSkipped && (
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: "#2DBE60" }]}
-            onPress={handleMarkPaid}
-          >
+        {!isPaidOrSkipped &&
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: "#2DBE60" }]}
+          onPress={handleMarkPaid}>
+          
             <MaterialCommunityIcons
-              name="check-circle"
-              color="#fff"
-              size={22}
-            />
+            name="check-circle"
+            color="#fff"
+            size={22} />
+          
             <Text style={styles.actionTextWhite}>Paid</Text>
           </TouchableOpacity>
-        )}
+        }
 
-        {activeBill.status === BILL_STATUS.SKIPPED ? (
-          <TouchableOpacity style={styles.actionButton} onPress={handleUnskip}>
+        {activeBill.status === BILL_STATUS.SKIPPED ?
+        <TouchableOpacity style={styles.actionButton} onPress={handleUnskip}>
             <MaterialCommunityIcons name="undo" color="#1976D2" size={22} />
             <Text style={styles.actionText}>Unskip</Text>
-          </TouchableOpacity>
-        ) : !isPaidOrSkipped ? (
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => {
-              setConfirmAction("skip");
-              setConfirmVisible(true);
-            }}
-          >
+          </TouchableOpacity> :
+        !isPaidOrSkipped ?
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => {
+            setConfirmAction("skip");
+            setConfirmVisible(true);
+          }}>
+          
             <MaterialCommunityIcons
-              name="skip-next-circle"
-              color="#F57C00"
-              size={22}
-            />
+            name="skip-next-circle"
+            color="#F57C00"
+            size={22} />
+          
             <Text style={styles.actionText}>Skip</Text>
-          </TouchableOpacity>
-        ) : null}
+          </TouchableOpacity> :
+        null}
 
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => setShowLinkModal(true)}
-        >
+          onPress={() => setShowLinkModal(true)}>
+          
           <MaterialCommunityIcons
             name="link-variant"
             color={Colors.primary}
-            size={22}
-          />
+            size={22} />
+          
           <Text style={styles.actionText}>Link</Text>
         </TouchableOpacity>
 
-        {!isCreditCardBill(activeBill) && (
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => setShowEditOcc(true)}
-          >
+        {!isCreditCardBill(activeBill) &&
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => setShowEditOcc(true)}>
+          
             <MaterialCommunityIcons
-              name="square-edit-outline"
-              color="#FF9800"
-              size={22}
-            />
+            name="square-edit-outline"
+            color="#FF9800"
+            size={22} />
+          
             <Text style={styles.actionText}>Edit</Text>
           </TouchableOpacity>
-        )}
+        }
 
         {/* <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => {
-            setConfirmAction("delete_occ");
-            setConfirmVisible(true);
-          }}
-        >
-          <MaterialCommunityIcons
-            name="delete-outline"
-            color="#F44336"
-            size={22}
-          />
-          <Text style={styles.actionText}>Delete</Text>
-        </TouchableOpacity> */}
+           style={styles.actionButton}
+           onPress={() => {
+             setConfirmAction("delete_occ");
+             setConfirmVisible(true);
+           }}
+          >
+           <MaterialCommunityIcons
+             name="delete-outline"
+             color="#F44336"
+             size={22}
+           />
+           <Text style={styles.actionText}>Delete</Text>
+          </TouchableOpacity> */}
       </View>
 
       <Modal
         visible={showPaymentSourcePicker}
         transparent
-        animationType="slide"
-      >
+        animationType="slide">
+        
         <View
           style={{
             flex: 1,
             backgroundColor: "rgba(0,0,0,0.4)",
-            justifyContent: "flex-end",
-          }}
-        >
+            justifyContent: "flex-end"
+          }}>
+          
           <View
             style={{
               backgroundColor: "#fff",
               maxHeight: "55%",
               borderTopLeftRadius: 16,
               borderTopRightRadius: 16,
-              padding: 16,
-            }}
-          >
+              padding: 16
+            }}>
+            
             <Text
               style={{
                 fontWeight: "700",
                 fontSize: 16,
-                marginBottom: 12,
-              }}
-            >
+                marginBottom: 12
+              }}>
+              
               Select Payment Source
             </Text>
 
@@ -1767,74 +1776,74 @@ export default function BillDetailScreen({ route, navigation }) {
               value={paymentSourceSearch}
               onChangeText={setPaymentSourceSearch}
               mode="outlined"
-              style={{ marginBottom: 10 }}
-            />
+              style={{ marginBottom: 10 }} />
+            
 
             <ScrollView>
-              {paymentSources
-                .filter((s) =>
-                  s.name
-                    .toLowerCase()
-                    .includes(paymentSourceSearch.toLowerCase()),
-                )
-                .map((source) => (
-                  <TouchableOpacity
-                    key={source.id}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      paddingVertical: 12,
-                    }}
-                    onPress={async () => {
-                      try {
-                        showPageLoader();
-                        const paymentId = await payCreditCardBill({
-                          bill: activeBill,
-                          card: selectedCreditCard,
-                          paymentSourceId: source.id,
-                        });
-                        await markBillPaid(activeBill.id, {
-                          createTransaction: false,
-                          existingTransactionId: paymentId,
-                        });
-                        try {
-                          await onStatementPaid(selectedCreditCard.id);
-                        } catch (e) {
-                          console.warn(
-                            "[BillDetailScreen] onStatementPaid failed:",
-                            e,
-                          );
-                        }
-                        setShowPaymentSourcePicker(false);
-                        setSelectedCreditCard(null);
-                        setPaymentSourceSearch("");
-                        await load();
-                      } catch (e) {
-                        console.error(
-                          "[BillDetail] Credit card payment failed:",
-                          e,
-                        );
-                        Alert.alert("Error", "Unable to complete payment.");
-                      } finally {
-                        hidePageLoader();
-                      }
-                    }}
-                  >
+              {paymentSources.
+              filter((s) =>
+              s.name.
+              toLowerCase().
+              includes(paymentSourceSearch.toLowerCase())
+              ).
+              map((source) =>
+              <TouchableOpacity
+                key={source.id}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingVertical: 12
+                }}
+                onPress={async () => {
+                  try {
+                    showPageLoader();
+                    const paymentId = await payCreditCardBill({
+                      bill: activeBill,
+                      card: selectedCreditCard,
+                      paymentSourceId: source.id
+                    });
+                    await markBillPaid(activeBill.id, {
+                      createTransaction: false,
+                      existingTransactionId: paymentId
+                    });
+                    try {
+                      await onStatementPaid(selectedCreditCard.id);
+                    } catch (e) {
+                      console.warn(
+                        "[BillDetailScreen] onStatementPaid failed:",
+                        e
+                      );
+                    }
+                    setShowPaymentSourcePicker(false);
+                    setSelectedCreditCard(null);
+                    setPaymentSourceSearch("");
+                    await load();
+                  } catch (e) {
+                    console.error(
+                      "[BillDetail] Credit card payment failed:",
+                      e
+                    );
+                    Alert.alert("Error", "Unable to complete payment.");
+                  } finally {
+                    hidePageLoader();
+                  }
+                }}>
+                
                     <MaterialCommunityIcons
-                      name={source.icon || "wallet"}
-                      size={22}
-                      color={Colors.primary}
-                    />
+                  name={source.icon || "wallet"}
+                  size={22}
+                  color={Colors.primary} />
+                
                     <Text
-                      style={{
-                        marginLeft: 10,
-                        flex: 1,
-                      }}
-                    >
+                  style={{
+                    marginLeft: 10,
+                    flex: 1
+                  }}>
+                  
                       {source.name}
                     </Text>
                   </TouchableOpacity>
-                ))}
+              )}
             </ScrollView>
 
             <PaperButton
@@ -1843,15 +1852,15 @@ export default function BillDetailScreen({ route, navigation }) {
                 setSelectedCreditCard(null);
                 setPaymentSourceSearch("");
                 hidePageLoader();
-              }}
-            >
+              }}>
+              
               Cancel
             </PaperButton>
           </View>
         </View>
       </Modal>
-    </View>
-  );
+    </View>);
+
 }
 
 const styles = StyleSheet.create({
@@ -1861,7 +1870,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontWeight: "700",
     color: Colors.text,
-    fontSize: 14,
+    fontSize: 14
   },
   bottomBar: {
     position: "absolute",
@@ -1879,40 +1888,40 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 5 },
-    elevation: 8,
+    elevation: 8
   },
   actionButton: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 8,
-    borderRadius: 14,
+    borderRadius: 14
   },
   actionText: {
     marginTop: 3,
     fontSize: 11,
     fontWeight: "700",
-    color: Colors.text,
+    color: Colors.text
   },
   actionTextWhite: {
     marginTop: 3,
     fontSize: 11,
     fontWeight: "700",
-    color: "#fff",
+    color: "#fff"
   },
   summaryTile: {
     flex: 1,
-    alignItems: "center",
+    alignItems: "center"
   },
   summaryValue: {
     marginTop: 8,
     fontSize: 18,
     fontWeight: "800",
-    color: Colors.text,
+    color: Colors.text
   },
   summaryLabel: {
     marginTop: 3,
     color: Colors.muted,
-    fontSize: 12,
-  },
+    fontSize: 12
+  }
 });

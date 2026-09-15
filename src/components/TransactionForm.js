@@ -16,7 +16,7 @@ import {
   getTransactionNoteSuggestions,
   updateTransaction,
   deleteTransaction,
-  getCategoryAndSourceUsage
+  getCategoryAndSourceUsage,
 } from "../services/transactions";
 import {
   getLoans,
@@ -147,19 +147,21 @@ export default function TransactionForm({
          * so opening Add Transaction does not wait for transaction history, notes or loans. */
 
         // CATEGORY / SOURCE USAGE
-        getCategoryAndSourceUsage(1).then(({ categoryCount, sourceCount }) => {
-          if (cancelled) return;
-          setCategoryUsage(categoryCount || {});
-          setSourceUsage(sourceCount || {});
-        }).catch((usageError) => {
-          console.warn(
-            "Unable to calculate category/source usage:",
-            usageError,
-          );
-          if (cancelled) return;
-          setCategoryUsage({});
-          setSourceUsage({});
-        });
+        getCategoryAndSourceUsage(1)
+          .then(({ categoryCount, sourceCount }) => {
+            if (cancelled) return;
+            setCategoryUsage(categoryCount || {});
+            setSourceUsage(sourceCount || {});
+          })
+          .catch((usageError) => {
+            console.warn(
+              "Unable to calculate category/source usage:",
+              usageError,
+            );
+            if (cancelled) return;
+            setCategoryUsage({});
+            setSourceUsage({});
+          });
         //NOTE SUGGESTIONS
         getTransactionNoteSuggestions()
           .then((notes) => {
@@ -504,7 +506,8 @@ export default function TransactionForm({
   const toAccountSources = searchedSources.filter((s) => s.id !== sourceId);
   const visibleToAccountSources = toAccountSources.slice(0, 4);
   const visibleSources = searchedSources.slice(0, 4);
-  const accent = type === "expense" ? "#E46A6A" : type === "income" ? "#36B37E" : "#000";
+  const accent =
+    type === "expense" ? "#E46A6A" : type === "income" ? "#36B37E" : "#000";
   const activeLoans = loansList.filter(
     (loan) => String(loan.status || "").toLowerCase() === "active",
   );
@@ -554,8 +557,8 @@ export default function TransactionForm({
             <Text style={{ fontSize: 22, fontWeight: "800", color: accent }}>
               {amount
                 ? Number(amount).toLocaleString("en-IN", {
-                  minimumFractionDigits: 2,
-                })
+                    minimumFractionDigits: 2,
+                  })
                 : "0.00"}
             </Text>
           </View>
@@ -566,7 +569,7 @@ export default function TransactionForm({
                   type === "transfer"
                     ? "currency-inr"
                     : (categories.find((x) => x.id === categoryId) || {})
-                      .icon || "currency-inr"
+                        .icon || "currency-inr"
                 }
                 size={26}
                 color={
@@ -578,7 +581,7 @@ export default function TransactionForm({
                 {type === "transfer"
                   ? "Uncategorized"
                   : (categories.find((x) => x.id === categoryId) || {}).name ||
-                  "Uncategorized"}
+                    "Uncategorized"}
               </Text>
             </View>
             <View style={{ alignItems: "center" }}>
@@ -767,78 +770,78 @@ export default function TransactionForm({
               overflow: "hidden",
             }}
           >
-              {filteredSuggestions.slice(0, 4).map((item, index) => {
-                const category = categories.find(
-                  (c) => c.id === item.category_id,
-                );
-                return (
-                  <TouchableOpacity
-                    key={`${item.notes}-${index}`}
-                    onPress={() => {
-                      setNotes(item.notes);
+            {filteredSuggestions.slice(0, 4).map((item, index) => {
+              const category = categories.find(
+                (c) => c.id === item.category_id,
+              );
+              return (
+                <TouchableOpacity
+                  key={`${item.notes}-${index}`}
+                  onPress={() => {
+                    setNotes(item.notes);
 
-                      if (category) {
-                        setCategoryId(category.id);
-                        setShowCategoryGrid(false);
-                      }
+                    if (category) {
+                      setCategoryId(category.id);
+                      setShowCategoryGrid(false);
+                    }
 
-                      setShowSuggestions(false);
-                      setFilteredSuggestions([]);
-                      setNotesError(false);
-                    }}
+                    setShowSuggestions(false);
+                    setFilteredSuggestions([]);
+                    setNotesError(false);
+                  }}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    borderBottomWidth: 1,
+                    borderBottomColor: "#F2F2F2",
+                  }}
+                >
+                  <View
                     style={{
-                      flexDirection: "row",
+                      width: 38,
+                      height: 38,
+                      borderRadius: 19,
+                      backgroundColor: category?.color || "#4B7CF3",
+                      justifyContent: "center",
                       alignItems: "center",
-                      paddingHorizontal: 14,
-                      paddingVertical: 12,
-                      borderBottomWidth: 1,
-                      borderBottomColor: "#F2F2F2",
+                      marginRight: 12,
                     }}
                   >
-                    <View
+                    <MaterialCommunityIcons
+                      name={category?.icon || "tag"}
+                      size={18}
+                      color="#fff"
+                    />
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text
                       style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: 19,
-                        backgroundColor: category?.color || "#4B7CF3",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        marginRight: 12,
+                        fontSize: 15,
+                        fontWeight: "600",
+                        color: "#222",
                       }}
                     >
-                      <MaterialCommunityIcons
-                        name={category?.icon || "tag"}
-                        size={18}
-                        color="#fff"
-                      />
-                    </View>
+                      {item.notes}
+                    </Text>
 
-                    <View style={{ flex: 1 }}>
+                    {category && (
                       <Text
                         style={{
-                          fontSize: 15,
-                          fontWeight: "600",
-                          color: "#222",
+                          fontSize: 12,
+                          color: "#777",
+                          marginTop: 2,
                         }}
                       >
-                        {item.notes}
+                        {category.name}
                       </Text>
-
-                      {category && (
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            color: "#777",
-                            marginTop: 2,
-                          }}
-                        >
-                          {category.name}
-                        </Text>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
       </View>
@@ -1300,7 +1303,9 @@ export default function TransactionForm({
                 </View>
 
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 17, fontWeight: "700", color: "#222" }}>
+                  <Text
+                    style={{ fontSize: 17, fontWeight: "700", color: "#222" }}
+                  >
                     Link to Loan
                   </Text>
                   <Text style={{ color: "#666", marginTop: 3, lineHeight: 20 }}>
@@ -1326,16 +1331,22 @@ export default function TransactionForm({
                 return null;
               }
               // Derive the effect label from loan direction + transaction type
-              const loanDir = (loan?.loan_direction || "BORROWED").toUpperCase();
+              const loanDir = (
+                loan?.loan_direction || "BORROWED"
+              ).toUpperCase();
               const isLentLoan = loanDir === "LENT";
 
               // effect: what this transaction means for the loan
               const effectLabel = (() => {
                 if (type === "expense") {
-                  return isLentLoan ? "Lend More (increases outstanding)" : "EMI / Payment (reduces outstanding)";
+                  return isLentLoan
+                    ? "Lend More (increases outstanding)"
+                    : "EMI / Payment (reduces outstanding)";
                 }
                 // income
-                return isLentLoan ? "Repayment Received (reduces outstanding)" : "Top Up (increases outstanding)";
+                return isLentLoan
+                  ? "Repayment Received (reduces outstanding)"
+                  : "Top Up (increases outstanding)";
               })();
 
               const effectColor = (() => {
@@ -1383,13 +1394,21 @@ export default function TransactionForm({
                     </View>
 
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 17, fontWeight: "700", color: "#222" }}>
+                      <Text
+                        style={{
+                          fontSize: 17,
+                          fontWeight: "700",
+                          color: "#222",
+                        }}
+                      >
                         {loan?.loan_name}
                       </Text>
 
                       <Text style={{ marginTop: 3, color: "#666" }}>
                         Outstanding ₹
-                        {Number(loan?.outstanding_amount || 0).toLocaleString("en-IN")}
+                        {Number(loan?.outstanding_amount || 0).toLocaleString(
+                          "en-IN",
+                        )}
                       </Text>
 
                       {/* Effect indicator */}
@@ -1422,7 +1441,13 @@ export default function TransactionForm({
                         </Text>
                       </View>
 
-                      <Text style={{ marginTop: 6, color: "#36B37E", fontWeight: "700" }}>
+                      <Text
+                        style={{
+                          marginTop: 6,
+                          color: "#36B37E",
+                          fontWeight: "700",
+                        }}
+                      >
                         ✓ Linked
                       </Text>
                     </View>
@@ -2254,297 +2279,6 @@ export default function TransactionForm({
         }}
         onClose={() => setShowDateTimePicker(false)}
       />
-      {false &&
-        (() => {
-          // Native picker for Android / iOS
-          if (Platform.OS === "android") {
-            try {
-              // eslint-disable-next-line global-require
-              const DateTimePicker =
-                require("@react-native-community/datetimepicker").default;
-              return (
-                <DateTimePicker
-                  value={new Date(date)}
-                  mode={pickerMode}
-                  display={pickerMode === "date" ? "calendar" : "clock"}
-                  is24Hour={false}
-                  onChange={(event, selected) => {
-                    // User pressed Android Cancel
-                    if (event.type === "dismissed") {
-                      setShowDateTimePicker(false);
-                      setPickerMode("date");
-                      return;
-                    }
-                    if (!selected) {
-                      return;
-                    }
-                    /* DATE */
-                    if (pickerMode === "date") {
-                      const existingDate = new Date(date);
-                      const newDate = new Date(selected);
-                      // Preserve existing time
-                      newDate.setHours(
-                        existingDate.getHours(),
-                        existingDate.getMinutes(),
-                        existingDate.getSeconds(),
-                        0,
-                      );
-                      setDate(newDate.toISOString());
-                      /* Close date picker.
-                       * Then open Android's native time picker.
-                       * No React Native Modal is involved. */
-                      setShowDateTimePicker(false);
-                      setTimeout(() => {
-                        setPickerMode("time");
-                        setShowDateTimePicker(true);
-                      }, 250);
-                      return;
-                    }
-                    /* TIME */
-                    if (pickerMode === "time") {
-                      const newDate = new Date(date);
-                      newDate.setHours(
-                        selected.getHours(),
-                        selected.getMinutes(),
-                        0,
-                        0,
-                      );
-                      setDate(newDate.toISOString());
-                      setShowDateTimePicker(false);
-                      setPickerMode("date");
-                      markDirty();
-                    }
-                  }}
-                />
-              );
-            } catch (e) {
-              console.warn(
-                "[TransactionForm] Android DateTimePicker unavailable:",
-                e,
-              );
-              setShowDateTimePicker(false);
-              return null;
-            }
-          }
-          /* IOS Keep the custom bottom-sheet design for iOS.*/
-          if (Platform.OS === "ios") {
-            try {
-              // eslint-disable-next-line global-require
-              const DateTimePicker =
-                require("@react-native-community/datetimepicker").default;
-              return (
-                <Modal
-                  visible={showDateTimePicker}
-                  transparent
-                  animationType="slide"
-                  onRequestClose={() => {
-                    setShowDateTimePicker(false);
-                    setPickerMode("date");
-                  }}
-                >
-                  <View
-                    style={{
-                      flex: 1,
-                      justifyContent: "flex-end",
-                      backgroundColor: "rgba(15,23,42,0.45)",
-                    }}
-                  >
-                    <View
-                      style={{
-                        backgroundColor: "#FFF",
-                        borderTopLeftRadius: 28,
-                        borderTopRightRadius: 28,
-                        padding: 24,
-                        paddingBottom: 40,
-                      }}
-                    >
-                      {/* Handle */}
-                      <View
-                        style={{
-                          width: 42,
-                          height: 5,
-                          borderRadius: 3,
-                          backgroundColor: "#D6D6D6",
-                          alignSelf: "center",
-                          marginBottom: 16,
-                        }}
-                      />
-
-                      {/* Title */}
-                      <Text
-                        style={{
-                          fontSize: 20,
-                          fontWeight: "800",
-                          color: "#111827",
-                          marginBottom: 20,
-                          textAlign: "center",
-                        }}
-                      >
-                        {pickerMode === "date" ? "Select Date" : "Select Time"}
-                      </Text>
-
-                      <View
-                        style={{
-                          alignItems: "center",
-                          justifyContent: "center",
-                          minHeight: 100,
-                        }}
-                      >
-                        <DateTimePicker
-                          value={new Date(date)}
-                          mode={pickerMode}
-                          display="spinner"
-                          is24Hour={false}
-                          onChange={(event, selected) => {
-                            if (!selected) return;
-                            if (pickerMode === "date") {
-                              const existingDate = new Date(date);
-                              const newDate = new Date(selected);
-
-                              newDate.setHours(
-                                existingDate.getHours(),
-                                existingDate.getMinutes(),
-                                existingDate.getSeconds(),
-                                0,
-                              );
-                              setDate(newDate.toISOString());
-                            } else {
-                              const newDate = new Date(date);
-
-                              newDate.setHours(
-                                selected.getHours(),
-                                selected.getMinutes(),
-                                0,
-                                0,
-                              );
-
-                              setDate(newDate.toISOString());
-                            }
-                          }}
-                        />
-                      </View>
-
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          marginTop: 24,
-                        }}
-                      >
-                        <PaperButton
-                          mode="outlined"
-                          onPress={() => {
-                            setShowDateTimePicker(false);
-                            setPickerMode("date");
-                          }}
-                          style={{
-                            flex: 1,
-                            marginRight: 10,
-                          }}
-                        >
-                          Cancel
-                        </PaperButton>
-
-                        <PaperButton
-                          mode="contained"
-                          onPress={() => {
-                            if (pickerMode === "date") {
-                              setPickerMode("time");
-                            } else {
-                              setShowDateTimePicker(false);
-                              setPickerMode("date");
-                              markDirty();
-                            }
-                          }}
-                          style={{
-                            flex: 1,
-                          }}
-                        >
-                          {pickerMode === "date" ? "Next" : "Done"}
-                        </PaperButton>
-                      </View>
-                    </View>
-                  </View>
-                </Modal>
-              );
-            } catch (e) {
-              console.warn(
-                "[TransactionForm] iOS DateTimePicker unavailable:",
-                e,
-              );
-              setShowDateTimePicker(false);
-              return null;
-            }
-          }
-
-          // WEB FALLBACK
-          return (
-            <Modal
-              visible={showDateTimePicker}
-              transparent
-              animationType="slide"
-              onRequestClose={() => {
-                setShowDateTimePicker(false);
-                setPickerMode("date");
-              }}
-            >
-              <View
-                style={{
-                  flex: 1,
-                  backgroundColor: "rgba(0,0,0,0.4)",
-                  justifyContent: "center",
-                  padding: 20,
-                }}
-              >
-                <View
-                  style={{
-                    backgroundColor: "#fff",
-                    padding: 12,
-                    borderRadius: 8,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontWeight: "600",
-                      marginBottom: 8,
-                    }}
-                  >
-                    Pick Date / Time
-                  </Text>
-
-                  {(() => {
-                    const dt = new Date(date || new Date().toISOString());
-                    const [y, m, d, h, min] = [
-                      dt.getFullYear(),
-                      dt.getMonth() + 1,
-                      dt.getDate(),
-                      dt.getHours(),
-                      dt.getMinutes(),
-                    ];
-                    const Manual = require("../components/ManualDateTimePicker").default;
-                    return (
-                      <Manual
-                        year={y}
-                        month={m}
-                        day={d}
-                        hour={h}
-                        minute={min}
-                        onChange={(ny, nm, nd, nh, nmin) => {
-                          const ndt = new Date(ny, nm - 1, nd, nh, nmin);
-                          setDate(ndt.toISOString());
-                          markDirty();
-                        }}
-                        onClose={() => {
-                          setShowDateTimePicker(false);
-                          setPickerMode("date");
-                        }}
-                      />
-                    );
-                  })()}
-                </View>
-              </View>
-            </Modal>
-          );
-        })()}
 
       <ConfirmDialog
         visible={confirmVisible}
@@ -2987,201 +2721,124 @@ export default function TransactionForm({
             />
 
             {/* Loan name header */}
-            {pendingLoan && (() => {
-              const isLentLoan =
-                (pendingLoan.loan_direction || "BORROWED").toUpperCase() === "LENT";
-              // Options driven by BOTH loan direction AND transaction type
-              const options = isLentLoan
-                ? type === "income"
-                  ? [
-                    {
-                      label: "Receive Payment",
-                      sublabel: "Borrower paid back part or full amount",
-                      icon: "cash-check",
-                      color: "#16A34A",
-                      bg: "#DCFCE7",
-                      paymentType: "EMI",
-                    },
-                  ]
-                  : [
-                    {
-                      label: "Lend More",
-                      sublabel: "Give additional money to the borrower",
-                      icon: "cash-plus",
-                      color: "#7C3AED",
-                      bg: "#EDE9FE",
-                      paymentType: "ADVANCE",
-                    },
-                  ]
-                : type === "income"
-                  ? [
-                    {
-                      label: "Top Up",
-                      sublabel: "Received additional amount from lender",
-                      icon: "bank-plus",
-                      color: "#7C3AED",
-                      bg: "#EDE9FE",
-                      paymentType: "TOP_UP",
-                    },
-                  ]
-                  : [
-                    {
-                      label: "Pay EMI",
-                      sublabel: "Regular monthly instalment payment",
-                      icon: "cash-fast",
-                      color: "#2563EB",
-                      bg: "#DBEAFE",
-                      paymentType: "EMI",
-                    },
-                    {
-                      label: "Prepayment",
-                      sublabel: "Extra payment to reduce principal faster",
-                      icon: "trending-up",
-                      color: "#EA580C",
-                      bg: "#FED7AA",
-                      paymentType: "PREPAYMENT",
-                    },
-                    {
-                      label: "Foreclose",
-                      sublabel: "Close the loan with full & final payment",
-                      icon: "bank-remove",
-                      color: "#DC2626",
-                      bg: "#FEE2E2",
-                      paymentType: "FORECLOSURE",
-                    },
-                  ];
-              const doLink = async (paymentType) => {
-                try {
-                  setLinking(true);
-                  showPageLoader();
-                  setShowLoanActionSheet(false);
+            {pendingLoan &&
+              (() => {
+                const isLentLoan =
+                  (pendingLoan.loan_direction || "BORROWED").toUpperCase() ===
+                  "LENT";
+                // Options driven by BOTH loan direction AND transaction type
+                const options = isLentLoan
+                  ? type === "income"
+                    ? [
+                        {
+                          label: "Receive Payment",
+                          sublabel: "Borrower paid back part or full amount",
+                          icon: "cash-check",
+                          color: "#16A34A",
+                          bg: "#DCFCE7",
+                          paymentType: "EMI",
+                        },
+                      ]
+                    : [
+                        {
+                          label: "Lend More",
+                          sublabel: "Give additional money to the borrower",
+                          icon: "cash-plus",
+                          color: "#7C3AED",
+                          bg: "#EDE9FE",
+                          paymentType: "ADVANCE",
+                        },
+                      ]
+                  : type === "income"
+                    ? [
+                        {
+                          label: "Top Up",
+                          sublabel: "Received additional amount from lender",
+                          icon: "bank-plus",
+                          color: "#7C3AED",
+                          bg: "#EDE9FE",
+                          paymentType: "TOP_UP",
+                        },
+                      ]
+                    : [
+                        {
+                          label: "Pay EMI",
+                          sublabel: "Regular monthly instalment payment",
+                          icon: "cash-fast",
+                          color: "#2563EB",
+                          bg: "#DBEAFE",
+                          paymentType: "EMI",
+                        },
+                        {
+                          label: "Prepayment",
+                          sublabel: "Extra payment to reduce principal faster",
+                          icon: "trending-up",
+                          color: "#EA580C",
+                          bg: "#FED7AA",
+                          paymentType: "PREPAYMENT",
+                        },
+                        {
+                          label: "Foreclose",
+                          sublabel: "Close the loan with full & final payment",
+                          icon: "bank-remove",
+                          color: "#DC2626",
+                          bg: "#FEE2E2",
+                          paymentType: "FORECLOSURE",
+                        },
+                      ];
+                const doLink = async (paymentType) => {
+                  try {
+                    setLinking(true);
+                    showPageLoader();
+                    setShowLoanActionSheet(false);
 
-                  if (isEdit && transaction?.id) {
-                    await linkTransactionToLoan(
-                      transaction.id,
-                      pendingLoan.id,
-                      {
-                        paymentType,
-                        linkedDate: transaction.date || date,
-                      },
-                    );
+                    if (isEdit && transaction?.id) {
+                      await linkTransactionToLoan(
+                        transaction.id,
+                        pendingLoan.id,
+                        {
+                          paymentType,
+                          linkedDate: transaction.date || date,
+                        },
+                      );
+                    }
+
+                    setSelectedLoanId(pendingLoan.id);
+                    setPendingLoan(null);
+                    setLoanSearch("");
+                    markDirty();
+                  } catch (e) {
+                    console.error("[TransactionForm] Link loan failed:", e);
+                  } finally {
+                    setLinking(false);
+                    hidePageLoader();
                   }
+                };
 
-                  setSelectedLoanId(pendingLoan.id);
-                  setPendingLoan(null);
-                  setLoanSearch("");
-                  markDirty();
-                } catch (e) {
-                  console.error("[TransactionForm] Link loan failed:", e);
-                } finally {
-                  setLinking(false);
-                  hidePageLoader();
-                }
-              };
-
-              return (
-                <>
-                  {/* Header */}
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      marginBottom: 20,
-                    }}
-                  >
+                return (
+                  <>
+                    {/* Header */}
                     <View
-                      style={{
-                        width: 46,
-                        height: 46,
-                        borderRadius: 23,
-                        backgroundColor: "#2563EB",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        marginRight: 12,
-                      }}
-                    >
-                      <MaterialCommunityIcons
-                        name="bank-outline"
-                        size={24}
-                        color="#fff"
-                      />
-                    </View>
-
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          fontSize: 11,
-                          color: "#94A3B8",
-                          fontWeight: "600",
-                          textTransform: "uppercase",
-                          letterSpacing: 0.5,
-                        }}
-                      >
-                        {isLentLoan ? "Lent Loan" : "Borrowed Loan"}
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 17,
-                          fontWeight: "800",
-                          color: "#111827",
-                        }}
-                        numberOfLines={1}
-                      >
-                        {pendingLoan.loan_name}
-                      </Text>
-                      <Text style={{ fontSize: 12, color: "#64748B" }}>
-                        Outstanding ₹
-                        {Number(
-                          pendingLoan.outstanding_amount || 0,
-                        ).toLocaleString("en-IN")}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Question */}
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      fontWeight: "700",
-                      color: "#374151",
-                      marginBottom: 14,
-                    }}
-                  >
-                    What does this {type} represent?
-                  </Text>
-
-                  {/* Options */}
-                  {options.map((opt) => (
-                    <TouchableOpacity
-                      key={opt.paymentType}
-                      activeOpacity={0.85}
-                      disabled={linking}
-                      onPress={() => doLink(opt.paymentType)}
                       style={{
                         flexDirection: "row",
                         alignItems: "center",
-                        backgroundColor: opt.bg,
-                        borderRadius: 16,
-                        padding: 14,
-                        marginBottom: 10,
-                        borderWidth: 1,
-                        borderColor: opt.color + "40",
+                        marginBottom: 20,
                       }}
                     >
                       <View
                         style={{
-                          width: 44,
-                          height: 44,
-                          borderRadius: 22,
-                          backgroundColor: opt.color,
+                          width: 46,
+                          height: 46,
+                          borderRadius: 23,
+                          backgroundColor: "#2563EB",
                           justifyContent: "center",
                           alignItems: "center",
-                          marginRight: 14,
+                          marginRight: 12,
                         }}
                       >
                         <MaterialCommunityIcons
-                          name={opt.icon}
-                          size={22}
+                          name="bank-outline"
+                          size={24}
                           color="#fff"
                         />
                       </View>
@@ -3189,65 +2846,147 @@ export default function TransactionForm({
                       <View style={{ flex: 1 }}>
                         <Text
                           style={{
-                            fontSize: 15,
-                            fontWeight: "800",
-                            color: "#111827",
+                            fontSize: 11,
+                            color: "#94A3B8",
+                            fontWeight: "600",
+                            textTransform: "uppercase",
+                            letterSpacing: 0.5,
                           }}
                         >
-                          {opt.label}
+                          {isLentLoan ? "Lent Loan" : "Borrowed Loan"}
                         </Text>
                         <Text
                           style={{
-                            fontSize: 12,
-                            color: "#64748B",
-                            marginTop: 2,
+                            fontSize: 17,
+                            fontWeight: "800",
+                            color: "#111827",
                           }}
+                          numberOfLines={1}
                         >
-                          {opt.sublabel}
+                          {pendingLoan.loan_name}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: "#64748B" }}>
+                          Outstanding ₹
+                          {Number(
+                            pendingLoan.outstanding_amount || 0,
+                          ).toLocaleString("en-IN")}
                         </Text>
                       </View>
+                    </View>
 
-                      <MaterialCommunityIcons
-                        name="chevron-right"
-                        size={22}
-                        color={opt.color}
-                      />
-                    </TouchableOpacity>
-                  ))}
-
-                  {/* Cancel */}
-                  <TouchableOpacity
-                    onPress={() => {
-                      setShowLoanActionSheet(false);
-                      setPendingLoan(null);
-                      setShowLoanModal(true);
-                    }}
-                    style={{
-                      alignItems: "center",
-                      paddingVertical: 12,
-                      marginTop: 2,
-                    }}
-                  >
+                    {/* Question */}
                     <Text
                       style={{
-                        color: "#64748B",
-                        fontWeight: "600",
-                        fontSize: 14,
+                        fontSize: 15,
+                        fontWeight: "700",
+                        color: "#374151",
+                        marginBottom: 14,
                       }}
                     >
-                      ← Back to loans
+                      What does this {type} represent?
                     </Text>
-                  </TouchableOpacity>
-                </>
-              );
-            })()}
+
+                    {/* Options */}
+                    {options.map((opt) => (
+                      <TouchableOpacity
+                        key={opt.paymentType}
+                        activeOpacity={0.85}
+                        disabled={linking}
+                        onPress={() => doLink(opt.paymentType)}
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          backgroundColor: opt.bg,
+                          borderRadius: 16,
+                          padding: 14,
+                          marginBottom: 10,
+                          borderWidth: 1,
+                          borderColor: opt.color + "40",
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 22,
+                            backgroundColor: opt.color,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            marginRight: 14,
+                          }}
+                        >
+                          <MaterialCommunityIcons
+                            name={opt.icon}
+                            size={22}
+                            color="#fff"
+                          />
+                        </View>
+
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={{
+                              fontSize: 15,
+                              fontWeight: "800",
+                              color: "#111827",
+                            }}
+                          >
+                            {opt.label}
+                          </Text>
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              color: "#64748B",
+                              marginTop: 2,
+                            }}
+                          >
+                            {opt.sublabel}
+                          </Text>
+                        </View>
+
+                        <MaterialCommunityIcons
+                          name="chevron-right"
+                          size={22}
+                          color={opt.color}
+                        />
+                      </TouchableOpacity>
+                    ))}
+
+                    {/* Cancel */}
+                    <TouchableOpacity
+                      onPress={() => {
+                        setShowLoanActionSheet(false);
+                        setPendingLoan(null);
+                        setShowLoanModal(true);
+                      }}
+                      style={{
+                        alignItems: "center",
+                        paddingVertical: 12,
+                        marginTop: 2,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: "#64748B",
+                          fontWeight: "600",
+                          fontSize: 14,
+                        }}
+                      >
+                        ← Back to loans
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                );
+              })()}
 
             {/* Loader overlay */}
             {linking && (
               <View
                 style={{
                   position: "absolute",
-                  top: 0, left: 0, right: 0, bottom: 0,
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
                   backgroundColor: "rgba(255,255,255,0.8)",
                   borderTopLeftRadius: 24,
                   borderTopRightRadius: 24,

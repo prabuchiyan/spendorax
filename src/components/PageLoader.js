@@ -5,16 +5,16 @@ import {
   Animated,
   Easing,
   Platform,
-  Modal,
-} from 'react-native';
-import { Colors } from './Theme';
+  Modal } from
+'react-native';
+
 
 const DEFAULT_GIF = require('../../assets/loading-waiting.gif');
 
 export default function PageLoader({
   visible = true,
   source = DEFAULT_GIF,
-  size = 130,
+  size = 130
 }) {
   const pulse = React.useRef(
     new Animated.Value(0)
@@ -23,19 +23,19 @@ export default function PageLoader({
   React.useEffect(() => {
     const pulseAnimation = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: 700,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0,
-          duration: 700,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
+      Animated.timing(pulse, {
+        toValue: 1,
+        duration: 700,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true
+      }),
+      Animated.timing(pulse, {
+        toValue: 0,
+        duration: 700,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true
+      })]
+      )
     );
 
     if (visible) {
@@ -48,7 +48,7 @@ export default function PageLoader({
 
   const scale = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.96, 1.06],
+    outputRange: [0.96, 1.06]
   });
 
   return (
@@ -59,28 +59,28 @@ export default function PageLoader({
       statusBarTranslucent
       hardwareAccelerated
       onRequestClose={() => {
+
+
         // Intentionally empty.
         // Loader visibility is controlled by PageLoaderContext.
-      }}
-    >
-      <View
-        style={styles.overlay}
-        pointerEvents="auto"
-      >
+      }}>
+      <View style={styles.overlay}
+      pointerEvents="auto">
+        
         <View style={styles.card}>
           <Animated.Image
             source={source}
             style={{
               width: size,
               height: size,
-              transform: [{ scale }],
+              transform: [{ scale }]
             }}
-            resizeMode="contain"
-          />
+            resizeMode="contain" />
+          
         </View>
       </View>
-    </Modal>
-  );
+    </Modal>);
+
 }
 
 const styles = StyleSheet.create({
@@ -89,13 +89,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor:
-      Platform.OS === 'web'
-        ? 'rgba(255,255,255,0.30)'
-        : 'rgba(255,255,255,0.42)',
+    Platform.OS === 'web' ?
+    'rgba(255,255,255,0.30)' :
+    'rgba(255,255,255,0.42)',
     // Web
     zIndex: 999999,
     // Android
-    elevation: 999999,
+    elevation: 999999
   },
   card: {
     width: 170,
@@ -109,11 +109,11 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 18,
+      height: 18
     },
     shadowOpacity: 0.14,
     shadowRadius: 28,
     elevation: 20,
-    overflow: 'hidden',
-  },
+    overflow: 'hidden'
+  }
 });

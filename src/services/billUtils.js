@@ -7,14 +7,7 @@ export const BILL_STATUS = {
 
 export const RECURRENCE_TYPES = ["daily", "weekly", "monthly", "yearly"];
 
-export const STATUS_COLORS = {
-  overdue: "#E46A6A",
-  due_soon: "#FFB020",
-  paid: "#36B37E",
-  skipped: "#7B8794",
-  future: "#7B8794",
-  pending: "#4B7CF3",
-};
+
 
 export function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -233,29 +226,4 @@ export function generateOccurrenceDates(bill, upToDate = todayStr()) {
   return dates;
 }
 
-/**
- * Generate future occurrence dates from today+1 up to a horizon (default +13 months).
- * Used to pre-create upcoming bills on creation.
- */
-export function generateFutureOccurrenceDates(
-  bill,
-  fromDate = todayStr(),
-  monthsAhead = 13,
-) {
-  if (!bill.is_recurring || !bill.recurrence_type || !bill.due_date) return [];
 
-  const horizon = new Date(fromDate);
-  horizon.setMonth(horizon.getMonth() + monthsAhead);
-  const upTo = horizon.toISOString().slice(0, 10);
-
-  const all = generateOccurrenceDates(bill, upTo);
-  // Return only dates strictly after fromDate
-  return all.filter((d) => d > fromDate);
-}
-
-export function getMissingOccurrenceDates(occurrenceDates, existingBills) {
-  const existingDates = new Set(
-    existingBills.map((b) => b.due_date?.slice(0, 10)).filter(Boolean),
-  );
-  return occurrenceDates.filter((d) => !existingDates.has(d));
-}

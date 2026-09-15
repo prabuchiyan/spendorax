@@ -6,14 +6,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
-  ScrollView,
-  ActivityIndicator
-} from 'react-native';
-import { getTransactions, deleteTransaction, getTransactionsByDateRange } from '../services/transactions';
+
+  ActivityIndicator } from
+'react-native';
+import { deleteTransaction, getTransactionsByDateRange } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
 import { Colors, Spacing } from '../components/Theme';
-import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import FAB from '../components/FAB';
 import { useFocusEffect } from '@react-navigation/native';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -26,21 +26,21 @@ import {
   getLabelForDate,
   getPeriodKey,
   generateContinuousPeriods,
-  getBoundsForPeriods,
-  formatDate,
-} from '../utils/dateUtils';
+  getBoundsForPeriods } from
+
+'../utils/dateUtils';
 
 const hexToRgb = (hex) => {
   if (!hex || typeof hex !== 'string') return null;
   let cleanHex = hex.replace('#', '').trim();
   if (cleanHex.length === 3) {
-    cleanHex = cleanHex.split('').map(char => char + char).join('');
+    cleanHex = cleanHex.split('').map((char) => char + char).join('');
   }
   if (cleanHex.length !== 6) return null;
   const num = parseInt(cleanHex, 16);
   return {
-    r: (num >> 16) & 255,
-    g: (num >> 8) & 255,
+    r: num >> 16 & 255,
+    g: num >> 8 & 255,
     b: num & 255
   };
 };
@@ -53,7 +53,7 @@ const rgbaFromColor = (color, opacity = 1) => {
     return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
   }
   if (color.startsWith('rgb(')) {
-    const values = color.replace('rgb(', '').replace(')', '').split(',').map(v => v.trim());
+    const values = color.replace('rgb(', '').replace(')', '').split(',').map((v) => v.trim());
     if (values.length === 3) {
       return `rgba(${values[0]}, ${values[1]}, ${values[2]}, ${opacity})`;
     }
@@ -143,7 +143,7 @@ export default function CategoriesDetails({ route, navigation }) {
   const groupData = (data, currentPeriod, offset) => {
     const map = {};
 
-    data.forEach(tx => {
+    data.forEach((tx) => {
       const key = getPeriodKey(tx.date, currentPeriod);
       if (key) {
         map[key] = (map[key] || 0) + Number(tx.amount || 0);
@@ -153,17 +153,17 @@ export default function CategoriesDetails({ route, navigation }) {
     const continuousPeriods = generateContinuousPeriods(currentPeriod, offset);
     // Reverse the periods so newest is on the left, oldest on the right
     const displayPeriods = [...continuousPeriods].reverse();
-    
-    const continuousLabels = displayPeriods.map(d => getLabelForDate(d, currentPeriod));
-    const values = continuousLabels.map(k => map[k] || 0);
+
+    const continuousLabels = displayPeriods.map((d) => getLabelForDate(d, currentPeriod));
+    const values = continuousLabels.map((k) => map[k] || 0);
 
     setChartData({
       labels: continuousLabels,
       datasets: [
-        {
-          data: values
-        }
-      ]
+      {
+        data: values
+      }]
+
     });
   };
 
@@ -176,26 +176,26 @@ export default function CategoriesDetails({ route, navigation }) {
       const bounds = getBoundsForPeriods(continuousPeriods, currentPeriod);
 
       const [txData, catData, sourceData] =
-        await Promise.all([
-          getTransactionsByDateRange(
-            categoryId,
-            bounds.start,
-            bounds.end
-          ),
-          getCategories(true),
-          getSources(true)
-        ]);
+      await Promise.all([
+      getTransactionsByDateRange(
+        categoryId,
+        bounds.start,
+        bounds.end
+      ),
+      getCategories(true),
+      getSources(true)]
+      );
 
       const cmap = {};
-      catData.forEach(c => { cmap[c.id] = c; });
+      catData.forEach((c) => {cmap[c.id] = c;});
 
       const smap = {};
-      sourceData.forEach(s => { smap[s.id] = s; });
+      sourceData.forEach((s) => {smap[s.id] = s;});
 
       setCategoriesMap(cmap);
       setSourcesMap(smap);
       setTransactions(txData);
-      
+
       groupData(txData, currentPeriod, offset);
     } catch (error) {
       console.error('Error loading transactions:', error);
@@ -232,7 +232,7 @@ export default function CategoriesDetails({ route, navigation }) {
 
   const activeCategory = categoriesMap[Number(categoryId)] || {};
   const activeCategoryColor = activeCategory.color || Colors.primary;
-  
+
   const THEME_COLOR = '#3F8F6B';
 
   const chartValues = useMemo(
@@ -244,13 +244,13 @@ export default function CategoriesDetails({ route, navigation }) {
 
   const filteredTransactions = useMemo(() => {
     if (!selectedBar?.label) return transactions;
-    return transactions.filter(tx => getPeriodKey(tx.date, period) === selectedBar.label);
+    return transactions.filter((tx) => getPeriodKey(tx.date, period) === selectedBar.label);
   }, [transactions, selectedBar, period]);
 
   const groupedTransactions = useMemo(() => {
     const groups = {};
 
-    filteredTransactions.forEach(item => {
+    filteredTransactions.forEach((item) => {
       const dateStr = String(item.date).replace(' ', 'T');
       const date = new Date(dateStr);
       let key = '';
@@ -266,27 +266,27 @@ export default function CategoriesDetails({ route, navigation }) {
         const startOfWeek = new Date(date);
         startOfWeek.setDate(date.getDate() - date.getDay());
         startOfWeek.setHours(0, 0, 0, 0);
-        
+
         const endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(startOfWeek.getDate() + 6);
         endOfWeek.setHours(23, 59, 59, 999);
-        
+
         const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        
+
         key = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`;
         title = `${startOfWeek.getDate()} ${monthNamesShort[startOfWeek.getMonth()]} - ${endOfWeek.getDate()} ${monthNamesShort[endOfWeek.getMonth()]}`;
         sortVal = startOfWeek.getTime();
       } else {
         key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
-        
+
         const dMidnight = new Date(date);
         dMidnight.setHours(0, 0, 0, 0);
-        
+
         if (dMidnight.getTime() === today.getTime()) {
           title = 'Today';
         } else if (dMidnight.getTime() === yesterday.getTime()) {
@@ -311,34 +311,34 @@ export default function CategoriesDetails({ route, navigation }) {
       groups[key].data.push(item);
     });
 
-    return Object.values(groups)
-      .sort((a, b) => b.sortVal - a.sortVal)
-      .map(group => {
-        const dailyTotal = group.data.reduce(
-          (sum, item) => sum + Number(item.amount || 0),
-          0
-        );
-        return {
-          title: group.title,
-          data: group.data,
-          dailyTotal
-        };
-      });
+    return Object.values(groups).
+    sort((a, b) => b.sortVal - a.sortVal).
+    map((group) => {
+      const dailyTotal = group.data.reduce(
+        (sum, item) => sum + Number(item.amount || 0),
+        0
+      );
+      return {
+        title: group.title,
+        data: group.data,
+        dailyTotal
+      };
+    });
   }, [filteredTransactions, period]);
 
   const renderItem = ({
     item,
     index,
-    section,
+    section
   }) => {
     const category =
-      categoriesMap[item.category_id] || {};
+    categoriesMap[item.category_id] || {};
 
     const source =
-      sourcesMap[item.source_id] || {};
+    sourcesMap[item.source_id] || {};
 
     const isLast =
-      index === section.data.length - 1;
+    index === section.data.length - 1;
 
     return (
       <TransactionListItem
@@ -348,26 +348,26 @@ export default function CategoriesDetails({ route, navigation }) {
         isLast={isLast}
         showDate={true}
         onPress={() =>
-          navigation.navigate(
-            'TransactionAdd',
-            {
-              isEdit: true,
-              transaction: item,
-            }
-          )
-        }
-      />
-    );
+        navigation.navigate(
+          'TransactionAdd',
+          {
+            isEdit: true,
+            transaction: item
+          }
+        )
+        } />);
+
+
   };
 
-  const ListHeader = () => (
-    <>
+  const ListHeader = () =>
+  <>
       <View
-        style={[
-          styles.chartCard,
-          { borderColor: rgbaFromColor(THEME_COLOR, 0.14) }
-        ]}
-      >
+      style={[
+      styles.chartCard,
+      { borderColor: rgbaFromColor(THEME_COLOR, 0.14) }]
+      }>
+      
 
         <View style={{ alignItems: 'center', marginBottom: 8, marginTop: 4 }}>
           <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
@@ -377,227 +377,227 @@ export default function CategoriesDetails({ route, navigation }) {
 
         <View style={{ width: '100%', alignItems: 'center', justifyContent: 'center' }}>
           
-          <TouchableOpacity 
-            onPress={() => setChartOffset(prev => Math.max(0, prev - 1))} 
-            style={{ 
-              position: 'absolute', left: -4, zIndex: 10,
-              width: 34, height: 34, borderRadius: 17, 
-              backgroundColor: 'rgba(255,255,255,0.85)', 
-              alignItems: 'center', justifyContent: 'center',
-              shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
-              opacity: chartOffset === 0 ? 0.3 : 1
-            }} 
-            disabled={chartOffset === 0}
-          >
+          <TouchableOpacity
+          onPress={() => setChartOffset((prev) => Math.max(0, prev - 1))}
+          style={{
+            position: 'absolute', left: -4, zIndex: 10,
+            width: 34, height: 34, borderRadius: 17,
+            backgroundColor: 'rgba(255,255,255,0.85)',
+            alignItems: 'center', justifyContent: 'center',
+            shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+            opacity: chartOffset === 0 ? 0.3 : 1
+          }}
+          disabled={chartOffset === 0}>
+          
             <Feather name="chevron-left" size={20} color={Colors.text} />
           </TouchableOpacity>
 
           <PremiumRoundedBarChart
-            labels={chartData.labels}
-            values={chartValues}
-            width={screenWidth - 48}
-            height={220}
-            baseColor={THEME_COLOR}
-            isEmpty={!hasChartData}
-            selectedLabel={selectedBar?.label}
-            onBarPress={(data) => {
-              setSelectedBar({
-                label: data.label,
-                value: data.value
-              });
-            }}
-          />
+          labels={chartData.labels}
+          values={chartValues}
+          width={screenWidth - 48}
+          height={220}
+          baseColor={THEME_COLOR}
+          isEmpty={!hasChartData}
+          selectedLabel={selectedBar?.label}
+          onBarPress={(data) => {
+            setSelectedBar({
+              label: data.label,
+              value: data.value
+            });
+          }} />
+        
 
-          <TouchableOpacity 
-            onPress={() => setChartOffset(prev => prev + 1)} 
-            style={{ 
-              position: 'absolute', right: -4, zIndex: 10,
-              width: 34, height: 34, borderRadius: 17, 
-              backgroundColor: 'rgba(255,255,255,0.85)', 
-              alignItems: 'center', justifyContent: 'center',
-              shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3
-            }}
-          >
+          <TouchableOpacity
+          onPress={() => setChartOffset((prev) => prev + 1)}
+          style={{
+            position: 'absolute', right: -4, zIndex: 10,
+            width: 34, height: 34, borderRadius: 17,
+            backgroundColor: 'rgba(255,255,255,0.85)',
+            alignItems: 'center', justifyContent: 'center',
+            shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3
+          }}>
+          
             <Feather name="chevron-right" size={20} color={Colors.text} />
           </TouchableOpacity>
         </View>
 
-        {selectedBar?.label && (
-          <View style={styles.filterBanner}>
+        {selectedBar?.label &&
+      <View style={styles.filterBanner}>
             <Text style={styles.filterText}>Filtering: {selectedBar.label}</Text>
             <TouchableOpacity onPress={() => setSelectedBar(null)}>
               <Text style={styles.clearFilterText}>Clear Filter</Text>
             </TouchableOpacity>
           </View>
-        )}
+      }
 
       </View>
 
       <View style={styles.chipsWrap}>
-        {['day', 'week', 'month', 'year'].map(p => {
-          const active = period === p;
-          return (
-            <Chip
-              key={p}
-              selected={active}
-              onPress={() => {
-                setSelectedBar(null);
-                setChartOffset(0);
-                setPeriod(p);
-              }}
-              mode="flat"
-              style={[
-                styles.chip,
-                {
-                  backgroundColor: active
-                    ? THEME_COLOR
-                    : rgbaFromColor(THEME_COLOR, 0.08),
-                  borderColor: active
-                    ? THEME_COLOR
-                    : rgbaFromColor(THEME_COLOR, 0.22)
-                }
-              ]}
-              textStyle={[
-                styles.chipText,
-                {
-                  color: active ? '#FFFFFF' : THEME_COLOR
-                }
-              ]}
-            >
+        {['day', 'week', 'month', 'year'].map((p) => {
+        const active = period === p;
+        return (
+          <Chip
+            key={p}
+            selected={active}
+            onPress={() => {
+              setSelectedBar(null);
+              setChartOffset(0);
+              setPeriod(p);
+            }}
+            mode="flat"
+            style={[
+            styles.chip,
+            {
+              backgroundColor: active ?
+              THEME_COLOR :
+              rgbaFromColor(THEME_COLOR, 0.08),
+              borderColor: active ?
+              THEME_COLOR :
+              rgbaFromColor(THEME_COLOR, 0.22)
+            }]
+            }
+            textStyle={[
+            styles.chipText,
+            {
+              color: active ? '#FFFFFF' : THEME_COLOR
+            }]
+            }>
+            
               {p.toUpperCase()}
-            </Chip>
-          );
-        })}
-      </View>
-    </>
-  );
+            </Chip>);
 
-  const ListEmpty = () => (
-    <View style={styles.emptyListWrap}>
+      })}
+      </View>
+    </>;
+
+
+  const ListEmpty = () =>
+  <View style={styles.emptyListWrap}>
       <Text style={styles.emptyListText}>
         {selectedBar?.label ? `No transactions for ${selectedBar.label}` : 'No transactions yet'}
       </Text>
-    </View>
-  );
+    </View>;
+
 
   return (
     <View style={styles.container}>
       <SectionList
         sections={groupedTransactions}
         keyExtractor={(item) =>
-          item.id.toString()
+        item.id.toString()
         }
-          renderItem={renderItem}
+        renderItem={renderItem}
 
-          ListHeaderComponent={ListHeader}
-          ListEmptyComponent={ListEmpty}
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={ListEmpty}
 
-          showsVerticalScrollIndicator={false}
-          stickySectionHeadersEnabled={false}
+        showsVerticalScrollIndicator={false}
+        stickySectionHeadersEnabled={false}
 
-          contentContainerStyle={
-            styles.listContent
-          }
+        contentContainerStyle={
+        styles.listContent
+        }
 
-          renderSectionHeader={({
-            section,
-          }) => (
-            <View
-              style={{
-                paddingTop: 9,
-                paddingBottom: 7,
-                backgroundColor:
-                  Colors.background,
-              }}
-            >
+        renderSectionHeader={({
+          section
+        }) =>
+        <View
+          style={{
+            paddingTop: 9,
+            paddingBottom: 7,
+            backgroundColor:
+            Colors.background
+          }}>
+          
               <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent:
-                    'space-between',
-                }}
-              >
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent:
+              'space-between'
+            }}>
+            
                 <View>
                   <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: '900',
-                      color: Colors.text,
-                      textTransform:
-                        'uppercase',
-                      letterSpacing: 0.4,
-                    }}
-                  >
+                style={{
+                  fontSize: 13,
+                  fontWeight: '900',
+                  color: Colors.text,
+                  textTransform:
+                  'uppercase',
+                  letterSpacing: 0.4
+                }}>
+                
                     {section.title}
                   </Text>
 
                   <Text
-                    style={{
-                      fontSize: 11,
-                      color: Colors.muted,
-                      marginTop: 2,
-                    }}
-                  >
+                style={{
+                  fontSize: 11,
+                  color: Colors.muted,
+                  marginTop: 2
+                }}>
+                
                     {section.data.length}{' '}
-                    {section.data.length === 1
-                      ? 'transaction'
-                      : 'transactions'}
+                    {section.data.length === 1 ?
+                'transaction' :
+                'transactions'}
                   </Text>
                 </View>
 
                 <Text
-                  style={{
-                    color: Colors.text,
-                    fontSize: 12,
-                    fontWeight: '900',
-                  }}
-                >
+              style={{
+                color: Colors.text,
+                fontSize: 12,
+                fontWeight: '900'
+              }}>
+              
                   ₹
                   {section.dailyTotal.toLocaleString(
-                    'en-IN',
-                    {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    }
-                  )}
+                'en-IN',
+                {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                }
+              )}
                 </Text>
               </View>
             </View>
-          )}
-        />
+        } />
+      
 
-      {loading && (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.4)', justifyContent: 'center', alignItems: 'center', zIndex: 10 }]}>
+      {loading &&
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.4)', justifyContent: 'center', alignItems: 'center', zIndex: 10 }]}>
           <ActivityIndicator size="large" color={THEME_COLOR} />
         </View>
-      )}
+      }
       
       <ConfirmDialog
         visible={confirmVisible}
         title="Delete Transaction"
         message="Are you sure?"
         onCancel={() => setConfirmVisible(false)}
-        onConfirm={handleDeleteConfirm}
-      />
+        onConfirm={handleDeleteConfirm} />
+      
 
       <FAB
         onPress={() =>
-          navigation.navigate('TransactionAdd', {
-            categoryId: Number(categoryId),
-          })
+        navigation.navigate('TransactionAdd', {
+          categoryId: Number(categoryId)
+        })
         }
         style={{
           position: 'absolute',
           bottom: 70,
           right: 20,
           zIndex: 20,
-          elevation: 20,
-        }}
-      />
+          elevation: 20
+        }} />
+      
 
-    </View>
-  );
+    </View>);
+
 }
 
 const styles = StyleSheet.create({
@@ -671,18 +671,18 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
     marginTop: 12,
-    marginHorizontal: 8,
+    marginHorizontal: 8
   },
   filterText: {
     fontSize: 13,
     color: Colors.primary,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   clearFilterText: {
     fontSize: 13,
     color: Colors.primary,
     fontWeight: '700',
-    textDecorationLine: 'underline',
+    textDecorationLine: 'underline'
   },
 
   txCard: {
@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
 
   txContent: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
 
   iconContainer: {

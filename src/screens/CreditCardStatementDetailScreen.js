@@ -5,12 +5,12 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
+  ActivityIndicator } from
+"react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { getCreditCardStatementById, getStatementTransactions, updateCreditCardStatement } from "../services/creditCards";
 import { Colors, Spacing } from "../components/Theme";
-import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import FAB from "../components/FAB";
 import CreditCardStatementEditModal from "../components/CreditCardStatementEditModal";
 import { formatAmount, formatCurrency } from "../utils/numberUtils";
@@ -61,20 +61,20 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
+      </View>);
+
   }
 
   if (!statement) {
     return (
       <View style={styles.center}>
         <Text style={styles.errorText}>Statement not found.</Text>
-      </View>
-    );
+      </View>);
+
   }
 
-  const renderHeader = () => (
-    <View>
+  const renderHeader = () =>
+  <View>
       <View style={[styles.headerCard, { borderTopColor: statement.card_color || Colors.primary }]}>
         <View style={styles.headerTop}>
           <View>
@@ -138,8 +138,8 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
       </View>
 
       <Text style={styles.transactionsHeader}>Transaction Details</Text>
-    </View>
-  );
+    </View>;
+
 
   const renderTransaction = ({ item }) => {
     const isCredit = item.type === "income" || item.type === "transfer_in";
@@ -159,8 +159,8 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
             <Text style={styles.txCrDr}>{isCredit ? " CR" : " DR"}</Text>
           </Text>
         </View>
-      </View>
-    );
+      </View>);
+
   };
 
   return (
@@ -172,23 +172,23 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
         ListHeaderComponent={renderHeader}
         renderItem={renderTransaction}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
+        <View style={styles.emptyState}>
             <MaterialCommunityIcons name="text-box-remove-outline" size={48} color="#ccc" />
             <Text style={styles.emptyText}>No transactions found for this period.</Text>
           </View>
-        }
-      />
+        } />
       
-      {statement.bill_id && statement.status !== 'paid' && (
-        <View style={styles.footer}>
-          <TouchableOpacity 
-            style={styles.payButton}
-            onPress={() => navigation.navigate("BillDetail", { billId: statement.bill_id })}
-          >
+      
+      {statement.bill_id && statement.status !== 'paid' &&
+      <View style={styles.footer}>
+          <TouchableOpacity
+          style={styles.payButton}
+          onPress={() => navigation.navigate("BillDetail", { billId: statement.bill_id })}>
+          
             <Text style={styles.payButtonText}>View & Pay Bill</Text>
           </TouchableOpacity>
         </View>
-      )}
+      }
 
       <CreditCardStatementEditModal
         visible={showEditModal}
@@ -197,30 +197,30 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
         onSave={async (payload) => {
           await updateCreditCardStatement(statement.id, payload);
           loadData();
-        }}
-      />
+        }} />
+      
       <FAB onPress={() => setShowEditModal(true)} icon="pencil" />
-    </View>
-  );
+    </View>);
+
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#F3F4F6"
   },
   center: {
     flex: 1,
     justifyContent: "center",
-    alignItems: "center",
+    alignItems: "center"
   },
   errorText: {
     color: Colors.muted,
-    fontSize: 16,
+    fontSize: 16
   },
   listContent: {
     padding: Spacing.m,
-    paddingBottom: 100,
+    paddingBottom: 100
   },
   headerCard: {
     backgroundColor: "#fff",
@@ -232,26 +232,26 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    borderTopWidth: 6,
+    borderTopWidth: 6
   },
   headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 20,
+    marginBottom: 20
   },
   bankName: {
     fontSize: 22,
     fontWeight: "800",
     color: Colors.text,
-    letterSpacing: 0.5,
+    letterSpacing: 0.5
   },
   statementTitle: {
     fontSize: 14,
     color: Colors.muted,
     marginTop: 4,
     textTransform: "uppercase",
-    letterSpacing: 1,
+    letterSpacing: 1
   },
   datesRow: {
     flexDirection: "row",
@@ -259,32 +259,32 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     backgroundColor: "#F9FAFB",
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 8
   },
   dateLabel: {
     fontSize: 12,
     color: Colors.muted,
-    marginBottom: 4,
+    marginBottom: 4
   },
   dateValue: {
     fontSize: 15,
     fontWeight: "700",
-    color: Colors.text,
+    color: Colors.text
   },
   dateValueError: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#DC2626",
+    color: "#DC2626"
   },
   periodRow: {
     borderTopWidth: 1,
     borderTopColor: "#F3F4F6",
-    paddingTop: 12,
+    paddingTop: 12
   },
   periodText: {
     fontSize: 13,
     color: Colors.muted,
-    textAlign: "center",
+    textAlign: "center"
   },
   summaryCard: {
     backgroundColor: "#fff",
@@ -295,69 +295,69 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: 4
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
     color: Colors.text,
-    marginBottom: 16,
+    marginBottom: 16
   },
   summaryGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-between",
+    justifyContent: "space-between"
   },
   summaryItem: {
     width: "48%",
-    marginBottom: 16,
+    marginBottom: 16
   },
   summaryLabel: {
     fontSize: 12,
     color: Colors.muted,
-    marginBottom: 4,
+    marginBottom: 4
   },
   summaryValue: {
     fontSize: 15,
     fontWeight: "600",
-    color: Colors.text,
+    color: Colors.text
   },
   summaryValueSuccess: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#059669",
+    color: "#059669"
   },
   divider: {
     height: 1,
     backgroundColor: "#F3F4F6",
-    marginVertical: 12,
+    marginVertical: 12
   },
   totalsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "center"
   },
   totalLabel: {
     fontSize: 13,
     color: Colors.muted,
-    marginBottom: 4,
+    marginBottom: 4
   },
   totalValue: {
     fontSize: 20,
     fontWeight: "800",
-    color: Colors.text,
+    color: Colors.text
   },
   totalValueSecondary: {
     fontSize: 18,
     fontWeight: "700",
-    color: Colors.text,
+    color: Colors.text
   },
   transactionsHeader: {
     fontSize: 18,
     fontWeight: "700",
     color: Colors.text,
     marginBottom: 12,
-    marginLeft: 4,
+    marginLeft: 4
   },
   transactionRow: {
     flexDirection: "row",
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 8,
     borderRadius: 12,
-    alignItems: "center",
+    alignItems: "center"
   },
   txDateCol: {
     width: 50,
@@ -373,58 +373,58 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderRightColor: "#F3F4F6",
     paddingRight: 10,
-    marginRight: 10,
+    marginRight: 10
   },
   txDate: {
     fontSize: 18,
     fontWeight: "700",
-    color: Colors.text,
+    color: Colors.text
   },
   txMonth: {
     fontSize: 12,
     color: Colors.muted,
-    textTransform: "uppercase",
+    textTransform: "uppercase"
   },
   txDetailsCol: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "center"
   },
   txNote: {
     fontSize: 15,
     fontWeight: "600",
     color: Colors.text,
-    marginBottom: 2,
+    marginBottom: 2
   },
   txPayee: {
     fontSize: 13,
-    color: Colors.muted,
+    color: Colors.muted
   },
   txAmountCol: {
     alignItems: "flex-end",
     justifyContent: "center",
-    marginLeft: 10,
+    marginLeft: 10
   },
   txAmount: {
     fontSize: 15,
     fontWeight: "700",
-    color: Colors.text,
+    color: Colors.text
   },
   txAmountCredit: {
-    color: "#059669",
+    color: "#059669"
   },
   txCrDr: {
     fontSize: 11,
     fontWeight: "600",
-    color: Colors.muted,
+    color: Colors.muted
   },
   emptyState: {
     alignItems: "center",
-    padding: 40,
+    padding: 40
   },
   emptyText: {
     color: Colors.muted,
     marginTop: 10,
-    fontSize: 15,
+    fontSize: 15
   },
   footer: {
     position: "absolute",
@@ -440,17 +440,17 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: 8
   },
   payButton: {
     backgroundColor: Colors.primary,
     borderRadius: 12,
     paddingVertical: 16,
-    alignItems: "center",
+    alignItems: "center"
   },
   payButtonText: {
     color: "#fff",
     fontSize: 16,
-    fontWeight: "700",
-  },
+    fontWeight: "700"
+  }
 });
