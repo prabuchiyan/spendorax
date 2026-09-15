@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Switch, ScrollView } from 'react-native';
+import { View, Switch, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { TextInput, Button, Text } from 'react-native-paper';
 import FormModalShell from './FormModalShell';
 import ColorPickerModal from './ColorPickerModal';
@@ -294,6 +294,36 @@ export default function CreditCardCreateModal({
           style={formModalStyles.input}
           disabled={saving}
         />
+
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => setShowColorPicker(true)}
+          disabled={saving}
+          style={[
+            styles.appearanceCard,
+            { borderColor: `${color}30`, marginBottom: 12 },
+          ]}
+        >
+          <View
+            style={[
+              styles.appearanceIcon,
+              { backgroundColor: `${color}18` },
+            ]}
+          >
+            <View
+              style={[
+                styles.colorDot,
+                { backgroundColor: color },
+              ]}
+            />
+          </View>
+          <View style={styles.appearanceText}>
+            <Text style={styles.appearanceLabel}>Card Color</Text>
+            <Text style={styles.appearanceValue}>Customize</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color="#9CA3AF" />
+        </TouchableOpacity>
+
         <TextInput
           label="Notes"
           value={notes}
@@ -344,3 +374,46 @@ export default function CreditCardCreateModal({
     </FormModalShell>
   );
 }
+
+const styles = StyleSheet.create({
+  appearanceCard: {
+    minHeight: 66,
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  appearanceIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  colorDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  appearanceText: {
+    flex: 1,
+  },
+  appearanceLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 2,
+  },
+  appearanceValue: {
+    fontSize: 12,
+    color: '#9CA3AF',
+  },
+});

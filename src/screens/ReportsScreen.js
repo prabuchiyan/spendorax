@@ -5,6 +5,8 @@ import { useNavigation } from '@react-navigation/native';
 import { getTransactions } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { groupTransactions } from '../services/reports';
+import { formatCurrency, formatCompactAmount } from '../utils/numberUtils';
+import { getLabelForDate } from '../utils/dateUtils';
 import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -184,36 +186,13 @@ export default function ReportsScreen() {
   }, [displayReportData]);
 
   const formatLabel = useCallback((label) => {
-    if (mode === 'daily') {
-      const d = new Date(label);
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${day} ${months[d.getMonth()]}`;
+    let dateStr = label;
+    if (mode === 'monthly' && label.length === 7) {
+      dateStr += '-01'; // ensure correct parsing
     }
-    if (mode === 'monthly') {
-      const parts = label.split('-');
-      if (parts.length < 2) return label;
-      const year = parts[0].substring(2);
-      const month = parts[1];
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const index = parseInt(month, 10) - 1;
-      const monthName = months[index] || month;
-      return `${monthName} '${year}`;
-    }
-    if (mode === 'weekly') {
-      const startOfWeek = new Date(label);
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6);
-      
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const startDay = String(startOfWeek.getDate()).padStart(2, '0');
-      const startMonth = months[startOfWeek.getMonth()].charAt(0).toLowerCase();
-      const endDay = String(endOfWeek.getDate());
-      const endMonth = months[endOfWeek.getMonth()].charAt(0).toLowerCase();
-      
-      return `${startDay}${startMonth}-${endDay}${endMonth}`;
-    }
-    return label;
+    const d = new Date(dateStr);
+    const result = getLabelForDate(d, mode);
+    return result || label;
   }, [mode]);
 
   const renderHeader = useMemo(() => {
@@ -234,7 +213,7 @@ export default function ReportsScreen() {
               <TouchableOpacity 
                 onPress={() => setChartOffset(prev => Math.max(0, prev - 1))} 
                 style={{ 
-                  position: 'absolute', left: 4, zIndex: 10,
+                  position: 'absolute', left: 0, zIndex: 10,
                   width: 34, height: 34, borderRadius: 17, 
                   backgroundColor: 'rgba(255,255,255,0.85)', 
                   alignItems: 'center', justifyContent: 'center',
@@ -246,7 +225,7 @@ export default function ReportsScreen() {
                 <MaterialCommunityIcons name="chevron-left" size={20} color={Colors.text} />
               </TouchableOpacity>
 
-              <View style={[styles.chartOuterRow, { width: '100%', justifyContent: 'space-evenly', paddingHorizontal: 24 }]}>
+              <View style={[styles.chartOuterRow, { width: '100%', justifyContent: 'space-evenly', paddingHorizontal: 36 }]}>
                 {displayReportData.map((data, idx) => {
                   const isSelected = selectedPeriod === data.label;
                   return (
@@ -289,7 +268,7 @@ export default function ReportsScreen() {
               <TouchableOpacity 
                 onPress={() => setChartOffset(prev => prev + 1)} 
                 style={{ 
-                  position: 'absolute', right: 4, zIndex: 10,
+                  position: 'absolute', right: 0, zIndex: 10,
                   width: 34, height: 34, borderRadius: 17, 
                   backgroundColor: 'rgba(255,255,255,0.85)', 
                   alignItems: 'center', justifyContent: 'center',

@@ -13,6 +13,7 @@ import { Colors, Spacing } from "../components/Theme";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import FAB from "../components/FAB";
 import CreditCardStatementEditModal from "../components/CreditCardStatementEditModal";
+import { formatAmount, formatCurrency } from "../utils/numberUtils";
 
 function formatDate(value) {
   if (!value) return "-";
@@ -23,10 +24,6 @@ function formatDate(value) {
     month: "short",
     year: "numeric"
   });
-}
-
-function formatAmount(amount) {
-  return `₹${Number(amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 }
 
 export default function CreditCardStatementDetailScreen({ route, navigation }) {
@@ -114,15 +111,15 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
           </View>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Purchases & Debits</Text>
-            <Text style={styles.summaryValue}>{formatAmount(statement.purchases)}</Text>
+            <Text style={styles.summaryValue}>{formatCurrency(statement.purchases)}</Text>
           </View>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Payments & Credits</Text>
-            <Text style={styles.summaryValueSuccess}>{formatAmount((Number(statement.payments) || 0) + (Number(statement.refunds) || 0))}</Text>
+            <Text style={styles.summaryValueSuccess}>{formatCurrency((Number(statement.payments) || 0) + (Number(statement.refunds) || 0))}</Text>
           </View>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Fees & Interest</Text>
-            <Text style={styles.summaryValue}>{formatAmount((Number(statement.fees) || 0) + (Number(statement.interest) || 0))}</Text>
+            <Text style={styles.summaryValue}>{formatCurrency((Number(statement.fees) || 0) + (Number(statement.interest) || 0))}</Text>
           </View>
         </View>
         

@@ -16,16 +16,13 @@ import { Colors, Spacing } from "../components/Theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAppDispatch, useCreditCardStatements } from '../redux/hooks';
 import { setStatements } from '../redux/slices/creditCardSlice';
+import { formatAmount, formatCurrency } from "../utils/numberUtils";
 
 function formatDate(value) {
   if (!value) return "-";
   const date = new Date(String(value).slice(0, 10));
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("en-IN");
-}
-
-function formatAmount(amount) {
-  return `₹${Number(amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 }
 
 export default function CreditCardStatementsScreen({ navigation }) {
@@ -142,8 +139,8 @@ export default function CreditCardStatementsScreen({ navigation }) {
 
                 <Text style={styles.statementMeta}>
                   Due {formatDate(item.due_date)} · Balance{" "}
-                  {formatAmount(item.closing_balance)} · Min{" "}
-                  {formatAmount(item.minimum_due)}
+                  {formatCurrency(item.closing_balance)} · Min{" "}
+                  {formatCurrency(item.minimum_due)}
                 </Text>
 
                 <View style={styles.rowFooter}>

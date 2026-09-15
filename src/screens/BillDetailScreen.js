@@ -920,6 +920,16 @@ export default function BillDetailScreen({ route, navigation }) {
     });
   }, [series]);
 
+  const [chartOffset, setChartOffset] = useState(0);
+
+  const displayChartData = React.useMemo(() => {
+    if (!chartData || chartData.length === 0) return [];
+    const itemsToShow = 5;
+    if (chartData.length <= itemsToShow) return chartData;
+    const start = Math.max(0, chartData.length - itemsToShow - chartOffset);
+    return chartData.slice(start, start + itemsToShow);
+  }, [chartData, chartOffset]);
+
   const totalDueAmount = React.useMemo(() => {
     return series.reduce((sum, bill) => sum + Number(bill.amount || 0), 0);
   }, [series]);
@@ -1050,6 +1060,16 @@ export default function BillDetailScreen({ route, navigation }) {
           null;
       }
       setSelectedOcc(occ);
+      
+      if (occ && s.length > 5) {
+        const idx = s.findIndex(o => o.id === occ.id);
+        if (idx !== -1) {
+          setChartOffset(Math.max(0, Math.min(s.length - 5, s.length - 3 - idx)));
+        }
+      } else {
+        setChartOffset(0);
+      }
+
       if (occ) {
         setLinkedTxs(await getBillLinkedTransactions(occ.id));
         if (occ.due_date) {
@@ -1362,24 +1382,56 @@ export default function BillDetailScreen({ route, navigation }) {
           >
             Bill History
           </Text>
-          <PremiumRoundedBarChart
-            labels={chartData.map((x) => x.label)}
-            ids={chartData.map((x) => x.id)}
-            dueValues={chartData.map((x) => x.due)}
-            paidValues={chartData.map((x) => x.paid)}
-            width={screenWidth - 56}
-            height={250}
-            baseColor={reduxCategory?.color || Colors.primary}
-            selectedLabel={selectedLabel}
-            isEmpty={chartData.length === 0}
-            onBarPress={(data) => {
-              const match = series.find((x) => x.id === data.id);
+          <View style={{ width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+            <TouchableOpacity 
+              onPress={() => setChartOffset(prev => Math.min(Math.max(0, chartData.length - 5), prev + 1))} 
+              style={{ 
+                position: 'absolute', left: 0, zIndex: 10,
+                width: 34, height: 34, borderRadius: 17, 
+                backgroundColor: 'rgba(255,255,255,0.85)', 
+                alignItems: 'center', justifyContent: 'center',
+                shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+                opacity: chartData.length <= 5 || chartOffset >= chartData.length - 5 ? 0.3 : 1
+              }} 
+              disabled={chartData.length <= 5 || chartOffset >= chartData.length - 5}
+            >
+              <MaterialCommunityIcons name="chevron-left" size={20} color={Colors.text} />
+            </TouchableOpacity>
 
-              if (match) {
-                handleSelectOccurrence(match);
-              }
-            }}
-          />
+            <PremiumRoundedBarChart
+              labels={displayChartData.map((x) => x.label)}
+              ids={displayChartData.map((x) => x.id)}
+              dueValues={displayChartData.map((x) => x.due)}
+              paidValues={displayChartData.map((x) => x.paid)}
+              width={screenWidth - 56}
+              height={250}
+              baseColor={reduxCategory?.color || Colors.primary}
+              selectedLabel={selectedLabel}
+              isEmpty={displayChartData.length === 0}
+              onBarPress={(data) => {
+                const match = series.find((x) => x.id === data.id);
+
+                if (match) {
+                  handleSelectOccurrence(match);
+                }
+              }}
+            />
+
+            <TouchableOpacity 
+              onPress={() => setChartOffset(prev => Math.max(0, prev - 1))} 
+              style={{ 
+                position: 'absolute', right: 0, zIndex: 10,
+                width: 34, height: 34, borderRadius: 17, 
+                backgroundColor: 'rgba(255,255,255,0.85)', 
+                alignItems: 'center', justifyContent: 'center',
+                shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+                opacity: chartOffset === 0 ? 0.3 : 1
+              }}
+              disabled={chartOffset === 0}
+            >
+              <MaterialCommunityIcons name="chevron-right" size={20} color={Colors.text} />
+            </TouchableOpacity>
+          </View>
         </Card>
 
         {/* Hero card */}

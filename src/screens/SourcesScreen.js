@@ -9,19 +9,17 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { Searchbar, Avatar } from 'react-native-paper';
-
 import { getSources, deleteSource } from '../services/sources';
 import { getTransactions } from '../services/transactions';
-
 import Card from '../components/Card';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { Colors, Spacing } from '../components/Theme';
 import SourceCreateModal from '../components/SourceCreateModal';
 import FAB from '../components/FAB';
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
-
 import { useAppDispatch, useSourcesList } from '../redux/hooks';
 import { setSources } from '../redux/slices/sourceSlice';
+import { formatAmount } from "../utils/numberUtils";
 
 export default function SourcesScreen({ route, navigation }) {
   const dispatch = useAppDispatch();
@@ -115,12 +113,7 @@ export default function SourcesScreen({ route, navigation }) {
     ).length;
   }, [items]);
 
-  const formatAmount = amount => {
-    return Number(amount || 0).toLocaleString('en-IN', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  };
+
 
   async function remove(id) {
     await deleteSource(id);
