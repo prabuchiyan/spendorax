@@ -3,7 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Text, SafeAreaView, Dimensions } fr
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from './Theme';
 import { useAppLock } from '../context/AppLockContext';
-import { verifyPasscode, authenticateBiometric, getSecuritySettings, isBiometricSupported } from '../services/authService';
+import { verifyPasscode, authenticateBiometric, getSecuritySettings, isBiometricSupported, getPasscodeLength } from '../services/authService';
 
 const { width } = Dimensions.get('window');
 
@@ -14,13 +14,16 @@ export default function AppLockScreen() {
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [settings, setSettings] = useState(null);
   
-  const MAX_LENGTH = 4; // or 6 depending on setup
+  const [maxLength, setMaxLength] = useState(4);
 
   useEffect(() => {
     const init = async () => {
       const s = await getSecuritySettings();
       setSettings(s);
       
+      const len = await getPasscodeLength();
+      setMaxLength(len);
+
       if (s.biometricEnabled) {
         const supported = await isBiometricSupported();
         setBiometricAvailable(supported);
@@ -44,12 +47,12 @@ export default function AppLockScreen() {
   };
 
   const handlePress = (num) => {
-    if (passcode.length < MAX_LENGTH) {
+    if (passcode.length < maxLength) {
       const newPasscode = passcode + num;
       setPasscode(newPasscode);
       setError('');
       
-      if (newPasscode.length === MAX_LENGTH) {
+      if (newPasscode.length === maxLength) {
         verify(newPasscode);
       }
     }
@@ -111,7 +114,7 @@ export default function AppLockScreen() {
       </View>
 
       <View style={styles.dotsContainer}>
-        {Array(MAX_LENGTH).fill(0).map((_, i) => renderDot(i))}
+        {Array(maxLength).fill(0).map((_, i) => renderDot(i))}
       </View>
 
       <View style={styles.keypad}>

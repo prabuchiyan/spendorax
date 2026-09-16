@@ -39,6 +39,12 @@ export const hasPasscode = async () => {
   return storedPasscode !== null;
 };
 
+export const getPasscodeLength = async () => {
+  if (!isSecuritySupported()) return 4;
+  const storedPasscode = await SecureStore.getItemAsync(PASSCODE_KEY);
+  return storedPasscode ? storedPasscode.length : 4;
+};
+
 export const deletePasscode = async () => {
   if (!isSecuritySupported()) return;
   await SecureStore.deleteItemAsync(PASSCODE_KEY);
