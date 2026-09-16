@@ -818,7 +818,6 @@ export default function SpendAreasDashboard({ route, navigation }) {
                 onPress={() => {
                   if (filterMode === m) return;
                   
-                  showPageLoader();
                   setFilterMode(m);
                   setSelectedPeriod(null);
                 }}
@@ -889,7 +888,6 @@ export default function SpendAreasDashboard({ route, navigation }) {
                     onPress={() => {
                       if (selectedPeriod === p) return;
                       
-                      showPageLoader();
                       setSelectedPeriod(p);
                       // Immediately focus the selected period.
                       requestAnimationFrame(() => {
