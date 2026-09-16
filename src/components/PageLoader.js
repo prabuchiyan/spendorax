@@ -88,10 +88,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor:
-    Platform.OS === 'web' ?
-    'rgba(255,255,255,0.30)' :
-    'rgba(255,255,255,0.42)',
+    backgroundColor: Platform.OS === 'web' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.98)',
+    ...(Platform.OS === 'web' ? { backdropFilter: 'blur(15px)' } : {}),
     // Web
     zIndex: 999999,
     // Android

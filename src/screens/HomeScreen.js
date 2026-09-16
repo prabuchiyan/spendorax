@@ -1,10 +1,11 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   Animated,
+  Easing,
   Platform,
   useWindowDimensions,
 } from "react-native";
@@ -320,6 +321,7 @@ function BudgetDonut({
   balanceVisible = true,
   size = 220,
 }) {
+  const { visible: loaderVisible } = usePageLoader();
   const percentRaw = limit > 0 ? spent / limit : 0;
 
   const percent = Math.max(0, percentRaw);
@@ -341,16 +343,19 @@ function BudgetDonut({
   const safePercent = Number.isNaN(percent) ? 0 : percent;
 
   const anim = React.useRef(
-    new Animated.Value(Math.min(1, safePercent)),
+    new Animated.Value(0),
   ).current;
 
   React.useEffect(() => {
-    Animated.timing(anim, {
-      toValue: Math.min(1, percent),
-      duration: 700,
-      useNativeDriver: false,
-    }).start();
-  }, [percent]);
+    if (!loaderVisible) {
+      Animated.timing(anim, {
+        toValue: Math.min(1, percent),
+        duration: 1000,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [percent, anim, loaderVisible]);
 
   const dashAnim = anim.interpolate({
     inputRange: [0, 1],
@@ -363,8 +368,19 @@ function BudgetDonut({
     })}`;
   }
 
+  const [webPercent, setWebPercent] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS === "web" && !loaderVisible) {
+      const timer = setTimeout(() => {
+        setWebPercent(safePercent);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [safePercent, loaderVisible]);
+
   const webDashOffset =
-    circumference - circumference * Math.min(1, safePercent);
+    circumference - circumference * Math.min(1, webPercent);
 
   return (
     <View
@@ -399,6 +415,7 @@ function BudgetDonut({
             rotation="-90"
             originX={size / 2}
             originY={size / 2}
+            style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.215, 0.61, 0.355, 1)' }}
           />
         ) : (
           <AnimatedCircle
@@ -968,17 +985,21 @@ export default function HomeScreen({ navigation }) {
 
     const timer = setTimeout(() => {
       (async () => {
-        const bs = await load({
-          showLoader: true,
-          force: true,
-        });
+        try {
+          const bs = await load({
+            showLoader: true,
+            force: true,
+          });
 
-        if (mounted && bs?.length) {
-          const firstId = String(bs[0]?.budget?.id);
+          if (mounted && bs?.length) {
+            const firstId = String(bs[0]?.budget?.id);
 
-          if (firstId) {
-            dispatch(setSelectedBudgetId(firstId));
+            if (firstId) {
+              dispatch(setSelectedBudgetId(firstId));
+            }
           }
+        } finally {
+          if (mounted) hidePageLoader();
         }
       })();
     }, 300);
@@ -986,6 +1007,7 @@ export default function HomeScreen({ navigation }) {
     return () => {
       mounted = false;
       clearTimeout(timer);
+      hidePageLoader();
     };
   }, []);
 
