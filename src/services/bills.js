@@ -2960,6 +2960,57 @@ export async function updateBill(id, fields) {
   });
 }
 
+export async function softDeleteBillOccurrence(billId, isTemplate, occurrenceDate) {
+  if (!billId) throw new Error("Bill ID is required.");
+  
+  const now = nowIso();
+
+  if (isTemplate) {
+    // For a template acting as an occurrence, mark the date as deleted and advance the template.
+    await ensureRecurringDeletionTable();
+    const occurrenceKey = occurrenceDate ? String(occurrenceDate).slice(0, 10) : null;
+    if (occurrenceKey) {
+      await executeSql(
+        `INSERT OR IGNORE INTO bill_deleted_occurrences (
+          parent_bill_id, recurrence_occurrence_key, deleted_at
+        ) VALUES (?, ?, ?)`,
+        [Number(billId), occurrenceKey, now]
+      );
+    }
+    
+    // Advance template due date to the next occurrence so the deleted one no longer shows up
+    await _ensureNextOccurrence(billId);
+  } else {
+    // Real child occurrence row
+    const billResult = await executeSql(
+      `SELECT * FROM bills WHERE id = ? LIMIT 1`,
+      [billId]
+    );
+    if (!billResult.rows.length) return;
+    const bill = billResult.rows.item(0);
+
+    if (bill.parent_bill_id) {
+      await ensureRecurringDeletionTable();
+      const occurrenceKey = bill.recurrence_occurrence_key || (bill.due_date ? bill.due_date.slice(0, 10) : null);
+      if (occurrenceKey) {
+        await executeSql(
+          `INSERT OR IGNORE INTO bill_deleted_occurrences (
+            parent_bill_id, recurrence_occurrence_key, deleted_at
+          ) VALUES (?, ?, ?)`,
+          [Number(bill.parent_bill_id), String(occurrenceKey), now]
+        );
+      }
+    }
+    // Soft delete it
+    await executeSql(
+      `UPDATE bills SET deleted_at = ?, updated_at = ? WHERE id = ?`,
+      [now, now, billId]
+    );
+  }
+
+  emitBillsChanged();
+}
+
 export async function deleteBill(id) {
   console.log("=================================================");
   console.log("[deleteBill] START");

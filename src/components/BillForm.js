@@ -139,7 +139,7 @@ export default function BillForm({ bill, onSaved, onCancel }) {
   const [sourceId, setSourceId] = useState(bill?.source_id || null);
   const [isRecurring, setIsRecurring] = useState(Boolean(bill?.is_recurring));
   const [recurrenceType, setRecurrenceType] = useState(
-    bill?.recurrence_type || "MONTHLY"
+    bill?.recurrence_type ? String(bill.recurrence_type).toUpperCase() : "MONTHLY"
   );
   const [recurrenceEndDate, setRecurrenceEndDate] = useState(
     bill?.recurrence_end_date?.slice(0, 10) || ""

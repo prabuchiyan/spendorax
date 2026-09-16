@@ -28,6 +28,7 @@ import {
   skipBill,
   unskipBill,
   deleteBill,
+  softDeleteBillOccurrence,
   getTransactionsForBillLink,
   getBillLinkedTransactions,
   linkAdditionalTransaction,
@@ -1629,22 +1630,8 @@ export default function BillDetailScreen({ route, navigation }) {
             try {
               showPageLoader();
               if (confirmAction === "delete_occ") {
-                const isTemplate =
-                activeBill.id === bill?.id && bill?.is_recurring;
-                if (isTemplate) {
-                  // Template occurrence:
-                  // create tombstone child and delete it.
-                  const newId = await createBill({
-                    ...bill,
-                    is_recurring: 0,
-                    recurrence_type: null,
-                    parent_bill_id: bill.id
-                  });
-                  await deleteBill(newId);
-                } else {
-                  // Normal child occurrence.
-                  await deleteBill(activeBill.id);
-                }
+                const isTemplate = activeBill.id === bill?.id && bill?.is_recurring;
+                await softDeleteBillOccurrence(activeBill.id, isTemplate, activeBill.due_date);
                 // Wait for everything to finish.
                 await load();
               } else if (confirmAction === "skip") {
@@ -1742,7 +1729,7 @@ export default function BillDetailScreen({ route, navigation }) {
           </TouchableOpacity>
         }
 
-        {/* <TouchableOpacity
+        <TouchableOpacity
            style={styles.actionButton}
            onPress={() => {
              setConfirmAction("delete_occ");
@@ -1755,9 +1742,8 @@ export default function BillDetailScreen({ route, navigation }) {
              size={22}
            />
            <Text style={styles.actionText}>Delete</Text>
-          </TouchableOpacity> */}
+          </TouchableOpacity>
       </View>
-
       <Modal
         visible={showPaymentSourcePicker}
         transparent
