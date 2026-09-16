@@ -28,7 +28,11 @@ export default function AppLockScreen() {
         const supported = await isBiometricSupported();
         setBiometricAvailable(supported);
         if (supported) {
-          handleBiometricAuth();
+          // Add a small delay to ensure the app is fully in the foreground.
+          // Without this, the native biometric prompt can instantly dismiss or crash on Android.
+          setTimeout(() => {
+            handleBiometricAuth();
+          }, 300);
         }
       }
     };
