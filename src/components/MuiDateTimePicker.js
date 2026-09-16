@@ -18,7 +18,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const WEEKDAYS_FULL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export default function MuiDateTimePicker({ visible, initialDate, onClose, onSelect, disableFutureDates = false }) {
+export default function MuiDateTimePicker({ visible, initialDate, onClose, onSelect, disableFutureDates = false, minDate = null, maxDate = null, allowClear = false, onClear, hideTime = false }) {
   const [tab, setTab] = useState('date'); // 'date' | 'time'
   const [date, setDate] = useState(new Date());
   
@@ -67,28 +67,39 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const isDateFuture = (y, m, d) => {
-    if (!disableFutureDates) return false;
+  const isDateDisabled = (y, m, d) => {
     const checkDate = new Date(y, m, d || 1);
-    return checkDate > todayStart;
+    if (disableFutureDates && checkDate > todayStart) return true;
+    if (minDate && checkDate < new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate())) return true;
+    if (maxDate && checkDate > new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate())) return true;
+    return false;
   };
 
-  const isMonthFuture = (y, m) => {
-    if (!disableFutureDates) return false;
-    return (y > now.getFullYear()) || (y === now.getFullYear() && m > now.getMonth());
+  const isMonthDisabled = (y, m) => {
+    const checkDate = new Date(y, m, 1);
+    const cy = checkDate.getFullYear();
+    const cm = checkDate.getMonth();
+    
+    if (disableFutureDates && ((cy > now.getFullYear()) || (cy === now.getFullYear() && cm > now.getMonth()))) return true;
+    if (minDate && (cy < minDate.getFullYear() || (cy === minDate.getFullYear() && cm < minDate.getMonth()))) return true;
+    if (maxDate && (cy > maxDate.getFullYear() || (cy === maxDate.getFullYear() && cm > maxDate.getMonth()))) return true;
+    return false;
   };
 
-  const isYearFuture = (y) => {
-    if (!disableFutureDates) return false;
-    return y > now.getFullYear();
+  const isYearDisabled = (y) => {
+    if (disableFutureDates && y > now.getFullYear()) return true;
+    if (minDate && y < minDate.getFullYear()) return true;
+    if (maxDate && y > maxDate.getFullYear()) return true;
+    return false;
   };
 
   // --- Date Logic ---
   const handlePrevMonth = () => {
+    if (isMonthDisabled(viewMonth.getFullYear(), viewMonth.getMonth() - 1)) return;
     setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1));
   };
   const handleNextMonth = () => {
-    if (disableFutureDates && isMonthFuture(viewMonth.getFullYear(), viewMonth.getMonth() + 1)) return;
+    if (isMonthDisabled(viewMonth.getFullYear(), viewMonth.getMonth() + 1)) return;
     setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1));
   };
   
@@ -101,12 +112,13 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
     newDate.setMonth(viewMonth.getMonth());
     newDate.setDate(day);
     setDate(newDate);
-    // Auto switch to time tab after slight delay for better UX
-    setTimeout(() => {
-        triggerAnimation();
-        setTab('time');
-        setTimeMode('hours');
-    }, 300);
+    if (!hideTime) {
+      setTimeout(() => {
+          triggerAnimation();
+          setTab('time');
+          setTimeMode('hours');
+      }, 300);
+    }
   };
 
   const renderMaterialHeader = () => {
@@ -135,7 +147,8 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
   };
 
   const renderDate = () => {
-    const isNextMonthDisabled = disableFutureDates && isMonthFuture(viewMonth.getFullYear(), viewMonth.getMonth() + 1);
+    const isNextMonthDisabled = isMonthDisabled(viewMonth.getFullYear(), viewMonth.getMonth() + 1);
+    const isPrevMonthDisabled = isMonthDisabled(viewMonth.getFullYear(), viewMonth.getMonth() - 1);
 
     return (
       <View style={styles.dateContainer}>
@@ -173,7 +186,11 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
           {/* Only show header arrows in days mode */}
           {dateMode === 'days' && (
             <View style={styles.monthArrows}>
-              <TouchableOpacity onPress={handlePrevMonth} style={styles.arrowBtn}>
+              <TouchableOpacity 
+                onPress={handlePrevMonth} 
+                style={[styles.arrowBtn, isPrevMonthDisabled && { opacity: 0.3 }]}
+                disabled={isPrevMonthDisabled}
+              >
                 <MaterialCommunityIcons name="chevron-left" size={24} color={Colors.text} />
               </TouchableOpacity>
               <TouchableOpacity 
@@ -214,7 +231,7 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
     for (let i = 1; i <= daysInMonth; i++) {
       const isSelected = selectedDay === i;
       const isToday = todayDay === i;
-      const isFuture = isDateFuture(viewMonth.getFullYear(), viewMonth.getMonth(), i);
+      const isFuture = isDateDisabled(viewMonth.getFullYear(), viewMonth.getMonth(), i);
 
       cells.push(
         <TouchableOpacity 
@@ -258,7 +275,7 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
       <View style={styles.gridContainer}>
         {MONTHS.map((m, i) => {
           const isSelected = viewMonth.getMonth() === i && date.getFullYear() === viewMonth.getFullYear();
-          const isFuture = isMonthFuture(viewMonth.getFullYear(), i);
+          const isFuture = isMonthDisabled(viewMonth.getFullYear(), i);
           return (
             <TouchableOpacity 
               key={i} 
@@ -288,13 +305,14 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
       years.push(yearPageStart + i);
     }
     
-    const isNextYearsDisabled = disableFutureDates && isYearFuture(yearPageStart + 12);
+    const isNextYearsDisabled = isYearDisabled(yearPageStart + 12);
     
     return (
       <View style={styles.yearsWrapper}>
         <TouchableOpacity 
           onPress={handlePrevYears} 
-          style={styles.sideArrowBtn}
+          disabled={isYearDisabled(yearPageStart - 1)}
+          style={[styles.sideArrowBtn, isYearDisabled(yearPageStart - 1) && { opacity: 0.2 }]}
           activeOpacity={0.7}
         >
           <MaterialCommunityIcons name="chevron-left" size={32} color={PRIMARY_COLOR} />
@@ -303,7 +321,7 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
         <View style={styles.gridContainerYears}>
           {years.map((y) => {
             const isSelected = viewMonth.getFullYear() === y;
-            const isFuture = isYearFuture(y);
+            const isFuture = isYearDisabled(y);
             return (
               <TouchableOpacity 
                 key={y} 
@@ -471,22 +489,24 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
            {renderMaterialHeader()}
 
            {/* Tabs */}
-           <View style={styles.tabContainer}>
-             <TouchableOpacity 
-               style={[styles.tab, tab === 'date' && styles.tabActive]} 
-               onPress={() => { triggerAnimation(); setTab('date'); setDateMode('days'); }}
-             >
-               <MaterialCommunityIcons name="calendar-month" size={20} color={tab === 'date' ? PRIMARY_COLOR : '#6B7280'} />
-               <Text style={[styles.tabText, tab === 'date' && styles.tabTextActive]}>Date</Text>
-             </TouchableOpacity>
-             <TouchableOpacity 
-               style={[styles.tab, tab === 'time' && styles.tabActive]} 
-               onPress={() => { triggerAnimation(); setTab('time'); }}
-             >
-               <MaterialCommunityIcons name="clock-outline" size={20} color={tab === 'time' ? PRIMARY_COLOR : '#6B7280'} />
-               <Text style={[styles.tabText, tab === 'time' && styles.tabTextActive]}>Time</Text>
-             </TouchableOpacity>
-           </View>
+           {!hideTime && (
+             <View style={styles.tabContainer}>
+               <TouchableOpacity 
+                 style={[styles.tab, tab === 'date' && styles.tabActive]} 
+                 onPress={() => { triggerAnimation(); setTab('date'); setDateMode('days'); }}
+               >
+                 <MaterialCommunityIcons name="calendar-month" size={20} color={tab === 'date' ? PRIMARY_COLOR : '#6B7280'} />
+                 <Text style={[styles.tabText, tab === 'date' && styles.tabTextActive]}>Date</Text>
+               </TouchableOpacity>
+               <TouchableOpacity 
+                 style={[styles.tab, tab === 'time' && styles.tabActive]} 
+                 onPress={() => { triggerAnimation(); setTab('time'); }}
+               >
+                 <MaterialCommunityIcons name="clock-outline" size={20} color={tab === 'time' ? PRIMARY_COLOR : '#6B7280'} />
+                 <Text style={[styles.tabText, tab === 'time' && styles.tabTextActive]}>Time</Text>
+               </TouchableOpacity>
+             </View>
+           )}
            
            {/* Content */}
            <View style={styles.content}>
@@ -495,6 +515,11 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
            
            {/* Footer */}
            <View style={styles.footer}>
+             {allowClear && (
+               <Button onPress={() => onClear ? onClear() : onSelect(null)} textColor="#DC2626" style={{ marginRight: 'auto' }}>
+                 Clear
+               </Button>
+             )}
              <Button onPress={onClose} textColor="#6B7280">Cancel</Button>
              <Button 
                onPress={() => onSelect(date)} 

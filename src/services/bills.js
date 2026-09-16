@@ -392,11 +392,7 @@ async function markRecurringOccurrenceDeleted(
       deleted_at
     )
     VALUES (?, ?, ?)`,
-    [
-      Number(parentBillId),
-      String(recurrenceOccurrenceKey),
-      nowIso(),
-    ],
+    [Number(parentBillId), String(recurrenceOccurrenceKey), nowIso()],
   );
 }
 
@@ -562,10 +558,7 @@ export async function backfillBillOccurrences(templateId) {
   const numericTemplateId = Number(templateId);
 
   if (!Number.isInteger(numericTemplateId) || numericTemplateId <= 0) {
-    console.warn(
-      "[backfillBillOccurrences] Invalid template ID:",
-      templateId
-    );
+    console.warn("[backfillBillOccurrences] Invalid template ID:", templateId);
     return;
   }
 
@@ -581,17 +574,18 @@ export async function backfillBillOccurrences(templateId) {
     !template.recurrence_type ||
     !template.due_date
   ) {
-    console.log(
-      "[backfillBillOccurrences] Not a valid recurring template:",
-      {
-        templateId: numericTemplateId,
-      }
-    );
+    console.log("[backfillBillOccurrences] Not a valid recurring template:", {
+      templateId: numericTemplateId,
+    });
     return;
   }
 
-  const templateDate =
-    String(template.due_date).slice(0, 10);
+  const templateDate = String(template.due_date).slice(0, 10);
+  const type = String(template.recurrence_type || "").toUpperCase();
+  if (type === "DAILY" || type === "WEEKLY") {
+    console.log("[backfillBillOccurrences] Skipping unsupported frequency:", type);
+    return;
+  }
 
   const today = todayStr();
 
@@ -614,22 +608,22 @@ export async function backfillBillOccurrences(templateId) {
   // September 2026 is NOT generated until its due date arrives.
   // =========================================================
 
-  const effectiveDate =
-    template.recurrence_effective_date ||
-    template.due_date;
+  const effectiveDate = template.recurrence_effective_date || template.due_date;
 
-  const effectiveDateOnly =
-    String(effectiveDate).slice(0, 10);
+  const effectiveDateOnly = String(effectiveDate).slice(0, 10);
 
   // =========================================================
   // 3. DETERMINE END DATE
   // =========================================================
 
-  let upTo = today;
+  const now = new Date();
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const currentMonthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(lastDayOfMonth).padStart(2, "0")}`;
+
+  let upTo = currentMonthEnd;
 
   if (template.recurrence_end_date) {
-    const recurrenceEndDate =
-      String(template.recurrence_end_date).slice(0, 10);
+    const recurrenceEndDate = String(template.recurrence_end_date).slice(0, 10);
 
     if (recurrenceEndDate < upTo) {
       upTo = recurrenceEndDate;
@@ -638,14 +632,11 @@ export async function backfillBillOccurrences(templateId) {
 
   // Nothing to generate yet.
   if (effectiveDateOnly > upTo) {
-    console.log(
-      "[backfillBillOccurrences] Effective date is after today:",
-      {
-        templateId: numericTemplateId,
-        effectiveDateOnly,
-        upTo,
-      }
-    );
+    console.log("[backfillBillOccurrences] Effective date is after upTo date:", {
+      templateId: numericTemplateId,
+      effectiveDateOnly,
+      upTo,
+    });
     return;
   }
 
@@ -653,29 +644,23 @@ export async function backfillBillOccurrences(templateId) {
   // 4. GENERATE EXPECTED DATES
   // =========================================================
 
-  const expectedDates =
-    generateOccurrenceDates(template, upTo);
+  const expectedDates = generateOccurrenceDates(template, upTo);
 
-  console.log(
-    "[backfillBillOccurrences] EXPECTED DATES:",
-    {
-      templateId: numericTemplateId,
-      templateDate,
-      effectiveDateOnly,
-      upTo,
-      count: expectedDates.length,
-      dates: expectedDates,
-    }
-  );
+  console.log("[backfillBillOccurrences] EXPECTED DATES:", {
+    templateId: numericTemplateId,
+    templateDate,
+    effectiveDateOnly,
+    upTo,
+    count: expectedDates.length,
+    dates: expectedDates,
+  });
 
   // =========================================================
   // 5. LOAD DELETED OCCURRENCE KEYS
   // =========================================================
 
   const deletedOccurrenceKeys =
-    await getDeletedOccurrenceKeys(
-      numericTemplateId
-    );
+    await getDeletedOccurrenceKeys(numericTemplateId);
 
   // =========================================================
   // 6. LOAD ALL EXISTING CHILDREN
@@ -686,17 +671,17 @@ export async function backfillBillOccurrences(templateId) {
 
   const existingResult = await executeSql(
     `SELECT * FROM bills WHERE parent_bill_id = ?`,
-    [numericTemplateId]
+    [numericTemplateId],
   );
 
-  const existingChildren = rowsToArray(existingResult)
-    .filter((row) => !row.deleted_at);
+  const existingChildren = rowsToArray(existingResult).filter(
+    (row) => !row.deleted_at,
+  );
 
   const existingOccurrenceKeys = new Set();
 
   for (const child of existingChildren) {
-    let key =
-      child.recurrence_occurrence_key;
+    let key = child.recurrence_occurrence_key;
 
     // Backward compatibility:
     // old occurrence rows may not have a key.
@@ -704,7 +689,7 @@ export async function backfillBillOccurrences(templateId) {
       key = getRecurrenceOccurrenceKey(
         template.recurrence_type,
         child.due_date,
-        template.recurrence_interval
+        template.recurrence_interval,
       );
 
       // Permanently save the recovered key.
@@ -714,30 +699,24 @@ export async function backfillBillOccurrences(templateId) {
            SET recurrence_occurrence_key = ?,
                updated_at = ?
            WHERE id = ?`,
-          [
-            String(key),
-            nowIso(),
-            child.id,
-          ]
+          [String(key), nowIso(), child.id],
         );
       }
     }
 
     if (key) {
-      existingOccurrenceKeys.add(
-        String(key)
-      );
+      existingOccurrenceKeys.add(String(key));
     }
   }
 
   console.log(
     "[backfillBillOccurrences] EXISTING CHILD KEYS:",
-    Array.from(existingOccurrenceKeys)
+    Array.from(existingOccurrenceKeys),
   );
 
   console.log(
     "[backfillBillOccurrences] DELETED KEYS:",
-    Array.from(deletedOccurrenceKeys)
+    Array.from(deletedOccurrenceKeys),
   );
 
   // =========================================================
@@ -749,8 +728,7 @@ export async function backfillBillOccurrences(templateId) {
   for (const generatedDate of expectedDates) {
     if (!generatedDate) continue;
 
-    const dueDateOnly =
-      String(generatedDate).slice(0, 10);
+    const dueDateOnly = String(generatedDate).slice(0, 10);
 
     // Never generate anything before effective date.
     if (dueDateOnly < effectiveDateOnly) {
@@ -762,40 +740,33 @@ export async function backfillBillOccurrences(templateId) {
       continue;
     }
 
-    // Safety: never create future bills.
-    if (dueDateOnly > today) {
+    // Safety: never create bills beyond current month end.
+    if (dueDateOnly > currentMonthEnd) {
       continue;
     }
 
-    const occurrenceKey =
-      getRecurrenceOccurrenceKey(
-        template.recurrence_type,
-        dueDateOnly,
-        template.recurrence_interval
-      );
+    const occurrenceKey = getRecurrenceOccurrenceKey(
+      template.recurrence_type,
+      dueDateOnly,
+      template.recurrence_interval,
+    );
 
     if (!occurrenceKey) {
       continue;
     }
 
-    const key =
-      String(occurrenceKey);
+    const key = String(occurrenceKey);
 
     // -------------------------------------------------------
     // User explicitly deleted this occurrence.
     // -------------------------------------------------------
 
-    if (
-      deletedOccurrenceKeys.has(key)
-    ) {
-      console.log(
-        "[backfillBillOccurrences] SKIP DELETED:",
-        {
-          templateId: numericTemplateId,
-          dueDate: dueDateOnly,
-          key,
-        }
-      );
+    if (deletedOccurrenceKeys.has(key)) {
+      console.log("[backfillBillOccurrences] SKIP DELETED:", {
+        templateId: numericTemplateId,
+        dueDate: dueDateOnly,
+        key,
+      });
 
       continue;
     }
@@ -804,9 +775,7 @@ export async function backfillBillOccurrences(templateId) {
     // Already exists.
     // -------------------------------------------------------
 
-    if (
-      existingOccurrenceKeys.has(key)
-    ) {
+    if (existingOccurrenceKeys.has(key)) {
       continue;
     }
 
@@ -814,14 +783,11 @@ export async function backfillBillOccurrences(templateId) {
     // Create occurrence.
     // -------------------------------------------------------
 
-    console.log(
-      "[backfillBillOccurrences] CREATE:",
-      {
-        templateId: numericTemplateId,
-        dueDate: dueDateOnly,
-        key,
-      }
-    );
+    console.log("[backfillBillOccurrences] CREATE:", {
+      templateId: numericTemplateId,
+      dueDate: dueDateOnly,
+      key,
+    });
 
     await _insertBill({
       name: template.name,
@@ -837,30 +803,23 @@ export async function backfillBillOccurrences(templateId) {
       category_id: template.category_id,
       source_id: template.source_id,
 
-      reminder_days_before:
-        template.reminder_days_before,
+      reminder_days_before: template.reminder_days_before,
 
-      auto_pay:
-        template.auto_pay,
+      auto_pay: template.auto_pay,
 
-      notes:
-        template.notes,
+      notes: template.notes,
 
-      attachment_url:
-        template.attachment_url,
+      attachment_url: template.attachment_url,
 
       paid_at: null,
       is_paid: 0,
       linked_transaction_id: null,
 
-      parent_bill_id:
-        numericTemplateId,
+      parent_bill_id: numericTemplateId,
 
-      recurrence_occurrence_key:
-        key,
+      recurrence_occurrence_key: key,
 
-      recurrence_effective_date:
-        effectiveDateOnly,
+      recurrence_effective_date: effectiveDateOnly,
     });
 
     // Important:
@@ -875,18 +834,13 @@ export async function backfillBillOccurrences(templateId) {
   // 8. FINAL LOG
   // =========================================================
 
-  console.log(
-    "[backfillBillOccurrences] COMPLETE:",
-    {
-      templateId: numericTemplateId,
-      expectedCount: expectedDates.length,
-      existingCount:
-        existingOccurrenceKeys.size,
-      createdCount,
-      deletedCount:
-        deletedOccurrenceKeys.size,
-    }
-  );
+  console.log("[backfillBillOccurrences] COMPLETE:", {
+    templateId: numericTemplateId,
+    expectedCount: expectedDates.length,
+    existingCount: existingOccurrenceKeys.size,
+    createdCount,
+    deletedCount: deletedOccurrenceKeys.size,
+  });
 }
 
 // ─── public createBill ────────────────────────────────────────────────────────
@@ -1012,6 +966,94 @@ export async function getBillSeries(templateId) {
   return enriched.sort((a, b) =>
     (a.due_date || "").localeCompare(b.due_date || ""),
   );
+}
+
+// ─── getBillSeriesMultiple ───────────────────────────────────────────────────
+
+export async function getBillSeriesMultiple(templateIds) {
+  if (!templateIds || templateIds.length === 0) return {};
+
+  const allBillsRaw = await fetchAllBillsRaw();
+  const normalizedAllBills = allBillsRaw.map(normalizeBill).filter(Boolean);
+
+  const links = rowsToArray(
+    await executeSql(`SELECT * FROM bill_linked_transactions`, []),
+  );
+  const transactions = rowsToArray(
+    await executeSql(`SELECT * FROM transactions`, []),
+  );
+
+  const result = {};
+
+  for (const templateId of templateIds) {
+    const template = normalizedAllBills.find(
+      (b) => Number(b.id) === Number(templateId),
+    );
+    if (!template) {
+      result[templateId] = [];
+      continue;
+    }
+
+    const isCCTemplate =
+      template.is_recurring &&
+      typeof template.notes === "string" &&
+      template.notes.startsWith("Recurring payment template for");
+
+    if (!template.is_recurring && !isCCTemplate) {
+      result[templateId] = [template];
+      continue;
+    }
+
+    const allChildren = normalizedAllBills.filter(
+      (r) => Number(r.parent_bill_id) === Number(templateId),
+    );
+
+    let enriched = [];
+    if (isCCTemplate || !template.recurrence_type) {
+      enriched = allChildren.map((bill) => {
+        const billLinks = links.filter(
+          (l) => Number(l.bill_id) === Number(bill.id),
+        );
+        const paidAmount = billLinks.reduce((sum, link) => {
+          const tx = transactions.find(
+            (t) => Number(t.id) === Number(link.transaction_id),
+          );
+          return sum + Number(tx?.amount || 0);
+        }, 0);
+        return { ...bill, paid_amount: paidAmount };
+      });
+    } else {
+      let activeTemplate = template;
+      if (template.due_date) {
+        const templateMonth = template.due_date.slice(0, 7);
+        const overrideChild = allChildren.find(
+          (c) => c.due_date && c.due_date.slice(0, 7) === templateMonth,
+        );
+        if (overrideChild) activeTemplate = null;
+      }
+      const series = activeTemplate
+        ? [activeTemplate, ...allChildren]
+        : [...allChildren];
+      enriched = series.map((bill) => {
+        const billLinks = links.filter(
+          (l) => Number(l.bill_id) === Number(bill.id),
+        );
+        const paidAmount = billLinks.reduce((sum, link) => {
+          const tx = transactions.find(
+            (t) => Number(t.id) === Number(link.transaction_id),
+          );
+          return sum + Number(tx?.amount || 0);
+        }, 0);
+        return { ...bill, paid_amount: paidAmount };
+      });
+    }
+
+    result[templateId] = enriched.sort((a, b) =>
+      (a.due_date || "").localeCompare(b.due_date || ""),
+    );
+  }
+
+  return result;
 }
 
 // ─── getBillsForCurrentMonth ──────────────────────────────────────────────────
@@ -1328,29 +1370,20 @@ export async function getBillsForCurrentMonth(options = {}) {
     try {
       await ensureRecurringDeletionTable();
 
-      const deletedKeys = await getDeletedOccurrenceKeys(
-        Number(template.id),
-      );
+      const deletedKeys = await getDeletedOccurrenceKeys(Number(template.id));
 
       wasIntentionallyDeleted =
-        occurrenceKey &&
-        deletedKeys.has(String(occurrenceKey));
+        occurrenceKey && deletedKeys.has(String(occurrenceKey));
 
-      console.log(
-        "[getBillsForCurrentMonth] DELETION CHECK:",
-        {
-          templateId: template.id,
-          dueDate: thisMonthDate,
-          occurrenceKey,
-          wasIntentionallyDeleted,
-          deletedKeys: Array.from(deletedKeys),
-        },
-      );
+      console.log("[getBillsForCurrentMonth] DELETION CHECK:", {
+        templateId: template.id,
+        dueDate: thisMonthDate,
+        occurrenceKey,
+        wasIntentionallyDeleted,
+        deletedKeys: Array.from(deletedKeys),
+      });
     } catch (e) {
-      console.warn(
-        "[getBillsForCurrentMonth] Deletion check failed:",
-        e,
-      );
+      console.warn("[getBillsForCurrentMonth] Deletion check failed:", e);
     }
 
     // ==========================================================
@@ -1358,14 +1391,11 @@ export async function getBillsForCurrentMonth(options = {}) {
     // ==========================================================
 
     if (wasIntentionallyDeleted) {
-      console.log(
-        "[getBillsForCurrentMonth] DELETED OCCURRENCE FOUND:",
-        {
-          templateId: template.id,
-          dueDate: thisMonthDate,
-          occurrenceKey,
-        },
-      );
+      console.log("[getBillsForCurrentMonth] DELETED OCCURRENCE FOUND:", {
+        templateId: template.id,
+        dueDate: thisMonthDate,
+        occurrenceKey,
+      });
 
       // Remove any stale/recreated occurrence from DB.
       const staleResult = await executeSql(
@@ -1375,11 +1405,7 @@ export async function getBillsForCurrentMonth(options = {}) {
              recurrence_occurrence_key = ?
              OR due_date = ?
            )`,
-        [
-          Number(template.id),
-          String(occurrenceKey),
-          thisMonthDate,
-        ],
+        [Number(template.id), String(occurrenceKey), thisMonthDate],
       );
 
       console.log(
@@ -1402,8 +1428,7 @@ export async function getBillsForCurrentMonth(options = {}) {
         (b) =>
           Number(b.parent_bill_id) === Number(template.id) &&
           !b.deleted_at &&
-          String(b.recurrence_occurrence_key || "") ===
-          String(occurrenceKey),
+          String(b.recurrence_occurrence_key || "") === String(occurrenceKey),
       );
 
       // ========================================================
@@ -1417,7 +1442,6 @@ export async function getBillsForCurrentMonth(options = {}) {
       // ========================================================
       // TEMPLATE ITSELF IS THIS MONTH
       // ========================================================
-
       else if (
         template.due_date &&
         template.due_date.slice(0, 10) === thisMonthDate
@@ -1428,7 +1452,6 @@ export async function getBillsForCurrentMonth(options = {}) {
       // ========================================================
       // OLD OCCURRENCE WITHOUT KEY
       // ========================================================
-
       else {
         occurrenceRow = allBills.find(
           (b) =>
@@ -1451,15 +1474,10 @@ export async function getBillsForCurrentMonth(options = {}) {
                SET recurrence_occurrence_key = ?,
                    updated_at = ?
                WHERE id = ?`,
-              [
-                String(occurrenceKey),
-                nowIso(),
-                occurrenceRow.id,
-              ],
+              [String(occurrenceKey), nowIso(), occurrenceRow.id],
             );
 
-            occurrenceRow.recurrence_occurrence_key =
-              String(occurrenceKey);
+            occurrenceRow.recurrence_occurrence_key = String(occurrenceKey);
           }
         } else {
           // ======================================================
@@ -1488,23 +1506,17 @@ export async function getBillsForCurrentMonth(options = {}) {
             category_id: template.category_id,
             source_id: template.source_id,
 
-            reminder_days_before:
-              template.reminder_days_before,
+            reminder_days_before: template.reminder_days_before,
 
-            auto_pay:
-              template.auto_pay,
+            auto_pay: template.auto_pay,
 
-            notes:
-              template.notes,
+            notes: template.notes,
 
-            attachment_url:
-              template.attachment_url,
+            attachment_url: template.attachment_url,
 
-            parent_bill_id:
-              template.id,
+            parent_bill_id: template.id,
 
-            recurrence_occurrence_key:
-              occurrenceKey,
+            recurrence_occurrence_key: occurrenceKey,
 
             recurrence_effective_date:
               template.recurrence_effective_date ||
@@ -1512,9 +1524,7 @@ export async function getBillsForCurrentMonth(options = {}) {
               todayStr(),
           });
 
-          occurrenceRow = normalizeBill(
-            await getBillById(newId),
-          );
+          occurrenceRow = normalizeBill(await getBillById(newId));
         }
       }
     }
@@ -1839,8 +1849,7 @@ export async function markBillPaid(
     year: "numeric",
   });
 
-  const defaultTransactionNote =
-    `${bill.name} ${payingMonthYear}`.trim();
+  const defaultTransactionNote = `${bill.name} ${payingMonthYear}`.trim();
 
   // If caller explicitly provides notes, keep it.
   // Otherwise use: Bill Name + Paying Month + Year
@@ -1897,14 +1906,7 @@ export async function markBillPaid(
          linked_transaction_id=?,
          updated_at=?
      WHERE id=?`,
-    [
-      BILL_STATUS.PAID,
-      1,
-      paidAt,
-      txId,
-      paidAt,
-      billId,
-    ],
+    [BILL_STATUS.PAID, 1, paidAt, txId, paidAt, billId],
   );
 
   // Record in junction table (idempotent)
@@ -1966,27 +1968,19 @@ async function _ensureNextOccurrence(templateId) {
 
   await backfillMissingOccurrenceKeys(template);
 
-  const type = String(
-    template.recurrence_type || ''
-  ).toLowerCase();
+  const type = String(template.recurrence_type || "").toLowerCase();
 
   const effectiveDate =
-    template.recurrence_effective_date ||
-    template.due_date ||
-    todayStr();
+    template.recurrence_effective_date || template.due_date || todayStr();
 
-  const effectiveDateOnly =
-    String(effectiveDate).slice(0, 10);
+  const effectiveDateOnly = String(effectiveDate).slice(0, 10);
 
   const today = todayStr();
   // NEXT 7 DAYS
   const todayDate = new Date(`${today}T00:00:00`);
   const sevenDaysFromToday = new Date(todayDate);
-  sevenDaysFromToday.setDate(
-    sevenDaysFromToday.getDate() + 7
-  );
-  const sevenDaysDate =
-    formatDate(sevenDaysFromToday);
+  sevenDaysFromToday.setDate(sevenDaysFromToday.getDate() + 7);
+  const sevenDaysDate = formatDate(sevenDaysFromToday);
 
   // ---------------------------------------------------------
   // GENERATE ONLY ENOUGH DATES TO FIND THE NEXT OCCURRENCE
@@ -1994,33 +1988,15 @@ async function _ensureNextOccurrence(templateId) {
   // We do NOT generate years of future rows.
   // ---------------------------------------------------------
   let probeDate = new Date(`${today}T00:00:00`);
-  if (
-    type === 'yearly' ||
-    type === 'year' ||
-    type === 'annual'
-  ) {
-    probeDate.setFullYear(
-      probeDate.getFullYear() + 2
-    );
-  } else if (
-    type === 'monthly' ||
-    type === 'month'
-  ) {
-    probeDate.setFullYear(
-      probeDate.getFullYear() + 1
-    );
-  } else if (
-    type === 'weekly' ||
-    type === 'week'
-  ) {
-    probeDate.setMonth(
-      probeDate.getMonth() + 3
-    );
+  if (type === "yearly" || type === "year" || type === "annual") {
+    probeDate.setFullYear(probeDate.getFullYear() + 2);
+  } else if (type === "monthly" || type === "month") {
+    probeDate.setFullYear(probeDate.getFullYear() + 1);
+  } else if (type === "weekly" || type === "week") {
+    probeDate.setMonth(probeDate.getMonth() + 3);
   } else {
     // Daily / other recurrence
-    probeDate.setMonth(
-      probeDate.getMonth() + 1
-    );
+    probeDate.setMonth(probeDate.getMonth() + 1);
   }
 
   let upTo = formatDate(probeDate);
@@ -2029,69 +2005,45 @@ async function _ensureNextOccurrence(templateId) {
     template.recurrence_end_date &&
     String(template.recurrence_end_date).slice(0, 10) < upTo
   ) {
-    upTo =
-      String(template.recurrence_end_date).slice(0, 10);
+    upTo = String(template.recurrence_end_date).slice(0, 10);
   }
-  const allDates =
-    generateOccurrenceDates(
-      template,
-      upTo
-    );
-  if (
-    !allDates ||
-    !allDates.length
-  ) {
+  const allDates = generateOccurrenceDates(template, upTo);
+  if (!allDates || !allDates.length) {
     return;
   }
   // ---------------------------------------------------------
   // LOAD EXISTING OCCURRENCES
   // ---------------------------------------------------------
 
-  const existingRes =
-    await executeSql(
-      `SELECT
+  const existingRes = await executeSql(
+    `SELECT
          id,
          due_date,
          recurrence_occurrence_key,
          deleted_at
        FROM bills
        WHERE parent_bill_id = ?`,
-      [templateId]
-    );
+    [templateId],
+  );
 
-  const existingRows =
-    rowsToArray(existingRes);
+  const existingRows = rowsToArray(existingRes);
 
-  const existingKeys =
-    new Set();
-  for (
-    const row of existingRows
-  ) {
+  const existingKeys = new Set();
+  for (const row of existingRows) {
     if (row.deleted_at) {
       continue;
     }
 
-    if (
-      row.recurrence_occurrence_key
-    ) {
-      existingKeys.add(
-        String(
-          row.recurrence_occurrence_key
-        )
+    if (row.recurrence_occurrence_key) {
+      existingKeys.add(String(row.recurrence_occurrence_key));
+    } else if (row.due_date) {
+      const key = getRecurrenceOccurrenceKey(
+        template.recurrence_type,
+        row.due_date,
+        template.recurrence_interval,
       );
-    } else if (
-      row.due_date
-    ) {
-      const key =
-        getRecurrenceOccurrenceKey(
-          template.recurrence_type,
-          row.due_date,
-          template.recurrence_interval
-        );
       if (key) {
-        existingKeys.add(
-          String(key)
-        );
+        existingKeys.add(String(key));
       }
     }
   }
@@ -2102,57 +2054,40 @@ async function _ensureNextOccurrence(templateId) {
 
   let nextDueDate = null;
 
-  for (
-    const dueDate of allDates
-  ) {
-    const dueDateOnly =
-      String(dueDate).slice(0, 10);
+  for (const dueDate of allDates) {
+    const dueDateOnly = String(dueDate).slice(0, 10);
 
     // Do not use dates before the effective recurrence date.
-    if (
-      dueDateOnly <
-      effectiveDateOnly
-    ) {
+    if (dueDateOnly < effectiveDateOnly) {
       continue;
     }
     // Template's own date already exists.
-    if (
-      dueDateOnly ===
-      String(template.due_date || '').slice(0, 10)
-    ) {
+    if (dueDateOnly === String(template.due_date || "").slice(0, 10)) {
       continue;
     }
 
-    const occurrenceKey =
-      getRecurrenceOccurrenceKey(
-        template.recurrence_type,
-        dueDateOnly,
-        template.recurrence_interval
-      );
+    const occurrenceKey = getRecurrenceOccurrenceKey(
+      template.recurrence_type,
+      dueDateOnly,
+      template.recurrence_interval,
+    );
     // Already exists.
-    if (
-      occurrenceKey &&
-      existingKeys.has(
-        String(occurrenceKey)
-      )
-    ) {
+    if (occurrenceKey && existingKeys.has(String(occurrenceKey))) {
       continue;
     }
 
     // Also check by actual due date.
-    const alreadyExists =
-      existingRows.some(row =>
+    const alreadyExists = existingRows.some(
+      (row) =>
         !row.deleted_at &&
         row.due_date &&
-        String(row.due_date).slice(0, 10) ===
-        dueDateOnly
-      );
+        String(row.due_date).slice(0, 10) === dueDateOnly,
+    );
 
     if (alreadyExists) {
       continue;
     }
-    nextDueDate =
-      dueDateOnly;
+    nextDueDate = dueDateOnly;
 
     break;
   }
@@ -2165,18 +2100,15 @@ async function _ensureNextOccurrence(templateId) {
   // CRITICAL 7-DAY CHECK
   // ---------------------------------------------------------
 
-  if (
-    nextDueDate >
-    sevenDaysDate
-  ) {
+  if (nextDueDate > sevenDaysDate) {
     console.log(
-      '[RecurringScheduler] Next occurrence is more than 7 days away. Not creating.',
+      "[RecurringScheduler] Next occurrence is more than 7 days away. Not creating.",
       {
         templateId,
         nextDueDate,
         today,
         createAfter: sevenDaysDate,
-      }
+      },
     );
     return;
   }
@@ -2185,10 +2117,7 @@ async function _ensureNextOccurrence(templateId) {
   // ---------------------------------------------------------
   if (
     template.recurrence_end_date &&
-    nextDueDate >
-    String(
-      template.recurrence_end_date
-    ).slice(0, 10)
+    nextDueDate > String(template.recurrence_end_date).slice(0, 10)
   ) {
     return;
   }
@@ -2216,19 +2145,12 @@ async function _ensureNextOccurrence(templateId) {
     parent_bill_id: templateId,
   });
 
-  console.log(
-    '[RecurringScheduler] Created next occurrence:',
-    {
-      templateId,
-      dueDate: nextDueDate,
-      today,
-      daysUntilDue:
-        daysBetween(
-          today,
-          nextDueDate
-        ),
-    }
-  );
+  console.log("[RecurringScheduler] Created next occurrence:", {
+    templateId,
+    dueDate: nextDueDate,
+    today,
+    daysUntilDue: daysBetween(today, nextDueDate),
+  });
 }
 
 async function ensureRecurringOccurrenceUniqueIndex() {
@@ -2363,25 +2285,20 @@ export async function getTransactionsForBillLink(bill) {
       0,
     );
 
-    const previousMonthStartStr =
-      `${previousMonthStart.getFullYear()}-${String(
-        previousMonthStart.getMonth() + 1,
-      ).padStart(2, "0")}-01`;
+    const previousMonthStartStr = `${previousMonthStart.getFullYear()}-${String(
+      previousMonthStart.getMonth() + 1,
+    ).padStart(2, "0")}-01`;
 
-    const previousMonthEndStr =
-      `${previousMonthEnd.getFullYear()}-${String(
-        previousMonthEnd.getMonth() + 1,
-      ).padStart(2, "0")}-${String(
-        previousMonthEnd.getDate(),
-      ).padStart(2, "0")}`;
+    const previousMonthEndStr = `${previousMonthEnd.getFullYear()}-${String(
+      previousMonthEnd.getMonth() + 1,
+    ).padStart(2, "0")}-${String(previousMonthEnd.getDate()).padStart(2, "0")}`;
 
     // =========================================================
     // 4. DETERMINE BILL SERIES
     // =========================================================
 
     const parentId =
-      bill.parent_bill_id ||
-      (Number(bill.is_recurring) === 1 ? bill.id : null);
+      bill.parent_bill_id || (Number(bill.is_recurring) === 1 ? bill.id : null);
 
     let previousBill = null;
 
@@ -2399,11 +2316,7 @@ export async function getTransactionsForBillLink(bill) {
            AND deleted_at IS NULL
          ORDER BY due_date DESC
          LIMIT 1`,
-        [
-          parentId,
-          previousMonthStartStr,
-          previousMonthEndStr,
-        ],
+        [parentId, previousMonthStartStr, previousMonthEndStr],
       );
 
       if (previousBillRes.rows.length) {
@@ -2434,49 +2347,35 @@ export async function getTransactionsForBillLink(bill) {
         Number(previousBill.is_paid) === 1 ||
         previousBill.status === BILL_STATUS.PAID;
 
-      if (
-        previousBillIsPaid &&
-        previousBill.paid_at
-      ) {
-        filterStartDate =
-          String(previousBill.paid_at).slice(0, 10);
+      if (previousBillIsPaid && previousBill.paid_at) {
+        filterStartDate = String(previousBill.paid_at).slice(0, 10);
 
-        console.log(
-          "[getTransactionsForBillLink] Previous bill PAID:",
-          {
-            currentBillId: bill.id,
-            previousBillId: previousBill.id,
-            paidAt: previousBill.paid_at,
-            filterStartDate,
-            filterEndDate,
-          },
-        );
+        console.log("[getTransactionsForBillLink] Previous bill PAID:", {
+          currentBillId: bill.id,
+          previousBillId: previousBill.id,
+          paidAt: previousBill.paid_at,
+          filterStartDate,
+          filterEndDate,
+        });
       } else if (previousBill.due_date) {
-        filterStartDate =
-          String(previousBill.due_date).slice(0, 10);
+        filterStartDate = String(previousBill.due_date).slice(0, 10);
 
-        console.log(
-          "[getTransactionsForBillLink] Previous bill NOT PAID:",
-          {
-            currentBillId: bill.id,
-            previousBillId: previousBill.id,
-            dueDate: previousBill.due_date,
-            filterStartDate,
-            filterEndDate,
-          },
-        );
+        console.log("[getTransactionsForBillLink] Previous bill NOT PAID:", {
+          currentBillId: bill.id,
+          previousBillId: previousBill.id,
+          dueDate: previousBill.due_date,
+          filterStartDate,
+          filterEndDate,
+        });
       }
     } else {
       filterStartDate = previousMonthStartStr;
 
-      console.log(
-        "[getTransactionsForBillLink] No previous month bill:",
-        {
-          currentBillId: bill.id,
-          filterStartDate,
-          filterEndDate,
-        },
-      );
+      console.log("[getTransactionsForBillLink] No previous month bill:", {
+        currentBillId: bill.id,
+        filterStartDate,
+        filterEndDate,
+      });
     }
 
     // =========================================================
@@ -2503,18 +2402,8 @@ export async function getTransactionsForBillLink(bill) {
       );
       const sourceRes = await executeSql(`SELECT * FROM sources`, []);
       const catRes = await executeSql(`SELECT * FROM categories`, []);
-      const sourceMap = new Map(
-        rowsToArray(sourceRes).map((s) => [
-          s.id,
-          s,
-        ]),
-      );
-      const catMap = new Map(
-        rowsToArray(catRes).map((c) => [
-          c.id,
-          c,
-        ]),
-      );
+      const sourceMap = new Map(rowsToArray(sourceRes).map((s) => [s.id, s]));
+      const catMap = new Map(rowsToArray(catRes).map((c) => [c.id, c]));
       rows = rowsToArray(txRes).map((t) => ({
         ...t,
         source_name: sourceMap.get(t.source_id)?.name || "",
@@ -2553,35 +2442,23 @@ export async function getTransactionsForBillLink(bill) {
     // =========================================================
 
     rows = rows.filter((tx) => {
-      if (
-        String(tx.type).toLowerCase() !==
-        "expense"
-      ) {
+      if (String(tx.type).toLowerCase() !== "expense") {
         return false;
       }
       if (!tx.date) {
         return false;
       }
-      const txDateOnly =
-        String(tx.date).slice(0, 10);
+      const txDateOnly = String(tx.date).slice(0, 10);
 
-      return (
-        txDateOnly >= filterStartDate &&
-        txDateOnly <= filterEndDate
-      );
+      return txDateOnly >= filterStartDate && txDateOnly <= filterEndDate;
     });
 
     // =========================================================
     // 9. REMOVE ALREADY LINKED TRANSACTIONS
     // =========================================================
     const linked = await getBillLinkedTransactions(bill.id);
-    const linkedIds = new Set(
-      linked.map((l) => Number(l.id)),
-    );
-    rows = rows.filter(
-      (tx) =>
-        !linkedIds.has(Number(tx.id)),
-    );
+    const linkedIds = new Set(linked.map((l) => Number(l.id)));
+    rows = rows.filter((tx) => !linkedIds.has(Number(tx.id)));
     // =========================================================
     // 10. PRIORITIZE MATCHES
     //
@@ -2590,57 +2467,33 @@ export async function getTransactionsForBillLink(bill) {
     // =========================================================
     rows.sort((a, b) => {
       const aScore =
-        (Number(a.category_id) ===
-          Number(bill.category_id)
-          ? 2
-          : 0) +
-        (Number(a.amount) ===
-          Number(bill.amount)
-          ? 1
-          : 0);
+        (Number(a.category_id) === Number(bill.category_id) ? 2 : 0) +
+        (Number(a.amount) === Number(bill.amount) ? 1 : 0);
 
       const bScore =
-        (Number(b.category_id) ===
-          Number(bill.category_id)
-          ? 2
-          : 0) +
-        (Number(b.amount) ===
-          Number(bill.amount)
-          ? 1
-          : 0);
+        (Number(b.category_id) === Number(bill.category_id) ? 2 : 0) +
+        (Number(b.amount) === Number(bill.amount) ? 1 : 0);
 
       if (bScore !== aScore) {
         return bScore - aScore;
       }
-      return (
-        new Date(b.date) -
-        new Date(a.date)
-      );
+      return new Date(b.date) - new Date(a.date);
     });
 
-    console.log(
-      "[getTransactionsForBillLink] FINAL FILTER:",
-      {
-        billId: bill.id,
-        currentBillDueDate: currentDueDate,
-        previousBillId:
-          previousBill?.id || null,
-        previousBillDueDate:
-          previousBill?.due_date || null,
-        previousBillPaidAt:
-          previousBill?.paid_at || null,
-        filterStartDate,
-        filterEndDate,
-        transactionCount: rows.length,
-      },
-    );
+    console.log("[getTransactionsForBillLink] FINAL FILTER:", {
+      billId: bill.id,
+      currentBillDueDate: currentDueDate,
+      previousBillId: previousBill?.id || null,
+      previousBillDueDate: previousBill?.due_date || null,
+      previousBillPaidAt: previousBill?.paid_at || null,
+      filterStartDate,
+      filterEndDate,
+      transactionCount: rows.length,
+    });
 
     return rows.slice(0, 50);
   } catch (e) {
-    console.warn(
-      "getTransactionsForBillLink error",
-      e,
-    );
+    console.warn("getTransactionsForBillLink error", e);
 
     return [];
   }
@@ -2724,7 +2577,7 @@ export async function updateBill(id, fields) {
   const dueDateChanged =
     fields.due_date !== undefined &&
     String(fields.due_date).slice(0, 10) !==
-    String(existing.due_date || "").slice(0, 10);
+      String(existing.due_date || "").slice(0, 10);
 
   const recurrenceTypeChanged =
     fields.recurrence_type !== undefined &&
@@ -2733,17 +2586,16 @@ export async function updateBill(id, fields) {
   const recurrenceIntervalChanged =
     fields.recurrence_interval !== undefined &&
     Number(fields.recurrence_interval || 1) !==
-    Number(existing.recurrence_interval || 1);
+      Number(existing.recurrence_interval || 1);
 
   const recurrenceEndDateChanged =
     fields.recurrence_end_date !== undefined &&
     String(fields.recurrence_end_date || "").slice(0, 10) !==
-    String(existing.recurrence_end_date || "").slice(0, 10);
+      String(existing.recurrence_end_date || "").slice(0, 10);
 
   const recurrenceEnabledChanged =
     fields.is_recurring !== undefined &&
-    Boolean(fields.is_recurring) !==
-    Boolean(existing.is_recurring);
+    Boolean(fields.is_recurring) !== Boolean(existing.is_recurring);
 
   const recurrenceChanged =
     dueDateChanged ||
@@ -2753,34 +2605,26 @@ export async function updateBill(id, fields) {
     recurrenceEnabledChanged;
 
   const isRecurringTemplate =
-    Number(existing.is_recurring) === 1 &&
-    !existing.parent_bill_id;
+    Number(existing.is_recurring) === 1 && !existing.parent_bill_id;
 
-  console.log(
-    "[updateBill] RECURRENCE CHANGE CHECK:",
-    {
-      id,
-      isRecurringTemplate,
-      recurrenceChanged,
-      dueDateChanged,
-      recurrenceTypeChanged,
-      recurrenceIntervalChanged,
-      recurrenceEndDateChanged,
-      recurrenceEnabledChanged,
-    }
-  );
+  console.log("[updateBill] RECURRENCE CHANGE CHECK:", {
+    id,
+    isRecurringTemplate,
+    recurrenceChanged,
+    dueDateChanged,
+    recurrenceTypeChanged,
+    recurrenceIntervalChanged,
+    recurrenceEndDateChanged,
+    recurrenceEnabledChanged,
+  });
 
   // =========================================================
   // 2. Determine NEW recurrence effective date
   // =========================================================
 
-  let recurrenceEffectiveDate =
-    existing.recurrence_effective_date || null;
+  let recurrenceEffectiveDate = existing.recurrence_effective_date || null;
 
-  if (
-    isRecurringTemplate &&
-    recurrenceChanged
-  ) {
+  if (isRecurringTemplate && recurrenceChanged) {
     /*
      * If the due date itself changed, the new recurrence
      * starts from the NEW due date.
@@ -2803,10 +2647,9 @@ export async function updateBill(id, fields) {
      */
 
     if (dueDateChanged) {
-      recurrenceEffectiveDate =
-        fields.due_date
-          ? String(fields.due_date).slice(0, 10)
-          : todayStr();
+      recurrenceEffectiveDate = fields.due_date
+        ? String(fields.due_date).slice(0, 10)
+        : todayStr();
     } else {
       // -------------------------------------------------------
       // Recurrence rule changed but due date stayed the same.
@@ -2818,44 +2661,35 @@ export async function updateBill(id, fields) {
       // recurrence immediately after that bill.
       // -------------------------------------------------------
 
-      const existingChildrenResult =
-        await executeSql(
-          `SELECT * FROM bills WHERE parent_bill_id = ?`,
-          [Number(existing.id)]
-        );
+      const existingChildrenResult = await executeSql(
+        `SELECT * FROM bills WHERE parent_bill_id = ?`,
+        [Number(existing.id)],
+      );
 
-      const existingChildren =
-        rowsToArray(existingChildrenResult)
-          .filter((row) => !row.deleted_at);
+      const existingChildren = rowsToArray(existingChildrenResult).filter(
+        (row) => !row.deleted_at,
+      );
 
       let latestExistingDate = null;
 
       for (const child of existingChildren) {
         if (!child.due_date) continue;
 
-        const childDate =
-          String(child.due_date).slice(0, 10);
+        const childDate = String(child.due_date).slice(0, 10);
 
-        if (
-          !latestExistingDate ||
-          childDate > latestExistingDate
-        ) {
+        if (!latestExistingDate || childDate > latestExistingDate) {
           latestExistingDate = childDate;
         }
       }
 
       // Also consider the parent/template date.
-      const templateDate =
-        existing.due_date
-          ? String(existing.due_date).slice(0, 10)
-          : null;
+      const templateDate = existing.due_date
+        ? String(existing.due_date).slice(0, 10)
+        : null;
 
       if (
         templateDate &&
-        (
-          !latestExistingDate ||
-          templateDate > latestExistingDate
-        )
+        (!latestExistingDate || templateDate > latestExistingDate)
       ) {
         latestExistingDate = templateDate;
       }
@@ -2873,11 +2707,9 @@ export async function updateBill(id, fields) {
 
       if (
         latestExistingDate &&
-        (
-          fields.recurrence_type ||
+        (fields.recurrence_type ||
           fields.recurrence_interval !== undefined ||
-          fields.recurrence_end_date !== undefined
-        )
+          fields.recurrence_end_date !== undefined)
       ) {
         const newRecurrenceType =
           fields.recurrence_type !== undefined
@@ -2886,12 +2718,8 @@ export async function updateBill(id, fields) {
 
         const newInterval =
           fields.recurrence_interval !== undefined
-            ? Number(
-              fields.recurrence_interval || 1
-            )
-            : Number(
-              existing.recurrence_interval || 1
-            );
+            ? Number(fields.recurrence_interval || 1)
+            : Number(existing.recurrence_interval || 1);
 
         // IMPORTANT:
         // Always use the ORIGINAL due date as the recurrence anchor.
@@ -2908,10 +2736,9 @@ export async function updateBill(id, fields) {
         //
         // This prevents 2022-01-01 from being missed.
 
-        const originalDueDate =
-          existing.due_date
-            ? String(existing.due_date).slice(0, 10)
-            : latestExistingDate;
+        const originalDueDate = existing.due_date
+          ? String(existing.due_date).slice(0, 10)
+          : latestExistingDate;
 
         const recurrenceProbeBill = {
           ...existing,
@@ -2920,31 +2747,24 @@ export async function updateBill(id, fields) {
 
           due_date: originalDueDate,
 
-          recurrence_type:
-            newRecurrenceType,
+          recurrence_type: newRecurrenceType,
 
-          recurrence_interval:
-            newInterval,
+          recurrence_interval: newInterval,
 
           // Ignore the old end date while probing.
           recurrence_end_date: null,
         };
 
-        const probeDates =
-          generateOccurrenceDates(
-            recurrenceProbeBill,
-            todayStr()
-          );
+        const probeDates = generateOccurrenceDates(
+          recurrenceProbeBill,
+          todayStr(),
+        );
 
-        const nextDate =
-          probeDates.find(
-            (date) =>
-              String(date).slice(0, 10) >
-              latestExistingDate
-          );
+        const nextDate = probeDates.find(
+          (date) => String(date).slice(0, 10) > latestExistingDate,
+        );
 
-        recurrenceEffectiveDate =
-          nextDate || latestExistingDate;
+        recurrenceEffectiveDate = nextDate || latestExistingDate;
 
         console.log(
           "[updateBill] CONTINUING NEW RECURRENCE FROM ORIGINAL DUE-DATE ANCHOR:",
@@ -2954,13 +2774,12 @@ export async function updateBill(id, fields) {
             newRecurrenceType,
             newInterval,
             recurrenceEffectiveDate,
-          }
+          },
         );
       } else {
-        recurrenceEffectiveDate =
-          existing.due_date
-            ? String(existing.due_date).slice(0, 10)
-            : todayStr();
+        recurrenceEffectiveDate = existing.due_date
+          ? String(existing.due_date).slice(0, 10)
+          : todayStr();
       }
     }
 
@@ -2972,7 +2791,7 @@ export async function updateBill(id, fields) {
     await executeSql(
       `DELETE FROM bill_deleted_occurrences
        WHERE parent_bill_id = ?`,
-      [Number(existing.id)]
+      [Number(existing.id)],
     );
   }
 
@@ -2981,19 +2800,14 @@ export async function updateBill(id, fields) {
   // =========================================================
 
   const merged = {
-    name:
-      fields.name ?? existing.name,
+    name: fields.name ?? existing.name,
 
-    amount:
-      fields.amount ?? existing.amount,
+    amount: fields.amount ?? existing.amount,
 
     due_date:
-      fields.due_date !== undefined
-        ? fields.due_date
-        : existing.due_date,
+      fields.due_date !== undefined ? fields.due_date : existing.due_date,
 
-    status:
-      fields.status ?? existing.status,
+    status: fields.status ?? existing.status,
 
     is_recurring:
       fields.is_recurring !== undefined
@@ -3010,7 +2824,7 @@ export async function updateBill(id, fields) {
     recurrence_interval:
       fields.recurrence_interval !== undefined
         ? fields.recurrence_interval
-        : existing.recurrence_interval ?? 1,
+        : (existing.recurrence_interval ?? 1),
 
     recurrence_end_date:
       fields.recurrence_end_date !== undefined
@@ -3023,14 +2837,10 @@ export async function updateBill(id, fields) {
         : existing.category_id,
 
     source_id:
-      fields.source_id !== undefined
-        ? fields.source_id
-        : existing.source_id,
+      fields.source_id !== undefined ? fields.source_id : existing.source_id,
 
     reminder_days_before:
-      fields.reminder_days_before ??
-      existing.reminder_days_before ??
-      2,
+      fields.reminder_days_before ?? existing.reminder_days_before ?? 2,
 
     auto_pay:
       fields.auto_pay !== undefined
@@ -3039,10 +2849,7 @@ export async function updateBill(id, fields) {
           : 0
         : existing.auto_pay,
 
-    notes:
-      fields.notes !== undefined
-        ? fields.notes
-        : existing.notes,
+    notes: fields.notes !== undefined ? fields.notes : existing.notes,
 
     attachment_url:
       fields.attachment_url !== undefined
@@ -3056,10 +2863,7 @@ export async function updateBill(id, fields) {
           : 0
         : existing.is_paid,
 
-    paid_at:
-      fields.paid_at !== undefined
-        ? fields.paid_at
-        : existing.paid_at,
+    paid_at: fields.paid_at !== undefined ? fields.paid_at : existing.paid_at,
 
     last_reminded_at:
       fields.last_reminded_at !== undefined
@@ -3121,7 +2925,7 @@ export async function updateBill(id, fields) {
       recurrenceEffectiveDate,
       nowIso(),
       id,
-    ]
+    ],
   );
 
   // =========================================================
@@ -3135,36 +2939,76 @@ export async function updateBill(id, fields) {
     merged.recurrence_type &&
     merged.due_date
   ) {
-    console.log(
-      "[updateBill] BACKFILLING NEW RECURRENCE SERIES:",
-      {
-        templateId: id,
-        dueDate:
-          String(merged.due_date).slice(0, 10),
-        recurrenceType:
-          merged.recurrence_type,
-        recurrenceInterval:
-          merged.recurrence_interval,
-        recurrenceEndDate:
-          merged.recurrence_end_date,
-        effectiveDate:
-          recurrenceEffectiveDate,
-      }
-    );
+    console.log("[updateBill] BACKFILLING NEW RECURRENCE SERIES:", {
+      templateId: id,
+      dueDate: String(merged.due_date).slice(0, 10),
+      recurrenceType: merged.recurrence_type,
+      recurrenceInterval: merged.recurrence_interval,
+      recurrenceEndDate: merged.recurrence_end_date,
+      effectiveDate: recurrenceEffectiveDate,
+    });
 
     await backfillBillOccurrences(id);
   }
 
   emitBillsChanged();
 
-  console.log(
-    "[updateBill] COMPLETE:",
-    {
-      id,
-      recurrenceChanged,
-      recurrenceEffectiveDate,
+  console.log("[updateBill] COMPLETE:", {
+    id,
+    recurrenceChanged,
+    recurrenceEffectiveDate,
+  });
+}
+
+export async function softDeleteBillOccurrence(billId, isTemplate, occurrenceDate) {
+  if (!billId) throw new Error("Bill ID is required.");
+  
+  const now = nowIso();
+
+  if (isTemplate) {
+    // For a template acting as an occurrence, mark the date as deleted and advance the template.
+    await ensureRecurringDeletionTable();
+    const occurrenceKey = occurrenceDate ? String(occurrenceDate).slice(0, 10) : null;
+    if (occurrenceKey) {
+      await executeSql(
+        `INSERT OR IGNORE INTO bill_deleted_occurrences (
+          parent_bill_id, recurrence_occurrence_key, deleted_at
+        ) VALUES (?, ?, ?)`,
+        [Number(billId), occurrenceKey, now]
+      );
     }
-  );
+    
+    // Advance template due date to the next occurrence so the deleted one no longer shows up
+    await _ensureNextOccurrence(billId);
+  } else {
+    // Real child occurrence row
+    const billResult = await executeSql(
+      `SELECT * FROM bills WHERE id = ? LIMIT 1`,
+      [billId]
+    );
+    if (!billResult.rows.length) return;
+    const bill = billResult.rows.item(0);
+
+    if (bill.parent_bill_id) {
+      await ensureRecurringDeletionTable();
+      const occurrenceKey = bill.recurrence_occurrence_key || (bill.due_date ? bill.due_date.slice(0, 10) : null);
+      if (occurrenceKey) {
+        await executeSql(
+          `INSERT OR IGNORE INTO bill_deleted_occurrences (
+            parent_bill_id, recurrence_occurrence_key, deleted_at
+          ) VALUES (?, ?, ?)`,
+          [Number(bill.parent_bill_id), String(occurrenceKey), now]
+        );
+      }
+    }
+    // Soft delete it
+    await executeSql(
+      `UPDATE bills SET deleted_at = ?, updated_at = ? WHERE id = ?`,
+      [now, now, billId]
+    );
+  }
+
+  emitBillsChanged();
 }
 
 export async function deleteBill(id) {
@@ -3183,16 +3027,10 @@ export async function deleteBill(id) {
 
   let rawId = id;
 
-  if (
-    typeof rawId === "string" &&
-    rawId.startsWith("cc-")
-  ) {
+  if (typeof rawId === "string" && rawId.startsWith("cc-")) {
     rawId = rawId.substring(3);
 
-    console.log(
-      "[deleteBill] Normalized credit-card ID:",
-      rawId
-    );
+    console.log("[deleteBill] Normalized credit-card ID:", rawId);
   }
 
   const billId = Number(rawId);
@@ -3211,7 +3049,7 @@ export async function deleteBill(id) {
        FROM bills
        WHERE id = ?
        LIMIT 1`,
-      [billId]
+      [billId],
     );
 
     if (!billResult.rows.length) {
@@ -3252,7 +3090,7 @@ export async function deleteBill(id) {
 
       console.log(
         "[deleteBill] Child occurrence detected. Root parent:",
-        rootBillId
+        rootBillId,
       );
     }
 
@@ -3268,7 +3106,7 @@ export async function deleteBill(id) {
       `SELECT id
        FROM bills
        WHERE parent_bill_id = ?`,
-      [rootBillId]
+      [rootBillId],
     );
 
     for (let i = 0; i < childrenResult.rows.length; i++) {
@@ -3284,10 +3122,7 @@ export async function deleteBill(id) {
       }
     }
 
-    console.log(
-      "[deleteBill] COMPLETE BILL FAMILY TO DELETE:",
-      billIds
-    );
+    console.log("[deleteBill] COMPLETE BILL FAMILY TO DELETE:", billIds);
 
     // =========================================================
     // 4. Remove bill-linked-transaction relationships
@@ -3301,26 +3136,23 @@ export async function deleteBill(id) {
         `SELECT id, bill_id, transaction_id
          FROM bill_linked_transactions
          WHERE bill_id = ?`,
-        [targetBillId]
+        [targetBillId],
       );
 
       console.log(
         `[deleteBill] Linked transaction count for bill ${targetBillId}:`,
-        linkedResult.rows.length
+        linkedResult.rows.length,
       );
 
       const unlinkResult = await executeSql(
         `DELETE FROM bill_linked_transactions
          WHERE bill_id = ?`,
-        [targetBillId]
+        [targetBillId],
       );
 
-      console.log(
-        `[deleteBill] Unlink result for bill ${targetBillId}:`,
-        {
-          rowsAffected: unlinkResult.rowsAffected,
-        }
-      );
+      console.log(`[deleteBill] Unlink result for bill ${targetBillId}:`, {
+        rowsAffected: unlinkResult.rowsAffected,
+      });
     }
 
     // =========================================================
@@ -3338,14 +3170,14 @@ export async function deleteBill(id) {
            is_paid = 0,
            updated_at = ?
          WHERE id = ?`,
-        [nowIso(), targetBillId]
+        [nowIso(), targetBillId],
       );
 
       console.log(
         `[deleteBill] Cleared transaction reference for ${targetBillId}:`,
         {
           rowsAffected: result.rowsAffected,
-        }
+        },
       );
     }
 
@@ -3357,13 +3189,13 @@ export async function deleteBill(id) {
       const result = await executeSql(
         `DELETE FROM credit_card_statements
          WHERE bill_id = ?`,
-        [targetBillId]
+        [targetBillId],
       );
 
       if (result.rowsAffected) {
         console.log(
           `[deleteBill] Credit-card statement removed for ${targetBillId}:`,
-          result.rowsAffected
+          result.rowsAffected,
         );
       }
     }
@@ -3378,15 +3210,12 @@ export async function deleteBill(id) {
       const result = await executeSql(
         `DELETE FROM bills
          WHERE id = ?`,
-        [targetBillId]
+        [targetBillId],
       );
 
-      console.log(
-        `[deleteBill] BILL DELETE ${targetBillId}:`,
-        {
-          rowsAffected: result.rowsAffected,
-        }
-      );
+      console.log(`[deleteBill] BILL DELETE ${targetBillId}:`, {
+        rowsAffected: result.rowsAffected,
+      });
     }
 
     // =========================================================
@@ -3401,20 +3230,17 @@ export async function deleteBill(id) {
       const markerResult = await executeSql(
         `DELETE FROM bill_deleted_occurrences
          WHERE parent_bill_id = ?`,
-        [rootBillId]
+        [rootBillId],
       );
 
-      console.log(
-        "[deleteBill] Removed recurring deletion markers:",
-        {
-          parentBillId: rootBillId,
-          rowsAffected: markerResult.rowsAffected,
-        }
-      );
+      console.log("[deleteBill] Removed recurring deletion markers:", {
+        parentBillId: rootBillId,
+        rowsAffected: markerResult.rowsAffected,
+      });
     } catch (markerError) {
       console.warn(
         "[deleteBill] Could not remove recurring deletion markers:",
-        markerError
+        markerError,
       );
     }
 
@@ -3427,35 +3253,28 @@ export async function deleteBill(id) {
        FROM bills
        WHERE id = ?
           OR parent_bill_id = ?`,
-      [rootBillId, rootBillId]
+      [rootBillId, rootBillId],
     );
 
-    console.log(
-      "[deleteBill] REMAINING BILL FAMILY:",
-      {
-        rows: remainingResult.rows.length,
-      }
-    );
+    console.log("[deleteBill] REMAINING BILL FAMILY:", {
+      rows: remainingResult.rows.length,
+    });
 
     if (remainingResult.rows.length > 0) {
       const remaining = [];
 
-      for (
-        let i = 0;
-        i < remainingResult.rows.length;
-        i++
-      ) {
+      for (let i = 0; i < remainingResult.rows.length; i++) {
         remaining.push(remainingResult.rows.item(i));
       }
 
       console.error(
         "[deleteBill] WARNING - BILL FAMILY STILL EXISTS:",
-        remaining
+        remaining,
       );
     } else {
       console.log(
         "[deleteBill] SUCCESS - COMPLETE BILL FAMILY DELETED:",
-        billIds
+        billIds,
       );
     }
 
@@ -3465,23 +3284,14 @@ export async function deleteBill(id) {
 
     emitBillsChanged();
 
-    console.log(
-      "[deleteBill] Permanently deleted bills:",
-      billIds
-    );
+    console.log("[deleteBill] Permanently deleted bills:", billIds);
 
-    console.log(
-      "[deleteBill] Linked transactions were preserved."
-    );
+    console.log("[deleteBill] Linked transactions were preserved.");
 
     console.log("[deleteBill] COMPLETE");
     console.log("=================================================");
-
   } catch (error) {
-    console.error(
-      "[deleteBill] FAILED:",
-      error
-    );
+    console.error("[deleteBill] FAILED:", error);
 
     console.log("=================================================");
 
@@ -3493,32 +3303,25 @@ export async function deleteBill(id) {
 
 export async function runRecurringScheduler() {
   await syncBillStatuses();
-  const rows =
-    (await fetchAllBillsRaw())
-      .map(normalizeBill)
-      .filter(Boolean);
+  const rows = (await fetchAllBillsRaw()).map(normalizeBill).filter(Boolean);
 
   // Only recurring templates.
-  const templates =
-    rows.filter(bill =>
+  const templates = rows.filter(
+    (bill) =>
       Number(bill.is_recurring) === 1 &&
       !bill.parent_bill_id &&
       bill.recurrence_type &&
-      !bill.deleted_at
-    );
+      !bill.deleted_at,
+  );
 
-  for (
-    const template of templates
-  ) {
+  for (const template of templates) {
     try {
-      await _ensureNextOccurrence(
-        template.id
-      );
+      await _ensureNextOccurrence(template.id);
     } catch (error) {
       console.error(
-        '[runRecurringScheduler] Failed for template:',
+        "[runRecurringScheduler] Failed for template:",
         template.id,
-        error
+        error,
       );
     }
   }

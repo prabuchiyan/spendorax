@@ -28,6 +28,7 @@ import {
   skipBill,
   unskipBill,
   deleteBill,
+  softDeleteBillOccurrence,
   getTransactionsForBillLink,
   getBillLinkedTransactions,
   linkAdditionalTransaction,
@@ -45,12 +46,12 @@ import {
   formatCurrency,
   formatDueDate,
   getBillDisplayStatus,
-  BILL_STATUS } from
+  BILL_STATUS,
+  getOccurrenceDateConstraints } from
 "../services/billUtils";
 import { getCreditCards, payCreditCardBill } from "../services/creditCards";
 import { usePageLoader } from "../context/PageLoaderContext";
 import { onStatementPaid } from "../services/creditCardScheduler";
-import { setBills, setBillsSummary } from "../redux/slices/billSlice";
 import { setCategoriesMap } from "../redux/slices/categorySlice";
 import {
   useAppDispatch,
@@ -692,17 +693,28 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
 
 }
 
-function OccurrenceEditModal({ visible, occurrence, onSave, onClose }) {
+function OccurrenceEditModal({ visible, occurrence, bill, onSave, onClose }) {
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [showDuePicker, setShowDuePicker] = useState(false);
+  const [constraints, setConstraints] = useState({ minDate: null, maxDate: null });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (occurrence) {
+    if (occurrence && bill) {
       setAmount(String(occurrence.amount || ""));
-      setDueDate(occurrence.due_date ? occurrence.due_date.slice(0, 10) : "");
+      const currentDueDate = occurrence.due_date ? occurrence.due_date.slice(0, 10) : "";
+      setDueDate(currentDueDate);
+      
+      const { minDate, maxDate } = getOccurrenceDateConstraints({
+        recurrenceType: bill.recurrence_type,
+        occurrenceDate: currentDueDate,
+        startDate: bill.due_date,
+        endDate: bill.recurrence_end_date
+      });
+      setConstraints({ minDate, maxDate });
     }
-  }, [occurrence?.id]);
+  }, [occurrence?.id, bill?.id]);
 
   const dueParts = dueDate ? dueDate.split("-").map(Number) : [];
 
@@ -710,24 +722,44 @@ function OccurrenceEditModal({ visible, occurrence, onSave, onClose }) {
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
-      onRequestClose={onClose}>
+      animationType="fade"
+      onRequestClose={() => !isSubmitting && onClose()}>
       
       <View
         style={{
           flex: 1,
-          backgroundColor: "rgba(0,0,0,0.45)",
+          backgroundColor: "rgba(0,0,0,0.5)",
           justifyContent: "center",
-          padding: 16
+          padding: 24
         }}>
         
         <View
-          style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20 }}>
+          style={{
+            backgroundColor: "#fff",
+            borderRadius: 24,
+            padding: 24,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.1,
+            shadowRadius: 20,
+            elevation: 10
+          }}>
           
-          <Text style={{ fontWeight: "700", fontSize: 18, marginBottom: 16 }}>
-            Edit Occurrence
-          </Text>
-          <Text style={{ fontSize: 13, color: Colors.muted, marginBottom: 6 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 24 }}>
+            <View style={{ backgroundColor: "#EFF6FF", padding: 10, borderRadius: 12, marginRight: 12 }}>
+              <MaterialCommunityIcons name="calendar-edit" size={24} color="#2563EB" />
+            </View>
+            <View>
+              <Text style={{ fontWeight: "700", fontSize: 20, color: "#0F172A" }}>
+                Edit Occurrence
+              </Text>
+              <Text style={{ fontSize: 13, color: "#64748B", marginTop: 2 }}>
+                Update this specific bill's details
+              </Text>
+            </View>
+          </View>
+
+          <Text style={{ fontSize: 13, fontWeight: "600", color: "#475569", marginBottom: 8, marginLeft: 2 }}>
             Amount
           </Text>
           <PaperTextInput
@@ -735,44 +767,68 @@ function OccurrenceEditModal({ visible, occurrence, onSave, onClose }) {
             onChangeText={setAmount}
             keyboardType="numeric"
             mode="outlined"
-            style={{ marginBottom: 16, backgroundColor: "#fff" }} />
+            disabled={isSubmitting}
+            outlineColor="#E2E8F0"
+            activeOutlineColor="#2563EB"
+            left={<PaperTextInput.Affix text="₹" textStyle={{ color: "#64748B" }} />}
+            style={{ marginBottom: 20, backgroundColor: "#fff" }} />
           
-          <Text style={{ fontSize: 13, color: Colors.muted, marginBottom: 6 }}>
+          <Text style={{ fontSize: 13, fontWeight: "600", color: "#475569", marginBottom: 8, marginLeft: 2 }}>
             Due Date
           </Text>
-          <TouchableOpacity onPress={() => setShowDuePicker(true)}>
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            disabled={isSubmitting}
+            onPress={() => setShowDuePicker(true)}>
             <PaperTextInput
               value={dueDate}
               editable={false}
+              disabled={isSubmitting}
               mode="outlined"
-              style={{ marginBottom: 20, backgroundColor: "#fff" }}
+              outlineColor="#E2E8F0"
+              activeOutlineColor="#2563EB"
+              style={{ marginBottom: 28, backgroundColor: "#fff" }}
               right={
-              <PaperTextInput.Icon
-                icon="calendar"
-                onPress={() => setShowDuePicker(true)} />
-
+                <PaperTextInput.Icon
+                  icon="calendar"
+                  color="#94A3B8"
+                  onPress={() => !isSubmitting && setShowDuePicker(true)} />
               } />
-            
           </TouchableOpacity>
+          
           <View
             style={{
               flexDirection: "row",
               justifyContent: "flex-end",
-              gap: 10
+              gap: 12
             }}>
             
-            <PaperButton mode="text" onPress={onClose}>
+            <PaperButton 
+              mode="text" 
+              onPress={onClose} 
+              disabled={isSubmitting}
+              textColor="#64748B"
+              style={{ paddingHorizontal: 4 }}>
               Cancel
             </PaperButton>
+            
             <PaperButton
               mode="contained"
-              onPress={() => {
+              loading={isSubmitting}
+              disabled={isSubmitting}
+              buttonColor="#2563EB"
+              style={{ borderRadius: 12, paddingHorizontal: 8 }}
+              onPress={async () => {
                 const amt = parseFloat(amount);
                 if (!amount || isNaN(amt) || amt <= 0 || !dueDate) return;
-                onSave(amt, dueDate);
+                setIsSubmitting(true);
+                try {
+                  await onSave(amt, dueDate);
+                } finally {
+                  setIsSubmitting(false);
+                }
               }}>
-              
-              Save
+              Save Changes
             </PaperButton>
           </View>
         </View>
@@ -781,6 +837,9 @@ function OccurrenceEditModal({ visible, occurrence, onSave, onClose }) {
       <MuiDateTimePicker
         visible={showDuePicker}
         initialDate={dueDate ? new Date(dueDate) : new Date()}
+        minDate={constraints.minDate}
+        maxDate={constraints.maxDate}
+        hideTime={true}
         onClose={() => setShowDuePicker(false)}
         onSelect={(selectedDate) => {
           if (selectedDate) setDueDate(selectedDate.toISOString().slice(0, 10));
@@ -880,7 +939,10 @@ export default function BillDetailScreen({ route, navigation }) {
   }, [chartData, chartOffset]);
 
   const totalDueAmount = React.useMemo(() => {
-    return series.reduce((sum, bill) => sum + Number(bill.amount || 0), 0);
+    return series.reduce((sum, bill) => {
+      if (bill.status === BILL_STATUS.SKIPPED) return sum;
+      return sum + Number(bill.amount || 0);
+    }, 0);
   }, [series]);
 
   const totalPaidAmount = React.useMemo(() => {
@@ -964,36 +1026,6 @@ export default function BillDetailScreen({ route, navigation }) {
         categoryMap[c.id] = c;
       });
       dispatch(setCategoriesMap(categoryMap));
-      dispatch(setBills(s || []));
-      dispatch(
-        setBillsSummary({
-          totalThisMonth: s.reduce(
-            (sum, row) => sum + Number(row.amount || 0),
-            0
-          ),
-          totalPaid: s.reduce(
-            (sum, row) => sum + Number(row.paid_amount || 0),
-            0
-          ),
-          overdueAmount: s.
-          filter((row) => row.status === BILL_STATUS.OVERDUE).
-          reduce((sum, row) => sum + Number(row.amount || 0), 0),
-          overdueCount: s.filter((row) => row.status === BILL_STATUS.OVERDUE).
-          length,
-          upcoming7: s.
-          filter(
-            (row) =>
-            row.status !== BILL_STATUS.PAID &&
-            row.status !== BILL_STATUS.SKIPPED
-          ).
-          reduce((sum, row) => sum + Number(row.amount || 0), 0),
-          upcoming3Count: s.filter(
-            (row) =>
-            row.status !== BILL_STATUS.PAID &&
-            row.status !== BILL_STATUS.SKIPPED
-          ).length
-        })
-      );
 
       if (b?.category_id)
       setCategory(cats.find((c) => c.id === b.category_id) || null);
@@ -1559,7 +1591,7 @@ export default function BillDetailScreen({ route, navigation }) {
               icon: "repeat",
               label: "Repeat",
               value: bill.is_recurring ?
-              `${bill.recurrence_interval || 1} ${bill.recurrence_type}` :
+              `${bill.recurrence_type}` :
               "No"
             }].
             map(({ icon, label, value }) =>
@@ -1612,22 +1644,8 @@ export default function BillDetailScreen({ route, navigation }) {
             try {
               showPageLoader();
               if (confirmAction === "delete_occ") {
-                const isTemplate =
-                activeBill.id === bill?.id && bill?.is_recurring;
-                if (isTemplate) {
-                  // Template occurrence:
-                  // create tombstone child and delete it.
-                  const newId = await createBill({
-                    ...bill,
-                    is_recurring: 0,
-                    recurrence_type: null,
-                    parent_bill_id: bill.id
-                  });
-                  await deleteBill(newId);
-                } else {
-                  // Normal child occurrence.
-                  await deleteBill(activeBill.id);
-                }
+                const isTemplate = activeBill.id === bill?.id && bill?.is_recurring;
+                await softDeleteBillOccurrence(activeBill.id, isTemplate, activeBill.due_date);
                 // Wait for everything to finish.
                 await load();
               } else if (confirmAction === "skip") {
@@ -1655,6 +1673,7 @@ export default function BillDetailScreen({ route, navigation }) {
         <OccurrenceEditModal
           visible={showEditOcc}
           occurrence={selectedOcc}
+          bill={bill}
           onSave={handleSaveOccurrence}
           onClose={() => setShowEditOcc(false)} />
         
@@ -1724,7 +1743,7 @@ export default function BillDetailScreen({ route, navigation }) {
           </TouchableOpacity>
         }
 
-        {/* <TouchableOpacity
+        <TouchableOpacity
            style={styles.actionButton}
            onPress={() => {
              setConfirmAction("delete_occ");
@@ -1737,9 +1756,8 @@ export default function BillDetailScreen({ route, navigation }) {
              size={22}
            />
            <Text style={styles.actionText}>Delete</Text>
-          </TouchableOpacity> */}
+          </TouchableOpacity>
       </View>
-
       <Modal
         visible={showPaymentSourcePicker}
         transparent

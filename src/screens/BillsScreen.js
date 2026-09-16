@@ -1,71 +1,73 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from "react";
 import {
-  View, Text, FlatList, Modal,
-  TouchableOpacity, TextInput, ScrollView, Alert } from
-'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+  View,
+  Text,
+  FlatList,
+  Modal,
+  TouchableOpacity,
+  TextInput,
+  ScrollView,
+  Alert,
+} from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 
-
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   TextInput as PaperTextInput,
-  Button as PaperButton } from
-'react-native-paper';
+  Button as PaperButton,
+} from "react-native-paper";
 import {
   getBillsForCurrentMonth,
   getBillsSummary,
   getBillById,
   getBillSeries,
+  getBillSeriesMultiple,
   markBillPaid,
   skipBill,
-  deleteBill } from
-'../services/bills';
-import { getCategories } from '../services/categories';
-import BillSummaryBar from '../components/BillSummaryBar';
-import SwipeableBillCard from '../components/SwipeableBillCard';
-import BillCalendarView from '../components/BillCalendarView';
-import BillForm from '../components/BillForm';
-import ConfirmDialog from '../components/ConfirmDialog';
-import FAB from '../components/FAB';
-import { Colors, Spacing } from '../components/Theme';
-import { BILL_STATUS, formatCurrency } from '../services/billUtils';
-import { getSources } from '../services/sources';
-import { getCreditCards, payCreditCardBill } from '../services/creditCards';
+  deleteBill,
+} from "../services/bills";
+import { getCategories } from "../services/categories";
+import BillSummaryBar from "../components/BillSummaryBar";
+import SwipeableBillCard from "../components/SwipeableBillCard";
+import BillCalendarView from "../components/BillCalendarView";
+import BillForm from "../components/BillForm";
+import ConfirmDialog from "../components/ConfirmDialog";
+import FAB from "../components/FAB";
+import { Colors, Spacing } from "../components/Theme";
+import { BILL_STATUS, formatCurrency } from "../services/billUtils";
+import { getSources } from "../services/sources";
+import { getCreditCards, payCreditCardBill } from "../services/creditCards";
 // Redux imports
-import { setBills, setBillsSummary } from '../redux/slices/billSlice';
-import { setCategoriesMap } from '../redux/slices/categorySlice';
-import { useBills, useBillsSummary, useCategoriesMap, useAppDispatch } from '../redux/hooks';
+import { setBills, setBillsSummary } from "../redux/slices/billSlice";
+import { setCategoriesMap } from "../redux/slices/categorySlice";
+import {
+  useBills,
+  useBillsSummary,
+  useCategoriesMap,
+  useAppDispatch,
+} from "../redux/hooks";
 
 const STATUS_FILTERS = [
-{ key: 'all', label: 'All' },
-{ key: BILL_STATUS.PENDING, label: 'Pending' },
-{ key: BILL_STATUS.OVERDUE, label: 'Overdue' },
-{ key: BILL_STATUS.PAID, label: 'Paid' }];
-
+  { key: "all", label: "All" },
+  { key: BILL_STATUS.PENDING, label: "Pending" },
+  { key: BILL_STATUS.OVERDUE, label: "Overdue" },
+  { key: BILL_STATUS.PAID, label: "Paid" },
+];
 
 // Add this helper near the top of the component
 function isCreditCardBill(bill) {
   return (
-    typeof bill.notes === 'string' &&
-    bill.notes.startsWith('Recurring payment template for')) ||
-
-  typeof bill.notes === 'string' &&
-  bill.notes.startsWith('Statement ');
-
+    (typeof bill.notes === "string" &&
+      bill.notes.startsWith("Recurring payment template for")) ||
+    (typeof bill.notes === "string" && bill.notes.startsWith("Statement "))
+  );
 }
 
 function getPreferredBillOccurrence(bill, allBills) {
-  if (
-  !bill.is_recurring &&
-  !bill._isRecurringSeries)
-  {
+  if (!bill.is_recurring && !bill._isRecurringSeries) {
     return bill;
   }
-  const templateId = Number(
-    bill._templateId ||
-    bill.parent_bill_id ||
-    bill.id
-  );
+  const templateId = Number(bill._templateId || bill.parent_bill_id || bill.id);
   if (!templateId) {
     return bill;
   }
@@ -73,28 +75,19 @@ function getPreferredBillOccurrence(bill, allBills) {
   const todayString = today.toISOString().slice(0, 10);
   const currentYear = today.getFullYear();
   const currentMonth = today.getMonth();
-  const currentMonthPrefix = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
-  const occurrences = allBills.
-  filter((row) => {
-    const rowTemplateId = Number(
-      row.parent_bill_id ||
-      row._templateId ||
-      row.id
-    );
-    return (
-      rowTemplateId === templateId &&
-      !row.deleted_at);
-
-  })
-  // IMPORTANT:
-  // Occurrences without a due date are not
-  // considered when determining the preferred due.
-  .filter((row) => Boolean(row.due_date)).
-  sort((a, b) =>
-  (b.due_date || '').localeCompare(
-    a.due_date || ''
-  )
-  );
+  const currentMonthPrefix = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`;
+  const occurrences = allBills
+    .filter((row) => {
+      const rowTemplateId = Number(
+        row.parent_bill_id || row._templateId || row.id,
+      );
+      return rowTemplateId === templateId && !row.deleted_at;
+    })
+    // IMPORTANT:
+    // Occurrences without a due date are not
+    // considered when determining the preferred due.
+    .filter((row) => Boolean(row.due_date))
+    .sort((a, b) => (b.due_date || "").localeCompare(a.due_date || ""));
 
   if (!occurrences.length) {
     return {
@@ -102,37 +95,32 @@ function getPreferredBillOccurrence(bill, allBills) {
       // Explicitly tell the card that there is
       // no actual due date.
       due_date: null,
-      _noDueDate: true
+      _noDueDate: true,
     };
   }
 
   // 1. CURRENT MONTH
-  const currentMonthBill =
-  occurrences.find((row) =>
-  row.due_date.startsWith(
-    currentMonthPrefix
-  )
+  const currentMonthBill = occurrences.find((row) =>
+    row.due_date.startsWith(currentMonthPrefix),
   );
 
   if (currentMonthBill) {
     // Current month is still unpaid.
     if (
-    currentMonthBill.status !== 'paid' &&
-    currentMonthBill.status !== 'skipped')
-    {
+      currentMonthBill.status !== "paid" &&
+      currentMonthBill.status !== "skipped"
+    ) {
       return currentMonthBill;
     }
 
     // Current month is paid.
     // Find latest previous pending/overdue.
-    const previousPending =
-    occurrences.find((row) => {
+    const previousPending = occurrences.find((row) => {
       return (
-        row.due_date <
-        currentMonthBill.due_date &&
-        row.status !== 'paid' &&
-        row.status !== 'skipped');
-
+        row.due_date < currentMonthBill.due_date &&
+        row.status !== "paid" &&
+        row.status !== "skipped"
+      );
     });
 
     if (previousPending) {
@@ -141,28 +129,19 @@ function getPreferredBillOccurrence(bill, allBills) {
 
     // No previous pending.
     // Find nearest upcoming.
-    const upcoming =
-    occurrences.
-    filter((row) =>
-    row.due_date >
-    currentMonthBill.due_date
-    ).
-    sort((a, b) =>
-    a.due_date.localeCompare(
-      b.due_date
-    )
-    )[0];
+    const upcoming = occurrences
+      .filter((row) => row.due_date > currentMonthBill.due_date)
+      .sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
     return upcoming || currentMonthBill;
   }
 
   // 2. NO CURRENT-MONTH DUE
-  const previousPending =
-  occurrences.find((row) => {
+  const previousPending = occurrences.find((row) => {
     return (
       row.due_date <= todayString &&
-      row.status !== 'paid' &&
-      row.status !== 'skipped');
-
+      row.status !== "paid" &&
+      row.status !== "skipped"
+    );
   });
 
   if (previousPending) {
@@ -171,16 +150,9 @@ function getPreferredBillOccurrence(bill, allBills) {
 
   // 3. NO PREVIOUS PENDING
   // Find nearest future due.
-  const upcoming =
-  occurrences.
-  filter((row) =>
-  row.due_date > todayString
-  ).
-  sort((a, b) =>
-  a.due_date.localeCompare(
-    b.due_date
-  )
-  )[0];
+  const upcoming = occurrences
+    .filter((row) => row.due_date > todayString)
+    .sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
 
   if (upcoming) {
     return upcoming;
@@ -190,7 +162,7 @@ function getPreferredBillOccurrence(bill, allBills) {
   return {
     ...bill,
     due_date: null,
-    _noDueDate: true
+    _noDueDate: true,
   };
 }
 
@@ -207,25 +179,25 @@ export default function BillsScreen({ navigation }) {
   const [items, setItems] = useState([]);
   const [preferredOccurrences, setPreferredOccurrences] = useState({});
   const [categories, setCategories] = useState([]);
-  const [viewMode, setViewMode] = useState('list');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [viewMode, setViewMode] = useState("list");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState(null);
-  const [sortBy, setSortBy] = useState('due_date');
-  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState("due_date");
+  const [search, setSearch] = useState("");
   const [showStatusDD, setShowStatusDD] = useState(false);
   const [showCategoryDD, setShowCategoryDD] = useState(false);
-  const [categorySearch, setCategorySearch] = useState('');
+  const [categorySearch, setCategorySearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingBill, setEditingBill] = useState(null);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState(null);
-  const [confirmMessage, setConfirmMessage] = useState('');
-  const [confirmAction, setConfirmAction] = useState('delete');
+  const [confirmMessage, setConfirmMessage] = useState("");
+  const [confirmAction, setConfirmAction] = useState("delete");
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [showPaymentSourcePicker, setShowPaymentSourcePicker] = useState(false);
   const [paymentSources, setPaymentSources] = useState([]);
-  const [paymentSourceSearch, setPaymentSourceSearch] = useState('');
+  const [paymentSourceSearch, setPaymentSourceSearch] = useState("");
   const [selectedPaymentBill, setSelectedPaymentBill] = useState(null);
   const [selectedCreditCard, setSelectedCreditCard] = useState(null);
   const [expandedCreditCards, setExpandedCreditCards] = useState({});
@@ -233,67 +205,64 @@ export default function BillsScreen({ navigation }) {
   // ── data load ──────────────────────────────────────────────────────────────
   async function load() {
     const [rows, sum, cats] = await Promise.all([
-    getBillsForCurrentMonth({
-      status: statusFilter === 'all' ? null : statusFilter,
-      category_id: categoryFilter,
-      sortBy,
-      sortDir: sortBy === 'amount' ? 'desc' : 'asc'
-    }),
-    getBillsSummary(),
-    getCategories(true)]
-    );
+      getBillsForCurrentMonth({
+        status: statusFilter === "all" ? null : statusFilter,
+        category_id: categoryFilter,
+        sortBy,
+        sortDir: sortBy === "amount" ? "desc" : "asc",
+      }),
+      getBillsSummary(),
+      getCategories(true),
+    ]);
     setItems(rows);
-    dispatch(setBills(rows));
     const preferredMap = {};
-    await Promise.all(
-      rows.map(async (bill) => {
-        if (
-        !bill.is_recurring &&
-        !bill._isRecurringSeries)
-        {
-          return;
-        }
-
-        // Do not interfere with credit-card statements.
-        if (bill._isCreditCardStatement) {
-          return;
-        }
-        try {
-          const templateId =
-          bill._templateId ||
-          bill.parent_bill_id ||
-          bill.id;
-
-          const series =
-          await getBillSeries(templateId);
-
-          preferredMap[
-          String(templateId)] =
-          getPreferredBillOccurrence(
-            bill,
-            series
-          );
-        } catch (e) {
-          console.warn(
-            'Preferred bill occurrence error:',
-            templateId,
-            e
-          );
-        }
-      })
+    const templateIdsToFetch = Array.from(
+      new Set(
+        rows
+          .filter(
+            (bill) =>
+              (bill.is_recurring || bill._isRecurringSeries) &&
+              !bill._isCreditCardStatement,
+          )
+          .map((bill) => bill._templateId || bill.parent_bill_id || bill.id),
+      ),
     );
+
+    if (templateIdsToFetch.length > 0) {
+      try {
+        const seriesMap = await getBillSeriesMultiple(templateIdsToFetch);
+        rows.forEach((bill) => {
+          if (!bill.is_recurring && !bill._isRecurringSeries) return;
+          if (bill._isCreditCardStatement) return;
+
+          const templateId = bill._templateId || bill.parent_bill_id || bill.id;
+          if (seriesMap[templateId]) {
+            preferredMap[String(templateId)] = getPreferredBillOccurrence(
+              bill,
+              seriesMap[templateId],
+            );
+          }
+        });
+      } catch (e) {
+        console.warn("Preferred bill occurrence batch error:", e);
+      }
+    }
     setPreferredOccurrences(preferredMap);
     dispatch(setBillsSummary(sum));
-    const expCats = cats.filter((c) => c.type === 'expense');
+    const expCats = cats.filter((c) => c.type === "expense");
     setCategories(expCats);
     const map = {};
-    cats.forEach((c) => map[c.id] = c);
+    cats.forEach((c) => (map[c.id] = c));
     dispatch(setCategoriesMap(map));
     const sources = await getSources(true);
     setPaymentSources(sources);
   }
 
-  useFocusEffect(useCallback(() => {load();}, [dispatch, statusFilter, categoryFilter, sortBy]));
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [dispatch, statusFilter, categoryFilter, sortBy]),
+  );
 
   // ── derived lists ──────────────────────────────────────────────────────────
   const filteredItems = useMemo(() => {
@@ -302,10 +271,10 @@ export default function BillsScreen({ navigation }) {
       const templateId = bill._templateId || bill.parent_bill_id || bill.id;
       const preferred = preferredOccurrences[String(templateId)];
       if (
-      preferred &&
-      !bill._isCreditCardParent &&
-      !bill._isCreditCardStatement)
-      {
+        preferred &&
+        !bill._isCreditCardParent &&
+        !bill._isCreditCardStatement
+      ) {
         return {
           ...bill,
           // Display the preferred recurring occurrence.
@@ -317,19 +286,15 @@ export default function BillsScreen({ navigation }) {
           // Preserve the recurring template identity.
           _templateId: bill._templateId || templateId,
           _displayOccurrenceId: preferred.id,
-          _displayOccurrence: preferred
+          _displayOccurrence: preferred,
         };
       }
       return bill;
     });
     // SEARCH FILTER
-    const sourceItems = query ?
-    displayItems.filter((bill) =>
-    bill.name?.
-    toLowerCase().
-    includes(query)
-    ) :
-    displayItems;
+    const sourceItems = query
+      ? displayItems.filter((bill) => bill.name?.toLowerCase().includes(query))
+      : displayItems;
     // GROUP CREDIT-CARD STATEMENTS
     // Credit-card statements are different from normal recurring bills.
     // We group all statements belonging to the same credit card,
@@ -341,31 +306,16 @@ export default function BillsScreen({ navigation }) {
     const groups = new Map();
     const normalBills = [];
     sourceItems.forEach((bill) => {
-      const parentId =
-      Number(
-        bill.parent_bill_id || 0
-      );
+      const parentId = Number(bill.parent_bill_id || 0);
       const isStatement =
-      bill._isCreditCardStatement === true ||
+        bill._isCreditCardStatement === true ||
+        (typeof bill.notes === "string" && bill.notes.startsWith("Statement "));
 
-      typeof bill.notes === 'string' &&
-      bill.notes.startsWith(
-        'Statement '
-      );
-
-      if (
-      isStatement &&
-      parentId > 0)
-      {
+      if (isStatement && parentId > 0) {
         if (!groups.has(parentId)) {
-          groups.set(
-            parentId,
-            []
-          );
+          groups.set(parentId, []);
         }
-        groups.
-        get(parentId).
-        push(bill);
+        groups.get(parentId).push(bill);
       } else {
         normalBills.push(bill);
       }
@@ -375,162 +325,120 @@ export default function BillsScreen({ navigation }) {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
-    const currentMonthPrefix =
-    `${currentYear}-${String(
-      currentMonth + 1
-    ).padStart(2, '0')}`;
+    const currentMonthPrefix = `${currentYear}-${String(
+      currentMonth + 1,
+    ).padStart(2, "0")}`;
     // BUILD ONE BILL-CARD PARENT FOR EACH CREDIT CARD
     const groupedCreditCards = [];
-    groups.forEach(
-      (statements, parentId) => {
-        if (
-        !statements.length)
-        {
-          return;
-        }
-        // SORT ALL STATEMENTS BY DUE DATE
-        // Due date is preferred because this screen represents bills that need to be paid.
-        statements.sort(
-          (a, b) => {
-            const ad =
-            a.due_date ||
-            a.statement_date ||
-            '9999-12-31';
-            const bd =
-            b.due_date ||
-            b.statement_date ||
-            '9999-12-31';
-
-            return ad.localeCompare(
-              bd
-            );
-          }
-        );
-
-        // CURRENT MONTH STATEMENTS
-        // ONLY these statements are used to calculate the amount displayed on the Bill Card.
-        const currentMonthStatements =
-        statements.filter(
-          (statement) => {
-            const dueDate = statement.due_date || '';
-            return dueDate.startsWith(
-              currentMonthPrefix
-            );
-          }
-        );
-        // DETERMINE WHAT THE CARD SHOULD DISPLAY
-        // Normal case:
-        //     Current month statement exists
-        // Fallback:
-        //     No current-month statement exists.
-        //     Use the latest statement on/before today.
-        // This fallback prevents the credit card from disappearing
-        // completely when there is no current-month statement.
-        let displayStatements = [];
-        if (
-        currentMonthStatements.length > 0)
-        {
-          displayStatements = currentMonthStatements;
-        } else {
-          const todayString = now.toISOString().slice(0, 10);
-          const previousStatements =
-          statements.filter((statement) => {
-            const dueDate = statement.due_date || '';
-            return dueDate && dueDate <= todayString;
-          }).
-          sort(
-            (a, b) =>
-            (
-            b.due_date ||
-            '').
-            localeCompare(
-              a.due_date ||
-              ''
-            )
-          );
-          if (
-          previousStatements.length > 0)
-          {
-            displayStatements = [previousStatements[0]];
-          } else {
-            // No current or previous statement.
-            // Use the nearest upcoming statement if available.
-            const upcomingStatements = statements.filter(
-              (statement) => {
-                const dueDate = statement.due_date || '';
-                return dueDate > todayString;
-              }
-            ).sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''));
-            if (upcomingStatements.length > 0) {
-              displayStatements = [upcomingStatements[0]];
-            }
-          }
-        }
-        // IF THERE IS NOTHING TO DISPLAY
-        if (!displayStatements.length) {
-          return;
-        }
-        // PARENT AMOUNT
-        // Sum ONLY the statements represented by the Bill Card.
-        const totalAmount =
-        displayStatements.reduce(
-          (sum, statement) =>
-          sum +
-          Number(
-            statement.amount || 0
-          ),
-          0
-        );
-        const latestDisplayStatement = displayStatements[displayStatements.length - 1];
-        // BUILD CREDIT-CARD PARENT
-        groupedCreditCards.push({
-          ...latestDisplayStatement,
-          id: `cc-${parentId}`,
-          parent_bill_id: parentId,
-          name: latestDisplayStatement.name || 'Credit Card',
-          // Amount is ONLY for the current/displayed statement.
-          amount: totalAmount,
-          // ALL ACTUAL STATEMENTS
-          // Keep every generated statement here so the  Statements expansion continues to work.
-          children: statements,
-          // STATEMENTS REPRESENTED BY THE CARD
-          _displayStatements: displayStatements,
-          // CREDIT-CARD FLAGS
-          _isCreditCardParent: true,
-          _isCreditCardStatement: false,
-          _isRecurringSeries: false,
-          _templateId: parentId,
-          // COUNTS
-          _statementCount: statements.length,
-          _currentMonthStatementCount: currentMonthStatements.length,
-          _isCurrentMonthCreditCard: currentMonthStatements.length > 0,
-          // NO DUE DATE STATE
-          _noDueDate: !latestDisplayStatement.due_date
-        });
+    groups.forEach((statements, parentId) => {
+      if (!statements.length) {
+        return;
       }
-    );
-    // RETURN NORMAL BILLS + CREDIT-CARD PARENTS
-    return [
-    ...normalBills,
-    ...groupedCreditCards];
+      // SORT ALL STATEMENTS BY DUE DATE
+      // Due date is preferred because this screen represents bills that need to be paid.
+      statements.sort((a, b) => {
+        const ad = a.due_date || a.statement_date || "9999-12-31";
+        const bd = b.due_date || b.statement_date || "9999-12-31";
 
-  }, [
-  items,
-  search,
-  preferredOccurrences]
-  );
+        return ad.localeCompare(bd);
+      });
+
+      // CURRENT MONTH STATEMENTS
+      // ONLY these statements are used to calculate the amount displayed on the Bill Card.
+      const currentMonthStatements = statements.filter((statement) => {
+        const dueDate = statement.due_date || "";
+        return dueDate.startsWith(currentMonthPrefix);
+      });
+      // DETERMINE WHAT THE CARD SHOULD DISPLAY
+      // Normal case:
+      //     Current month statement exists
+      // Fallback:
+      //     No current-month statement exists.
+      //     Use the latest statement on/before today.
+      // This fallback prevents the credit card from disappearing
+      // completely when there is no current-month statement.
+      let displayStatements = [];
+      if (currentMonthStatements.length > 0) {
+        displayStatements = currentMonthStatements;
+      } else {
+        const todayString = now.toISOString().slice(0, 10);
+        const previousStatements = statements
+          .filter((statement) => {
+            const dueDate = statement.due_date || "";
+            return dueDate && dueDate <= todayString;
+          })
+          .sort((a, b) => (b.due_date || "").localeCompare(a.due_date || ""));
+        if (previousStatements.length > 0) {
+          displayStatements = [previousStatements[0]];
+        } else {
+          // No current or previous statement.
+          // Use the nearest upcoming statement if available.
+          const upcomingStatements = statements
+            .filter((statement) => {
+              const dueDate = statement.due_date || "";
+              return dueDate > todayString;
+            })
+            .sort((a, b) => (a.due_date || "").localeCompare(b.due_date || ""));
+          if (upcomingStatements.length > 0) {
+            displayStatements = [upcomingStatements[0]];
+          }
+        }
+      }
+      // IF THERE IS NOTHING TO DISPLAY
+      if (!displayStatements.length) {
+        return;
+      }
+      // PARENT AMOUNT
+      // Sum ONLY the statements represented by the Bill Card.
+      const totalAmount = displayStatements.reduce(
+        (sum, statement) => sum + Number(statement.amount || 0),
+        0,
+      );
+      const latestDisplayStatement =
+        displayStatements[displayStatements.length - 1];
+      // BUILD CREDIT-CARD PARENT
+      groupedCreditCards.push({
+        ...latestDisplayStatement,
+        id: `cc-${parentId}`,
+        parent_bill_id: parentId,
+        name: latestDisplayStatement.name || "Credit Card",
+        // Amount is ONLY for the current/displayed statement.
+        amount: totalAmount,
+        // ALL ACTUAL STATEMENTS
+        // Keep every generated statement here so the  Statements expansion continues to work.
+        children: statements,
+        // STATEMENTS REPRESENTED BY THE CARD
+        _displayStatements: displayStatements,
+        // CREDIT-CARD FLAGS
+        _isCreditCardParent: true,
+        _isCreditCardStatement: false,
+        _isRecurringSeries: false,
+        _templateId: parentId,
+        // COUNTS
+        _statementCount: statements.length,
+        _currentMonthStatementCount: currentMonthStatements.length,
+        _isCurrentMonthCreditCard: currentMonthStatements.length > 0,
+        // NO DUE DATE STATE
+        _noDueDate: !latestDisplayStatement.due_date,
+      });
+    });
+    // RETURN NORMAL BILLS + CREDIT-CARD PARENTS
+    return [...normalBills, ...groupedCreditCards];
+  }, [items, search, preferredOccurrences]);
 
   const filteredCategories = useMemo(() => {
     if (!categorySearch.trim()) return categories;
-    return categories.filter((c) => c.name.toLowerCase().includes(categorySearch.toLowerCase()));
+    return categories.filter((c) =>
+      c.name.toLowerCase().includes(categorySearch.toLowerCase()),
+    );
   }, [categories, categorySearch]);
 
   // ── navigation ─────────────────────────────────────────────────────────────
   // ISSUE 1: navigate to template id so detail page shows the full series.
   function openDetail(bill) {
-    navigation.navigate('BillDetail', {
+    navigation.navigate("BillDetail", {
       billId: bill._templateId || bill.id,
-      occurrenceId: bill._isRecurringSeries ? bill.id : undefined
+      occurrenceId: bill._isRecurringSeries ? bill.id : undefined,
     });
   }
 
@@ -546,18 +454,17 @@ export default function BillsScreen({ navigation }) {
     try {
       // FIND CREDIT CARD
       const cards = await getCreditCards(false);
-      const parentBillId =
-      Number(bill.parent_bill_id || bill._templateId || bill.id);
-      const card = cards.find((c) => Number(c.payment_bill_id) === parentBillId);
+      const parentBillId = Number(
+        bill.parent_bill_id || bill._templateId || bill.id,
+      );
+      const card = cards.find(
+        (c) => Number(c.payment_bill_id) === parentBillId,
+      );
       // NORMAL BILL
       if (!card) {
-        await markBillPaid(
-          bill.id,
-          {
-            source_id:
-            bill.source_id
-          }
-        );
+        await markBillPaid(bill.id, {
+          source_id: bill.source_id,
+        });
         await load();
         return;
       }
@@ -566,37 +473,33 @@ export default function BillsScreen({ navigation }) {
       // We only open the payment-source picker.
       // The actual statement bill remains unchanged until the payment is explicitly recorded.
       const sources = await getSources(true);
-      const availableSources = sources.filter((s) => Number(s.id) !== Number(card.source_id));
+      const availableSources = sources.filter(
+        (s) => Number(s.id) !== Number(card.source_id),
+      );
       setPaymentSources(availableSources);
       // Keep the actual bill that initiated  the payment action.
       setSelectedPaymentBill(bill);
       setSelectedCreditCard(card);
-      setPaymentSourceSearch('');
+      setPaymentSourceSearch("");
       setShowPaymentSourcePicker(true);
     } catch (e) {
-      console.error('handleMarkPaid error:', e);
-      Alert.alert('Error', 'Unable to mark bill as paid.');
+      console.error("handleMarkPaid error:", e);
+      Alert.alert("Error", "Unable to mark bill as paid.");
     }
   };
 
   function handleSkip(bill) {
     setConfirmTarget(bill);
-    setConfirmAction('skip');
+    setConfirmAction("skip");
     setConfirmMessage(`Skip "${bill.name}" for this period?`);
     setConfirmVisible(true);
   }
 
   function handleDeleteBill(bill) {
-    console.log(
-      '[BillsScreen] DELETE CLICKED - DISPLAY BILL:',
-      bill
-    );
+    console.log("[BillsScreen] DELETE CLICKED - DISPLAY BILL:", bill);
 
     if (!bill?.id) {
-      Alert.alert(
-        'Delete Bill',
-        'Unable to identify this bill.'
-      );
+      Alert.alert("Delete Bill", "Unable to identify this bill.");
       return;
     }
 
@@ -608,90 +511,80 @@ export default function BillsScreen({ navigation }) {
     // Always delete the ACTUAL displayed occurrence.
     // ---------------------------------------------------------
 
-    const actualBill =
-    bill._displayOccurrence?.id ?
-    bill._displayOccurrence :
-    bill;
+    const actualBill = bill._displayOccurrence?.id
+      ? bill._displayOccurrence
+      : bill;
 
-    console.log(
-      '[BillsScreen] DELETE ACTUAL TARGET:',
-      {
-        displayId: bill.id,
-        occurrenceId: bill._displayOccurrenceId,
-        actualId: actualBill.id,
-        actualParentId: actualBill.parent_bill_id,
-        actualDueDate: actualBill.due_date,
-        actualName: actualBill.name
-      }
-    );
+    console.log("[BillsScreen] DELETE ACTUAL TARGET:", {
+      displayId: bill.id,
+      occurrenceId: bill._displayOccurrenceId,
+      actualId: actualBill.id,
+      actualParentId: actualBill.parent_bill_id,
+      actualDueDate: actualBill.due_date,
+      actualName: actualBill.name,
+    });
 
     if (!actualBill?.id) {
       Alert.alert(
-        'Delete Bill',
-        'Unable to identify the actual bill occurrence.'
+        "Delete Bill",
+        "Unable to identify the actual bill occurrence.",
       );
       return;
     }
 
     setConfirmTarget(actualBill);
-    setConfirmAction('delete');
+    setConfirmAction("delete");
 
-    const isRecurringOccurrence =
-    !!actualBill.parent_bill_id;
+    const isRecurringOccurrence = !!actualBill.parent_bill_id;
 
     setConfirmMessage(
-      isRecurringOccurrence ?
-      `Delete "${actualBill.name}" for this period permanently?\n\n` +
-      `• This bill occurrence will be permanently removed.\n` +
-      `• Other recurring occurrences will remain.\n` +
-      `• Linked transactions will NOT be deleted.\n` +
-      `• Linked transactions will simply be unlinked.\n\n` +
-      `This action cannot be undone.` :
-      `Delete "${actualBill.name}" permanently?\n\n` +
-      `• The bill will be permanently removed.\n` +
-      `• Linked transactions will NOT be deleted.\n` +
-      `• Linked transactions will simply be unlinked.\n\n` +
-      `This action cannot be undone.`
+      isRecurringOccurrence
+        ? `Delete "${actualBill.name}" for this period permanently?\n\n` +
+            `• This bill occurrence will be permanently removed.\n` +
+            `• Other recurring occurrences will remain.\n` +
+            `• Linked transactions will NOT be deleted.\n` +
+            `• Linked transactions will simply be unlinked.\n\n` +
+            `This action cannot be undone.`
+        : `Delete "${actualBill.name}" permanently?\n\n` +
+            `• The bill will be permanently removed.\n` +
+            `• Linked transactions will NOT be deleted.\n` +
+            `• Linked transactions will simply be unlinked.\n\n` +
+            `This action cannot be undone.`,
     );
 
     setConfirmVisible(true);
   }
 
   const now = new Date();
-  const monthLabel = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  const monthLabel = now.toLocaleDateString("en-IN", {
+    month: "long",
+    year: "numeric",
+  });
   const renderBill = ({ item }) => {
     // CREDIT CARD PARENT
     if (item._isCreditCardParent) {
       const parentKey = String(
-        item.parent_bill_id ||
-        item._templateId ||
-        item.id
+        item.parent_bill_id || item._templateId || item.id,
       );
       const isExpanded = expandedCreditCards[parentKey] === true;
       const toggleStatements = () => {
         setExpandedCreditCards((prev) => ({
           ...prev,
-          [parentKey]:
-          !prev[parentKey]
+          [parentKey]: !prev[parentKey],
         }));
       };
       return (
         <View
           style={{
-            marginBottom: 8
-          }}>
-          
+            marginBottom: 8,
+          }}
+        >
           {/* PARENT CREDIT CARD BILL */}
           <SwipeableBillCard
             bill={item}
-            category={
-            categoriesMap[item.category_id]
-            }
+            category={categoriesMap[item.category_id]}
             onPress={() => {
-              if (
-              item.children &&
-              item.children.length > 0)
-              {
+              if (item.children && item.children.length > 0) {
                 openDetail(item.children[0]);
               } else {
                 openDetail(item);
@@ -702,683 +595,681 @@ export default function BillsScreen({ navigation }) {
             }}
             onSkip={null}
             onEdit={null}
-
             // IMPORTANT:
             // Allow deleting the credit-card parent bill.
             onDelete={handleDeleteBill}
-
             showExpandButton={true}
             expanded={isExpanded}
-            onToggleExpand={toggleStatements} />
-          
+            onToggleExpand={toggleStatements}
+          />
 
           {/* STATEMENT CHILDREN */}
-          {isExpanded &&
-          item.children &&
-          item.children.length > 0 &&
-          <View
-            style={{
-              marginLeft: 22,
-              marginTop: -2,
-              marginBottom: 4,
-              borderLeftWidth: 2,
-              borderLeftColor: '#DCEBE2',
-              paddingLeft: 12,
-              paddingTop: 4
-            }}>
-            
-                {item.children.map(
-              (statement, index) =>
-              <View
-                key={String(
-                  statement.id
-                )}
-                style={{
-                  backgroundColor: '#F8FBF9',
-                  borderRadius: 12,
-                  padding: 10,
-                  marginBottom: index === item.children.length - 1 ? 0 : 7,
-                  borderWidth: 1,
-                  borderColor: '#E5F1EB'
-                }}>
-                
-                      {/* STATEMENT HEADER */}
-                      <View
+          {isExpanded && item.children && item.children.length > 0 && (
+            <View
+              style={{
+                marginLeft: 22,
+                marginTop: -2,
+                marginBottom: 4,
+                borderLeftWidth: 2,
+                borderLeftColor: "#DCEBE2",
+                paddingLeft: 12,
+                paddingTop: 4,
+              }}
+            >
+              {item.children.map((statement, index) => (
+                <View
+                  key={String(statement.id)}
                   style={{
-                    flexDirection:
-                    'row',
-                    alignItems:
-                    'center'
-                  }}>
-                  
-                        <View
+                    backgroundColor: "#F8FBF9",
+                    borderRadius: 12,
+                    padding: 10,
+                    marginBottom: index === item.children.length - 1 ? 0 : 7,
+                    borderWidth: 1,
+                    borderColor: "#E5F1EB",
+                  }}
+                >
+                  {/* STATEMENT HEADER */}
+                  <View
                     style={{
-                      width: 30,
-                      height: 30,
-                      borderRadius: 10,
-                      backgroundColor: '#EAF5EF',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                    
-                          <MaterialCommunityIcons
-                      name="credit-card-outline"
-                      size={17}
-                      color="#3F8F6B" />
-                    
-                        </View>
-                        <View
-                    style={{
-                      flex: 1,
-                      marginLeft: 9
-                    }}>
-                    
-                          <Text
+                      flexDirection: "row",
+                      alignItems: "center",
+                    }}
+                  >
+                    <View
                       style={{
-                        fontSize: 11,
-                        fontWeight: '800',
-                        color: '#25352D'
-                      }}>
-                      
-                            Statement
-                          </Text>
-                          <Text
+                        width: 30,
+                        height: 30,
+                        borderRadius: 10,
+                        backgroundColor: "#EAF5EF",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="credit-card-outline"
+                        size={17}
+                        color="#3F8F6B"
+                      />
+                    </View>
+                    <View
                       style={{
-                        fontSize: 10,
-                        color: '#718078',
-                        marginTop: 2
-                      }}>
-                      
-                            {statement.statement_date || statement.due_date || '-'}
-                          </Text>
-                        </View>
-
-                        <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: '800',
-                      color: '#25352D'
-                    }}>
-                    
-                          {formatCurrency(Number(statement.amount || 0))}
-                        </Text>
-                      </View>
-
-                      {/* STATEMENT FOOTER  */}
-                      <View
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginTop: 8,
-                    paddingTop: 7,
-                    borderTopWidth: 1,
-                    borderTopColor: '#E5F1EB'
-                  }}>
-                  
-                        <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center'
-                    }}>
-                    
-                          <MaterialCommunityIcons
-                      name="calendar-clock-outline"
-                      size={14}
-                      color="#8A958F" />
-                    
-
-                          <Text
-                      style={{
-                        fontSize: 9,
-                        color: '#8A958F',
-                        marginLeft: 4
-                      }}>
-                      
-                            Due{' '}{statement.due_date || '-'}
-                          </Text>
-                        </View>
-
-                        <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() =>
-                    openDetail(
-                      statement
-                    )
-                    }
-                    style={{
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      borderRadius: 7,
-                      backgroundColor: '#EAF5EF'
-                    }}>
-                    
-                          <Text
-                      style={{
-                        fontSize: 9,
-                        fontWeight: '800',
-                        color: '#3F8F6B'
-                      }}>
-                      
-                            View
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
+                        flex: 1,
+                        marginLeft: 9,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: "800",
+                          color: "#25352D",
+                        }}
+                      >
+                        Statement
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          color: "#718078",
+                          marginTop: 2,
+                        }}
+                      >
+                        {statement.statement_date || statement.due_date || "-"}
+                      </Text>
                     </View>
 
-            )}
-              </View>
-          }
-        </View>);
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: "800",
+                        color: "#25352D",
+                      }}
+                    >
+                      {formatCurrency(Number(statement.amount || 0))}
+                    </Text>
+                  </View>
 
+                  {/* STATEMENT FOOTER  */}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginTop: 8,
+                      paddingTop: 7,
+                      borderTopWidth: 1,
+                      borderTopColor: "#E5F1EB",
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="calendar-clock-outline"
+                        size={14}
+                        color="#8A958F"
+                      />
+
+                      <Text
+                        style={{
+                          fontSize: 9,
+                          color: "#8A958F",
+                          marginLeft: 4,
+                        }}
+                      >
+                        Due {statement.due_date || "-"}
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => openDetail(statement)}
+                      style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 7,
+                        backgroundColor: "#EAF5EF",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 9,
+                          fontWeight: "800",
+                          color: "#3F8F6B",
+                        }}
+                      >
+                        View
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      );
     }
 
     // NORMAL BILL
     return (
       <SwipeableBillCard
         bill={item}
-        category={
-        categoriesMap[item.category_id]
-        }
+        category={categoriesMap[item.category_id]}
         onPress={openDetail}
         onMarkPaid={handleMarkPaid}
         onSkip={handleSkip}
-        onEdit={
-        isCreditCardBill(item) ?
-        null :
-        openEdit
-        }
+        onEdit={isCreditCardBill(item) ? null : openEdit}
         onDelete={(bill) => {
-          console.log(
-            '[BillsScreen] DELETE PROP REACHED:',
-            {
-              id: bill?.id,
-              occurrenceId: bill?._displayOccurrenceId,
-              occurrence: bill?._displayOccurrence,
-              parentId: bill?.parent_bill_id
-            }
-          );
+          console.log("[BillsScreen] DELETE PROP REACHED:", {
+            id: bill?.id,
+            occurrenceId: bill?._displayOccurrenceId,
+            occurrence: bill?._displayOccurrence,
+            parentId: bill?.parent_bill_id,
+          });
 
           handleDeleteBill(bill);
-        }} />);
-
-
+        }}
+      />
+    );
   };
-  const listHeader =
-  <View>
+  const listHeader = (
+    <View>
       {/* SUMMARY */}
       <View style={{ marginBottom: 12 }}>
         <BillSummaryBar summary={summary} />
       </View>
       {/* STATUS FILTERS */}
       <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{
-        paddingRight: 8,
-        marginBottom: 12
-      }}>
-      
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingRight: 8,
+          marginBottom: 12,
+        }}
+      >
         {STATUS_FILTERS.map((filter) => {
-        const active = statusFilter === filter.key;
-        const statusColor =
-        filter.key === BILL_STATUS.OVERDUE ?
-        '#E46A6A' :
-        filter.key === BILL_STATUS.PAID ?
-        '#3F8F6B' :
-        filter.key === BILL_STATUS.PENDING ?
-        '#FFB020' :
-        '#2F7355';
-        return (
-          <TouchableOpacity
-            key={filter.key}
-            activeOpacity={0.8}
-            onPress={() =>
-            setStatusFilter(filter.key)
-            }
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: 13,
-              paddingVertical: 8,
-              borderRadius: 20,
-              marginRight: 7,
-              backgroundColor: active ? '#EAF5EF' : '#FFFFFF',
-              borderWidth: 1,
-              borderColor: active ? '#CFE6D9' : '#E6EEE9'
-            }}>
-            
-              {filter.key !== 'all' &&
-            <View
+          const active = statusFilter === filter.key;
+          const statusColor =
+            filter.key === BILL_STATUS.OVERDUE
+              ? "#E46A6A"
+              : filter.key === BILL_STATUS.PAID
+                ? "#3F8F6B"
+                : filter.key === BILL_STATUS.PENDING
+                  ? "#FFB020"
+                  : "#2F7355";
+          return (
+            <TouchableOpacity
+              key={filter.key}
+              activeOpacity={0.8}
+              onPress={() => setStatusFilter(filter.key)}
               style={{
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: statusColor,
-                marginRight: 6
-              }} />
-
-            }
+                flexDirection: "row",
+                alignItems: "center",
+                paddingHorizontal: 13,
+                paddingVertical: 8,
+                borderRadius: 20,
+                marginRight: 7,
+                backgroundColor: active ? "#EAF5EF" : "#FFFFFF",
+                borderWidth: 1,
+                borderColor: active ? "#CFE6D9" : "#E6EEE9",
+              }}
+            >
+              {filter.key !== "all" && (
+                <View
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: statusColor,
+                    marginRight: 6,
+                  }}
+                />
+              )}
               <Text
-              style={{
-                fontSize: 11,
-                fontWeight: active ? '800' : '600',
-                color: active ? '#2F7355' : '#718078'
-              }}>
-              
+                style={{
+                  fontSize: 11,
+                  fontWeight: active ? "800" : "600",
+                  color: active ? "#2F7355" : "#718078",
+                }}
+              >
                 {filter.label}
               </Text>
-            </TouchableOpacity>);
-
-      })}
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       {/* SEARCH + FILTER */}
       <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 10
-      }}>
-      
-        <View
         style={{
-          flex: 1,
-          backgroundColor: '#FFFFFF',
-          borderRadius: 14,
-          borderWidth: 1,
-          borderColor: '#E5F1EB',
-          height: 46,
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 12
-        }}>
-        
-          <MaterialCommunityIcons
-          name="magnify"
-          size={20}
-          color="#8A958F" />
-        
-
-          <TextInput
-          placeholder="Search bills"
-          placeholderTextColor="#A0AAA4"
-          value={search}
-          onChangeText={setSearch}
+          flexDirection: "row",
+          alignItems: "center",
+          marginBottom: 10,
+        }}
+      >
+        <View
           style={{
             flex: 1,
-            marginLeft: 8,
-            fontSize: 13,
-            color: '#25352D'
-          }} />
-        
+            backgroundColor: "#FFFFFF",
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: "#E5F1EB",
+            height: 46,
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 12,
+          }}
+        >
+          <MaterialCommunityIcons name="magnify" size={20} color="#8A958F" />
 
-          {search.length > 0 &&
-        <TouchableOpacity
-          onPress={() => setSearch('')}>
-          
+          <TextInput
+            placeholder="Search bills"
+            placeholderTextColor="#A0AAA4"
+            value={search}
+            onChangeText={setSearch}
+            style={{
+              flex: 1,
+              marginLeft: 8,
+              fontSize: 13,
+              color: "#25352D",
+            }}
+          />
+
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch("")}>
               <MaterialCommunityIcons
-            name="close-circle"
-            size={18}
-            color="#A0AAA4" />
-          
+                name="close-circle"
+                size={18}
+                color="#A0AAA4"
+              />
             </TouchableOpacity>
-        }
+          )}
         </View>
 
         <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => setShowCategoryDD(true)}
-        style={{
-          width: 46,
-          height: 46,
-          marginLeft: 8,
-          borderRadius: 14,
-          backgroundColor: categoryFilter ? '#EAF5EF' : '#FFFFFF',
-          borderWidth: 1,
-          borderColor: categoryFilter ? '#CFE6D9' : '#E5F1EB',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-        
+          activeOpacity={0.8}
+          onPress={() => setShowCategoryDD(true)}
+          style={{
+            width: 46,
+            height: 46,
+            marginLeft: 8,
+            borderRadius: 14,
+            backgroundColor: categoryFilter ? "#EAF5EF" : "#FFFFFF",
+            borderWidth: 1,
+            borderColor: categoryFilter ? "#CFE6D9" : "#E5F1EB",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
           <MaterialCommunityIcons
-          name="tune-variant"
-          size={20}
-          color={
-          categoryFilter ?
-          '#3F8F6B' :
-          '#718078'
-          } />
-        
+            name="tune-variant"
+            size={20}
+            color={categoryFilter ? "#3F8F6B" : "#718078"}
+          />
         </TouchableOpacity>
       </View>
 
       {/* SORT + MONTH */}
       <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 10
-      }}>
-      
-        <View
         style={{
-          flexDirection: 'row',
-          alignItems: 'center'
-        }}>
-        
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 10,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+          }}
+        >
           <MaterialCommunityIcons
-          name="calendar-month-outline"
-          size={15}
-          color="#718078" />
-        
+            name="calendar-month-outline"
+            size={15}
+            color="#718078"
+          />
 
           <Text
-          style={{
-            marginLeft: 5,
-            color: '#718078',
-            fontSize: 11,
-            fontWeight: '700'
-          }}>
-          
+            style={{
+              marginLeft: 5,
+              color: "#718078",
+              fontSize: 11,
+              fontWeight: "700",
+            }}
+          >
             {monthLabel}
           </Text>
         </View>
 
         <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center'
-        }}>
-        
-          <MaterialCommunityIcons
-          name="sort"
-          size={15}
-          color="#718078" />
-        
-          {[
-        ['due_date', 'Due'],
-        ['amount', 'Amount']].
-        map(([key, label]) =>
-        <TouchableOpacity
-          key={key}
-          onPress={() => setSortBy(key)}
           style={{
-            marginLeft: 10,
-            paddingHorizontal: 8,
-            paddingVertical: 5,
-            borderRadius: 8,
-            backgroundColor:
-            sortBy === key ?
-            '#EAF5EF' :
-            'transparent'
-          }}>
-          
+            flexDirection: "row",
+            alignItems: "center",
+          }}
+        >
+          <MaterialCommunityIcons name="sort" size={15} color="#718078" />
+
+          {[
+            ["due_date", "Due"],
+            ["amount", "Amount"],
+          ].map(([key, label]) => (
+            <TouchableOpacity
+              key={key}
+              onPress={() => setSortBy(key)}
+              style={{
+                marginLeft: 10,
+                paddingHorizontal: 8,
+                paddingVertical: 5,
+                borderRadius: 8,
+                backgroundColor: sortBy === key ? "#EAF5EF" : "transparent",
+              }}
+            >
               <Text
-            style={{
-              fontSize: 10,
-              fontWeight: '800',
-              color:
-              sortBy === key ?
-              '#3F8F6B' :
-              '#718078'
-            }}>
-            
+                style={{
+                  fontSize: 10,
+                  fontWeight: "800",
+                  color: sortBy === key ? "#3F8F6B" : "#718078",
+                }}
+              >
                 {label}
               </Text>
             </TouchableOpacity>
-        )}
+          ))}
         </View>
       </View>
 
       {/* LIST / CALENDAR */}
       <View
-      style={{
-        flexDirection: 'row',
-        backgroundColor: '#EAF5EF',
-        borderRadius: 12,
-        padding: 3,
-        marginBottom: 12
-      }}>
-      
+        style={{
+          flexDirection: "row",
+          backgroundColor: "#EAF5EF",
+          borderRadius: 12,
+          padding: 3,
+          marginBottom: 12,
+        }}
+      >
         {[
-      ['list', 'format-list-bulleted', 'List'],
-      ['calendar', 'calendar-month-outline', 'Calendar']].
-      map(([mode, icon, label]) => {
-        const active = viewMode === mode;
+          ["list", "format-list-bulleted", "List"],
+          ["calendar", "calendar-month-outline", "Calendar"],
+        ].map(([mode, icon, label]) => {
+          const active = viewMode === mode;
 
-        return (
-          <TouchableOpacity
-            key={mode}
-            onPress={() => setViewMode(mode)}
-            style={{
-              flex: 1,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingVertical: 8,
-              borderRadius: 9,
-              backgroundColor: active ?
-              '#FFFFFF' :
-              'transparent'
-            }}>
-            
-              <MaterialCommunityIcons
-              name={icon}
-              size={15}
-              color={
-              active ?
-              '#3F8F6B' :
-              '#718078'
-              } />
-            
-              <Text
+          return (
+            <TouchableOpacity
+              key={mode}
+              onPress={() => setViewMode(mode)}
               style={{
-                marginLeft: 5,
-                fontSize: 11,
-                fontWeight: '800',
-                color: active ?
-                '#3F8F6B' :
-                '#718078'
-              }}>
-              
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                paddingVertical: 8,
+                borderRadius: 9,
+                backgroundColor: active ? "#FFFFFF" : "transparent",
+              }}
+            >
+              <MaterialCommunityIcons
+                name={icon}
+                size={15}
+                color={active ? "#3F8F6B" : "#718078"}
+              />
+
+              <Text
+                style={{
+                  marginLeft: 5,
+                  fontSize: 11,
+                  fontWeight: "800",
+                  color: active ? "#3F8F6B" : "#718078",
+                }}
+              >
                 {label}
               </Text>
-            </TouchableOpacity>);
-
-      })}
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
-      {summary?.overdueCount > 0 &&
-    <TouchableOpacity
-      activeOpacity={0.85}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFF5F5',
-        borderRadius: 13,
-        borderWidth: 1,
-        borderColor: '#F5DCDC',
-        paddingHorizontal: 11,
-        paddingVertical: 9,
-        marginBottom: 10
-      }}>
-      
+      {summary?.overdueCount > 0 && (
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            backgroundColor: "#FFF5F5",
+            borderRadius: 13,
+            borderWidth: 1,
+            borderColor: "#F5DCDC",
+            paddingHorizontal: 11,
+            paddingVertical: 9,
+            marginBottom: 10,
+          }}
+        >
           <View
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 10,
-          backgroundColor: '#FFE5E5',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-        
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 10,
+              backgroundColor: "#FFE5E5",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
             <MaterialCommunityIcons
-          name="alert-outline"
-          size={17}
-          color="#E46A6A" />
-        
+              name="alert-outline"
+              size={17}
+              color="#E46A6A"
+            />
           </View>
           <View
-        style={{
-          flex: 1,
-          marginLeft: 9
-        }}>
-        
+            style={{
+              flex: 1,
+              marginLeft: 9,
+            }}
+          >
             <Text
-          style={{
-            fontSize: 11,
-            fontWeight: '800',
-            color: '#A85E5E'
-          }}>
-          
+              style={{
+                fontSize: 11,
+                fontWeight: "800",
+                color: "#A85E5E",
+              }}
+            >
               Payment attention needed
             </Text>
 
             <Text
-          style={{
-            fontSize: 10,
-            fontWeight: '600',
-            color: '#9A7777',
-            marginTop: 2
-          }}>
-          
-              {summary.overdueCount} overdue ·{' '}
-              {formatCurrency(
-            summary.overdueAmount
-          )}
+              style={{
+                fontSize: 10,
+                fontWeight: "600",
+                color: "#9A7777",
+                marginTop: 2,
+              }}
+            >
+              {summary.overdueCount} overdue ·{" "}
+              {formatCurrency(summary.overdueAmount)}
             </Text>
           </View>
           <MaterialCommunityIcons
-        name="chevron-right"
-        size={18}
-        color="#D98A8A" />
-      
+            name="chevron-right"
+            size={18}
+            color="#D98A8A"
+          />
         </TouchableOpacity>
-    }
+      )}
 
-      {viewMode === 'calendar' &&
-    <BillCalendarView
-      bills={filteredItems}
-      month={calMonth}
-      year={calYear}
-      onSelectBill={openDetail}
-      onMonthChange={(y, m) => {
-        setCalYear(y);
-        setCalMonth(m);
-      }} />
-
-    }
-    </View>;
-
+      {viewMode === "calendar" && (
+        <BillCalendarView
+          bills={filteredItems}
+          month={calMonth}
+          year={calYear}
+          onSelectBill={openDetail}
+          onMonthChange={(y, m) => {
+            setCalYear(y);
+            setCalMonth(m);
+          }}
+        />
+      )}
+    </View>
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <FlatList
-        data={viewMode === 'list' ? filteredItems : []}
+        data={viewMode === "list" ? filteredItems : []}
         keyExtractor={(i) => String(i.id)}
         renderItem={renderBill}
         ListHeaderComponent={listHeader}
         contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 100 }}
         ListEmptyComponent={
-        viewMode === 'list' ?
-        <View style={{ alignItems: 'center', paddingTop: 32 }}>
-              <MaterialCommunityIcons name="clipboard-check-outline" size={48} color="#ccc" />
-              <Text style={{ color: Colors.muted, marginTop: 10 }}>No bills this month</Text>
-            </View> :
-        null
-        } />
-      
+          viewMode === "list" ? (
+            <View style={{ alignItems: "center", paddingTop: 32 }}>
+              <MaterialCommunityIcons
+                name="clipboard-check-outline"
+                size={48}
+                color="#ccc"
+              />
+              <Text style={{ color: Colors.muted, marginTop: 10 }}>
+                No bills this month
+              </Text>
+            </View>
+          ) : null
+        }
+      />
 
       {/* Status modal */}
       <Modal visible={showStatusDD} transparent>
-        <TouchableOpacity style={styles.overlay} onPress={() => setShowStatusDD(false)}>
+        <TouchableOpacity
+          style={styles.overlay}
+          onPress={() => setShowStatusDD(false)}
+        >
           <View style={styles.modal}>
-            {STATUS_FILTERS.map((f) =>
-            <TouchableOpacity key={f.key} onPress={() => {setStatusFilter(f.key);setShowStatusDD(false);}}>
-                <Text style={[styles.item, statusFilter === f.key && styles.selected]}>{f.label}</Text>
+            {STATUS_FILTERS.map((f) => (
+              <TouchableOpacity
+                key={f.key}
+                onPress={() => {
+                  setStatusFilter(f.key);
+                  setShowStatusDD(false);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.item,
+                    statusFilter === f.key && styles.selected,
+                  ]}
+                >
+                  {f.label}
+                </Text>
               </TouchableOpacity>
-            )}
+            ))}
           </View>
         </TouchableOpacity>
       </Modal>
 
       {/* Category modal */}
       <Modal visible={showCategoryDD} transparent>
-        <TouchableOpacity style={styles.overlay} onPress={() => setShowCategoryDD(false)}>
+        <TouchableOpacity
+          style={styles.overlay}
+          onPress={() => setShowCategoryDD(false)}
+        >
           <View style={styles.modalLarge}>
             <TextInput
               placeholder="Search category..."
               value={categorySearch}
               onChangeText={setCategorySearch}
-              style={styles.searchInput} />
-            
+              style={styles.searchInput}
+            />
+
             <FlatList
-              data={[{ id: 'all', name: 'All categories' }, ...filteredCategories]}
+              data={[
+                { id: "all", name: "All categories" },
+                ...filteredCategories,
+              ]}
               keyExtractor={(i) => String(i.id)}
               renderItem={({ item }) => {
-                const sel = item.id === 'all' ? !categoryFilter : categoryFilter === item.id;
+                const sel =
+                  item.id === "all"
+                    ? !categoryFilter
+                    : categoryFilter === item.id;
                 return (
                   <TouchableOpacity
                     style={styles.row}
                     onPress={() => {
-                      setCategoryFilter(item.id === 'all' ? null : item.id);
+                      setCategoryFilter(item.id === "all" ? null : item.id);
                       setShowCategoryDD(false);
-                      setCategorySearch('');
-                    }}>
-                    
-                    <Text style={[styles.item, sel && styles.selected]}>{item.name}</Text>
-                    {sel && <MaterialCommunityIcons name="check" size={18} color={Colors.primary} />}
-                  </TouchableOpacity>);
-
-              }} />
-            
+                      setCategorySearch("");
+                    }}
+                  >
+                    <Text style={[styles.item, sel && styles.selected]}>
+                      {item.name}
+                    </Text>
+                    {sel && (
+                      <MaterialCommunityIcons
+                        name="check"
+                        size={18}
+                        color={Colors.primary}
+                      />
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
+            />
           </View>
         </TouchableOpacity>
       </Modal>
 
-      <FAB onPress={() => {setEditingBill(null);setShowForm(true);}} />
+      <FAB
+        onPress={() => {
+          setEditingBill(null);
+          setShowForm(true);
+        }}
+      />
 
       {/* Add / edit form */}
       <Modal visible={showForm}>
         <BillForm
           bill={editingBill}
-          onSaved={() => {setShowForm(false);setEditingBill(null);load();}}
-          onCancel={() => {setShowForm(false);setEditingBill(null);}} />
-        
+          onSaved={() => {
+            setShowForm(false);
+            setEditingBill(null);
+            load();
+          }}
+          onCancel={() => {
+            setShowForm(false);
+            setEditingBill(null);
+          }}
+        />
       </Modal>
 
       <Modal
         visible={showPaymentSourcePicker}
         transparent
-        animationType="slide">
-        
+        animationType="slide"
+      >
         <View
           style={{
             flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.4)',
-            justifyContent: 'flex-end'
-          }}>
-          
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "flex-end",
+          }}
+        >
           <View
             style={{
-              backgroundColor: '#fff',
-              maxHeight: '55%',
+              backgroundColor: "#fff",
+              maxHeight: "55%",
               borderTopLeftRadius: 16,
               borderTopRightRadius: 16,
-              padding: 16
-            }}>
-            
-
+              padding: 16,
+            }}
+          >
             <Text
               style={{
-                fontWeight: '700',
+                fontWeight: "700",
                 fontSize: 16,
-                marginBottom: 12
-              }}>
-              
+                marginBottom: 12,
+              }}
+            >
               Select Payment Source
             </Text>
 
@@ -1387,103 +1278,83 @@ export default function BillsScreen({ navigation }) {
               value={paymentSourceSearch}
               onChangeText={setPaymentSourceSearch}
               mode="outlined"
-              style={{ marginBottom: 10 }} />
-            
+              style={{ marginBottom: 10 }}
+            />
 
             <ScrollView>
-
-              {paymentSources.
-              filter((s) =>
-              s.name.
-              toLowerCase().
-              includes(paymentSourceSearch.toLowerCase())
-              ).
-              map((source) =>
-
-              <TouchableOpacity
-                key={source.id}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: 12
-                }}
-                onPress={async () => {
-                  try {
-                    const paymentId = await payCreditCardBill({
-                      bill: selectedPaymentBill,
-                      card: selectedCreditCard,
-                      paymentSourceId: source.id
-                    });
-                    await markBillPaid(
-                      selectedPaymentBill.id,
-                      {
-                        createTransaction: false,
-                        existingTransactionId: paymentId
+              {paymentSources
+                .filter((s) =>
+                  s.name
+                    .toLowerCase()
+                    .includes(paymentSourceSearch.toLowerCase()),
+                )
+                .map((source) => (
+                  <TouchableOpacity
+                    key={source.id}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      paddingVertical: 12,
+                    }}
+                    onPress={async () => {
+                      try {
+                        const paymentId = await payCreditCardBill({
+                          bill: selectedPaymentBill,
+                          card: selectedCreditCard,
+                          paymentSourceId: source.id,
+                        });
+                        await markBillPaid(selectedPaymentBill.id, {
+                          createTransaction: false,
+                          existingTransactionId: paymentId,
+                        });
+                        setShowPaymentSourcePicker(false);
+                        setSelectedPaymentBill(null);
+                        setSelectedCreditCard(null);
+                        await load();
+                      } catch (e) {
+                        console.error(e);
+                        Alert.alert("Error", "Unable to complete payment.");
                       }
-                    );
-                    setShowPaymentSourcePicker(false);
-                    setSelectedPaymentBill(null);
-                    setSelectedCreditCard(null);
-                    await load();
-                  } catch (e) {
-                    console.error(e);
-                    Alert.alert('Error', 'Unable to complete payment.');
-                  }
-                }}>
-                
-
+                    }}
+                  >
                     <MaterialCommunityIcons
-                  name={source.icon || 'wallet'}
-                  size={22}
-                  color={Colors.primary} />
-                
+                      name={source.icon || "wallet"}
+                      size={22}
+                      color={Colors.primary}
+                    />
 
                     <Text
-                  style={{
-                    marginLeft: 10,
-                    flex: 1
-                  }}>
-                  
+                      style={{
+                        marginLeft: 10,
+                        flex: 1,
+                      }}
+                    >
                       {source.name}
                     </Text>
-
                   </TouchableOpacity>
-
-              )}
-
+                ))}
             </ScrollView>
 
             <PaperButton
               onPress={() => {
-
                 setShowPaymentSourcePicker(false);
 
                 setSelectedPaymentBill(null);
 
                 setSelectedCreditCard(null);
-
-              }}>
-              
+              }}
+            >
               Cancel
             </PaperButton>
-
           </View>
         </View>
       </Modal>
 
       <ConfirmDialog
         visible={confirmVisible}
-        title={
-        confirmAction === 'delete' ?
-        'Delete Bill?' :
-        'Skip Bill?'
-        }
+        title={confirmAction === "delete" ? "Delete Bill?" : "Skip Bill?"}
         message={confirmMessage}
-        confirmLabel={
-        confirmAction === 'delete' ?
-        'Delete Bill' :
-        'Skip'
-        }
+        confirmLabel={confirmAction === "delete" ? "Delete Bill" : "Skip"}
         cancelLabel="Cancel"
         onCancel={() => {
           setConfirmVisible(false);
@@ -1497,7 +1368,7 @@ export default function BillsScreen({ navigation }) {
           }
 
           try {
-            if (confirmAction === 'delete') {
+            if (confirmAction === "delete") {
               await deleteBill(confirmTarget.id);
             } else {
               await skipBill(confirmTarget.id);
@@ -1507,42 +1378,64 @@ export default function BillsScreen({ navigation }) {
             setConfirmTarget(null);
 
             await load();
-
           } catch (error) {
-            console.error(
-              '[BillsScreen] confirm action failed:',
-              error
-            );
+            console.error("[BillsScreen] confirm action failed:", error);
 
             setConfirmVisible(false);
             setConfirmTarget(null);
 
             Alert.alert(
-              'Error',
-              confirmAction === 'delete' ?
-              'Unable to delete this bill.' :
-              'Unable to skip this bill.'
+              "Error",
+              confirmAction === "delete"
+                ? "Unable to delete this bill."
+                : "Unable to skip this bill.",
             );
           }
-        }} />
-      
-    </View>);
-
+        }}
+      />
+    </View>
+  );
 }
 
 const styles = {
   dropdownTrigger: {
-    backgroundColor: Colors.card, padding: 14, borderRadius: 14, marginBottom: 10,
-    borderWidth: 1, borderColor: '#eee', flexDirection: 'row',
-    justifyContent: 'space-between', alignItems: 'center'
+    backgroundColor: Colors.card,
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#eee",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   label: { fontSize: 11, color: Colors.muted },
-  value: { fontSize: 14, fontWeight: '700', color: Colors.text },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', padding: 20 },
-  modal: { backgroundColor: '#fff', borderRadius: 16, padding: 10 },
-  modalLarge: { backgroundColor: '#fff', borderRadius: 16, padding: 12, maxHeight: '70%' },
+  value: { fontSize: 14, fontWeight: "700", color: Colors.text },
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  modal: { backgroundColor: "#fff", borderRadius: 16, padding: 10 },
+  modalLarge: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 12,
+    maxHeight: "70%",
+  },
   item: { padding: 12, fontSize: 14 },
-  selected: { color: Colors.primary, fontWeight: '700' },
-  searchInput: { borderBottomWidth: 1, borderColor: '#eee', marginBottom: 10, paddingVertical: 6, paddingHorizontal: 4 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }
+  selected: { color: Colors.primary, fontWeight: "700" },
+  searchInput: {
+    borderBottomWidth: 1,
+    borderColor: "#eee",
+    marginBottom: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+  },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
 };

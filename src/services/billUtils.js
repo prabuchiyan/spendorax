@@ -5,7 +5,7 @@ export const BILL_STATUS = {
   SKIPPED: "skipped",
 };
 
-export const RECURRENCE_TYPES = ["daily", "weekly", "monthly", "yearly"];
+export const RECURRENCE_TYPES = ["MONTHLY", "BI_MONTHLY", "QUARTERLY", "HALF_YEARLY", "YEARLY"];
 
 
 
@@ -20,66 +20,100 @@ export function daysBetween(fromStr, toStr) {
   return Math.round((b - a) / (1000 * 60 * 60 * 24));
 }
 
-export function addRecurrence(dateStr, type, interval = 1) {
+export function addRecurrence(dateStr, type) {
   if (!dateStr || !type) return null;
 
   const [year, month, day] = dateStr.slice(0, 10).split("-").map(Number);
-  const n = Math.max(1, Number(interval) || 1);
-
+  
   let y = year;
   let m = month;
   let d = day;
+  let interval = 1;
 
   switch (type) {
-    case "daily": {
-      const dt = new Date(year, month - 1, day + n);
-      return [
-        dt.getFullYear(),
-        String(dt.getMonth() + 1).padStart(2, "0"),
-        String(dt.getDate()).padStart(2, "0"),
-      ].join("-");
-    }
-
-    case "weekly": {
-      const dt = new Date(year, month - 1, day + n * 7);
-      return [
-        dt.getFullYear(),
-        String(dt.getMonth() + 1).padStart(2, "0"),
-        String(dt.getDate()).padStart(2, "0"),
-      ].join("-");
-    }
-
-    case "monthly": {
-      let totalMonths = month - 1 + n;
-      y += Math.floor(totalMonths / 12);
-      m = (totalMonths % 12) + 1;
-
-      // Last day of target month
-      const lastDay = new Date(y, m, 0).getDate();
-      d = Math.min(day, lastDay);
-
-      return [y, String(m).padStart(2, "0"), String(d).padStart(2, "0")].join(
-        "-",
-      );
-    }
-
-    case "yearly": {
-      y += n;
-
-      // Handle Feb 29 on non-leap years
-      const lastDay = new Date(y, month, 0).getDate();
-      d = Math.min(day, lastDay);
-
-      return [
-        y,
-        String(month).padStart(2, "0"),
-        String(d).padStart(2, "0"),
-      ].join("-");
-    }
-
-    default:
-      return null;
+    case "MONTHLY": interval = 1; break;
+    case "BI_MONTHLY": interval = 2; break;
+    case "QUARTERLY": interval = 3; break;
+    case "HALF_YEARLY": interval = 6; break;
+    case "YEARLY": interval = 12; break;
+    default: return null; // Unrecognized or legacy types (daily/weekly) are skipped
   }
+
+  let totalMonths = month - 1 + interval;
+  y += Math.floor(totalMonths / 12);
+  m = (totalMonths % 12) + 1;
+
+  // Last day of target month
+  const lastDay = new Date(y, m, 0).getDate();
+  d = Math.min(day, lastDay);
+
+  return [y, String(m).padStart(2, "0"), String(d).padStart(2, "0")].join("-");
+}
+
+export function getOccurrenceDateConstraints({ recurrenceType, occurrenceDate, startDate, endDate }) {
+  if (!recurrenceType || !occurrenceDate || !startDate) {
+    return { minDate: null, maxDate: null };
+  }
+
+  const oDate = new Date(occurrenceDate.slice(0, 10));
+  const year = oDate.getFullYear();
+  const month = oDate.getMonth(); // 0-indexed
+
+  let min = new Date(year, month, 1);
+  let max = new Date(year, month + 1, 0);
+
+  let interval = 1;
+  const type = String(recurrenceType).toUpperCase();
+  switch (type) {
+    case "MONTHLY": interval = 1; break;
+    case "BI_MONTHLY": interval = 2; break;
+    case "QUARTERLY": interval = 3; break;
+    case "HALF_YEARLY": interval = 6; break;
+    case "YEARLY": interval = 12; break;
+    default: return { minDate: null, maxDate: null };
+  }
+
+  // To ensure the occurrence stays within its logical period and doesn't overlap previous/next occurrences
+  // we bound it to the calendar bounds of that recurrence step.
+  if (interval === 12) {
+    // Yearly: stays within the same year
+    min = new Date(year, 0, 1);
+    max = new Date(year, 11, 31);
+  } else if (interval > 1) {
+    // For Multi-month periods (Bi-Monthly, Quarterly, Half-Yearly)
+    // We anchor based on the start date to find the period boundaries
+    const sDate = new Date(startDate.slice(0, 10));
+    const sYear = sDate.getFullYear();
+    const sMonth = sDate.getMonth();
+    
+    // Total months since start
+    const monthsSinceStart = (year - sYear) * 12 + (month - sMonth);
+    // Find the period index
+    const periodIndex = Math.floor(monthsSinceStart / interval);
+    
+    // Calculate the exact start and end month of this period
+    const periodStartMonthTotal = sYear * 12 + sMonth + (periodIndex * interval);
+    const periodEndMonthTotal = periodStartMonthTotal + interval - 1;
+    
+    const pStartYear = Math.floor(periodStartMonthTotal / 12);
+    const pStartMonth = periodStartMonthTotal % 12;
+    const pEndYear = Math.floor(periodEndMonthTotal / 12);
+    const pEndMonth = periodEndMonthTotal % 12;
+    
+    min = new Date(pStartYear, pStartMonth, 1);
+    max = new Date(pEndYear, pEndMonth + 1, 0);
+  }
+
+  // Respect global bill start and end dates
+  const billStart = new Date(startDate.slice(0, 10));
+  if (min < billStart) min = billStart;
+  
+  if (endDate) {
+    const billEnd = new Date(endDate.slice(0, 10));
+    if (max > billEnd) max = billEnd;
+  }
+
+  return { minDate: min, maxDate: max };
 }
 
 export function computeBillStatus(bill, today = todayStr()) {
@@ -198,8 +232,15 @@ export function monthKey(year, month) {
  * Respects recurrence_end_date. Goes from bill.due_date up to upToDate (inclusive).
  * FIX: end-date check happens BEFORE push so no extra date leaks past recurrence_end_date.
  */
-export function generateOccurrenceDates(bill, upToDate = todayStr()) {
+export function generateOccurrenceDates(bill, upToDate) {
   if (!bill.is_recurring || !bill.recurrence_type || !bill.due_date) return [];
+
+  // Default to current month end if not specified
+  if (!upToDate) {
+    const now = new Date();
+    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    upToDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(lastDayOfMonth).padStart(2, "0")}`;
+  }
 
   const dates = [];
   let cursor = bill.due_date.slice(0, 10);
@@ -216,8 +257,7 @@ export function generateOccurrenceDates(bill, upToDate = todayStr()) {
     dates.push(cursor);
     const next = addRecurrence(
       cursor,
-      bill.recurrence_type,
-      bill.recurrence_interval || 1,
+      bill.recurrence_type
     );
     if (!next || next === cursor) break;
     cursor = next;
