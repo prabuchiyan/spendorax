@@ -164,6 +164,7 @@ export default function BillForm({ bill, onSaved, onCancel }) {
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showSourcePicker, setShowSourcePicker] = useState(false);
   const [showDuePicker, setShowDuePicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
   const [errors, setErrors] = useState({});
   const [categorySearch, setCategorySearch] = useState("");
   const [sourceSearch, setSourceSearch] = useState("");
