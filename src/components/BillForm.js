@@ -50,20 +50,14 @@ function formatDisplayDate(dateString) {
 
 function getRecurrenceLabel(type) {
   if (!type) return "Monthly";
-  const value = String(type).toLowerCase();
+  const value = String(type).toUpperCase();
   switch (value) {
-    case "daily":
-      return "Daily";
-    case "weekly":
-      return "Weekly";
-    case "monthly":
-      return "Monthly";
-    case "yearly":
-      return "Yearly";
-    case "quarterly":
-      return "Quarterly";
-    default:
-      return type;
+    case "MONTHLY": return "Monthly";
+    case "BI_MONTHLY": return "Bi-Monthly";
+    case "QUARTERLY": return "Quarterly";
+    case "HALF_YEARLY": return "Half-Yearly";
+    case "YEARLY": return "Yearly";
+    default: return type;
   }
 }
 
@@ -145,10 +139,7 @@ export default function BillForm({ bill, onSaved, onCancel }) {
   const [sourceId, setSourceId] = useState(bill?.source_id || null);
   const [isRecurring, setIsRecurring] = useState(Boolean(bill?.is_recurring));
   const [recurrenceType, setRecurrenceType] = useState(
-    bill?.recurrence_type || "monthly"
-  );
-  const [recurrenceInterval, setRecurrenceInterval] = useState(
-    String(bill?.recurrence_interval || 1)
+    bill?.recurrence_type || "MONTHLY"
   );
   const [recurrenceEndDate, setRecurrenceEndDate] = useState(
     bill?.recurrence_end_date?.slice(0, 10) || ""
@@ -244,9 +235,7 @@ export default function BillForm({ bill, onSaved, onCancel }) {
 
         recurrence_type: isRecurring ? recurrenceType : null,
 
-        recurrence_interval: isRecurring ?
-        parseInt(recurrenceInterval, 10) || 1 :
-        1,
+        recurrence_interval: 1,
 
         recurrence_end_date:
         isRecurring && recurrenceEndDate ? recurrenceEndDate : null,
@@ -281,14 +270,7 @@ export default function BillForm({ bill, onSaved, onCancel }) {
   recurrenceEndDate.split("-").map(Number) :
   [];
 
-  const recurrenceIntervalNumber = parseInt(recurrenceInterval, 10) || 1;
-
-  const recurrenceText =
-  recurrenceIntervalNumber === 1 ?
-  `Every ${getRecurrenceLabel(recurrenceType).toLowerCase()}` :
-  `Every ${recurrenceIntervalNumber} ${getRecurrenceLabel(
-    recurrenceType
-  ).toLowerCase()}${recurrenceIntervalNumber > 1 ? "s" : ""}`;
+  const recurrenceText = isRecurring ? `Every ${getRecurrenceLabel(recurrenceType).toLowerCase().replace('ly', '')} cycle` : "One-time bill";
 
   return (
     <View style={styles.container}>
@@ -555,24 +537,6 @@ export default function BillForm({ bill, onSaved, onCancel }) {
               </ScrollView>
 
               <View style={styles.recurringFields}>
-                {/* INTERVAL */}
-
-                <View style={styles.recurringField}>
-                  <Text style={styles.subLabel}>Every</Text>
-
-                  <PaperTextInput
-                  value={recurrenceInterval}
-                  onChangeText={setRecurrenceInterval}
-                  keyboardType="numeric"
-                  mode="outlined"
-                  dense
-                  style={styles.input}
-                  left={
-                  <PaperTextInput.Icon icon="numeric" color="#7C3AED" />
-                  } />
-                
-                </View>
-
                 {/* END DATE */}
 
                 <View style={styles.recurringField}>
@@ -1076,6 +1040,7 @@ export default function BillForm({ bill, onSaved, onCancel }) {
       <MuiDateTimePicker
         visible={showDuePicker}
         initialDate={dueDate ? new Date(`${dueDate}T00:00:00`) : new Date()}
+        hideTime={true}
         onClose={() => setShowDuePicker(false)}
         onSelect={(selectedDate) => {
           if (selectedDate) {
@@ -1099,10 +1064,18 @@ export default function BillForm({ bill, onSaved, onCancel }) {
         new Date(`${recurrenceEndDate}T00:00:00`) :
         new Date()
         }
+        hideTime={true}
         onClose={() => setShowEndPicker(false)}
+        allowClear={true}
+        onClear={() => {
+          setRecurrenceEndDate(null);
+          setShowEndPicker(false);
+        }}
         onSelect={(selectedDate) => {
           if (selectedDate) {
             setRecurrenceEndDate(selectedDate.toISOString().slice(0, 10));
+          } else {
+            setRecurrenceEndDate("");
           }
           setShowEndPicker(false);
         }} />

@@ -1001,8 +1001,8 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           bill.due_date,
           bill.status,
           bill.is_recurring ? 1 : 0,
-          bill.recurrence_type || null,
-          bill.recurrence_interval || 1,
+          bill.recurrence_type ? String(bill.recurrence_type).toUpperCase() : null,
+          1, // Hardcode recurrence_interval to 1
           bill.recurrence_end_date || null,
           categoryMap[bill.category_id] || null,
           sourceMap[bill.source_id] || null,

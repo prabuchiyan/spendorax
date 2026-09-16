@@ -581,6 +581,11 @@ export async function backfillBillOccurrences(templateId) {
   }
 
   const templateDate = String(template.due_date).slice(0, 10);
+  const type = String(template.recurrence_type || "").toUpperCase();
+  if (type === "DAILY" || type === "WEEKLY") {
+    console.log("[backfillBillOccurrences] Skipping unsupported frequency:", type);
+    return;
+  }
 
   const today = todayStr();
 
@@ -611,7 +616,11 @@ export async function backfillBillOccurrences(templateId) {
   // 3. DETERMINE END DATE
   // =========================================================
 
-  let upTo = today;
+  const now = new Date();
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const currentMonthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(lastDayOfMonth).padStart(2, "0")}`;
+
+  let upTo = currentMonthEnd;
 
   if (template.recurrence_end_date) {
     const recurrenceEndDate = String(template.recurrence_end_date).slice(0, 10);
@@ -623,7 +632,7 @@ export async function backfillBillOccurrences(templateId) {
 
   // Nothing to generate yet.
   if (effectiveDateOnly > upTo) {
-    console.log("[backfillBillOccurrences] Effective date is after today:", {
+    console.log("[backfillBillOccurrences] Effective date is after upTo date:", {
       templateId: numericTemplateId,
       effectiveDateOnly,
       upTo,
@@ -731,8 +740,8 @@ export async function backfillBillOccurrences(templateId) {
       continue;
     }
 
-    // Safety: never create future bills.
-    if (dueDateOnly > today) {
+    // Safety: never create bills beyond current month end.
+    if (dueDateOnly > currentMonthEnd) {
       continue;
     }
 

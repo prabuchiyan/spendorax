@@ -45,7 +45,8 @@ import {
   formatCurrency,
   formatDueDate,
   getBillDisplayStatus,
-  BILL_STATUS } from
+  BILL_STATUS,
+  getOccurrenceDateConstraints } from
 "../services/billUtils";
 import { getCreditCards, payCreditCardBill } from "../services/creditCards";
 import { usePageLoader } from "../context/PageLoaderContext";
@@ -692,17 +693,27 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
 
 }
 
-function OccurrenceEditModal({ visible, occurrence, onSave, onClose }) {
+function OccurrenceEditModal({ visible, occurrence, bill, onSave, onClose }) {
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [showDuePicker, setShowDuePicker] = useState(false);
+  const [constraints, setConstraints] = useState({ minDate: null, maxDate: null });
 
   useEffect(() => {
-    if (occurrence) {
+    if (occurrence && bill) {
       setAmount(String(occurrence.amount || ""));
-      setDueDate(occurrence.due_date ? occurrence.due_date.slice(0, 10) : "");
+      const currentDueDate = occurrence.due_date ? occurrence.due_date.slice(0, 10) : "";
+      setDueDate(currentDueDate);
+      
+      const { minDate, maxDate } = getOccurrenceDateConstraints({
+        recurrenceType: bill.recurrence_type,
+        occurrenceDate: currentDueDate,
+        startDate: bill.due_date,
+        endDate: bill.recurrence_end_date
+      });
+      setConstraints({ minDate, maxDate });
     }
-  }, [occurrence?.id]);
+  }, [occurrence?.id, bill?.id]);
 
   const dueParts = dueDate ? dueDate.split("-").map(Number) : [];
 
@@ -781,6 +792,9 @@ function OccurrenceEditModal({ visible, occurrence, onSave, onClose }) {
       <MuiDateTimePicker
         visible={showDuePicker}
         initialDate={dueDate ? new Date(dueDate) : new Date()}
+        minDate={constraints.minDate}
+        maxDate={constraints.maxDate}
+        hideTime={true}
         onClose={() => setShowDuePicker(false)}
         onSelect={(selectedDate) => {
           if (selectedDate) setDueDate(selectedDate.toISOString().slice(0, 10));
@@ -880,7 +894,10 @@ export default function BillDetailScreen({ route, navigation }) {
   }, [chartData, chartOffset]);
 
   const totalDueAmount = React.useMemo(() => {
-    return series.reduce((sum, bill) => sum + Number(bill.amount || 0), 0);
+    return series.reduce((sum, bill) => {
+      if (bill.status === BILL_STATUS.SKIPPED) return sum;
+      return sum + Number(bill.amount || 0);
+    }, 0);
   }, [series]);
 
   const totalPaidAmount = React.useMemo(() => {
@@ -1655,6 +1672,7 @@ export default function BillDetailScreen({ route, navigation }) {
         <OccurrenceEditModal
           visible={showEditOcc}
           occurrence={selectedOcc}
+          bill={bill}
           onSave={handleSaveOccurrence}
           onClose={() => setShowEditOcc(false)} />
         
