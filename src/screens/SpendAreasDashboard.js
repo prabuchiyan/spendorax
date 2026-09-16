@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { getCategories } from '../services/categories';
-import { getTransactions } from '../services/transactions';
+import { getTransactionDates, getTransactionsByDateRange } from '../services/transactions';
 import { getSources } from '../services/sources';
 import { Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -228,10 +228,11 @@ export default function SpendAreasDashboard({ route, navigation }) {
     hide: hidePageLoader,
   } = usePageLoader();
   const periodScrollRef = useRef(null);
-  const filterInteractionRef = useRef(false);
+  
   const periodChipPositions = useRef({});
   const periodScrollWidth = useRef(0);
   const [transactions, setTransactions] = useState([]);
+  const [transactionDates, setTransactionDates] = useState([]);
   const [categoriesMap, setLocalCategoriesMap] = useState({});
   const [sourcesMap, setSourcesMap] = useState({});
   const [filterMode, setFilterMode] = useState(params.mode || 'monthly');
@@ -243,11 +244,11 @@ export default function SpendAreasDashboard({ route, navigation }) {
       const [
         catsAll,
         sourcesAll,
-        tx,
+        datesData,
       ] = await Promise.all([
         getCategories(true),
         getSources(true),
-        getTransactions(1000000, 'Yes'),
+        getTransactionDates(),
       ]);
       // CATEGORIES
       const cmap = {};
@@ -263,12 +264,13 @@ export default function SpendAreasDashboard({ route, navigation }) {
       });
       setSourcesMap(smap);
       // TRANSACTIONS
-      setTransactions(tx || []);
+      setTransactionDates(datesData || []);
     } catch (e) {
       console.error('Error loading dashboard data:', e);
       setLocalCategoriesMap({});
       dispatch(setReduxCategoriesMap({}));
       setSourcesMap({});
+      setTransactionDates([]);
       setTransactions([]);
     } finally {
       hidePageLoader();
@@ -296,24 +298,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
     }
   }, [params.mode, params.periodLabel]);
 
-  // FILTER / PERIOD LOADER
-  // Shows the active page loader whenever the user changes
-  // Daily / Weekly / Monthly / Yearly or selects a period.
-  // The loader is hidden only after React has rendered the newly calculated data.
-  useEffect(() => {
-    if (!filterInteractionRef.current) {
-      return;
-    }
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        filterInteractionRef.current = false;
-        hidePageLoader();
-      });
-    });
-  }, [
-    filterMode,
-    selectedPeriod,
-  ]);
+  
 
   const allPeriods = useMemo(() => {
     const now = new Date();
@@ -387,11 +372,11 @@ export default function SpendAreasDashboard({ route, navigation }) {
       return periods.reverse();
     }
     // OTHER MODES
-    if (transactions.length === 0) {
+    if (transactionDates.length === 0) {
       return [];
     }
     const periods = new Set();
-    transactions.forEach(t => {
+    transactionDates.forEach(t => {
       if (!t.date) return;
       const dateStr = String(t.date).replace(' ', 'T');
       const dateObj = new Date(dateStr);
@@ -448,7 +433,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
         );
       }
     );
-  }, [transactions, filterMode]);
+  }, [transactionDates, filterMode]);
 
   // Fallback selectedPeriod to the latest period if none is selected or matches the mode
   useEffect(() => {
@@ -510,6 +495,49 @@ export default function SpendAreasDashboard({ route, navigation }) {
     }
     return label;
   }, [filterMode]);
+
+  // Fetch subset of transactions for the selected period
+  useEffect(() => {
+    async function loadPeriodTransactions() {
+      if (!selectedPeriod) return;
+      showPageLoader();
+      try {
+        let startDate = null;
+        let endDate = null;
+
+        if (filterMode === 'daily') {
+          startDate = `${selectedPeriod}T00:00:00`;
+          endDate = `${selectedPeriod}T23:59:59`;
+        } else if (filterMode === 'monthly') {
+          const parts = selectedPeriod.split('-');
+          const year = parseInt(parts[0], 10);
+          const month = parseInt(parts[1], 10);
+          const lastDay = new Date(year, month, 0).getDate();
+          startDate = `${selectedPeriod}-01T00:00:00`;
+          endDate = `${selectedPeriod}-${String(lastDay).padStart(2, '0')}T23:59:59`;
+        } else if (filterMode === 'yearly') {
+          startDate = `${selectedPeriod}-01-01T00:00:00`;
+          endDate = `${selectedPeriod}-12-31T23:59:59`;
+        } else if (filterMode === 'weekly') {
+          const parts = selectedPeriod.split('_');
+          const startDay = parts[0];
+          const endDayStr = parts[1];
+          startDate = `${startDay}T00:00:00`;
+          const yearMonth = startDay.substring(0, 8);
+          endDate = `${yearMonth}${endDayStr}T23:59:59`;
+        }
+
+        const tx = await getTransactionsByDateRange(null, startDate, endDate);
+        setTransactions(tx || []);
+      } catch (e) {
+        console.error(e);
+        setTransactions([]);
+      } finally {
+        hidePageLoader();
+      }
+    }
+    loadPeriodTransactions();
+  }, [selectedPeriod, filterMode]);
 
   // Aggregate category spending on client-side
   const topCategories = useMemo(() => {
@@ -789,7 +817,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
                 selected={false}
                 onPress={() => {
                   if (filterMode === m) return;
-                  filterInteractionRef.current = true;
+                  
                   showPageLoader();
                   setFilterMode(m);
                   setSelectedPeriod(null);
@@ -860,7 +888,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
                     }}
                     onPress={() => {
                       if (selectedPeriod === p) return;
-                      filterInteractionRef.current = true;
+                      
                       showPageLoader();
                       setSelectedPeriod(p);
                       // Immediately focus the selected period.

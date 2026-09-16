@@ -964,6 +964,7 @@ export default function HomeScreen({ navigation }) {
 
   useEffect(() => {
     let mounted = true;
+    showPageLoader();
 
     const timer = setTimeout(() => {
       (async () => {

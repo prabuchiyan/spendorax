@@ -9,7 +9,7 @@ import {
 'react-native';
 
 import { getSources } from '../services/sources';
-import { getTransactions } from '../services/transactions';
+import { getSourceTransactionBalances } from '../services/transactions';
 import { getCreditCards } from '../services/creditCards';
 import { Colors, Spacing } from '../components/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -37,30 +37,8 @@ export default function SourcesDashboard({ navigation }) {
       const availableSources = await getSources(true);
       const availableCreditCards = await getCreditCards(true);
       setCreditCards(availableCreditCards);
-      const transactions = await getTransactions(
-        1000000,
-        'Yes'
-      );
-      // Calculate transaction balance per source
-      const balanceMap = transactions.reduce(
-        (acc, txn) => {
-          const amount = Number(txn.amount || 0);
-          const id = txn.source_id;
-          if (!id) {
-            return acc;
-          }
-          if (!acc[id]) {
-            acc[id] = 0;
-          }
-          if (txn.type === 'income') {
-            acc[id] += amount;
-          } else if (txn.type === 'expense') {
-            acc[id] -= amount;
-          }
-          return acc;
-        },
-        {}
-      );
+      
+      const balanceMap = await getSourceTransactionBalances();
 
       // Add initial balance
       const updatedSources = availableSources.map(
