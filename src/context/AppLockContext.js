@@ -7,12 +7,24 @@ const AppLockContext = createContext();
 export const useAppLock = () => useContext(AppLockContext);
 
 export const AppLockProvider = ({ children }) => {
-  const [isLocked, setIsLocked] = useState(false);
+  const [isLocked, setIsLockedState] = useState(false);
+  const isLockedRef = useRef(false);
   const [isReady, setIsReady] = useState(false); // To prevent flashing content before settings load
+
+  const setIsLocked = (val) => {
+    isLockedRef.current = val;
+    setIsLockedState(val);
+  };
   const appState = useRef(AppState.currentState);
   const backgroundTime = useRef(null);
 
   const checkLockRequirement = async (fromBackground = false) => {
+    if (fromBackground && isLockedRef.current) {
+      // If the app is already locked (e.g. Lock screen is active and biometric prompt caused AppState change),
+      // we shouldn't re-evaluate and trigger another lock, which causes an infinite loop/crash.
+      return;
+    }
+
     if (!isSecuritySupported()) {
       setIsReady(true);
       return;
