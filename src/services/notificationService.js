@@ -267,6 +267,97 @@ export function handleNotificationTap(data, navigationRef) {
   }
 }
 
+// ─────────────────────────────────────────
+// Sync individual bill notifications
+// ─────────────────────────────────────────
+export async function syncBillNotifications() {
+  if (Platform.OS === 'web') return;
+
+  // 1. Cancel previously scheduled specific bill notifications
+  try {
+    const res = await executeSql(
+      `SELECT notification_identifier FROM notifications WHERE type = ?`, ['SPECIFIC_BILL_DUE']
+    );
+    
+    for (let i = 0; i < res.rows.length; i++) {
+      const identifier = res.rows.item(i).notification_identifier;
+      if (identifier) {
+        try {
+          await Notifications.cancelScheduledNotificationAsync(identifier);
+        } catch (e) {}
+      }
+    }
+
+    // 2. Remove them from DB to start fresh
+    await executeSql(`DELETE FROM notifications WHERE type = ?`, ['SPECIFIC_BILL_DUE']);
+
+    // 3. Fetch pending bills (including credit card statements)
+    const billsRes = await executeSql(
+      `SELECT * FROM bills WHERE is_paid = 0 AND deleted_at IS NULL AND is_recurring = 0 AND (status IS NULL OR status != 'paid')`
+    );
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < billsRes.rows.length; i++) {
+      const bill = billsRes.rows.item(i);
+      if (!bill.due_date) continue;
+
+      const dueDate = new Date(bill.due_date);
+      dueDate.setHours(0, 0, 0, 0);
+
+      // Is it a credit card bill?
+      const stmtRes = await executeSql(`SELECT id FROM credit_card_statements WHERE bill_id = ?`, [bill.id]);
+      const isCreditCard = stmtRes.rows.length > 0;
+
+      let reminderDays = isCreditCard ? 5 : (bill.reminder_days_before != null ? bill.reminder_days_before : 2);
+      
+      // Schedule one notification for each day from (dueDate - reminderDays) to dueDate
+      for (let d = reminderDays; d >= 0; d--) {
+        const scheduleDate = new Date(dueDate);
+        scheduleDate.setDate(scheduleDate.getDate() - d);
+        scheduleDate.setHours(9, 0, 0, 0); // 9:00 AM
+
+        // Only schedule if the time is in the future
+        if (scheduleDate.getTime() > new Date().getTime()) {
+          const title = isCreditCard ? 'Credit Card Bill Due' : 'Bill Due Reminder';
+          const dayWord = d === 0 ? 'today' : (d === 1 ? 'tomorrow' : `in ${d} days`);
+          
+          // Format amount beautifully
+          const formattedAmount = Number(bill.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          const body = `Your ${bill.name} bill of ${formattedAmount} is due ${dayWord}.`;
+          
+          try {
+            const identifier = await Notifications.scheduleNotificationAsync({
+              content: {
+                title,
+                body,
+                data: { screen: 'BillDetail', billId: bill.id, type: 'SPECIFIC_BILL_DUE' },
+                sound: true
+              },
+              trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DATE,
+                date: scheduleDate
+              }
+            });
+
+            // Insert into notifications so we can cancel later if needed
+            await executeSql(
+              `INSERT INTO notifications (type, reference_id, title, body, enabled, hour, minute, notification_identifier, payload)
+               VALUES (?, ?, ?, ?, 1, 9, 0, ?, ?)`,
+              ['SPECIFIC_BILL_DUE', bill.id, title, body, identifier, JSON.stringify({ screen: 'BillDetail', billId: bill.id, type: 'SPECIFIC_BILL_DUE' })]
+            );
+          } catch (e) {
+            console.warn('Failed to schedule specific bill notification', e);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('syncBillNotifications error', err);
+  }
+}
+
 export default {
   requestPermission,
   scheduleNotification,
@@ -277,5 +368,6 @@ export default {
   handleNotificationTap,
   checkYesterdaySpend,
   checkBillDue,
-  checkLoanEmi
+  checkLoanEmi,
+  syncBillNotifications
 };
