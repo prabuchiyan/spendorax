@@ -15,7 +15,7 @@ import CategoryDonut from "../components/CategoryDonut";
 import { getHomeExpenseTransactions } from "../services/transactions";
 import { getHomeBudgets as getHomeBudgetsService } from "../services/budgets";
 import { getHomeCategoryBudgets as getHomeCategoryBudgetsService } from "../services/categoryBudgets";
-import { getBillsForCurrentMonth } from "../services/bills";
+import { getBillsForCurrentMonth, getBillsSummary } from "../services/bills";
 import { getBillDisplayStatus, formatCurrency } from "../services/billUtils";
 import { getSources } from "../services/sources";
 import { getCategories } from "../services/categories";
@@ -342,9 +342,7 @@ function BudgetDonut({
 
   const safePercent = Number.isNaN(percent) ? 0 : percent;
 
-  const anim = React.useRef(
-    new Animated.Value(0),
-  ).current;
+  const anim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
     if (!loaderVisible) {
@@ -379,8 +377,7 @@ function BudgetDonut({
     }
   }, [safePercent, loaderVisible]);
 
-  const webDashOffset =
-    circumference - circumference * Math.min(1, webPercent);
+  const webDashOffset = circumference - circumference * Math.min(1, webPercent);
 
   return (
     <View
@@ -415,7 +412,10 @@ function BudgetDonut({
             rotation="-90"
             originX={size / 2}
             originY={size / 2}
-            style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.215, 0.61, 0.355, 1)' }}
+            style={{
+              transition:
+                "stroke-dashoffset 1s cubic-bezier(0.215, 0.61, 0.355, 1)",
+            }}
           />
         ) : (
           <AnimatedCircle
@@ -685,114 +685,49 @@ export default function HomeScreen({ navigation }) {
         const next7Days = new Date(todayStart.getTime());
         next7Days.setDate(todayStart.getDate() + 7);
 
-        const isUpcoming7Days = dueDateOnly >= todayStart && dueDateOnly <= next7Days;
-
-        return isThisMonth || isUpcoming7Days;
-      });
-
-      currentMonthBills.sort(
-        (a, b) =>
-          new Date(a.due_date).getTime() - new Date(b.due_date).getTime(),
-      );
-
-      const next7DaysEnd = new Date(todayStart);
-
-      next7DaysEnd.setDate(next7DaysEnd.getDate() + 7);
-
-      next7DaysEnd.setHours(23, 59, 59, 999);
-
-      const summary = currentMonthBills.reduce(
-        (result, bill) => {
-          const amount = Number(bill.amount || 0);
-
-          const dueDate = new Date(bill.due_date);
-
-          if (Number.isNaN(dueDate.getTime())) {
-            return result;
-          }
-
-          const status = String(
-            bill.status || bill.payment_status || "",
-          ).toLowerCase();
-
-          const isPaid = status === "paid";
-
-          const isSkipped = status === "skipped";
-
-          if (!isSkipped) {
-            result.totalThisMonth += amount;
-          }
-
-          if (isPaid) {
-            result.totalPaid += amount;
-
-            return result;
-          }
-
-          if (isSkipped) {
-            return result;
-          }
-
-          const dueDateOnly = new Date(
-            dueDate.getFullYear(),
-            dueDate.getMonth(),
-            dueDate.getDate(),
-            0,
-            0,
-            0,
-          );
-
-          if (dueDateOnly < todayStart) {
-            result.overdueAmount += amount;
-          }
-
-          return result;
-        },
-        {
-          totalThisMonth: 0,
-          totalPaid: 0,
-          overdueAmount: 0,
-          upcoming7: 0,
-        },
-      );
-
-      const upcoming7Amount = allBills.reduce((total, bill) => {
-        if (!bill?.due_date) {
-          return total;
-        }
-
-        const dueDate = new Date(bill.due_date);
-
-        if (Number.isNaN(dueDate.getTime())) {
-          return total;
-        }
+        const isUpcoming7Days =
+          dueDateOnly >= todayStart && dueDateOnly <= next7Days;
 
         const status = String(
           bill.status || bill.payment_status || "",
         ).toLowerCase();
 
-        if (status === "paid" || status === "skipped") {
-          return total;
+        const isPaid = status === "paid";
+        const isSkipped = status === "skipped";
+
+        const isOverdue = dueDateOnly < todayStart && !isPaid && !isSkipped;
+
+        let isPaidThisMonth = false;
+        if (isPaid && bill.paid_at) {
+          const paidDate = new Date(bill.paid_at);
+          if (!Number.isNaN(paidDate.getTime())) {
+            isPaidThisMonth =
+              paidDate.getFullYear() === currentYear &&
+              paidDate.getMonth() === currentMonth;
+          }
         }
 
-        const dueDateOnly = new Date(
-          dueDate.getFullYear(),
-          dueDate.getMonth(),
-          dueDate.getDate(),
-          0,
-          0,
-          0,
-          0,
-        );
+        return isThisMonth || isUpcoming7Days || isOverdue || isPaidThisMonth;
+      });
 
-        if (dueDateOnly >= todayStart && dueDateOnly <= next7DaysEnd) {
-          return total + Number(bill.amount || 0);
-        }
+      // Sort pending bills first, then paid/skipped, and by due date
+      currentMonthBills.sort((a, b) => {
+        const statusA = String(
+          a.status || a.payment_status || "",
+        ).toLowerCase();
+        const statusB = String(
+          b.status || b.payment_status || "",
+        ).toLowerCase();
+        const isPaidA = statusA === "paid" || statusA === "skipped";
+        const isPaidB = statusB === "paid" || statusB === "skipped";
 
-        return total;
-      }, 0);
+        if (isPaidA && !isPaidB) return 1;
+        if (!isPaidA && isPaidB) return -1;
 
-      summary.upcoming7 = upcoming7Amount;
+        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+      });
+
+      const summary = await getBillsSummary();
 
       dispatch(setBills(currentMonthBills));
 
@@ -1112,10 +1047,19 @@ export default function HomeScreen({ navigation }) {
     0,
   );
 
-  const sortedBills = [...bills].sort(
-    (a, b) =>
-      new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime(),
-  );
+  const sortedBills = [...bills].sort((a, b) => {
+    const statusA = String(a.status || a.payment_status || "").toLowerCase();
+    const statusB = String(b.status || b.payment_status || "").toLowerCase();
+    const isPaidA = statusA === "paid" || statusA === "skipped";
+    const isPaidB = statusB === "paid" || statusB === "skipped";
+
+    if (isPaidA && !isPaidB) return 1;
+    if (!isPaidA && isPaidB) return -1;
+
+    return (
+      new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime()
+    );
+  });
 
   /* ==========================================================
      RENDER
