@@ -80,7 +80,10 @@ export default function AppLockScreen() {
         style={[
           styles.dot,
           isFilled && styles.dotFilled,
-          error ? styles.dotError : null
+          error ? {
+            borderColor: '#E46A6A',
+            backgroundColor: passcode.length > 0 ? '#E46A6A' : 'transparent'
+          } : null
         ]}
       />
     );
@@ -179,10 +182,6 @@ const styles = StyleSheet.create({
   dotFilled: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
-  },
-  dotError: {
-    borderColor: '#E46A6A',
-    backgroundColor: passcode.length > 0 ? '#E46A6A' : 'transparent',
   },
   keypad: {
     width: width * 0.8,
