@@ -15,6 +15,7 @@ export default function AppLockScreen() {
   const [settings, setSettings] = useState(null);
   
   const [maxLength, setMaxLength] = useState(4);
+  const isAuthenticatingRef = React.useRef(false);
 
   useEffect(() => {
     const init = async () => {
@@ -40,6 +41,8 @@ export default function AppLockScreen() {
   }, []);
 
   const handleBiometricAuth = async () => {
+    if (isAuthenticatingRef.current) return;
+    isAuthenticatingRef.current = true;
     try {
       const result = await authenticateBiometric();
       if (result.success) {
@@ -47,6 +50,8 @@ export default function AppLockScreen() {
       }
     } catch (e) {
       console.warn(e);
+    } finally {
+      isAuthenticatingRef.current = false;
     }
   };
 
