@@ -348,7 +348,7 @@ function BudgetDonut({
     if (!loaderVisible) {
       Animated.timing(anim, {
         toValue: Math.min(1, percent),
-        duration: 1000,
+        duration: 1500,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
       }).start();
@@ -414,7 +414,7 @@ function BudgetDonut({
             originY={size / 2}
             style={{
               transition:
-                "stroke-dashoffset 1s cubic-bezier(0.215, 0.61, 0.355, 1)",
+                "stroke-dashoffset 1.5s cubic-bezier(0.215, 0.61, 0.355, 1)",
             }}
           />
         ) : (
@@ -662,7 +662,8 @@ export default function HomeScreen({ navigation }) {
           return false;
         }
 
-        const dueDate = new Date(bill.due_date);
+        const dueDateStr = String(bill.due_date || "").replace(" ", "T");
+        const dueDate = new Date(dueDateStr);
 
         if (Number.isNaN(dueDate.getTime())) {
           return false;
@@ -699,7 +700,8 @@ export default function HomeScreen({ navigation }) {
 
         let isPaidThisMonth = false;
         if (isPaid && bill.paid_at) {
-          const paidDate = new Date(bill.paid_at);
+          const paidDateStr = String(bill.paid_at || "").replace(" ", "T");
+          const paidDate = new Date(paidDateStr);
           if (!Number.isNaN(paidDate.getTime())) {
             isPaidThisMonth =
               paidDate.getFullYear() === currentYear &&
@@ -724,7 +726,9 @@ export default function HomeScreen({ navigation }) {
         if (isPaidA && !isPaidB) return 1;
         if (!isPaidA && isPaidB) return -1;
 
-        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+        const aDueStr = String(a.due_date || "").replace(" ", "T");
+        const bDueStr = String(b.due_date || "").replace(" ", "T");
+        return new Date(aDueStr).getTime() - new Date(bDueStr).getTime();
       });
 
       const summary = await getBillsSummary();
@@ -1056,9 +1060,9 @@ export default function HomeScreen({ navigation }) {
     if (isPaidA && !isPaidB) return 1;
     if (!isPaidA && isPaidB) return -1;
 
-    return (
-      new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime()
-    );
+    const aDueStr = String(a.due_date || 0).replace(" ", "T");
+    const bDueStr = String(b.due_date || 0).replace(" ", "T");
+    return new Date(aDueStr).getTime() - new Date(bDueStr).getTime();
   });
 
   /* ==========================================================
@@ -2214,7 +2218,9 @@ export default function HomeScreen({ navigation }) {
 
               const iconColor = cat.color || accentColor;
 
-              const transactionDate = new Date(r.date);
+              const transactionDate = new Date(
+                String(r.date || "").replace(" ", "T"),
+              );
 
               const dateText = transactionDate.toLocaleDateString(undefined, {
                 day: "2-digit",
@@ -3183,16 +3189,21 @@ export default function HomeScreen({ navigation }) {
                             marginLeft: 4,
                           }}
                         >
-                          Due{" "}
-                          {bill.due_date
-                            ? new Date(bill.due_date).toLocaleDateString(
-                                undefined,
-                                {
-                                  day: "2-digit",
-                                  month: "short",
-                                },
-                              )
-                            : "—"}
+                          {bill._noDueDate
+                            ? "No due date"
+                            : `Due ${
+                                bill.due_date
+                                  ? new Date(
+                                      String(bill.due_date || "").replace(
+                                        " ",
+                                        "T",
+                                      ),
+                                    ).toLocaleDateString(undefined, {
+                                      day: "2-digit",
+                                      month: "short",
+                                    })
+                                  : "—"
+                              }`}
                         </Text>
                       </View>
                     </View>
