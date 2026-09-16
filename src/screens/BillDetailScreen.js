@@ -698,6 +698,7 @@ function OccurrenceEditModal({ visible, occurrence, bill, onSave, onClose }) {
   const [dueDate, setDueDate] = useState("");
   const [showDuePicker, setShowDuePicker] = useState(false);
   const [constraints, setConstraints] = useState({ minDate: null, maxDate: null });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (occurrence && bill) {
@@ -721,24 +722,44 @@ function OccurrenceEditModal({ visible, occurrence, bill, onSave, onClose }) {
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
-      onRequestClose={onClose}>
+      animationType="fade"
+      onRequestClose={() => !isSubmitting && onClose()}>
       
       <View
         style={{
           flex: 1,
-          backgroundColor: "rgba(0,0,0,0.45)",
+          backgroundColor: "rgba(0,0,0,0.5)",
           justifyContent: "center",
-          padding: 16
+          padding: 24
         }}>
         
         <View
-          style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20 }}>
+          style={{
+            backgroundColor: "#fff",
+            borderRadius: 24,
+            padding: 24,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.1,
+            shadowRadius: 20,
+            elevation: 10
+          }}>
           
-          <Text style={{ fontWeight: "700", fontSize: 18, marginBottom: 16 }}>
-            Edit Occurrence
-          </Text>
-          <Text style={{ fontSize: 13, color: Colors.muted, marginBottom: 6 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 24 }}>
+            <View style={{ backgroundColor: "#EFF6FF", padding: 10, borderRadius: 12, marginRight: 12 }}>
+              <MaterialCommunityIcons name="calendar-edit" size={24} color="#2563EB" />
+            </View>
+            <View>
+              <Text style={{ fontWeight: "700", fontSize: 20, color: "#0F172A" }}>
+                Edit Occurrence
+              </Text>
+              <Text style={{ fontSize: 13, color: "#64748B", marginTop: 2 }}>
+                Update this specific bill's details
+              </Text>
+            </View>
+          </View>
+
+          <Text style={{ fontSize: 13, fontWeight: "600", color: "#475569", marginBottom: 8, marginLeft: 2 }}>
             Amount
           </Text>
           <PaperTextInput
@@ -746,44 +767,68 @@ function OccurrenceEditModal({ visible, occurrence, bill, onSave, onClose }) {
             onChangeText={setAmount}
             keyboardType="numeric"
             mode="outlined"
-            style={{ marginBottom: 16, backgroundColor: "#fff" }} />
+            disabled={isSubmitting}
+            outlineColor="#E2E8F0"
+            activeOutlineColor="#2563EB"
+            left={<PaperTextInput.Affix text="₹" textStyle={{ color: "#64748B" }} />}
+            style={{ marginBottom: 20, backgroundColor: "#fff" }} />
           
-          <Text style={{ fontSize: 13, color: Colors.muted, marginBottom: 6 }}>
+          <Text style={{ fontSize: 13, fontWeight: "600", color: "#475569", marginBottom: 8, marginLeft: 2 }}>
             Due Date
           </Text>
-          <TouchableOpacity onPress={() => setShowDuePicker(true)}>
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            disabled={isSubmitting}
+            onPress={() => setShowDuePicker(true)}>
             <PaperTextInput
               value={dueDate}
               editable={false}
+              disabled={isSubmitting}
               mode="outlined"
-              style={{ marginBottom: 20, backgroundColor: "#fff" }}
+              outlineColor="#E2E8F0"
+              activeOutlineColor="#2563EB"
+              style={{ marginBottom: 28, backgroundColor: "#fff" }}
               right={
-              <PaperTextInput.Icon
-                icon="calendar"
-                onPress={() => setShowDuePicker(true)} />
-
+                <PaperTextInput.Icon
+                  icon="calendar"
+                  color="#94A3B8"
+                  onPress={() => !isSubmitting && setShowDuePicker(true)} />
               } />
-            
           </TouchableOpacity>
+          
           <View
             style={{
               flexDirection: "row",
               justifyContent: "flex-end",
-              gap: 10
+              gap: 12
             }}>
             
-            <PaperButton mode="text" onPress={onClose}>
+            <PaperButton 
+              mode="text" 
+              onPress={onClose} 
+              disabled={isSubmitting}
+              textColor="#64748B"
+              style={{ paddingHorizontal: 4 }}>
               Cancel
             </PaperButton>
+            
             <PaperButton
               mode="contained"
-              onPress={() => {
+              loading={isSubmitting}
+              disabled={isSubmitting}
+              buttonColor="#2563EB"
+              style={{ borderRadius: 12, paddingHorizontal: 8 }}
+              onPress={async () => {
                 const amt = parseFloat(amount);
                 if (!amount || isNaN(amt) || amt <= 0 || !dueDate) return;
-                onSave(amt, dueDate);
+                setIsSubmitting(true);
+                try {
+                  await onSave(amt, dueDate);
+                } finally {
+                  setIsSubmitting(false);
+                }
               }}>
-              
-              Save
+              Save Changes
             </PaperButton>
           </View>
         </View>
@@ -1546,7 +1591,7 @@ export default function BillDetailScreen({ route, navigation }) {
               icon: "repeat",
               label: "Repeat",
               value: bill.is_recurring ?
-              `${bill.recurrence_interval || 1} ${bill.recurrence_type}` :
+              `${bill.recurrence_type}` :
               "No"
             }].
             map(({ icon, label, value }) =>
