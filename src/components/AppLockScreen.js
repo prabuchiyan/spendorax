@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, SafeAreaView, Dimensions, AppState } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, SafeAreaView, Dimensions, AppState, Animated, Easing } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from './Theme';
 import { useAppLock } from '../context/AppLockContext';
@@ -77,28 +77,61 @@ export default function AppLockScreen() {
     }
   };
 
+  const shakeAnim = React.useRef(new Animated.Value(0)).current;
+  const pulseAnim = React.useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (biometricAvailable) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.15, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
+        ])
+      ).start();
+    }
+  }, [biometricAvailable]);
+
   const verify = async (code) => {
     const isValid = await verifyPasscode(code);
     if (isValid) {
       unlock();
     } else {
       setError('Incorrect passcode');
-      setPasscode('');
+      
+      Animated.sequence([
+        Animated.timing(shakeAnim, { toValue: 12, duration: 50, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: -12, duration: 50, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: 12, duration: 50, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: -12, duration: 50, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true })
+      ]).start(() => {
+        setPasscode('');
+      });
     }
   };
 
-  const renderDot = (index) => {
-    const isFilled = index < passcode.length;
+  const AnimatedDot = ({ isFilled, isError }) => {
+    const scale = React.useRef(new Animated.Value(1)).current;
+    
+    useEffect(() => {
+      Animated.spring(scale, {
+        toValue: isFilled ? 1.3 : 1,
+        useNativeDriver: true,
+        bounciness: 12,
+        speed: 20
+      }).start();
+    }, [isFilled]);
+
     return (
-      <View
-        key={index}
+      <Animated.View
         style={[
           styles.dot,
           isFilled && styles.dotFilled,
-          error ? {
+          isError ? {
             borderColor: '#E46A6A',
-            backgroundColor: passcode.length > 0 ? '#E46A6A' : 'transparent'
-          } : null
+            backgroundColor: isFilled ? '#E46A6A' : 'transparent'
+          } : null,
+          { transform: [{ scale }] }
         ]}
       />
     );
@@ -110,7 +143,7 @@ export default function AppLockScreen() {
         key={num}
         style={styles.key}
         onPress={() => handlePress(num)}
-        activeOpacity={0.7}
+        activeOpacity={0.5}
       >
         <Text style={styles.keyText}>{num}</Text>
       </TouchableOpacity>
@@ -120,14 +153,19 @@ export default function AppLockScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <MaterialCommunityIcons name="lock" size={40} color={Colors.primary} />
-        <Text style={styles.title}>Enter Passcode</Text>
+        <View style={styles.iconContainer}>
+          <MaterialCommunityIcons name="shield-lock-outline" size={48} color={Colors.primary} />
+        </View>
+        <Text style={styles.title}>Welcome Back</Text>
+        <Text style={styles.subtitle}>Enter your passcode to continue</Text>
         <Text style={styles.errorText}>{error}</Text>
       </View>
 
-      <View style={styles.dotsContainer}>
-        {Array(maxLength).fill(0).map((_, i) => renderDot(i))}
-      </View>
+      <Animated.View style={[styles.dotsContainer, { transform: [{ translateX: shakeAnim }] }]}>
+        {Array(maxLength).fill(0).map((_, i) => (
+          <AnimatedDot key={i} isFilled={i < passcode.length} isError={!!error} />
+        ))}
+      </Animated.View>
 
       <View style={styles.keypad}>
         <View style={styles.row}>
@@ -141,17 +179,19 @@ export default function AppLockScreen() {
         </View>
         <View style={styles.row}>
           {biometricAvailable ? (
-            <TouchableOpacity style={styles.key} onPress={handleBiometricAuth}>
-              <MaterialCommunityIcons name="fingerprint" size={32} color={Colors.primary} />
+            <TouchableOpacity style={[styles.key, { backgroundColor: 'transparent', elevation: 0 }]} onPress={handleBiometricAuth} activeOpacity={0.6}>
+              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                <MaterialCommunityIcons name="fingerprint" size={38} color={Colors.primary} />
+              </Animated.View>
             </TouchableOpacity>
           ) : (
-            <View style={styles.key} /> // empty placeholder
+            <View style={styles.keyPlaceholder} />
           )}
           
           {renderKey(0)}
           
-          <TouchableOpacity style={styles.key} onPress={handleDelete}>
-            <MaterialCommunityIcons name="backspace-outline" size={28} color="#333" />
+          <TouchableOpacity style={[styles.key, { backgroundColor: 'transparent', elevation: 0 }]} onPress={handleDelete} activeOpacity={0.6}>
+            <MaterialCommunityIcons name="backspace-outline" size={28} color="#555" />
           </TouchableOpacity>
         </View>
       </View>
@@ -162,62 +202,86 @@ export default function AppLockScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F9FBFA',
     alignItems: 'center',
     justifyContent: 'center',
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 30,
+  },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginTop: 16,
-    color: '#333',
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#2D3748',
+  },
+  subtitle: {
+    fontSize: 15,
+    color: '#718096',
+    marginTop: 8,
+    marginBottom: 8,
   },
   errorText: {
     color: '#E46A6A',
-    marginTop: 8,
+    fontWeight: '600',
     fontSize: 14,
     height: 20,
   },
   dotsContainer: {
     flexDirection: 'row',
-    marginBottom: 60,
+    marginBottom: 50,
   },
   dot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ccc',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E0',
     marginHorizontal: 12,
+    backgroundColor: '#fff',
   },
   dotFilled: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
   keypad: {
-    width: width * 0.8,
-    maxWidth: 320,
+    width: width * 0.85,
+    maxWidth: 340,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   key: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#F5F7FA',
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  keyPlaceholder: {
+    width: 76,
+    height: 76,
   },
   keyText: {
     fontSize: 28,
-    fontWeight: '500',
-    color: '#333',
+    fontWeight: '600',
+    color: '#2D3748',
   },
 });
