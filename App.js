@@ -8,6 +8,8 @@ import store from './src/redux/store';
 import ErrorBoundary from './src/screens/ErrorBoundary';
 import { BalanceVisibilityProvider } from './src/context/BalanceVisibilityContext';
 import { PageLoaderProvider } from './src/context/PageLoaderContext';
+import { AppLockProvider } from './src/context/AppLockContext';
+import AppLockWrapper from './src/components/AppLockWrapper';
 import {
   requestPermission,
   rescheduleAll,
@@ -123,7 +125,9 @@ export default function App() {
           />
           <PageLoaderProvider>
             <BalanceVisibilityProvider>
-              <NavigationContainer ref={navigationRef}>
+              <AppLockProvider>
+                <AppLockWrapper>
+                  <NavigationContainer ref={navigationRef}>
             <Stack.Navigator>
               <Stack.Screen
                 name="Drawer"
@@ -153,8 +157,11 @@ export default function App() {
               <Stack.Screen name="LoanHistory" component={require('./src/screens/LoanHistoryScreen').default} options={{ title: 'Loan History' }} />
               <Stack.Screen name="LoanReports" component={require('./src/screens/LoanReportsScreen').default} options={{ title: 'Loan Reports' }} />
               <Stack.Screen name="NotificationSettings" component={require('./src/screens/NotificationSettingsScreen').default} options={{ title: 'Notifications' }} />
+              <Stack.Screen name="SecuritySettings" component={require('./src/screens/SecuritySettingsScreen').default} options={{ title: 'Security Settings' }} />
             </Stack.Navigator>
           </NavigationContainer>
+                </AppLockWrapper>
+              </AppLockProvider>
             </BalanceVisibilityProvider>
           </PageLoaderProvider>
           <ExitConfirmationModal

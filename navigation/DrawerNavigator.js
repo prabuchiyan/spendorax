@@ -104,6 +104,14 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
 
         <TouchableOpacity
           style={styles.footerButton}
+          onPress={() => { navigation.navigate('SecuritySettings'); navigation.closeDrawer(); }}
+        >
+          <MaterialCommunityIcons name="security" size={18} color="#666" style={{ marginRight: 10 }} />
+          <Text style={styles.footerText}>Security</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.footerButton}
           onPress={() => { navigation.navigate('Backup'); navigation.closeDrawer(); }}
         >
           <Feather name="settings" size={18} color="#666" style={{ marginRight: 10 }} />
