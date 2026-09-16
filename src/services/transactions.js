@@ -872,3 +872,26 @@ export async function getTransactionsByDateRange(
     return [];
   }
 }
+
+export async function getTransactionDates() {
+  try {
+    if (Platform.OS === "web") {
+      const res = await executeSql("SELECT date FROM transactions WHERE type = 'expense'");
+      const dates = [];
+      for (let i = 0; i < res.rows.length; i++) {
+        dates.push({ date: res.rows.item(i).date });
+      }
+      return dates;
+    }
+    const res = await executeSql("SELECT date FROM transactions WHERE type = 'expense'");
+    const dates = [];
+    for (let i = 0; i < res.rows.length; i++) {
+      dates.push({ date: res.rows.item(i).date });
+    }
+    return dates;
+  } catch (e) {
+    console.error("getTransactionDates error:", e);
+    return [];
+  }
+}
+
