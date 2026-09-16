@@ -665,13 +665,12 @@ export default function HomeScreen({ navigation }) {
           0,
         );
 
-        const status = String(
-          bill.status || bill.payment_status || "",
-        ).toLowerCase();
-        const isOverdue =
-          dueDateOnly < todayStart && status !== "paid" && status !== "skipped";
+        const next7Days = new Date(todayStart.getTime());
+        next7Days.setDate(todayStart.getDate() + 7);
 
-        return isThisMonth || isOverdue;
+        const isUpcoming7Days = dueDateOnly >= todayStart && dueDateOnly <= next7Days;
+
+        return isThisMonth || isUpcoming7Days;
       });
 
       currentMonthBills.sort(

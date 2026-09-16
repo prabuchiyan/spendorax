@@ -52,7 +52,6 @@ import {
 import { getCreditCards, payCreditCardBill } from "../services/creditCards";
 import { usePageLoader } from "../context/PageLoaderContext";
 import { onStatementPaid } from "../services/creditCardScheduler";
-import { setBills, setBillsSummary } from "../redux/slices/billSlice";
 import { setCategoriesMap } from "../redux/slices/categorySlice";
 import {
   useAppDispatch,
@@ -982,36 +981,6 @@ export default function BillDetailScreen({ route, navigation }) {
         categoryMap[c.id] = c;
       });
       dispatch(setCategoriesMap(categoryMap));
-      dispatch(setBills(s || []));
-      dispatch(
-        setBillsSummary({
-          totalThisMonth: s.reduce(
-            (sum, row) => sum + Number(row.amount || 0),
-            0
-          ),
-          totalPaid: s.reduce(
-            (sum, row) => sum + Number(row.paid_amount || 0),
-            0
-          ),
-          overdueAmount: s.
-          filter((row) => row.status === BILL_STATUS.OVERDUE).
-          reduce((sum, row) => sum + Number(row.amount || 0), 0),
-          overdueCount: s.filter((row) => row.status === BILL_STATUS.OVERDUE).
-          length,
-          upcoming7: s.
-          filter(
-            (row) =>
-            row.status !== BILL_STATUS.PAID &&
-            row.status !== BILL_STATUS.SKIPPED
-          ).
-          reduce((sum, row) => sum + Number(row.amount || 0), 0),
-          upcoming3Count: s.filter(
-            (row) =>
-            row.status !== BILL_STATUS.PAID &&
-            row.status !== BILL_STATUS.SKIPPED
-          ).length
-        })
-      );
 
       if (b?.category_id)
       setCategory(cats.find((c) => c.id === b.category_id) || null);
