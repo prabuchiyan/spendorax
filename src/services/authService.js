@@ -64,7 +64,7 @@ export const authenticateBiometric = async (promptMessage = 'Authenticate to acc
   const result = await LocalAuthentication.authenticateAsync({
     promptMessage,
     fallbackLabel: 'Use Passcode',
-    disableDeviceFallback: true, // We handle our own passcode fallback
+    disableDeviceFallback: false, // Setting this to true causes fatal crashes on many Android devices
   });
   return result;
 };

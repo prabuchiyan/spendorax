@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, SafeAreaView, Dimensions } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, SafeAreaView, Dimensions, AppState } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from './Theme';
 import { useAppLock } from '../context/AppLockContext';
@@ -29,11 +29,14 @@ export default function AppLockScreen() {
         const supported = await isBiometricSupported();
         setBiometricAvailable(supported);
         if (supported) {
-          // Add a small delay to ensure the app is fully in the foreground.
-          // Without this, the native biometric prompt can instantly dismiss or crash on Android.
+          // Extremely strict safety check for Android:
+          // We must wait for the AppState to settle and be unequivocally 'active'.
+          // Calling the biometric prompt while the app is transitioning crashes the OS service.
           setTimeout(() => {
-            handleBiometricAuth();
-          }, 300);
+            if (AppState.currentState === 'active') {
+              handleBiometricAuth();
+            }
+          }, 600);
         }
       }
     };
