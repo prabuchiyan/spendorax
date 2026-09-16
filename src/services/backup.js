@@ -11,7 +11,7 @@ import { getBudgets, createBudget } from './budgets';
 import { getBills } from './bills';
 import { getLoans } from './loans';
 import { getNotifications, updateNotification, getNotificationByType } from '../database/notifications';
-import { rescheduleAll } from './notificationService';
+import { rescheduleAll, syncBillNotifications } from './notificationService';
 
 const BACKUP_VERSION = 3;
 
@@ -675,10 +675,11 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       // Restore notification settings on rollback
       // Only restore preferences, then reschedule
       try {
-        const { rescheduleAll: reSchedule } = require('./notificationService');
+        const { rescheduleAll: reSchedule, syncBillNotifications } = require('./notificationService');
         // Notifications table is not cleared by clearAllTables
         // so we don't need to re-insert, just reschedule
         await reSchedule();
+        await syncBillNotifications();
       } catch (e) {
         console.warn('Failed to reschedule notifications during rollback', e);
       }
@@ -1564,6 +1565,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
 
       try {
         await rescheduleAll();
+        await syncBillNotifications();
       } catch (e) {
         console.warn('Failed to reschedule notifications after restore', e);
       }

@@ -11,6 +11,7 @@ import {
   generateOccurrenceDates,
 } from "./billUtils";
 import { runCreditCardStatementScheduler } from "./creditCardScheduler";
+import { syncBillNotifications } from "./notificationService";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 function rowsToArray(res) {
@@ -30,6 +31,7 @@ function nowIso() {
 }
 function emitBillsChanged() {
   emit("billsChanged");
+  syncBillNotifications().catch(e => console.warn('Failed to sync bill notifications', e));
 }
 
 async function fetchAllBillsRaw() {

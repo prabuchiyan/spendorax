@@ -18,7 +18,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const WEEKDAYS_FULL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export default function MuiDateTimePicker({ visible, initialDate, onClose, onSelect, disableFutureDates = false, minDate = null, maxDate = null, allowClear = false, onClear, hideTime = false }) {
+export default function MuiDateTimePicker({ visible, initialDate, onClose, onSelect, disableFutureDates = false, minDate = null, maxDate = null, allowClear = false, onClear, hideTime = false, hideDate = false }) {
   const [tab, setTab] = useState('date'); // 'date' | 'time'
   const [date, setDate] = useState(new Date());
   
@@ -37,7 +37,7 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
       setDate(d);
       setViewMonth(new Date(d.getFullYear(), d.getMonth(), 1));
       setYearPageStart(Math.floor(d.getFullYear() / 12) * 12);
-      setTab('date');
+      setTab(hideDate ? 'time' : 'date');
       setDateMode('days');
       setTimeMode('hours');
 
@@ -489,7 +489,7 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
            {renderMaterialHeader()}
 
            {/* Tabs */}
-           {!hideTime && (
+           {!hideTime && !hideDate && (
              <View style={styles.tabContainer}>
                <TouchableOpacity 
                  style={[styles.tab, tab === 'date' && styles.tabActive]} 

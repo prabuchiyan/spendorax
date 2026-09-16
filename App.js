@@ -39,9 +39,24 @@ import { initDB } from './src/database/init';
 import ExitConfirmationModal from './src/components/ExitConfirmationModal';
 import useExitConfirmation from './src/hooks/useExitConfirmation';
 import { runBillMaintenance } from './src/services/bills';
+import { runCreditCardStatementScheduler } from './src/services/creditCardScheduler';
 import { Provider as PaperProvider, DefaultTheme as PaperDefaultTheme } from 'react-native-paper';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { Colors } from './src/components/Theme';
+import * as BackgroundFetch from 'expo-background-fetch';
+import * as TaskManager from 'expo-task-manager';
+
+const BACKGROUND_FETCH_TASK = 'background-statement-fetch';
+
+TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
+  try {
+    await initDB();
+    await runCreditCardStatementScheduler();
+    return BackgroundFetch.BackgroundFetchResult.NewData;
+  } catch (err) {
+    return BackgroundFetch.BackgroundFetchResult.Failed;
+  }
+});
 
 const Stack = createNativeStackNavigator();
 
@@ -81,6 +96,16 @@ export default function App() {
 
         // Register OUTSIDE the async IIFE return so React gets the cleanup
         unsubNotification = registerNotificationListener(navigationRef);
+
+        try {
+          await BackgroundFetch.registerTaskAsync(BACKGROUND_FETCH_TASK, {
+            minimumInterval: 60 * 15, // 15 minutes
+            stopOnTerminate: false, 
+            startOnBoot: true,
+          });
+        } catch (err) {
+          console.warn("Background fetch failed to register:", err);
+        }
 
       } catch (e) {
         console.error('App init failed:', e);

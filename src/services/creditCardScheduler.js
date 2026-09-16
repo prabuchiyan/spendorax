@@ -582,8 +582,23 @@ template)
     1,
     ts,
     "generated"]
-
   );
+
+  try {
+    const Notifications = require('expo-notifications');
+    const formattedAmount = Number(closingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Statement Generated',
+        body: `Your ${card.name} statement for ${formattedAmount} is ready.`,
+        data: { screen: 'BillDetail', billId: billId },
+        sound: true
+      },
+      trigger: null // Deliver immediately
+    });
+  } catch (e) {
+    console.warn('Failed to notify statement generation', e);
+  }
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
