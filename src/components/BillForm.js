@@ -66,8 +66,12 @@ function getRecurrenceLabel(type) {
  * Do not use database icon names directly.
  * Invalid MaterialCommunityIcons names render as "?".
  */
-function SelectionRow({ type, label, value, onPress }) {
+function SelectionRow({ type, label, value, onPress, color, icon }) {
   const isSource = type === "source";
+  const defaultBg = isSource ? "#EFF6FF" : "#F5F3FF";
+  const defaultIconColor = isSource ? "#2563EB" : "#7C3AED";
+  const defaultIcon = isSource ? "wallet-outline" : "tag-outline";
+  
   return (
     <TouchableOpacity
       activeOpacity={0.82}
@@ -78,14 +82,14 @@ function SelectionRow({ type, label, value, onPress }) {
         style={[
         styles.selectionIcon,
         {
-          backgroundColor: isSource ? "#EFF6FF" : "#F5F3FF"
+          backgroundColor: color ? `${color}20` : defaultBg
         }]
         }>
         
         <MaterialCommunityIcons
-          name={isSource ? "wallet-outline" : "tag-outline"}
+          name={icon || defaultIcon}
           size={20}
-          color={isSource ? "#2563EB" : "#7C3AED"} />
+          color={color || defaultIconColor} />
         
       </View>
 
@@ -272,6 +276,18 @@ export default function BillForm({ bill, onSaved, onCancel }) {
 
   const recurrenceText = isRecurring ? `Every ${getRecurrenceLabel(recurrenceType).toLowerCase().replace('ly', '')} cycle` : "One-time bill";
 
+  const handlePrevRecurrence = () => {
+    const currentIndex = RECURRENCE_TYPES.indexOf(recurrenceType);
+    const newIndex = currentIndex > 0 ? currentIndex - 1 : RECURRENCE_TYPES.length - 1;
+    setRecurrenceType(RECURRENCE_TYPES[newIndex]);
+  };
+
+  const handleNextRecurrence = () => {
+    const currentIndex = RECURRENCE_TYPES.indexOf(recurrenceType);
+    const newIndex = currentIndex < RECURRENCE_TYPES.length - 1 ? currentIndex + 1 : 0;
+    setRecurrenceType(RECURRENCE_TYPES[newIndex]);
+  };
+
   return (
     <View style={styles.container}>
       {/* ========================================================= */}
@@ -452,9 +468,10 @@ export default function BillForm({ bill, onSaved, onCancel }) {
           <SelectionRow
             type="source"
             label="Payment source"
-            value={selectedSource?.name || "Select account"}
+            value={selectedSource?.name || "Select source"}
+            color={selectedSource?.color}
+            icon={selectedSource?.icon}
             onPress={() => setShowSourcePicker(true)} />
-          
 
           <View style={styles.selectionDivider} />
 
@@ -462,6 +479,8 @@ export default function BillForm({ bill, onSaved, onCancel }) {
             type="category"
             label="Category"
             value={selectedCategory?.name || "Select category"}
+            color={selectedCategory?.color}
+            icon={selectedCategory?.icon}
             onPress={() => setShowCategoryPicker(true)} />
           
         </View>
@@ -510,31 +529,19 @@ export default function BillForm({ bill, onSaved, onCancel }) {
           <View style={styles.recurringBox}>
               <Text style={styles.subLabel}>Repeat frequency</Text>
 
-              <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipContainer}>
-              
-                {RECURRENCE_TYPES.map((t) => {
-                const selected = recurrenceType === t;
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#F8FAFC", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginTop: 6, borderWidth: 1, borderColor: "#E2E8F0" }}>
+                <TouchableOpacity onPress={handlePrevRecurrence} style={{ padding: 6, backgroundColor: "#fff", borderRadius: 20, shadowColor: "#000", shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
+                  <MaterialCommunityIcons name="chevron-left" size={24} color="#64748B" />
+                </TouchableOpacity>
 
-                return (
-                  <Chip
-                    key={t}
-                    selected={selected}
-                    onPress={() => setRecurrenceType(t)}
-                    compact
-                    style={[styles.chip, selected && styles.chipSelected]}
-                    textStyle={[
-                    styles.chipText,
-                    selected && styles.chipTextSelected]
-                    }>
-                    
-                      {getRecurrenceLabel(t)}
-                    </Chip>);
+                <Text style={{ fontSize: 16, fontWeight: "600", color: "#0F172A", minWidth: 120, textAlign: "center" }}>
+                  {getRecurrenceLabel(recurrenceType)}
+                </Text>
 
-              })}
-              </ScrollView>
+                <TouchableOpacity onPress={handleNextRecurrence} style={{ padding: 6, backgroundColor: "#fff", borderRadius: 20, shadowColor: "#000", shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
+                  <MaterialCommunityIcons name="chevron-right" size={24} color="#64748B" />
+                </TouchableOpacity>
+              </View>
 
               <View style={styles.recurringFields}>
                 {/* END DATE */}
@@ -845,14 +852,14 @@ export default function BillForm({ bill, onSaved, onCancel }) {
                       style={[
                       styles.pickerItemIcon,
                       {
-                        backgroundColor: selected ? "#EDE9FE" : "#F8FAFC"
+                        backgroundColor: c.color ? `${c.color}20` : (selected ? "#EDE9FE" : "#F8FAFC")
                       }]
                       }>
                       
                         <MaterialCommunityIcons
-                        name="tag-outline"
+                        name={c.icon || "tag-outline"}
                         size={21}
-                        color={selected ? "#7C3AED" : "#64748B"} />
+                        color={c.color || (selected ? "#7C3AED" : "#64748B")} />
                       
                       </View>
 
@@ -988,14 +995,14 @@ export default function BillForm({ bill, onSaved, onCancel }) {
                       style={[
                       styles.pickerItemIcon,
                       {
-                        backgroundColor: selected ? "#DBEAFE" : "#F8FAFC"
+                        backgroundColor: s.color ? `${s.color}20` : (selected ? "#DBEAFE" : "#F8FAFC")
                       }]
                       }>
                       
                         <MaterialCommunityIcons
-                        name="wallet-outline"
+                        name={s.icon || "wallet-outline"}
                         size={21}
-                        color={selected ? "#2563EB" : "#64748B"} />
+                        color={s.color || (selected ? "#2563EB" : "#64748B")} />
                       
                       </View>
 
