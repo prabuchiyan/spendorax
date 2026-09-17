@@ -497,22 +497,33 @@ export default function SourcesDetails({ route, navigation }) {
     [categoriesMap, source, balanceVisible, handleEdit],
   );
 
+  const isCreditCard = String(source?.type || '').toLowerCase() === 'credit_card';
+
   // SCREEN
   return (
     <View style={styles.container}>
       {/* BALANCE */}
       <View style={styles.hero}>
-        <Text style={styles.heroLabel}>Available Balance</Text>
+        <Text style={styles.heroLabel}>{isCreditCard ? 'Total Outstanding' : 'Available Balance'}</Text>
 
         <Text style={styles.heroAmount}>
           {balanceVisible
             ? `₹ ${totalBalance.toLocaleString("en-IN", {
                 minimumFractionDigits: 2,
-
                 maximumFractionDigits: 2,
               })}`
             : "••••••"}
         </Text>
+
+        {isCreditCard && (
+           <TouchableOpacity 
+             style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#F0F5FF', borderRadius: 20 }}
+             onPress={() => navigation.navigate('CreditCardStatements', { sourceId: source?.id })}
+           >
+             <MaterialCommunityIcons name="file-document-outline" size={15} color="#4B7CF3" style={{ marginRight: 6 }} />
+             <Text style={{ fontSize: 13, fontWeight: '700', color: '#4B7CF3' }}>View Statements</Text>
+           </TouchableOpacity>
+        )}
       </View>
 
       {/* HEADER */}

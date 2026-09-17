@@ -157,9 +157,9 @@ export default function SourcesScreen({ route, navigation }) {
           <View style={[styles.statCard, styles.activeStat]}>
             <View style={styles.statIconBlue}>
               <MaterialCommunityIcons
-                name="cash-plus"
-                size={17}
-                color="#4B7CF3" />
+                name="wallet-outline"
+                size={18}
+                color="#60A5FA" />
               
             </View>
 
@@ -177,9 +177,9 @@ export default function SourcesScreen({ route, navigation }) {
           <View style={[styles.statCard, styles.negativeStat]}>
             <View style={styles.statIconRed}>
               <MaterialCommunityIcons
-                name="cash-minus"
-                size={17}
-                color="#E46A6A" />
+                name="alert-circle-outline"
+                size={18}
+                color="#F87171" />
               
             </View>
 
@@ -261,7 +261,7 @@ export default function SourcesScreen({ route, navigation }) {
         initialNumToRender={15}
         windowSize={10}
         renderItem={({ item }) => {
-
+          const isCreditCard = String(item.type || '').toLowerCase() === 'credit_card';
           const itemBalance = Number(item.balance || 0);
           const isNegative = itemBalance < 0;
 
@@ -329,9 +329,9 @@ export default function SourcesScreen({ route, navigation }) {
                         
 
                         <Text style={styles.accountMetaText}>
-                          {isNegative ?
+                          {isCreditCard ? 'Total outstanding' : (isNegative ?
                           'Negative balance' :
-                          'Available balance'}
+                          'Available balance')}
                         </Text>
 
                       </View>
@@ -362,7 +362,7 @@ export default function SourcesScreen({ route, navigation }) {
 
                     <View style={styles.balanceCaptionRow}>
                       <Text style={styles.balanceCaption}>
-                        BALANCE
+                        {isCreditCard ? 'OUTSTANDING' : 'BALANCE'}
                       </Text>
 
                       <MaterialCommunityIcons
@@ -523,15 +523,24 @@ const styles = StyleSheet.create({
 
   headerSection: {
     paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10
+    paddingTop: 20,
+    paddingBottom: 22,
+    backgroundColor: '#1E293B',
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    elevation: 8,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    marginBottom: 10,
   },
 
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14
+    marginBottom: 20
   },
 
   titleContainer: {
@@ -539,40 +548,40 @@ const styles = StyleSheet.create({
   },
 
   pageTitle: {
-    fontSize: 23,
+    fontSize: 26,
     fontWeight: '900',
-    color: '#24313D',
-    letterSpacing: -0.4
+    color: '#F8FAFC',
+    letterSpacing: -0.5
   },
 
   pageSubtitle: {
-    fontSize: 12,
-    color: '#8A96A3',
-    marginTop: 3
+    fontSize: 13,
+    color: '#94A3B8',
+    marginTop: 4
   },
 
   totalBadge: {
     minWidth: 68,
-    height: 50,
-    borderRadius: 15,
-    backgroundColor: '#EAF5EF',
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10
   },
 
   totalBadgeNumber: {
-    fontSize: 19,
+    fontSize: 21,
     fontWeight: '900',
-    color: '#3F8F6B',
-    lineHeight: 21
+    color: '#F8FAFC',
+    lineHeight: 23
   },
 
   totalBadgeLabel: {
-    fontSize: 7,
+    fontSize: 8,
     fontWeight: '800',
-    color: '#6DA68A',
-    letterSpacing: 0.7,
+    color: '#94A3B8',
+    letterSpacing: 0.8,
     marginTop: 2
   },
 
@@ -596,44 +605,48 @@ const styles = StyleSheet.create({
   },
 
   activeStat: {
-    backgroundColor: '#F0F5FF'
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)'
   },
 
   negativeStat: {
-    backgroundColor: '#FFF3F3'
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.15)'
   },
 
   statIconBlue: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
-    backgroundColor: '#E0E9FF',
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 9
+    marginRight: 10
   },
 
   statIconRed: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
-    backgroundColor: '#FFE3E3',
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 9
+    marginRight: 10
   },
 
   statValue: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '900',
-    color: '#263440'
+    color: '#F8FAFC'
   },
 
   statLabel: {
-    fontSize: 10,
-    color: '#8B97A3',
-    marginTop: 1,
-    fontWeight: '600'
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 2,
+    fontWeight: '700'
   },
 
   /* ==========================================================

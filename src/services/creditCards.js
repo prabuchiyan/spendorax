@@ -557,7 +557,7 @@ export async function getStatementTransactions(sourceId, startDate, endDate) {
 
 export async function getAllCreditCardStatements() {
     const cardsRes = await executeSql(
-        `SELECT id, name, color, currency FROM credit_cards`,
+        `SELECT id, name, color, currency, source_id FROM credit_cards`,
         []
     );
     const cardsMap = {};
@@ -598,6 +598,7 @@ export async function getAllCreditCardStatements() {
             card_name: card.name,
             card_color: card.color,
             card_currency: card.currency,
+            source_id: card.source_id,
             bill_status: billStatus,
             bill_is_paid: billIsPaid,
         });
