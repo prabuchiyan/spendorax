@@ -57,6 +57,17 @@ export async function exportBackup() {
       billLinkedTransactions = [];
     }
 
+    // Bill Deleted Occurrences
+    let billDeletedOccurrences = [];
+    try {
+      const res = await executeSql('SELECT * FROM bill_deleted_occurrences');
+      for (let i = 0; i < res.rows.length; i++) {
+        billDeletedOccurrences.push(res.rows.item(i));
+      }
+    } catch (e) {
+      billDeletedOccurrences = [];
+    }
+
     // Credit Cards
     let creditCards = [];
     try {
@@ -138,6 +149,7 @@ export async function exportBackup() {
         category_budgets: categoryBudgets,
         bills,
         bill_linked_transactions: billLinkedTransactions,
+        bill_deleted_occurrences: billDeletedOccurrences,
         loans,
         loan_payments: loanPayments,
         credit_cards: creditCards,
@@ -590,6 +602,20 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         }
       }
 
+      // Restore bill_deleted_occurrences
+      if (originalData.bill_deleted_occurrences && originalData.bill_deleted_occurrences.length > 0) {
+        for (const occ of originalData.bill_deleted_occurrences) {
+          try {
+            await executeSql(
+              `INSERT INTO bill_deleted_occurrences (id, parent_bill_id, recurrence_occurrence_key, deleted_at) VALUES (?,?,?,?)`,
+              [occ.id, occ.parent_bill_id, occ.recurrence_occurrence_key, occ.deleted_at]
+            );
+          } catch (e) {
+            console.warn('Failed to restore deleted occurrence', occ.id, e);
+          }
+        }
+      }
+
       // Restore credit cards
       for (const card of originalData.credit_cards) {
         try {
@@ -715,6 +741,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       transactions = [],
       loans = [],
       loan_payments = [],
+      bill_deleted_occurrences = [],
       credit_cards = [],
       credit_card_statements = [],
       credit_card_payments = [],
@@ -1240,7 +1267,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         );
       },
       (count) => {
-        updateProgress(count, 'Linking transactions to bills...');
+        updateProgress(count, 'Updating bills with linked transactions...');
       }
     );
 
@@ -1499,7 +1526,23 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       }
     );
 
-    // 8c. Bill Linked Transactions
+    // 8c. Merge bill_deleted_occurrences
+    safeOnProgress(80, 'Merging deleted occurrences...');
+    const cleanDeletedOccurrences = Array.isArray(bill_deleted_occurrences) ? bill_deleted_occurrences : [];
+    for (const occ of cleanDeletedOccurrences) {
+      const newParentId = billMap[occ.parent_bill_id];
+      if (!newParentId) continue;
+      try {
+        await executeSql(
+          `INSERT OR IGNORE INTO bill_deleted_occurrences (parent_bill_id, recurrence_occurrence_key, deleted_at) VALUES (?,?,?)`,
+          [newParentId, occ.recurrence_occurrence_key, occ.deleted_at]
+        );
+      } catch (e) {
+        console.warn('Failed to merge deleted occurrence', occ.id, e);
+      }
+    }
+
+    // 8d. Bill Linked Transactions
     // Use cleanBillLinkedTxs — already deduplicated and re-pointed above.
     await processBatch(
       cleanBillLinkedTxs || [],
