@@ -15,8 +15,8 @@ import CategoryDonut from "../components/CategoryDonut";
 import { getHomeExpenseTransactions } from "../services/transactions";
 import { getHomeBudgets as getHomeBudgetsService } from "../services/budgets";
 import { getHomeCategoryBudgets as getHomeCategoryBudgetsService } from "../services/categoryBudgets";
-import { getBillsForCurrentMonth, getBillsSummary } from "../services/bills";
-import { getBillDisplayStatus, formatCurrency } from "../services/billUtils";
+import { getBillsForCurrentMonth, getBillsSummary, getBillSeriesMultiple } from "../services/bills";
+import { getBillDisplayStatus, formatCurrency, getPreferredBillOccurrence } from "../services/billUtils";
 import { getSources } from "../services/sources";
 import { getCategories } from "../services/categories";
 import events from "../services/events";
@@ -647,6 +647,61 @@ export default function HomeScreen({ navigation }) {
 
       const allBills = Array.isArray(bl) ? bl : [];
 
+      const templateIdsToFetch = Array.from(
+        new Set(
+          allBills
+            .filter(
+              (bill) =>
+                (bill.is_recurring || bill._isRecurringSeries) &&
+                !bill._isCreditCardStatement,
+            )
+            .map((bill) => bill._templateId || bill.parent_bill_id || bill.id),
+        ),
+      );
+
+      const preferredMap = {};
+      if (templateIdsToFetch.length > 0) {
+        try {
+          const seriesMap = await getBillSeriesMultiple(templateIdsToFetch);
+          allBills.forEach((bill) => {
+            if (!bill.is_recurring && !bill._isRecurringSeries) return;
+            if (bill._isCreditCardStatement) return;
+
+            const templateId = bill._templateId || bill.parent_bill_id || bill.id;
+            if (seriesMap[templateId]) {
+              preferredMap[String(templateId)] = getPreferredBillOccurrence(
+                bill,
+                seriesMap[templateId],
+              );
+            }
+          });
+        } catch (e) {
+          console.warn("Home preferred bill occurrence error:", e);
+        }
+      }
+
+      const displayItems = allBills.map((bill) => {
+        const templateId = bill._templateId || bill.parent_bill_id || bill.id;
+        const preferred = preferredMap[String(templateId)];
+        if (
+          preferred &&
+          !bill._isCreditCardParent &&
+          !bill._isCreditCardStatement
+        ) {
+          return {
+            ...bill,
+            due_date: preferred.due_date,
+            status: preferred.status,
+            amount: preferred.amount,
+            _noDueDate: preferred._noDueDate === true,
+            _templateId: bill._templateId || templateId,
+            _displayOccurrenceId: preferred.id,
+            _displayOccurrence: preferred,
+          };
+        }
+        return bill;
+      });
+
       const todayStart = new Date(
         currentYear,
         currentMonth,
@@ -657,7 +712,7 @@ export default function HomeScreen({ navigation }) {
         0,
       );
 
-      const currentMonthBills = allBills.filter((bill) => {
+      const currentMonthBills = displayItems.filter((bill) => {
         if (!bill?.due_date) {
           return false;
         }
@@ -3201,6 +3256,7 @@ export default function HomeScreen({ navigation }) {
                                     ).toLocaleDateString(undefined, {
                                       day: "2-digit",
                                       month: "short",
+                                      year: "numeric",
                                     })
                                   : "—"
                               }`}
@@ -3223,7 +3279,7 @@ export default function HomeScreen({ navigation }) {
                         style={{
                           fontSize: 13,
                           fontWeight: "900",
-                          color: "#2F7355",
+                          color: statusColor,
                         }}
                       >
                         {balanceVisible

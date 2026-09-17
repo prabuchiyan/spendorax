@@ -266,4 +266,90 @@ export function generateOccurrenceDates(bill, upToDate) {
   return dates;
 }
 
+export function getPreferredBillOccurrence(bill, allBills) {
+  if (!bill.is_recurring && !bill._isRecurringSeries) {
+    return bill;
+  }
+  const templateId = Number(bill._templateId || bill.parent_bill_id || bill.id);
+  if (!templateId) {
+    return bill;
+  }
+  const today = new Date();
+  const todayString = today.toISOString().slice(0, 10);
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
+  const currentMonthPrefix = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`;
+  const occurrences = allBills
+    .filter((row) => {
+      const rowTemplateId = Number(
+        row.parent_bill_id || row._templateId || row.id,
+      );
+      return rowTemplateId === templateId && !row.deleted_at;
+    })
+    .filter((row) => Boolean(row.due_date))
+    .sort((a, b) => (b.due_date || "").localeCompare(a.due_date || ""));
 
+  if (!occurrences.length) {
+    return {
+      ...bill,
+      due_date: null,
+      _noDueDate: true,
+    };
+  }
+
+  const currentMonthBill = occurrences.find((row) =>
+    row.due_date.startsWith(currentMonthPrefix),
+  );
+
+  if (currentMonthBill) {
+    if (
+      currentMonthBill.status !== "paid" &&
+      currentMonthBill.status !== "skipped"
+    ) {
+      return currentMonthBill;
+    }
+
+    const previousPending = occurrences.find((row) => {
+      return (
+        row.due_date < currentMonthBill.due_date &&
+        row.status !== "paid" &&
+        row.status !== "skipped"
+      );
+    });
+
+    if (previousPending) {
+      return previousPending;
+    }
+
+    const upcoming = occurrences
+      .filter((row) => row.due_date > currentMonthBill.due_date)
+      .sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
+    return upcoming || currentMonthBill;
+  }
+
+  const previousPending = occurrences.find((row) => {
+    return (
+      row.due_date <= todayString &&
+      row.status !== "paid" &&
+      row.status !== "skipped"
+    );
+  });
+
+  if (previousPending) {
+    return previousPending;
+  }
+
+  const upcoming = occurrences
+    .filter((row) => row.due_date > todayString)
+    .sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
+
+  if (upcoming) {
+    return upcoming;
+  }
+
+  return {
+    ...bill,
+    due_date: null,
+    _noDueDate: true,
+  };
+}
