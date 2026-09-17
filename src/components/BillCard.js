@@ -13,6 +13,7 @@ import {
   formatDueDate,
   getBillDisplayStatus,
 } from '../services/billUtils';
+import CurrencyText from './CurrencyText';
 
 function BillCard({
   bill,
@@ -167,15 +168,14 @@ function BillCard({
             </Chip>
           </View>
 
-          <Text
+          <CurrencyText
             style={{
               fontWeight: '800',
               fontSize: 18,
               color: borderColor,
             }}
-          >
-            {formatCurrency(bill.amount)}
-          </Text>
+            amount={bill.amount}
+          />
         </View>
       </TouchableOpacity>
 

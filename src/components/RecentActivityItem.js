@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Card from './Card';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import CurrencyText from './CurrencyText';
 
 const THEMES = {
   EMI: {
@@ -32,7 +33,6 @@ export default function RecentActivityItem({ item }) {
     label: item.payment_type,
   };
 
-  const amount = Number(item.payment_amount || 0).toLocaleString('en-IN');
 
   const date = new Date(item.payment_date).toLocaleDateString('en-IN', {
     day: '2-digit',
@@ -77,7 +77,7 @@ export default function RecentActivityItem({ item }) {
 
         <View style={styles.right}>
           <Text style={styles.amount}>
-            ₹{amount}
+            <CurrencyText amount={item.payment_amount} />
           </Text>
 
           <Text style={styles.date}>

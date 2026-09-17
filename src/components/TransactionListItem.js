@@ -8,6 +8,7 @@ import {
   getAmountPrefix,
   getTypeIcon,
 } from '../utils/transactionUtils';
+import CurrencyText from './CurrencyText';
 
 export default function TransactionListItem({
   item,
@@ -243,12 +244,8 @@ export default function TransactionListItem({
                   item.is_counted === 0 ? 'line-through' : 'none', // strikethrough
               }}
             >
-              {hideAmount
-                ? '••••••'
-                : `${prefix}₹${Number(item.amount || 0).toLocaleString('en-IN', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}`}
+              {prefix}
+              <CurrencyText amount={item.amount} />
             </Text>
 
             {/* NOT COUNTED BADGE */}

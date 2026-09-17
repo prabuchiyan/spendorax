@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import Card from './Card';
 import { Colors, Spacing } from './Theme';
 import { formatCurrency, getBillDisplayStatus } from '../services/billUtils';
+import CurrencyText from './CurrencyText';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -134,7 +135,7 @@ function BillCalendarView({ bills = [], month, year, onSelectBill, onMonthChange
                   {b.name}
                 </Text>
                 <Text style={{ fontSize: 12, color: display.color, marginTop: 2 }}>{display.label}</Text>
-                <Text style={{ fontSize: 12, color: Colors.muted, marginTop: 2 }}>{formatCurrency(b.amount)}</Text>
+                <CurrencyText style={{ fontSize: 12, color: Colors.muted, marginTop: 2 }} amount={b.amount} />
               </TouchableOpacity>
             );
           })}

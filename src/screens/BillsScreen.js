@@ -36,6 +36,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import FAB from "../components/FAB";
 import { Colors, Spacing } from "../components/Theme";
 import { BILL_STATUS, formatCurrency } from "../services/billUtils";
+import CurrencyText from "../components/CurrencyText";
 import { getSources } from "../services/sources";
 import { getCreditCards, payCreditCardBill } from "../services/creditCards";
 // Redux imports
@@ -582,7 +583,7 @@ export default function BillsScreen({ navigation }) {
                         color: "#25352D",
                       }}
                     >
-                      {formatCurrency(Number(statement.amount || 0))}
+                      <CurrencyText amount={Number(statement.amount || 0)} />
                     </Text>
                   </View>
 
@@ -986,7 +987,7 @@ export default function BillsScreen({ navigation }) {
               }}
             >
               {summary.overdueCount} overdue ·{" "}
-              {formatCurrency(summary.overdueAmount)}
+              <CurrencyText amount={summary.overdueAmount} />
             </Text>
           </View>
           <MaterialCommunityIcons

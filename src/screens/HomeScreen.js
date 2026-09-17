@@ -25,6 +25,7 @@ import Card from "../components/Card";
 import FAB from "../components/FAB";
 import { Spacing } from "../components/Theme";
 import BottomStatsBar from "../components/BottomStatsBar";
+import CurrencyText from "../components/CurrencyText";
 import { useBalanceVisibility } from "../context/BalanceVisibilityContext";
 import { usePageLoader } from "../context/PageLoaderContext";
 import {
@@ -2928,7 +2929,7 @@ export default function HomeScreen({ navigation }) {
                       }}
                     >
                       {balanceVisible
-                        ? formatCurrency(billsSummary.totalThisMonth)
+                        ? <CurrencyText amount={billsSummary.totalThisMonth} />
                         : "••••••"}
                     </Text>
                   </View>
@@ -3024,7 +3025,7 @@ export default function HomeScreen({ navigation }) {
                     }}
                   >
                     {balanceVisible
-                      ? formatCurrency(billsSummary.totalPaid)
+                      ? <CurrencyText amount={billsSummary.totalPaid} />
                       : "••••••"}
                   </Text>
                 </View>
@@ -3078,7 +3079,7 @@ export default function HomeScreen({ navigation }) {
                     }}
                   >
                     {balanceVisible
-                      ? formatCurrency(billsSummary.overdueAmount)
+                      ? <CurrencyText amount={billsSummary.overdueAmount} />
                       : "••••••"}
                   </Text>
                 </View>
@@ -3132,7 +3133,7 @@ export default function HomeScreen({ navigation }) {
                     }}
                   >
                     {balanceVisible
-                      ? formatCurrency(billsSummary.upcoming7)
+                      ? <CurrencyText amount={billsSummary.upcoming7} />
                       : "••••••"}
                   </Text>
                 </View>
@@ -3283,7 +3284,7 @@ export default function HomeScreen({ navigation }) {
                         }}
                       >
                         {balanceVisible
-                          ? formatCurrency(bill.amount)
+                          ? <CurrencyText amount={bill.amount} />
                           : "••••••"}
                       </Text>
 

@@ -33,6 +33,7 @@ import { getDateKey } from '../utils/dateUtils';
 import TransactionListItem from '../components/TransactionListItem';
 import { setSources as setReduxSources } from '../redux/slices/sourceSlice';
 import { useAppDispatch } from '../redux/hooks';
+import CurrencyText from '../components/CurrencyText';
 
 export default function TransactionsScreen({ navigation }) {
   const dispatch = useAppDispatch();
@@ -613,7 +614,7 @@ export default function TransactionsScreen({ navigation }) {
                   marginRight: 8
                 }}>
                 
-                    +₹{section.dailyIncome.toFixed(0)}
+                    +<CurrencyText amount={section.dailyIncome} minimumFractionDigits={0} maximumFractionDigits={0} />
                   </Text>
               }
 
@@ -625,7 +626,7 @@ export default function TransactionsScreen({ navigation }) {
                   color: '#E35D6A'
                 }}>
                 
-                    -₹{section.dailyExpense.toFixed(0)}
+                    -<CurrencyText amount={section.dailyExpense} minimumFractionDigits={0} maximumFractionDigits={0} />
                   </Text>
               }
               </View>

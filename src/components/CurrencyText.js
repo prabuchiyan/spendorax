@@ -1,13 +1,16 @@
 import React from 'react';
 import { Text } from 'react-native';
 import { formatCurrency } from '../services/billUtils';
+import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 
 export default function CurrencyText({
   amount,
   style,
   minimumFractionDigits,
   maximumFractionDigits = 2,
+  ...props
 }) {
+  const { balanceVisible } = useBalanceVisibility();
   const value = Number(amount || 0);
   let formatted;
 
@@ -19,5 +22,5 @@ export default function CurrencyText({
     formatted = `₹${value.toFixed(maximumFractionDigits)}`;
   }
 
-  return <Text style={style}>{formatted}</Text>;
+  return <Text style={style} {...props}>{balanceVisible ? formatted : '••••••'}</Text>;
 }

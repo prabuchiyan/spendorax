@@ -14,16 +14,14 @@ import FAB from "../components/FAB";
 import { Colors, Spacing } from "../components/Theme";
 import { useAppDispatch, useLoans } from '../redux/hooks';
 import { setLoans } from '../redux/slices/loanSlice';
+import CurrencyText from "../components/CurrencyText";
 
 /* =========================================================
    HELPERS
 ========================================================= */
 
 function money(value) {
-  return `₹${Number(value || 0).toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+  return <CurrencyText amount={value} minimumFractionDigits={2} />;
 }
 
 function number(value) {
