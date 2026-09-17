@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getBillsForTransaction } from '../services/bills';
 import { Colors } from './Theme';
 import { formatCurrency, formatDueDate, getBillDisplayStatus } from '../services/billUtils';
+import CurrencyText from './CurrencyText';
 
 export default function LinkedBillCard({ transactionId, onPressBill }) {
   const [bills, setBills] = useState([]);
@@ -66,9 +67,7 @@ export default function LinkedBillCard({ transactionId, onPressBill }) {
 
             {/* Amount + status */}
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={[styles.billAmount, { color: display.color }]}>
-                {formatCurrency(bill.amount)}
-              </Text>
+              <CurrencyText style={[styles.billAmount, { color: display.color }]} amount={bill.amount} />
               <View style={[styles.badge, { backgroundColor: `${display.color}20` }]}>
                 <Text style={[styles.badgeText, { color: display.color }]}>{display.label}</Text>
               </View>

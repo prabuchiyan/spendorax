@@ -11,6 +11,7 @@ import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import events from '../services/events';
+import CurrencyText from '../components/CurrencyText';
 
 const getCurrentPeriodLabel = (m) => {
   const d = new Date();
@@ -52,12 +53,12 @@ const ReportItemCard = React.memo(({ data, categoriesMap, onCategoryPress }) => 
       <View style={styles.cardHeader}>
         <Text style={styles.periodLabel}>{data.label}</Text>
         <Text style={[styles.netBalance, { color: data.balance >= 0 ? '#36B37E' : '#E46A6A' }]}>
-          Net: ₹{data.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+          Net: <CurrencyText amount={data.balance} minimumFractionDigits={2} />
         </Text>
       </View>
       <View style={styles.detailsRow}>
-        <Text style={styles.incomeText}>+ ₹{data.income.toLocaleString('en-IN')}</Text>
-        <Text style={styles.expenseText}>- ₹{data.expense.toLocaleString('en-IN')}</Text>
+        <Text style={styles.incomeText}>+ <CurrencyText amount={data.income} minimumFractionDigits={0} maximumFractionDigits={0} /></Text>
+        <Text style={styles.expenseText}>- <CurrencyText amount={data.expense} minimumFractionDigits={0} maximumFractionDigits={0} /></Text>
       </View>
 
       <View style={styles.categoryBreakdown}>
@@ -91,7 +92,7 @@ const ReportItemCard = React.memo(({ data, categoriesMap, onCategoryPress }) => 
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 6 }}>
                     <Text style={styles.catName}>{cat.name}</Text>
                     <Text style={[styles.catAmount, { color: isExpense ? '#E46A6A' : '#36B37E' }]}>
-                      {isExpense ? '-' : '+'}₹{amount.toLocaleString('en-IN')}
+                      {isExpense ? '-' : '+'}<CurrencyText amount={amount} minimumFractionDigits={0} maximumFractionDigits={0} />
                     </Text>
                   </View>
                   <View style={styles.progressBarBackground}>

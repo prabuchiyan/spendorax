@@ -9,6 +9,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
 import { usePageLoader } from '../context/PageLoaderContext';
+import PageLoader from '../components/PageLoader';
 // Redux imports
 import { setCategoriesMap as setReduxCategoriesMap } from '../redux/slices/categorySlice';
 import { useAppDispatch } from '../redux/hooks';
@@ -224,6 +225,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
   const dispatch = useAppDispatch();
   const params = route?.params || {};
   const {
+    visible: loaderVisible,
     show: showPageLoader,
     hide: hidePageLoader,
   } = usePageLoader();
@@ -818,7 +820,6 @@ export default function SpendAreasDashboard({ route, navigation }) {
                 onPress={() => {
                   if (filterMode === m) return;
                   
-                  showPageLoader();
                   setFilterMode(m);
                   setSelectedPeriod(null);
                 }}
@@ -889,7 +890,6 @@ export default function SpendAreasDashboard({ route, navigation }) {
                     onPress={() => {
                       if (selectedPeriod === p) return;
                       
-                      showPageLoader();
                       setSelectedPeriod(p);
                       // Immediately focus the selected period.
                       requestAnimationFrame(() => {
@@ -1491,6 +1491,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
           )}
         </View>
       </ScrollView>
+      <PageLoader visible={loaderVisible} />
     </View>
   );
 }

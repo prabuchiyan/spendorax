@@ -15,6 +15,7 @@ import { Colors, Spacing } from '../components/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 import { usePageLoader } from '../context/PageLoaderContext';
+import PageLoader from '../components/PageLoader';
 // Redux imports
 import { setSources } from '../redux/slices/sourceSlice';
 import { useAppDispatch, useSourcesList } from '../redux/hooks';
@@ -25,7 +26,7 @@ export default function SourcesDashboard({ navigation }) {
   const sources = reduxSources || [];
   const [tab, setTab] = useState('banks');
   const [loading, setLoading] = useState(true);
-  const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
+  const { visible: loaderVisible, show: showPageLoader, hide: hidePageLoader } = usePageLoader();
   const { balanceVisible } = useBalanceVisibility();
   const [creditCards, setCreditCards] = useState([]);
 
@@ -745,10 +746,10 @@ export default function SourcesDashboard({ navigation }) {
           }
         ))
         }
-
       </ScrollView>
-    </View>);
-
+      <PageLoader visible={loaderVisible} />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({

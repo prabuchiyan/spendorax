@@ -4,6 +4,7 @@ import Card from '../components/Card';
 import { getLoans, getLoanPayments } from '../services/loans';
 import scheduleService from '../services/loanSchedule';
 import { Colors } from '../components/Theme';
+import CurrencyText from '../components/CurrencyText';
 
 function sum(arr, key) {return arr.reduce((s, x) => s + Number(x[key] || 0), 0);}
 
@@ -113,12 +114,12 @@ export default function LoanReportsScreen() {
     <ScrollView style={{ flex: 1, backgroundColor: Colors.background, padding: 12 }}>
       <Card>
         <Text style={{ fontWeight: '800', fontSize: 16 }}>Loan Summary</Text>
-        <Text style={{ marginTop: 8 }}>Total Outstanding: ₹{Number(summary.totalOutstanding || 0).toLocaleString('en-IN')}</Text>
-        <Text>Monthly EMI Total: ₹{Number(summary.totalEMI || 0).toLocaleString('en-IN')}</Text>
+        <Text style={{ marginTop: 8 }}>Total Outstanding: <CurrencyText amount={summary.totalOutstanding} /></Text>
+        <Text>Monthly EMI Total: <CurrencyText amount={summary.totalEMI} /></Text>
         <Text>Active Loans: {summary.activeLoans}</Text>
         <Text>Closed Loans: {summary.closedLoans}</Text>
-        <Text>Total Interest Paid: ₹{Number(summary.totalInterestPaid || 0).toLocaleString('en-IN')}</Text>
-        <Text>Total Prepayments: ₹{Number(summary.totalPrepayments || 0).toLocaleString('en-IN')}</Text>
+        <Text>Total Interest Paid: <CurrencyText amount={summary.totalInterestPaid} /></Text>
+        <Text>Total Prepayments: <CurrencyText amount={summary.totalPrepayments} /></Text>
       </Card>
 
       <Card style={{ marginTop: 12 }}>
@@ -137,7 +138,7 @@ export default function LoanReportsScreen() {
                       <View style={{ height: `${Math.max(pct, 2)}%`, backgroundColor: '#4B7CF3', width: 18, borderRadius: 6, alignSelf: 'center' }} />
                     </View>
                     <Text style={{ marginTop: 8, fontSize: 11, color: Colors.muted }}>{formatMonthLabel(k)}</Text>
-                    <Text style={{ fontSize: 12, fontWeight: '700' }}>₹{Number(val).toLocaleString('en-IN')}</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '700' }}><CurrencyText amount={val} minimumFractionDigits={0} maximumFractionDigits={0} /></Text>
                   </Pressable>);
 
             })}
@@ -165,7 +166,7 @@ export default function LoanReportsScreen() {
                       <View style={{ height: `${Math.max(i / (total || 1) * Math.max(pct, 2), 2)}%`, backgroundColor: '#E46A6A', width: 12, borderBottomLeftRadius: 6, borderBottomRightRadius: 6 }} />
                     </View>
                     <Text style={{ marginTop: 8, fontSize: 11, color: Colors.muted }}>{formatMonthLabel(k)}</Text>
-                    <Text style={{ fontSize: 12, fontWeight: '700' }}>₹{Number(total).toLocaleString('en-IN')}</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '700' }}><CurrencyText amount={total} minimumFractionDigits={0} maximumFractionDigits={0} /></Text>
                   </Pressable>);
 
             })}

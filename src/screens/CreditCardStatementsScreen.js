@@ -17,6 +17,7 @@ import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useAppDispatch, useCreditCardStatements } from '../redux/hooks';
 import { setStatements } from '../redux/slices/creditCardSlice';
 import { formatAmount, formatCurrency } from "../utils/numberUtils";
+import CurrencyText from "../components/CurrencyText";
 
 function formatDate(value) {
   if (!value) return "-";

@@ -15,8 +15,8 @@ import CategoryDonut from "../components/CategoryDonut";
 import { getHomeExpenseTransactions } from "../services/transactions";
 import { getHomeBudgets as getHomeBudgetsService } from "../services/budgets";
 import { getHomeCategoryBudgets as getHomeCategoryBudgetsService } from "../services/categoryBudgets";
-import { getBillsForCurrentMonth } from "../services/bills";
-import { getBillDisplayStatus, formatCurrency } from "../services/billUtils";
+import { getBillsForCurrentMonth, getBillsSummary, getBillSeriesMultiple } from "../services/bills";
+import { getBillDisplayStatus, formatCurrency, getPreferredBillOccurrence } from "../services/billUtils";
 import { getSources } from "../services/sources";
 import { getCategories } from "../services/categories";
 import events from "../services/events";
@@ -25,8 +25,10 @@ import Card from "../components/Card";
 import FAB from "../components/FAB";
 import { Spacing } from "../components/Theme";
 import BottomStatsBar from "../components/BottomStatsBar";
+import CurrencyText from "../components/CurrencyText";
 import { useBalanceVisibility } from "../context/BalanceVisibilityContext";
 import { usePageLoader } from "../context/PageLoaderContext";
+import PageLoader from "../components/PageLoader";
 import {
   setTopCategories,
   setSources,
@@ -342,15 +344,13 @@ function BudgetDonut({
 
   const safePercent = Number.isNaN(percent) ? 0 : percent;
 
-  const anim = React.useRef(
-    new Animated.Value(0),
-  ).current;
+  const anim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
     if (!loaderVisible) {
       Animated.timing(anim, {
         toValue: Math.min(1, percent),
-        duration: 1000,
+        duration: 1500,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
       }).start();
@@ -379,8 +379,7 @@ function BudgetDonut({
     }
   }, [safePercent, loaderVisible]);
 
-  const webDashOffset =
-    circumference - circumference * Math.min(1, webPercent);
+  const webDashOffset = circumference - circumference * Math.min(1, webPercent);
 
   return (
     <View
@@ -415,7 +414,10 @@ function BudgetDonut({
             rotation="-90"
             originX={size / 2}
             originY={size / 2}
-            style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.215, 0.61, 0.355, 1)' }}
+            style={{
+              transition:
+                "stroke-dashoffset 1.5s cubic-bezier(0.215, 0.61, 0.355, 1)",
+            }}
           />
         ) : (
           <AnimatedCircle
@@ -522,7 +524,7 @@ export default function HomeScreen({ navigation }) {
 
   const budgetDonutSize = Math.min(240, Math.max(190, screenWidth - 80));
 
-  const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
+  const { visible: pageLoaderVisible, show: showPageLoader, hide: hidePageLoader } = usePageLoader();
 
   const dispatch = useAppDispatch();
 
@@ -647,6 +649,61 @@ export default function HomeScreen({ navigation }) {
 
       const allBills = Array.isArray(bl) ? bl : [];
 
+      const templateIdsToFetch = Array.from(
+        new Set(
+          allBills
+            .filter(
+              (bill) =>
+                (bill.is_recurring || bill._isRecurringSeries) &&
+                !bill._isCreditCardStatement,
+            )
+            .map((bill) => bill._templateId || bill.parent_bill_id || bill.id),
+        ),
+      );
+
+      const preferredMap = {};
+      if (templateIdsToFetch.length > 0) {
+        try {
+          const seriesMap = await getBillSeriesMultiple(templateIdsToFetch);
+          allBills.forEach((bill) => {
+            if (!bill.is_recurring && !bill._isRecurringSeries) return;
+            if (bill._isCreditCardStatement) return;
+
+            const templateId = bill._templateId || bill.parent_bill_id || bill.id;
+            if (seriesMap[templateId]) {
+              preferredMap[String(templateId)] = getPreferredBillOccurrence(
+                bill,
+                seriesMap[templateId],
+              );
+            }
+          });
+        } catch (e) {
+          console.warn("Home preferred bill occurrence error:", e);
+        }
+      }
+
+      const displayItems = allBills.map((bill) => {
+        const templateId = bill._templateId || bill.parent_bill_id || bill.id;
+        const preferred = preferredMap[String(templateId)];
+        if (
+          preferred &&
+          !bill._isCreditCardParent &&
+          !bill._isCreditCardStatement
+        ) {
+          return {
+            ...bill,
+            due_date: preferred.due_date,
+            status: preferred.status,
+            amount: preferred.amount,
+            _noDueDate: preferred._noDueDate === true,
+            _templateId: bill._templateId || templateId,
+            _displayOccurrenceId: preferred.id,
+            _displayOccurrence: preferred,
+          };
+        }
+        return bill;
+      });
+
       const todayStart = new Date(
         currentYear,
         currentMonth,
@@ -657,12 +714,13 @@ export default function HomeScreen({ navigation }) {
         0,
       );
 
-      const currentMonthBills = allBills.filter((bill) => {
+      const currentMonthBills = displayItems.filter((bill) => {
         if (!bill?.due_date) {
           return false;
         }
 
-        const dueDate = new Date(bill.due_date);
+        const dueDateStr = String(bill.due_date || "").replace(" ", "T");
+        const dueDate = new Date(dueDateStr);
 
         if (Number.isNaN(dueDate.getTime())) {
           return false;
@@ -685,114 +743,52 @@ export default function HomeScreen({ navigation }) {
         const next7Days = new Date(todayStart.getTime());
         next7Days.setDate(todayStart.getDate() + 7);
 
-        const isUpcoming7Days = dueDateOnly >= todayStart && dueDateOnly <= next7Days;
-
-        return isThisMonth || isUpcoming7Days;
-      });
-
-      currentMonthBills.sort(
-        (a, b) =>
-          new Date(a.due_date).getTime() - new Date(b.due_date).getTime(),
-      );
-
-      const next7DaysEnd = new Date(todayStart);
-
-      next7DaysEnd.setDate(next7DaysEnd.getDate() + 7);
-
-      next7DaysEnd.setHours(23, 59, 59, 999);
-
-      const summary = currentMonthBills.reduce(
-        (result, bill) => {
-          const amount = Number(bill.amount || 0);
-
-          const dueDate = new Date(bill.due_date);
-
-          if (Number.isNaN(dueDate.getTime())) {
-            return result;
-          }
-
-          const status = String(
-            bill.status || bill.payment_status || "",
-          ).toLowerCase();
-
-          const isPaid = status === "paid";
-
-          const isSkipped = status === "skipped";
-
-          if (!isSkipped) {
-            result.totalThisMonth += amount;
-          }
-
-          if (isPaid) {
-            result.totalPaid += amount;
-
-            return result;
-          }
-
-          if (isSkipped) {
-            return result;
-          }
-
-          const dueDateOnly = new Date(
-            dueDate.getFullYear(),
-            dueDate.getMonth(),
-            dueDate.getDate(),
-            0,
-            0,
-            0,
-          );
-
-          if (dueDateOnly < todayStart) {
-            result.overdueAmount += amount;
-          }
-
-          return result;
-        },
-        {
-          totalThisMonth: 0,
-          totalPaid: 0,
-          overdueAmount: 0,
-          upcoming7: 0,
-        },
-      );
-
-      const upcoming7Amount = allBills.reduce((total, bill) => {
-        if (!bill?.due_date) {
-          return total;
-        }
-
-        const dueDate = new Date(bill.due_date);
-
-        if (Number.isNaN(dueDate.getTime())) {
-          return total;
-        }
+        const isUpcoming7Days =
+          dueDateOnly >= todayStart && dueDateOnly <= next7Days;
 
         const status = String(
           bill.status || bill.payment_status || "",
         ).toLowerCase();
 
-        if (status === "paid" || status === "skipped") {
-          return total;
+        const isPaid = status === "paid";
+        const isSkipped = status === "skipped";
+
+        const isOverdue = dueDateOnly < todayStart && !isPaid && !isSkipped;
+
+        let isPaidThisMonth = false;
+        if (isPaid && bill.paid_at) {
+          const paidDateStr = String(bill.paid_at || "").replace(" ", "T");
+          const paidDate = new Date(paidDateStr);
+          if (!Number.isNaN(paidDate.getTime())) {
+            isPaidThisMonth =
+              paidDate.getFullYear() === currentYear &&
+              paidDate.getMonth() === currentMonth;
+          }
         }
 
-        const dueDateOnly = new Date(
-          dueDate.getFullYear(),
-          dueDate.getMonth(),
-          dueDate.getDate(),
-          0,
-          0,
-          0,
-          0,
-        );
+        return isThisMonth || isUpcoming7Days || isOverdue || isPaidThisMonth;
+      });
 
-        if (dueDateOnly >= todayStart && dueDateOnly <= next7DaysEnd) {
-          return total + Number(bill.amount || 0);
-        }
+      // Sort pending bills first, then paid/skipped, and by due date
+      currentMonthBills.sort((a, b) => {
+        const statusA = String(
+          a.status || a.payment_status || "",
+        ).toLowerCase();
+        const statusB = String(
+          b.status || b.payment_status || "",
+        ).toLowerCase();
+        const isPaidA = statusA === "paid" || statusA === "skipped";
+        const isPaidB = statusB === "paid" || statusB === "skipped";
 
-        return total;
-      }, 0);
+        if (isPaidA && !isPaidB) return 1;
+        if (!isPaidA && isPaidB) return -1;
 
-      summary.upcoming7 = upcoming7Amount;
+        const aDueStr = String(a.due_date || "").replace(" ", "T");
+        const bDueStr = String(b.due_date || "").replace(" ", "T");
+        return new Date(aDueStr).getTime() - new Date(bDueStr).getTime();
+      });
+
+      const summary = await getBillsSummary();
 
       dispatch(setBills(currentMonthBills));
 
@@ -830,7 +826,7 @@ export default function HomeScreen({ navigation }) {
        */
       const result = await import("../services/transactions");
 
-      const tx = await result.getTransactions(3, "Yes");
+      const tx = await result.getTransactionsPaginated({ limit: 10, filterType: "all" });
 
       dispatch(setRecentTransactions(Array.isArray(tx) ? tx : []));
 
@@ -1112,10 +1108,19 @@ export default function HomeScreen({ navigation }) {
     0,
   );
 
-  const sortedBills = [...bills].sort(
-    (a, b) =>
-      new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime(),
-  );
+  const sortedBills = [...bills].sort((a, b) => {
+    const statusA = String(a.status || a.payment_status || "").toLowerCase();
+    const statusB = String(b.status || b.payment_status || "").toLowerCase();
+    const isPaidA = statusA === "paid" || statusA === "skipped";
+    const isPaidB = statusB === "paid" || statusB === "skipped";
+
+    if (isPaidA && !isPaidB) return 1;
+    if (!isPaidA && isPaidB) return -1;
+
+    const aDueStr = String(a.due_date || 0).replace(" ", "T");
+    const bDueStr = String(b.due_date || 0).replace(" ", "T");
+    return new Date(aDueStr).getTime() - new Date(bDueStr).getTime();
+  });
 
   /* ==========================================================
      RENDER
@@ -2259,6 +2264,11 @@ export default function HomeScreen({ navigation }) {
                   ? "income"
                   : "expense";
 
+              const toSource =
+                transactionType === "transfer"
+                  ? sources.find((s) => String(s.id) === String(r.toAccount))
+                  : null;
+
               const amountColor =
                 transactionType === "income"
                   ? "#20A56A"
@@ -2270,7 +2280,9 @@ export default function HomeScreen({ navigation }) {
 
               const iconColor = cat.color || accentColor;
 
-              const transactionDate = new Date(r.date);
+              const transactionDate = new Date(
+                String(r.date || "").replace(" ", "T"),
+              );
 
               const dateText = transactionDate.toLocaleDateString(undefined, {
                 day: "2-digit",
@@ -2398,57 +2410,124 @@ export default function HomeScreen({ navigation }) {
                             minWidth: 0,
                           }}
                         >
-                          <View
-                            style={{
-                              flexShrink: 1,
-                              maxWidth: "58%",
-                              backgroundColor: iconColor + "12",
-                              borderRadius: 6,
-                              paddingHorizontal: 7,
-                              paddingVertical: 4,
-                              borderWidth: 1,
-                              borderColor: iconColor + "18",
-                            }}
-                          >
-                            <Text
-                              numberOfLines={1}
-                              ellipsizeMode="tail"
-                              style={{
-                                color: iconColor,
-                                fontSize: 11,
-                                lineHeight: 13,
-                                fontWeight: "800",
-                              }}
-                            >
-                              {cat.name || "Uncategorized"}
-                            </Text>
-                          </View>
-
-                          <View
-                            style={{
-                              width: 3,
-                              height: 3,
-                              borderRadius: 2,
-                              backgroundColor: "#C7CBD1",
-                              marginHorizontal: 6,
-                              flexShrink: 0,
-                            }}
-                          />
-
-                          <Text
-                            numberOfLines={1}
-                            ellipsizeMode="tail"
-                            style={{
-                              flex: 1,
-                              minWidth: 0,
-                              color: "#9299A3",
-                              fontSize: 11,
-                              lineHeight: 14,
-                              fontWeight: "600",
-                            }}
-                          >
-                            {source?.name || "No source"}
-                          </Text>
+                          {transactionType === "transfer" ? (
+                            <>
+                               <View
+                                  style={{
+                                    flexShrink: 0,
+                                    backgroundColor: '#F1F3F5',
+                                    borderRadius: 6,
+                                    paddingHorizontal: 7,
+                                    paddingVertical: 4,
+                                    borderWidth: 1,
+                                    borderColor: '#E5E7EB',
+                                    marginRight: 6,
+                                  }}
+                                >
+                                  <Text
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                    style={{
+                                      color: '#718096',
+                                      fontSize: 11,
+                                      lineHeight: 13,
+                                      fontWeight: '900',
+                                      letterSpacing: 0.25,
+                                    }}
+                                  >
+                                    TRANSFER
+                                  </Text>
+                               </View>
+                               <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1, minWidth: 0 }}>
+                                  <Text
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                    style={{
+                                      flexShrink: 1,
+                                      color: '#9299A3',
+                                      fontSize: 11,
+                                      lineHeight: 14,
+                                      fontWeight: '600',
+                                    }}
+                                  >
+                                    {source?.name || 'No source'}
+                                  </Text>
+                                  <MaterialCommunityIcons
+                                    name="arrow-right"
+                                    size={10}
+                                    color="#9299A3"
+                                    style={{ marginHorizontal: 4 }}
+                                  />
+                                  <Text
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                    style={{
+                                      flexShrink: 1,
+                                      color: '#9299A3',
+                                      fontSize: 11,
+                                      lineHeight: 14,
+                                      fontWeight: '600',
+                                    }}
+                                  >
+                                    {toSource?.name || 'No source'}
+                                  </Text>
+                               </View>
+                            </>
+                          ) : (
+                            <>
+                              <View
+                                style={{
+                                  flexShrink: 1,
+                                  maxWidth: "58%",
+                                  backgroundColor: iconColor + "12",
+                                  borderRadius: 6,
+                                  paddingHorizontal: 7,
+                                  paddingVertical: 4,
+                                  borderWidth: 1,
+                                  borderColor: iconColor + "18",
+                                }}
+                              >
+                                <Text
+                                  numberOfLines={1}
+                                  ellipsizeMode="tail"
+                                  style={{
+                                    color: iconColor,
+                                    fontSize: 11,
+                                    lineHeight: 13,
+                                    fontWeight: "800",
+                                  }}
+                                >
+                                  {cat.name || "Uncategorized"}
+                                </Text>
+                              </View>
+    
+                              <View
+                                style={{
+                                  width: 3,
+                                  height: 3,
+                                  borderRadius: 2,
+                                  backgroundColor: "#C7CBD1",
+                                  marginHorizontal: 6,
+                                  flexShrink: 0,
+                                }}
+                              />
+    
+                              <Text
+                                numberOfLines={1}
+                                ellipsizeMode="tail"
+                                style={{
+                                  flex: 1,
+                                  minWidth: 0,
+                                  color: "#9299A3",
+                                  fontSize: 11,
+                                  lineHeight: 14,
+                                  fontWeight: "600",
+                                }}
+                              >
+                                {source?.name || "No source"}
+                              </Text>
+                            </>
+                          )}
                         </View>
                       </View>
 
@@ -2923,7 +3002,7 @@ export default function HomeScreen({ navigation }) {
                       }}
                     >
                       {balanceVisible
-                        ? formatCurrency(billsSummary.totalThisMonth)
+                        ? <CurrencyText amount={billsSummary.totalThisMonth} />
                         : "••••••"}
                     </Text>
                   </View>
@@ -3019,7 +3098,7 @@ export default function HomeScreen({ navigation }) {
                     }}
                   >
                     {balanceVisible
-                      ? formatCurrency(billsSummary.totalPaid)
+                      ? <CurrencyText amount={billsSummary.totalPaid} />
                       : "••••••"}
                   </Text>
                 </View>
@@ -3073,7 +3152,7 @@ export default function HomeScreen({ navigation }) {
                     }}
                   >
                     {balanceVisible
-                      ? formatCurrency(billsSummary.overdueAmount)
+                      ? <CurrencyText amount={billsSummary.overdueAmount} />
                       : "••••••"}
                   </Text>
                 </View>
@@ -3127,7 +3206,7 @@ export default function HomeScreen({ navigation }) {
                     }}
                   >
                     {balanceVisible
-                      ? formatCurrency(billsSummary.upcoming7)
+                      ? <CurrencyText amount={billsSummary.upcoming7} />
                       : "••••••"}
                   </Text>
                 </View>
@@ -3239,16 +3318,22 @@ export default function HomeScreen({ navigation }) {
                             marginLeft: 4,
                           }}
                         >
-                          Due{" "}
-                          {bill.due_date
-                            ? new Date(bill.due_date).toLocaleDateString(
-                                undefined,
-                                {
-                                  day: "2-digit",
-                                  month: "short",
-                                },
-                              )
-                            : "—"}
+                          {bill._noDueDate
+                            ? "No due date"
+                            : `Due ${
+                                bill.due_date
+                                  ? new Date(
+                                      String(bill.due_date || "").replace(
+                                        " ",
+                                        "T",
+                                      ),
+                                    ).toLocaleDateString(undefined, {
+                                      day: "2-digit",
+                                      month: "short",
+                                      year: "numeric",
+                                    })
+                                  : "—"
+                              }`}
                         </Text>
                       </View>
                     </View>
@@ -3268,11 +3353,11 @@ export default function HomeScreen({ navigation }) {
                         style={{
                           fontSize: 13,
                           fontWeight: "900",
-                          color: "#2F7355",
+                          color: statusColor,
                         }}
                       >
                         {balanceVisible
-                          ? formatCurrency(bill.amount)
+                          ? <CurrencyText amount={bill.amount} />
                           : "••••••"}
                       </Text>
 
@@ -3371,6 +3456,7 @@ export default function HomeScreen({ navigation }) {
           elevation: 20,
         }}
       />
+      <PageLoader visible={pageLoaderVisible} />
     </View>
   );
 }

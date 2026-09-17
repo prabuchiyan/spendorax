@@ -11,6 +11,7 @@ import {
   generateOccurrenceDates,
 } from "./billUtils";
 import { runCreditCardStatementScheduler } from "./creditCardScheduler";
+import { syncBillNotifications } from "./notificationService";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 function rowsToArray(res) {
@@ -30,6 +31,7 @@ function nowIso() {
 }
 function emitBillsChanged() {
   emit("billsChanged");
+  syncBillNotifications().catch(e => console.warn('Failed to sync bill notifications', e));
 }
 
 async function fetchAllBillsRaw() {
@@ -2254,138 +2256,126 @@ export async function getTransactionsForBillLink(bill) {
       return [];
     }
     // =========================================================
-    // 2. CURRENT DATE
-    // IMPORTANT:
-    // Do NOT use bill due date as the filter end.
-    // We want transactions that have actually happened
-    // up to TODAY.
-    // =========================================================
-    const filterEndDate = todayStr();
-
-    // =========================================================
-    // 3. FIND PREVIOUS CALENDAR MONTH
-    //
-    // Example:
-    //
-    // Current bill = Sep 10, 2026
-    //
-    // Previous month:
-    // Aug 1, 2026 -> Aug 31, 2026
-    // =========================================================
-
-    const previousMonthStart = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() - 1,
-      1,
-    );
-
-    const previousMonthEnd = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      0,
-    );
-
-    const previousMonthStartStr = `${previousMonthStart.getFullYear()}-${String(
-      previousMonthStart.getMonth() + 1,
-    ).padStart(2, "0")}-01`;
-
-    const previousMonthEndStr = `${previousMonthEnd.getFullYear()}-${String(
-      previousMonthEnd.getMonth() + 1,
-    ).padStart(2, "0")}-${String(previousMonthEnd.getDate()).padStart(2, "0")}`;
-
-    // =========================================================
-    // 4. DETERMINE BILL SERIES
+    // 2. DETERMINE BILL SERIES
     // =========================================================
 
     const parentId =
       bill.parent_bill_id || (Number(bill.is_recurring) === 1 ? bill.id : null);
 
-    let previousBill = null;
+    // =========================================================
+    // 3. DETERMINE END DATE & GET SERIES BILLS
+    // =========================================================
+    // Bound the search to the end of this bill's calendar month.
+    let filterEndDate = todayStr();
+    let allSeriesBills = [];
 
-    // =========================================================
-    // 5. FIND LAST MONTH'S BILL
-    // =========================================================
+    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    filterEndDate = `${endOfMonth.getFullYear()}-${String(endOfMonth.getMonth() + 1).padStart(2, "0")}-${String(endOfMonth.getDate()).padStart(2, "0")}`;
 
     if (parentId) {
-      const previousBillRes = await executeSql(
-        `SELECT *
-         FROM bills
-         WHERE parent_bill_id = ?
-           AND due_date >= ?
-           AND due_date <= ?
-           AND deleted_at IS NULL
-         ORDER BY due_date DESC
-         LIMIT 1`,
-        [parentId, previousMonthStartStr, previousMonthEndStr],
-      );
-
-      if (previousBillRes.rows.length) {
-        previousBill = previousBillRes.rows.item(0);
-      }
+      // Fetch all bills in the series and filter in JS (WebSQLite doesn't support complex WHERE or OR)
+      const resChildren = await executeSql(`SELECT * FROM bills WHERE parent_bill_id = ?`, [parentId]);
+      const resParent = await executeSql(`SELECT * FROM bills WHERE id = ?`, [parentId]);
+      
+      const allRows = [...rowsToArray(resChildren), ...rowsToArray(resParent)];
+      
+      // Deduplicate in case a bill matches both (e.g. parent_bill_id = id which shouldn't happen, but just safe)
+      const uniqueRowsMap = new Map();
+      allRows.forEach(row => {
+        if (!row.deleted_at) {
+          uniqueRowsMap.set(row.id, row);
+        }
+      });
+      allSeriesBills = Array.from(uniqueRowsMap.values());
     }
 
-    // =========================================================
-    // 6. DETERMINE FILTER START DATE
-    //
-    // RULE 1:
-    // Previous month bill exists + PAID
-    //     -> paid_at
-    //
-    // RULE 2:
-    // Previous month bill exists + NOT PAID
-    //     -> previous bill due_date
-    //
-    // RULE 3:
-    // No previous month bill
-    //     -> previous month's 1st day
-    // =========================================================
+    // Always allow linking transactions up to today if today is still within a reasonable window,
+    // but the user explicitly requested we bound it to the bill's duration month.
+    // So we will stick strictly to the calculated filterEndDate.
 
     let filterStartDate = null;
+    let previousBill = null;
 
-    if (previousBill) {
-      const previousBillIsPaid =
-        Number(previousBill.is_paid) === 1 ||
-        previousBill.status === BILL_STATUS.PAID;
+    if (parentId) {
+      // Find the most recent PAID bill before this one
+      const prevPaidBills = allSeriesBills
+        .filter(b => 
+          b.due_date && 
+          String(b.due_date).slice(0, 10) < currentDueDate && 
+          (Number(b.is_paid) === 1 || String(b.status).toLowerCase() === 'paid')
+        )
+        .sort((a, b) => String(b.due_date).localeCompare(String(a.due_date)));
 
-      if (previousBillIsPaid && previousBill.paid_at) {
-        filterStartDate = String(previousBill.paid_at).slice(0, 10);
+      if (prevPaidBills.length > 0) {
+        previousBill = prevPaidBills[0];
+        
+        let startDate = previousBill.paid_at
+          ? String(previousBill.paid_at).slice(0, 10)
+          : String(previousBill.due_date).slice(0, 10);
 
-        console.log("[getTransactionsForBillLink] Previous bill PAID:", {
+        // If the previous bill was paid absurdly late (after the current bill is even due),
+        // we ignore the paid_at date and fall back to its due_date to preserve the billing cycle.
+        if (startDate > currentDueDate) {
+          startDate = String(previousBill.due_date).slice(0, 10);
+        }
+        
+        // The transaction for this previous bill was already accounted for on `startDate`,
+        // so we must fetch transactions starting from the DAY AFTER it was paid.
+        const startObj = new Date(`${startDate}T00:00:00`);
+        startObj.setDate(startObj.getDate() + 1);
+        startDate = `${startObj.getFullYear()}-${String(startObj.getMonth() + 1).padStart(2, "0")}-${String(startObj.getDate()).padStart(2, "0")}`;
+
+        filterStartDate = startDate;
+
+        console.log("[getTransactionsForBillLink] Found previous PAID bill:", {
           currentBillId: bill.id,
           previousBillId: previousBill.id,
           paidAt: previousBill.paid_at,
           filterStartDate,
-          filterEndDate,
         });
-      } else if (previousBill.due_date) {
-        filterStartDate = String(previousBill.due_date).slice(0, 10);
+      } else {
+        // If no paid bill found, find the VERY FIRST (oldest) bill to use as a bound
+        // This handles cases where multiple previous bills were skipped/unpaid.
+        const prevAnyBills = allSeriesBills
+          .filter(b => b.due_date && String(b.due_date).slice(0, 10) < currentDueDate)
+          .sort((a, b) => String(a.due_date).localeCompare(String(b.due_date))); // ASCENDING sort
+          
+        if (prevAnyBills.length > 0) {
+          previousBill = prevAnyBills[0]; // Oldest bill
+          
+          const startObj = new Date(`${String(previousBill.due_date).slice(0, 10)}T00:00:00`);
+          startObj.setDate(startObj.getDate() + 1);
+          filterStartDate = `${startObj.getFullYear()}-${String(startObj.getMonth() + 1).padStart(2, "0")}-${String(startObj.getDate()).padStart(2, "0")}`;
 
-        console.log("[getTransactionsForBillLink] Previous bill NOT PAID:", {
-          currentBillId: bill.id,
-          previousBillId: previousBill.id,
-          dueDate: previousBill.due_date,
-          filterStartDate,
-          filterEndDate,
-        });
+          console.log("[getTransactionsForBillLink] No paid bills found, using oldest bill + 1 day:", {
+            currentBillId: bill.id,
+            previousBillId: previousBill.id,
+            dueDate: previousBill.due_date,
+            filterStartDate,
+          });
+        }
       }
-    } else {
-      filterStartDate = previousMonthStartStr;
+    }
 
-      console.log("[getTransactionsForBillLink] No previous month bill:", {
+    if (!filterStartDate) {
+      // Fallback: 1st of the previous calendar month
+      const previousMonthStart = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() - 1,
+        1,
+      );
+      filterStartDate = `${previousMonthStart.getFullYear()}-${String(
+        previousMonthStart.getMonth() + 1,
+      ).padStart(2, "0")}-01`;
+
+      console.log("[getTransactionsForBillLink] No previous bill found, using fallback:", {
         currentBillId: bill.id,
         filterStartDate,
-        filterEndDate,
       });
     }
 
     // =========================================================
     // SAFETY
-    // =========================================================
-
-    if (!filterStartDate) {
-      filterStartDate = previousMonthStartStr;
-    }
-
     // =========================================================
     // 7. LOAD EXPENSE TRANSACTIONS
     // =========================================================

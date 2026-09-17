@@ -279,6 +279,7 @@ export default function NotificationSettingsScreen() {
       <MuiDateTimePicker
         visible={showTimePicker}
         initialDate={tempTime || new Date()}
+        hideDate={true}
         onClose={() => {
           setShowTimePicker(false);
           setEditingId(null);

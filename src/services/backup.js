@@ -11,7 +11,7 @@ import { getBudgets, createBudget } from './budgets';
 import { getBills } from './bills';
 import { getLoans } from './loans';
 import { getNotifications, updateNotification, getNotificationByType } from '../database/notifications';
-import { rescheduleAll } from './notificationService';
+import { rescheduleAll, syncBillNotifications } from './notificationService';
 
 const BACKUP_VERSION = 3;
 
@@ -55,6 +55,17 @@ export async function exportBackup() {
       }
     } catch (e) {
       billLinkedTransactions = [];
+    }
+
+    // Bill Deleted Occurrences
+    let billDeletedOccurrences = [];
+    try {
+      const res = await executeSql('SELECT * FROM bill_deleted_occurrences');
+      for (let i = 0; i < res.rows.length; i++) {
+        billDeletedOccurrences.push(res.rows.item(i));
+      }
+    } catch (e) {
+      billDeletedOccurrences = [];
     }
 
     // Credit Cards
@@ -138,6 +149,7 @@ export async function exportBackup() {
         category_budgets: categoryBudgets,
         bills,
         bill_linked_transactions: billLinkedTransactions,
+        bill_deleted_occurrences: billDeletedOccurrences,
         loans,
         loan_payments: loanPayments,
         credit_cards: creditCards,
@@ -590,6 +602,20 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         }
       }
 
+      // Restore bill_deleted_occurrences
+      if (originalData.bill_deleted_occurrences && originalData.bill_deleted_occurrences.length > 0) {
+        for (const occ of originalData.bill_deleted_occurrences) {
+          try {
+            await executeSql(
+              `INSERT INTO bill_deleted_occurrences (id, parent_bill_id, recurrence_occurrence_key, deleted_at) VALUES (?,?,?,?)`,
+              [occ.id, occ.parent_bill_id, occ.recurrence_occurrence_key, occ.deleted_at]
+            );
+          } catch (e) {
+            console.warn('Failed to restore deleted occurrence', occ.id, e);
+          }
+        }
+      }
+
       // Restore credit cards
       for (const card of originalData.credit_cards) {
         try {
@@ -679,10 +705,11 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       // Restore notification settings on rollback
       // Only restore preferences, then reschedule
       try {
-        const { rescheduleAll: reSchedule } = require('./notificationService');
+        const { rescheduleAll: reSchedule, syncBillNotifications } = require('./notificationService');
         // Notifications table is not cleared by clearAllTables
         // so we don't need to re-insert, just reschedule
         await reSchedule();
+        await syncBillNotifications();
       } catch (e) {
         console.warn('Failed to reschedule notifications during rollback', e);
       }
@@ -718,6 +745,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       transactions = [],
       loans = [],
       loan_payments = [],
+      bill_deleted_occurrences = [],
       credit_cards = [],
       credit_card_statements = [],
       credit_card_payments = [],
@@ -965,16 +993,30 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           // Match on name + due_date + parent_bill_id to uniquely identify a bill slot.
           // parent_bill_id distinguishes child occurrences from each other and from
           // the template, preventing false merges across different recurring series.
-          const existing = await executeSql(
-            `SELECT id FROM bills
-             WHERE name = ?
-               AND due_date = ?
-               AND IFNULL(parent_bill_id, 0) = IFNULL(?, 0)
-             LIMIT 1`,
-            [bill.name, bill.due_date, bill.parent_bill_id ?
+          let parentBillIdQuery = bill.parent_bill_id ?
             billMap[bill.parent_bill_id] || bill.parent_bill_id :
-            null]
-          );
+            null;
+          
+          let existing;
+          if (parentBillIdQuery) {
+            existing = await executeSql(
+              `SELECT id FROM bills
+               WHERE name = ?
+                 AND due_date = ?
+                 AND parent_bill_id = ?
+               LIMIT 1`,
+              [bill.name, bill.due_date, parentBillIdQuery]
+            );
+          } else {
+            existing = await executeSql(
+              `SELECT id FROM bills
+               WHERE name = ?
+                 AND due_date = ?
+                 AND parent_bill_id IS NULL
+               LIMIT 1`,
+              [bill.name, bill.due_date]
+            );
+          }
 
           if (existing.rows.length > 0) {
             billMap[bill.id] = existing.rows.item(0).id;
@@ -1044,23 +1086,31 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       sortedLoans,
       async (loan) => {
         if (mode === 'merge') {
-          const existing = await executeSql(
-            `SELECT id
+          const existingRes = await executeSql(
+            `SELECT id, loan_direction
               FROM loans
               WHERE loan_name = ?
                 AND lender = ?
                 AND principal_amount = ?
-                AND loan_start_date = ?
-                AND IFNULL(loan_direction, 'BORROWED') = ?
-              LIMIT 1`,
+                AND loan_start_date = ?`,
             [
             loan.loan_name,
             loan.lender,
             loan.principal_amount,
-            loan.loan_start_date,
-            loan.loan_direction || 'BORROWED']
-
+            loan.loan_start_date]
           );
+
+          let existing;
+          const targetDir = loan.loan_direction || 'BORROWED';
+          for(let i = 0; i < existingRes.rows.length; i++) {
+             const row = existingRes.rows.item(i);
+             const rowDir = row.loan_direction || 'BORROWED';
+             if (rowDir === targetDir) {
+                existing = { rows: { length: 1, item: () => row } };
+                break;
+             }
+          }
+          if (!existing) existing = { rows: { length: 0 } };
 
           if (existing.rows.length > 0) {
             loanMap[loan.id] = existing.rows.item(0).id;
@@ -1115,25 +1165,35 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           // restored row, leaving every other bill unlinked (the "duplicate unlinked bill"
           // symptom). bill_id is remapped via billMap before comparison.
           const mappedBillId = tx.bill_id ? billMap[tx.bill_id] || null : null;
-          const existing = await executeSql(
-            `SELECT id
+          const existingRes = await executeSql(
+            `SELECT id, notes, loan_id, bill_id
               FROM transactions
               WHERE type = ?
               AND amount = ?
-              AND date = ?
-              AND IFNULL(notes,'') = IFNULL(?, '')
-              AND IFNULL(loan_id,0) = IFNULL(?,0)
-              AND IFNULL(bill_id,0) = IFNULL(?,0)
-              LIMIT 1`,
+              AND date = ?`,
             [
             tx.type,
             tx.amount,
-            tx.date,
-            tx.notes,
-            tx.loan_id ? loanMap[tx.loan_id] || null : null,
-            mappedBillId]
-
+            tx.date]
           );
+
+          let existing;
+          const targetNotes = tx.notes || '';
+          const targetLoan = tx.loan_id ? loanMap[tx.loan_id] || 0 : 0;
+          const targetBill = mappedBillId || 0;
+
+          for(let i = 0; i < existingRes.rows.length; i++) {
+             const row = existingRes.rows.item(i);
+             const rowNotes = row.notes || '';
+             const rowLoan = row.loan_id || 0;
+             const rowBill = row.bill_id || 0;
+
+             if (rowNotes === targetNotes && rowLoan === targetLoan && rowBill === targetBill) {
+                 existing = { rows: { length: 1, item: () => row } };
+                 break;
+             }
+          }
+          if (!existing) existing = { rows: { length: 0 } };
 
           if (existing.rows.length > 0) {
             transactionMap[tx.id] = existing.rows.item(0).id;
@@ -1160,8 +1220,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           // Preserve transfer metadata
           transfer_group_id: tx.transfer_group_id || null,
           direction: tx.direction || null,
-
-          // Preserve counted/excluded flag — default to 1 if missing (old backups)
+          // Preserve counted/excluded flag - default to 1 if missing (old backups)
           is_counted: tx.is_counted !== undefined ? tx.is_counted : 1
         };
 
@@ -1212,7 +1271,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         );
       },
       (count) => {
-        updateProgress(count, 'Linking transactions to bills...');
+        updateProgress(count, 'Updating bills with linked transactions...');
       }
     );
 
@@ -1478,7 +1537,23 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       }
     );
 
-    // 8c. Bill Linked Transactions
+    // 8c. Merge bill_deleted_occurrences
+    safeOnProgress(80, 'Merging deleted occurrences...');
+    const cleanDeletedOccurrences = Array.isArray(bill_deleted_occurrences) ? bill_deleted_occurrences : [];
+    for (const occ of cleanDeletedOccurrences) {
+      const newParentId = billMap[occ.parent_bill_id];
+      if (!newParentId) continue;
+      try {
+        await executeSql(
+          `INSERT OR IGNORE INTO bill_deleted_occurrences (parent_bill_id, recurrence_occurrence_key, deleted_at) VALUES (?,?,?)`,
+          [newParentId, occ.recurrence_occurrence_key, occ.deleted_at]
+        );
+      } catch (e) {
+        console.warn('Failed to merge deleted occurrence', occ.id, e);
+      }
+    }
+
+    // 8d. Bill Linked Transactions
     // Use cleanBillLinkedTxs — already deduplicated and re-pointed above.
     await processBatch(
       cleanBillLinkedTxs || [],
@@ -1535,12 +1610,19 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       if (!newBillId || !newTransactionId) continue;
 
       try {
-        await executeSql(
-          `UPDATE transactions
-           SET bill_id = ?
-           WHERE id = ? AND (bill_id IS NULL OR bill_id = 0)`,
-          [newBillId, newTransactionId]
+        const txRes = await executeSql(
+          `SELECT bill_id FROM transactions WHERE id = ?`,
+          [newTransactionId]
         );
+        let currentBillId = txRes.rows.length > 0 ? txRes.rows.item(0).bill_id : null;
+        if (currentBillId == null || currentBillId === 0) {
+          await executeSql(
+            `UPDATE transactions
+             SET bill_id = ?
+             WHERE id = ?`,
+            [newBillId, newTransactionId]
+          );
+        }
       } catch (e) {
         console.warn(`Failed to backfill bill_id on transaction ${newTransactionId}`, e);
       }
@@ -1575,6 +1657,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
 
       try {
         await rescheduleAll();
+        await syncBillNotifications();
       } catch (e) {
         console.warn('Failed to reschedule notifications after restore', e);
       }

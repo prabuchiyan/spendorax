@@ -453,12 +453,18 @@ export default function SourcesDetails({ route, navigation }) {
           if (type === "income" || type === "credit") {
             return sum + Number(item.amount || 0);
           }
+          if (type === "transfer" && String(item.toAccount) === String(sourceId)) {
+            return sum + Number(item.amount || 0);
+          }
           return sum;
         }, 0);
 
         const expense = items.reduce((sum, item) => {
           const type = String(item.type || "").toLowerCase();
           if (type === "expense" || type === "debit") {
+            return sum + Number(item.amount || 0);
+          }
+          if (type === "transfer" && String(item.source_id) === String(sourceId)) {
             return sum + Number(item.amount || 0);
           }
           return sum;
@@ -481,12 +487,17 @@ export default function SourcesDetails({ route, navigation }) {
 
       const isLast = index === section.data.length - 1;
 
+      const transactionSource = sourcesMap[item.source_id] || null;
+      const transactionToSource = item.toAccount ? (sourcesMap[item.toAccount] || null) : null;
+
       // CARD
       return (
         <TransactionListItem
           item={item}
           category={category}
-          source={source}
+          source={transactionSource}
+          toSource={transactionToSource}
+          currentSourceId={sourceId}
           isLast={isLast}
           showDate={true}
           hideAmount={!balanceVisible}
