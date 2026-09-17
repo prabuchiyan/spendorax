@@ -27,6 +27,7 @@ import {
   deleteBill,
 } from "../services/bills";
 import { getCategories } from "../services/categories";
+import { getPreferredBillOccurrence } from "../services/billUtils";
 import BillSummaryBar from "../components/BillSummaryBar";
 import SwipeableBillCard from "../components/SwipeableBillCard";
 import BillCalendarView from "../components/BillCalendarView";
@@ -35,6 +36,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import FAB from "../components/FAB";
 import { Colors, Spacing } from "../components/Theme";
 import { BILL_STATUS, formatCurrency } from "../services/billUtils";
+import CurrencyText from "../components/CurrencyText";
 import { getSources } from "../services/sources";
 import { getCreditCards, payCreditCardBill } from "../services/creditCards";
 // Redux imports
@@ -61,109 +63,6 @@ function isCreditCardBill(bill) {
       bill.notes.startsWith("Recurring payment template for")) ||
     (typeof bill.notes === "string" && bill.notes.startsWith("Statement "))
   );
-}
-
-function getPreferredBillOccurrence(bill, allBills) {
-  if (!bill.is_recurring && !bill._isRecurringSeries) {
-    return bill;
-  }
-  const templateId = Number(bill._templateId || bill.parent_bill_id || bill.id);
-  if (!templateId) {
-    return bill;
-  }
-  const today = new Date();
-  const todayString = today.toISOString().slice(0, 10);
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth();
-  const currentMonthPrefix = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`;
-  const occurrences = allBills
-    .filter((row) => {
-      const rowTemplateId = Number(
-        row.parent_bill_id || row._templateId || row.id,
-      );
-      return rowTemplateId === templateId && !row.deleted_at;
-    })
-    // IMPORTANT:
-    // Occurrences without a due date are not
-    // considered when determining the preferred due.
-    .filter((row) => Boolean(row.due_date))
-    .sort((a, b) => (b.due_date || "").localeCompare(a.due_date || ""));
-
-  if (!occurrences.length) {
-    return {
-      ...bill,
-      // Explicitly tell the card that there is
-      // no actual due date.
-      due_date: null,
-      _noDueDate: true,
-    };
-  }
-
-  // 1. CURRENT MONTH
-  const currentMonthBill = occurrences.find((row) =>
-    row.due_date.startsWith(currentMonthPrefix),
-  );
-
-  if (currentMonthBill) {
-    // Current month is still unpaid.
-    if (
-      currentMonthBill.status !== "paid" &&
-      currentMonthBill.status !== "skipped"
-    ) {
-      return currentMonthBill;
-    }
-
-    // Current month is paid.
-    // Find latest previous pending/overdue.
-    const previousPending = occurrences.find((row) => {
-      return (
-        row.due_date < currentMonthBill.due_date &&
-        row.status !== "paid" &&
-        row.status !== "skipped"
-      );
-    });
-
-    if (previousPending) {
-      return previousPending;
-    }
-
-    // No previous pending.
-    // Find nearest upcoming.
-    const upcoming = occurrences
-      .filter((row) => row.due_date > currentMonthBill.due_date)
-      .sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
-    return upcoming || currentMonthBill;
-  }
-
-  // 2. NO CURRENT-MONTH DUE
-  const previousPending = occurrences.find((row) => {
-    return (
-      row.due_date <= todayString &&
-      row.status !== "paid" &&
-      row.status !== "skipped"
-    );
-  });
-
-  if (previousPending) {
-    return previousPending;
-  }
-
-  // 3. NO PREVIOUS PENDING
-  // Find nearest future due.
-  const upcoming = occurrences
-    .filter((row) => row.due_date > todayString)
-    .sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
-
-  if (upcoming) {
-    return upcoming;
-  }
-
-  // 4. NOTHING TO DISPLAY
-  return {
-    ...bill,
-    due_date: null,
-    _noDueDate: true,
-  };
 }
 
 export default function BillsScreen({ navigation }) {
@@ -684,7 +583,7 @@ export default function BillsScreen({ navigation }) {
                         color: "#25352D",
                       }}
                     >
-                      {formatCurrency(Number(statement.amount || 0))}
+                      <CurrencyText amount={Number(statement.amount || 0)} />
                     </Text>
                   </View>
 
@@ -1088,7 +987,7 @@ export default function BillsScreen({ navigation }) {
               }}
             >
               {summary.overdueCount} overdue ·{" "}
-              {formatCurrency(summary.overdueAmount)}
+              <CurrencyText amount={summary.overdueAmount} />
             </Text>
           </View>
           <MaterialCommunityIcons

@@ -17,6 +17,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAppDispatch, useCreditCardStatements } from '../redux/hooks';
 import { setStatements } from '../redux/slices/creditCardSlice';
 import { formatAmount, formatCurrency } from "../utils/numberUtils";
+import CurrencyText from "../components/CurrencyText";
 
 function formatDate(value) {
   if (!value) return "-";
@@ -89,13 +90,13 @@ export default function CreditCardStatementsScreen({ navigation }) {
         </View>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>Total Due</Text>
-          <Text style={styles.summaryValue}>{formatAmount(totalDue)}</Text>
+          <CurrencyText style={styles.summaryValue} amount={totalDue} />
         </View>
       </View>
       <View style={styles.summaryRow}>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>Minimum Due</Text>
-          <Text style={styles.summaryValue}>{formatAmount(totalMinimum)}</Text>
+          <CurrencyText style={styles.summaryValue} amount={totalMinimum} />
         </View>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>Cards Covered</Text>
@@ -139,8 +140,8 @@ export default function CreditCardStatementsScreen({ navigation }) {
 
                 <Text style={styles.statementMeta}>
                   Due {formatDate(item.due_date)} · Balance{" "}
-                  {formatCurrency(item.closing_balance)} · Min{" "}
-                  {formatCurrency(item.minimum_due)}
+                  <CurrencyText amount={item.closing_balance} /> · Min{" "}
+                  <CurrencyText amount={item.minimum_due} />
                 </Text>
 
                 <View style={styles.rowFooter}>

@@ -14,6 +14,7 @@ import {
   requestPermission,
   rescheduleAll,
   registerNotificationListener,
+  syncBillNotifications,
 } from './src/services/notificationService';
 import SearchScreen from './src/screens/SearchScreen';
 import TransactionAddScreen from './src/screens/TransactionAddScreen';
@@ -88,6 +89,7 @@ export default function App() {
         try {
           await requestPermission();
           await rescheduleAll(); // already cancels all before rescheduling
+          await syncBillNotifications(); // sync specific bills after rescheduling recurring
         } catch (e) {
           console.warn('Notification init error', e);
         }

@@ -32,6 +32,7 @@ export async function createTransaction(tx) {
     bill_id,
     transfer_group_id,
     direction,
+    is_transfer,
   } = tx;
   // Support optional loan-linking fields without breaking existing callers
   const loan_id = tx.loan_id || null;
@@ -66,7 +67,7 @@ export async function createTransaction(tx) {
       interest_component,
       outstanding_after_payment,
       linked_date,
-      is_counted,
+      is_counted
     ],
   );
 
@@ -308,7 +309,40 @@ export async function getTransactionsPaginated({
         return b.id - a.id;
       });
 
-      return result.slice(offset, offset + limit);
+      let finalResult = [];
+      const processedGroups = new Set();
+      for (const t of result) {
+        if (t.transfer_group_id) {
+          if (processedGroups.has(t.transfer_group_id)) continue;
+          processedGroups.add(t.transfer_group_id);
+          let related = result.find(
+            (x) => x.transfer_group_id === t.transfer_group_id && x.id !== t.id,
+          );
+          if (!related) {
+            related = transactions.find(
+              (x) => x.transfer_group_id === t.transfer_group_id && x.id !== t.id,
+            );
+          }
+          const debit =
+            t.direction === "debit" || t.type === "expense" ? t : related;
+          const credit =
+            t.direction === "credit" || t.type === "income" ? t : related;
+
+          finalResult.push({
+            ...(debit || t),
+            type: "transfer",
+            source_id: debit?.source_id || t.source_id,
+            source_name: debit?.source_name || t.source_name,
+            toAccount: credit?.source_id,
+            amount: debit?.amount || credit?.amount || t.amount,
+            is_transfer: 1,
+          });
+        } else {
+          finalResult.push(t);
+        }
+      }
+
+      return finalResult.slice(offset, offset + limit);
     }
 
     const params = [];
@@ -328,9 +362,7 @@ export async function getTransactionsPaginated({
     } else if (filterType === "income") {
       conditions.push(`t.type = 'income'`);
     } else if (filterType === "transfer") {
-      conditions.push(
-        `(t.type = 'transfer' OR t.transfer_group_id IS NOT NULL OR t.is_transfer = 1)`,
-      );
+      conditions.push(`t.transfer_group_id IS NOT NULL`);
     }
 
     if (sourceId !== null && sourceId !== undefined) {
@@ -362,7 +394,45 @@ export async function getTransactionsPaginated({
     for (let i = 0; i < res.rows.length; i++) {
       rows.push(res.rows.item(i));
     }
-    return rows;
+
+    let finalResult = [];
+    const processedGroups = new Set();
+    for (const t of rows) {
+      if (t.transfer_group_id) {
+        if (processedGroups.has(t.transfer_group_id)) continue;
+        processedGroups.add(t.transfer_group_id);
+
+        let related = rows.find(
+          (x) => x.transfer_group_id === t.transfer_group_id && x.id !== t.id
+        );
+
+        if (!related) {
+          const relatedRes = await executeSql(
+            `SELECT * FROM transactions WHERE transfer_group_id = ? AND id != ?`,
+            [t.transfer_group_id, t.id]
+          );
+          if (relatedRes.rows.length > 0) {
+            related = relatedRes.rows.item(0);
+          }
+        }
+
+        const debit = t.direction === "debit" || t.type === "expense" ? t : related;
+        const credit = t.direction === "credit" || t.type === "income" ? t : related;
+
+        finalResult.push({
+          ...(debit || t),
+          type: "transfer",
+          source_id: debit?.source_id || t.source_id,
+          source_name: debit?.source_name || t.source_name,
+          toAccount: credit?.source_id,
+          amount: debit?.amount || credit?.amount || t.amount,
+          is_transfer: 1,
+        });
+      } else {
+        finalResult.push(t);
+      }
+    }
+    return finalResult;
   } catch (error) {
     console.error("Error in getTransactionsPaginated:", error);
     throw error;
@@ -407,41 +477,60 @@ export async function getSourceTransactionBalance(sourceId) {
 export async function deleteTransaction(id) {
   // Query existing transaction before delete so we can refresh credit card totals.
   const txRes = await executeSql(
-    `SELECT source_id FROM transactions WHERE id = ? LIMIT 1`,
+    `SELECT source_id, transfer_group_id FROM transactions WHERE id = ? LIMIT 1`,
     [id],
   );
   const existingTx = txRes.rows.length > 0 ? txRes.rows.item(0) : null;
+  const groupId = existingTx?.transfer_group_id;
 
-  // Find every bill linked to this transaction
-  const result = await executeSql(
-    `SELECT bill_id
-     FROM bill_linked_transactions
-     WHERE transaction_id = ?`,
-    [id],
-  );
+  let txIdsToDelete = [id];
 
-  const linkedBills = [];
-  for (let i = 0; i < result.rows.length; i++) {
-    linkedBills.push(result.rows.item(i));
+  if (groupId) {
+    const groupRes = await executeSql(
+      `SELECT id FROM transactions WHERE transfer_group_id = ?`,
+      [groupId],
+    );
+    txIdsToDelete = [];
+    for (let i = 0; i < groupRes.rows.length; i++) {
+      txIdsToDelete.push(groupRes.rows.item(i).id);
+    }
   }
 
-  // Remove bill links FIRST
-  for (const row of linkedBills) {
-    await removeTransactionFromBill(row.bill_id, id);
-  }
+  for (const txId of txIdsToDelete) {
+    // Find every bill linked to this transaction
+    const result = await executeSql(
+      `SELECT bill_id
+       FROM bill_linked_transactions
+       WHERE transaction_id = ?`,
+      [txId],
+    );
 
-  // Now delete the transaction
-  await executeSql(
-    `DELETE FROM transactions
-     WHERE id = ?`,
-    [id],
-  );
+    const linkedBills = [];
+    for (let i = 0; i < result.rows.length; i++) {
+      linkedBills.push(result.rows.item(i));
+    }
+
+    // Remove bill links FIRST
+    for (const row of linkedBills) {
+      await removeTransactionFromBill(row.bill_id, txId);
+    }
+
+    // Now delete the transaction
+    await executeSql(
+      `DELETE FROM transactions
+       WHERE id = ?`,
+      [txId],
+    );
+
+    try {
+      events.emit("transactionsChanged", {
+        action: "delete",
+        id: txId,
+      });
+    } catch (e) {}
+  }
 
   try {
-    events.emit("transactionsChanged", {
-      action: "delete",
-      id,
-    });
     events.emit("billsChanged");
   } catch (e) {}
 
@@ -518,6 +607,46 @@ export async function createTransfer({
     debitTransactionId,
     creditTransactionId,
   };
+}
+
+export async function updateTransfer({
+  groupId,
+  fromAccount,
+  toAccount,
+  amount,
+  note,
+  date,
+}) {
+  const res = await executeSql(
+    `SELECT id, direction, type FROM transactions WHERE transfer_group_id = ?`,
+    [groupId],
+  );
+
+  let debitId, creditId;
+  for (let i = 0; i < res.rows.length; i++) {
+    const row = res.rows.item(i);
+    if (row.direction === "debit" || row.type === "expense") debitId = row.id;
+    else if (row.direction === "credit" || row.type === "income")
+      creditId = row.id;
+  }
+
+  if (debitId) {
+    await updateTransaction(debitId, {
+      source_id: fromAccount,
+      amount,
+      notes: note || "Transfer",
+      date,
+    });
+  }
+
+  if (creditId) {
+    await updateTransaction(creditId, {
+      source_id: toAccount,
+      amount,
+      notes: note || "Transfer",
+      date,
+    });
+  }
 }
 
 export async function getTransactionNoteSuggestions() {
@@ -646,53 +775,25 @@ export async function getHomeExpenseTransactions(referenceDate = new Date()) {
       `
       SELECT *
       FROM transactions
-      WHERE type = ?
+      WHERE type = 'expense'
         AND transfer_group_id IS NULL
-      ORDER BY id DESC
-      `,
-      ["expense"],
+      ORDER BY REPLACE(date, ' ', 'T') DESC, id DESC
+      `
     );
 
     const rows = [];
-
-    if (!res?.rows || !Number.isFinite(res.rows.length)) {
-      return rows;
-    }
-
     for (let i = 0; i < res.rows.length; i++) {
-      const row = res.rows.item(i);
-
-      if (!row?.date) {
-        continue;
-      }
-
-      // Ignore transactions explicitly marked as not counted.
-      if (
-        row.is_counted !== null &&
-        row.is_counted !== undefined &&
-        Number(row.is_counted) === 0
-      ) {
-        continue;
-      }
-
-      const txMonth = String(row.date).replace(" ", "T").substring(0, 7);
-
-      if (txMonth !== monthKey) {
-        continue;
-      }
-
-      // Extra protection for transfer transactions.
-      if (row.direction && String(row.direction).toLowerCase() === "transfer") {
-        continue;
-      }
-
-      rows.push(row);
+      rows.push(res.rows.item(i));
     }
 
-    return rows;
+    return rows.filter((row) => {
+      if (row.is_counted !== null && row.is_counted !== undefined && Number(row.is_counted) === 0) {
+        return false;
+      }
+      return String(row.date || "").startsWith(monthKey);
+    });
   } catch (error) {
     console.error("getHomeExpenseTransactions error:", error);
-
     return [];
   }
 }

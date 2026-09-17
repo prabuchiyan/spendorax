@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { formatCurrency } from '../services/billUtils';
+import CurrencyText from './CurrencyText';
 
 export default function CategoryDonut({
   data = [],
@@ -51,7 +52,7 @@ export default function CategoryDonut({
       <View style={{ position: 'absolute', alignItems: 'center' }}>
         <Text style={{ fontWeight: '700', fontSize: 14 }}>{centerLabel}</Text>
         <Text style={{ fontSize: 18, fontWeight: '800' }}>
-          {formatCurrency(total)}
+          <CurrencyText amount={total} />
         </Text>
       </View>
     </View>

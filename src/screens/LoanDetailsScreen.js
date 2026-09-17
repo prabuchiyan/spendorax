@@ -16,6 +16,7 @@ import Card from "../components/Card";
 import calc from "../services/loanCalculations";
 import { Colors } from "../components/Theme";
 import { useLoans } from '../redux/hooks';
+import CurrencyText from "../components/CurrencyText";
 
 function ActionButton({ icon, title, color, bg, onPress, width = "31%" }) {
   return (
@@ -372,7 +373,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
               minimumFontScale={0.7}
               numberOfLines={1}
             >
-              ₹{remainingAmount.toLocaleString("en-IN")}
+              <CurrencyText amount={remainingAmount} />
             </Text>
           </View>
         </View>
@@ -441,21 +442,15 @@ export default function LoanDetailsScreen({ route, navigation }) {
           {[
             {
               label: "Original",
-              value: `₹${originalPrincipal.toLocaleString(
-                "en-IN"
-              )}`,
+              value: <CurrencyText amount={originalPrincipal} />,
             },
             {
               label: "Paid",
-              value: `₹${paidSoFar.toLocaleString(
-                "en-IN"
-              )}`,
+              value: <CurrencyText amount={paidSoFar} />,
             },
             {
               label: "EMI",
-              value: `₹${Number(
-                loan.emi_amount || 0
-              ).toLocaleString("en-IN")}`,
+              value: <CurrencyText amount={Number(loan.emi_amount || 0)} />,
             },
             {
               label: "Interest",
@@ -467,9 +462,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
             },
             {
               label: "Interest Left",
-              value: `₹${interestToPay.toLocaleString(
-                "en-IN"
-              )}`,
+              value: <CurrencyText amount={interestToPay} />,
             },
           ].map((item, index) => (
             <View
@@ -1095,10 +1088,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
                           {isExpense
                             ? "− "
                             : "+ "}
-                          ₹
-                          {amount.toLocaleString(
-                            "en-IN"
-                          )}
+                          <CurrencyText amount={amount} />
                         </Text>
 
                         <MaterialCommunityIcons
@@ -1189,10 +1179,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
                                       0.7
                                     }
                                   >
-                                    ₹
-                                    {principal.toLocaleString(
-                                      "en-IN"
-                                    )}
+                                    <CurrencyText amount={principal} />
                                   </Text>
                                 </View>
 
@@ -1229,10 +1216,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
                                       0.7
                                     }
                                   >
-                                    ₹
-                                    {interest.toLocaleString(
-                                      "en-IN"
-                                    )}
+                                    <CurrencyText amount={interest} />
                                   </Text>
                                 </View>
 
@@ -1269,10 +1253,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
                                       0.7
                                     }
                                   >
-                                    ₹
-                                    {balance.toLocaleString(
-                                      "en-IN"
-                                    )}
+                                    <CurrencyText amount={balance} />
                                   </Text>
                                 </View>
                               </View>
@@ -1298,10 +1279,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
                                   styles.topUpInfoText
                                 }
                               >
-                                ₹
-                                {amount.toLocaleString(
-                                  "en-IN"
-                                )}{" "}
+                                <CurrencyText amount={amount} />{" "}
                                 was added to the loan
                                 balance.
                               </Text>

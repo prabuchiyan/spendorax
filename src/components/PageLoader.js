@@ -4,10 +4,9 @@ import {
   StyleSheet,
   Animated,
   Easing,
-  Platform,
-  Modal } from
+  Platform
+} from
 'react-native';
-
 
 const DEFAULT_GIF = require('../../assets/loading-waiting.gif');
 
@@ -51,21 +50,10 @@ export default function PageLoader({
     outputRange: [0.96, 1.06]
   });
 
+  if (!visible) return null;
+
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      statusBarTranslucent
-      hardwareAccelerated
-      onRequestClose={() => {
-
-
-        // Intentionally empty.
-        // Loader visibility is controlled by PageLoaderContext.
-      }}>
-      <View style={styles.overlay}
-      pointerEvents="auto">
+    <View style={styles.overlay} pointerEvents="auto">
         
         <View style={styles.card}>
           <Animated.Image
@@ -75,43 +63,27 @@ export default function PageLoader({
               height: size,
               transform: [{ scale }]
             }}
-            resizeMode="contain" />
-          
-        </View>
+            resizeMode="cover" />
       </View>
-    </Modal>);
+    </View>
+  );
 
 }
 
 const styles = StyleSheet.create({
   overlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Platform.OS === 'web' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.98)',
-    ...(Platform.OS === 'web' ? { backdropFilter: 'blur(15px)' } : {}),
-    // Web
+    backgroundColor: Platform.OS === 'web' ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.6)',
+    ...(Platform.OS === 'web' ? { backdropFilter: 'blur(8px)' } : {}),
     zIndex: 999999,
-    // Android
     elevation: 999999
   },
   card: {
-    width: 170,
-    height: 170,
-    borderRadius: 36,
-    backgroundColor: 'rgba(255,255,255,0.94)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.95)',
+    width: 150,
+    height: 150,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 18
-    },
-    shadowOpacity: 0.14,
-    shadowRadius: 28,
-    elevation: 20,
-    overflow: 'hidden'
   }
 });

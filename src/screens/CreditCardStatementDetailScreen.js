@@ -14,6 +14,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import FAB from "../components/FAB";
 import CreditCardStatementEditModal from "../components/CreditCardStatementEditModal";
 import { formatAmount, formatCurrency } from "../utils/numberUtils";
+import CurrencyText from "../components/CurrencyText";
 
 function formatDate(value) {
   if (!value) return "-";
@@ -107,19 +108,19 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
         <View style={styles.summaryGrid}>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Opening Balance</Text>
-            <Text style={styles.summaryValue}>{formatAmount(statement.opening_balance)}</Text>
+            <CurrencyText style={styles.summaryValue} amount={statement.opening_balance} />
           </View>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Purchases & Debits</Text>
-            <Text style={styles.summaryValue}>{formatCurrency(statement.purchases)}</Text>
+            <CurrencyText style={styles.summaryValue} amount={statement.purchases} />
           </View>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Payments & Credits</Text>
-            <Text style={styles.summaryValueSuccess}>{formatCurrency((Number(statement.payments) || 0) + (Number(statement.refunds) || 0))}</Text>
+            <CurrencyText style={styles.summaryValueSuccess} amount={(Number(statement.payments) || 0) + (Number(statement.refunds) || 0)} />
           </View>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Fees & Interest</Text>
-            <Text style={styles.summaryValue}>{formatCurrency((Number(statement.fees) || 0) + (Number(statement.interest) || 0))}</Text>
+            <CurrencyText style={styles.summaryValue} amount={(Number(statement.fees) || 0) + (Number(statement.interest) || 0)} />
           </View>
         </View>
         
@@ -128,11 +129,11 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
         <View style={styles.totalsRow}>
           <View>
             <Text style={styles.totalLabel}>Total Amount Due</Text>
-            <Text style={styles.totalValue}>{formatAmount(statement.closing_balance)}</Text>
+            <CurrencyText style={styles.totalValue} amount={statement.closing_balance} />
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={styles.totalLabel}>Minimum Amount Due</Text>
-            <Text style={styles.totalValueSecondary}>{formatAmount(statement.minimum_due)}</Text>
+            <CurrencyText style={styles.totalValueSecondary} amount={statement.minimum_due} />
           </View>
         </View>
       </View>
@@ -155,7 +156,7 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
         </View>
         <View style={styles.txAmountCol}>
           <Text style={[styles.txAmount, isCredit && styles.txAmountCredit]}>
-            {isCredit ? "" : ""}{formatAmount(item.amount)}
+            {isCredit ? "" : ""}<CurrencyText amount={item.amount} />
             <Text style={styles.txCrDr}>{isCredit ? " CR" : " DR"}</Text>
           </Text>
         </View>

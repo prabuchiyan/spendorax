@@ -4,8 +4,9 @@ import {
   Text,
   SectionList,
   TouchableOpacity,
-  TextInput } from
-'react-native';
+  TextInput
+} from
+  'react-native';
 import { getTransactions } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
@@ -16,8 +17,9 @@ import {
   useCategories,
   useSourcesList,
   useFilteredTransactions,
-  useAppDispatch } from
-'../redux/hooks';
+  useAppDispatch
+} from
+  '../redux/hooks';
 import { setCategories } from '../redux/slices/categorySlice';
 import { setSources as setReduxSources } from '../redux/slices/sourceSlice';
 import { setFilteredTransactions } from '../redux/slices/transactionSlice';
@@ -54,8 +56,8 @@ export default function SearchScreen({ navigation }) {
       const loadStatic = async () => {
         try {
           const [cats, srcs] = await Promise.all([
-          getCategories(true),
-          getSources(true)]
+            getCategories(true),
+            getSources(true)]
           );
           if (isActive) {
             dispatch(setCategories(cats || []));
@@ -66,7 +68,7 @@ export default function SearchScreen({ navigation }) {
         }
       };
       loadStatic();
-      return () => {isActive = false;};
+      return () => { isActive = false; };
     }, [dispatch])
   );
 
@@ -82,25 +84,55 @@ export default function SearchScreen({ navigation }) {
       }
 
       try {
-        const transactions = await getTransactions(1000000, 'Yes');
+        const rawTransactions = await getTransactions(1000000, 'Yes');
         const lowerQuery = q.toLowerCase();
+
+        // Deduplicate transfers so they show as a single item
+        const processedGroups = new Set();
+        const transactions = [];
+        for (const t of rawTransactions) {
+          if (t.transfer_group_id) {
+            if (processedGroups.has(t.transfer_group_id)) continue;
+            processedGroups.add(t.transfer_group_id);
+
+            let related = rawTransactions.find((x) => x.transfer_group_id === t.transfer_group_id && x.id !== t.id);
+            const debit = t.type === 'expense' || t.direction === 'debit' ? t : related;
+            const credit = t.type === 'income' || t.direction === 'credit' ? t : related;
+
+            transactions.push({
+              ...(debit || t),
+              type: 'transfer',
+              source_id: debit?.source_id || t.source_id,
+              toAccount: credit?.source_id,
+              amount: debit?.amount || credit?.amount || t.amount,
+              is_transfer: 1
+            });
+          } else {
+            transactions.push(t);
+          }
+        }
 
         const filtered = transactions.filter((item) => {
           const category =
-          categories.find(
-            (x) => String(x.id) === String(item.category_id)
-          )?.name || '';
+            categories.find(
+              (x) => String(x.id) === String(item.category_id)
+            )?.name || '';
 
           const source =
-          sources.find(
-            (x) => String(x.id) === String(item.source_id)
-          )?.name || '';
+            sources.find(
+              (x) => String(x.id) === String(item.source_id)
+            )?.name || '';
+
+          const toSource = (item.type === 'transfer' || item.transfer_group_id)
+            ? (sources.find((x) => String(x.id) === String(item.toAccount || item.to_account))?.name || '')
+            : '';
 
           return (
             (item.notes || '').toLowerCase().includes(lowerQuery) ||
             String(item.amount || '').includes(q) ||
             category.toLowerCase().includes(lowerQuery) ||
-            source.toLowerCase().includes(lowerQuery));
+            source.toLowerCase().includes(lowerQuery) ||
+            toSource.toLowerCase().includes(lowerQuery));
 
         });
 
@@ -114,7 +146,7 @@ export default function SearchScreen({ navigation }) {
 
     search();
 
-    return () => {isActive = false;};
+    return () => { isActive = false; };
   }, [searchQuery, categories, sources]);
 
   // ---------------------------------------------------------
@@ -165,49 +197,47 @@ export default function SearchScreen({ navigation }) {
     );
 
     return Object.keys(groups).
-    sort((a, b) => b.localeCompare(a)).
-    map((dateKey) => {
-      const [year, month, day] =
-      dateKey.split('-').map(Number);
+      sort((a, b) => b.localeCompare(a)).
+      map((dateKey) => {
+        const [year, month, day] =
+          dateKey.split('-').map(Number);
 
-      const date = new Date(
-        year,
-        month - 1,
-        day
-      );
-
-      date.setHours(0, 0, 0, 0);
-
-      let title;
-
-      if (
-      date.getTime() ===
-      today.getTime())
-      {
-        title = 'Today';
-      } else if (
-      date.getTime() ===
-      yesterday.getTime())
-      {
-        title = 'Yesterday';
-      } else {
-        title =
-        date.toLocaleDateString(
-          undefined,
-          {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          }
+        const date = new Date(
+          year,
+          month - 1,
+          day
         );
-      }
 
-      return {
-        title,
-        dateKey,
-        data: groups[dateKey]
-      };
-    });
+        date.setHours(0, 0, 0, 0);
+
+        let title;
+
+        if (
+          date.getTime() ===
+          today.getTime()) {
+          title = 'Today';
+        } else if (
+          date.getTime() ===
+          yesterday.getTime()) {
+          title = 'Yesterday';
+        } else {
+          title =
+            date.toLocaleDateString(
+              undefined,
+              {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+              }
+            );
+        }
+
+        return {
+          title,
+          dateKey,
+          data: groups[dateKey]
+        };
+      });
   }, [items]);
 
   // ---------------------------------------------------------
@@ -220,7 +250,7 @@ export default function SearchScreen({ navigation }) {
         flex: 1,
         backgroundColor: '#F8F9FB'
       }}>
-      
+
 
       {/* HEADER */}
 
@@ -230,7 +260,7 @@ export default function SearchScreen({ navigation }) {
           paddingTop: 12,
           paddingBottom: 4
         }}>
-        
+
         <Text
           style={{
             fontSize: 24,
@@ -238,7 +268,7 @@ export default function SearchScreen({ navigation }) {
             color: Colors.text,
             letterSpacing: -0.5
           }}>
-          
+
           Search
         </Text>
 
@@ -248,7 +278,7 @@ export default function SearchScreen({ navigation }) {
             color: Colors.muted,
             marginTop: 2
           }}>
-          
+
           Find your transactions quickly
         </Text>
       </View>
@@ -260,7 +290,7 @@ export default function SearchScreen({ navigation }) {
           paddingHorizontal: Spacing.s,
           paddingTop: 10
         }}>
-        
+
         <View
           style={{
             height: 46,
@@ -283,12 +313,12 @@ export default function SearchScreen({ navigation }) {
             shadowRadius: 5,
             elevation: 1
           }}>
-          
+
           <MaterialCommunityIcons
             name="magnify"
             size={22}
             color="#8F96A1" />
-          
+
 
           <TextInput
             value={searchQuery}
@@ -304,23 +334,23 @@ export default function SearchScreen({ navigation }) {
               color: Colors.text,
               paddingVertical: 0
             }} />
-          
+
 
           {searchQuery.length > 0 &&
-          <TouchableOpacity
-            onPress={() =>
-            setSearchQuery('')
-            }
-            activeOpacity={0.7}
-            style={{
-              padding: 3
-            }}>
-            
+            <TouchableOpacity
+              onPress={() =>
+                setSearchQuery('')
+              }
+              activeOpacity={0.7}
+              style={{
+                padding: 3
+              }}>
+
               <MaterialCommunityIcons
-              name="close-circle"
-              size={19}
-              color="#A3A9B2" />
-            
+                name="close-circle"
+                size={19}
+                color="#A3A9B2" />
+
             </TouchableOpacity>
           }
         </View>
@@ -329,27 +359,27 @@ export default function SearchScreen({ navigation }) {
       {/* RESULT COUNT */}
 
       {searchQuery.trim().length >= 3 &&
-      items.length > 0 &&
-      <View
-        style={{
-          paddingHorizontal: Spacing.s,
-          paddingTop: 12,
-          paddingBottom: 2
-        }}>
-        
-            <Text
+        items.length > 0 &&
+        <View
           style={{
-            fontSize: 12,
-            color: Colors.muted,
-            fontWeight: '600'
+            paddingHorizontal: Spacing.s,
+            paddingTop: 12,
+            paddingBottom: 2
           }}>
-          
-              {items.length}{' '}
-              {items.length === 1 ?
-          'transaction' :
-          'transactions'} found
-            </Text>
-          </View>
+
+          <Text
+            style={{
+              fontSize: 12,
+              color: Colors.muted,
+              fontWeight: '600'
+            }}>
+
+            {items.length}{' '}
+            {items.length === 1 ?
+              'transaction' :
+              'transactions'} found
+          </Text>
+        </View>
       }
 
       {/* RESULTS */}
@@ -357,7 +387,7 @@ export default function SearchScreen({ navigation }) {
       <SectionList
         sections={groupedResults}
         keyExtractor={(item) =>
-        String(item.id)
+          String(item.id)
         }
         showsVerticalScrollIndicator={false}
         stickySectionHeadersEnabled={false}
@@ -369,62 +399,62 @@ export default function SearchScreen({ navigation }) {
         }}
 
         ListEmptyComponent={
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            paddingTop: 70,
-            paddingHorizontal: 25
-          }}>
-          
-            <View
+          <View
             style={{
-              width: 76,
-              height: 76,
-              borderRadius: 38,
-              backgroundColor: '#EEF0F3',
+              flex: 1,
               justifyContent: 'center',
-              alignItems: 'center'
+              alignItems: 'center',
+              paddingTop: 70,
+              paddingHorizontal: 25
             }}>
-            
+
+            <View
+              style={{
+                width: 76,
+                height: 76,
+                borderRadius: 38,
+                backgroundColor: '#EEF0F3',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
+
               <MaterialCommunityIcons
-              name={
-              searchQuery.length < 3 ?
-              'magnify' :
-              'clipboard-text-outline'
-              }
-              size={36}
-              color="#AEB4BC" />
-            
+                name={
+                  searchQuery.length < 3 ?
+                    'magnify' :
+                    'clipboard-text-outline'
+                }
+                size={36}
+                color="#AEB4BC" />
+
             </View>
 
             <Text
-            style={{
-              color: Colors.text,
-              fontSize: 15,
-              fontWeight: '700',
-              marginTop: 14,
-              textAlign: 'center'
-            }}>
-            
+              style={{
+                color: Colors.text,
+                fontSize: 15,
+                fontWeight: '700',
+                marginTop: 14,
+                textAlign: 'center'
+              }}>
+
               {searchQuery.length < 3 ?
-            'Search your transactions' :
-            'No transactions found'}
+                'Search your transactions' :
+                'No transactions found'}
             </Text>
 
             <Text
-            style={{
-              color: Colors.muted,
-              fontSize: 12,
-              marginTop: 6,
-              textAlign: 'center',
-              lineHeight: 18
-            }}>
-            
+              style={{
+                color: Colors.muted,
+                fontSize: 12,
+                marginTop: 6,
+                textAlign: 'center',
+                lineHeight: 18
+              }}>
+
               {searchQuery.length < 3 ?
-            'Type at least 3 characters to search by note, amount, category or source' :
-            'Try a different keyword, amount, category or source'}
+                'Type at least 3 characters to search by note, amount, category or source' :
+                'Try a different keyword, amount, category or source'}
             </Text>
           </View>
         }
@@ -432,44 +462,44 @@ export default function SearchScreen({ navigation }) {
         /* DATE HEADER */
 
         renderSectionHeader={({ section }) =>
-        <View
-          style={{
-            paddingTop: 10,
-            paddingBottom: 7,
-            backgroundColor: '#F8F9FB'
-          }}>
-          
-            <View
+          <View
             style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between'
+              paddingTop: 10,
+              paddingBottom: 7,
+              backgroundColor: '#F8F9FB'
             }}>
-            
+
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+
               <View>
                 <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: '900',
-                  color: Colors.text,
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.4
-                }}>
-                
+                  style={{
+                    fontSize: 13,
+                    fontWeight: '900',
+                    color: Colors.text,
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.4
+                  }}>
+
                   {section.title}
                 </Text>
 
                 <Text
-                style={{
-                  fontSize: 11,
-                  color: Colors.muted,
-                  marginTop: 2
-                }}>
-                
+                  style={{
+                    fontSize: 11,
+                    color: Colors.muted,
+                    marginTop: 2
+                  }}>
+
                   {section.data.length}{' '}
                   {section.data.length === 1 ?
-                'transaction' :
-                'transactions'}
+                    'transaction' :
+                    'transactions'}
                 </Text>
               </View>
             </View>
@@ -484,34 +514,41 @@ export default function SearchScreen({ navigation }) {
           section
         }) => {
           const category =
-          categories.find(
-            (x) =>
-            String(x.id) ===
-            String(item.category_id)
-          );
+            categories.find(
+              (x) =>
+                String(x.id) ===
+                String(item.category_id)
+            );
 
           const source =
-          sources.find(
-            (x) =>
-            String(x.id) ===
-            String(item.source_id)
-          );
+            sources.find(
+              (x) =>
+                String(x.id) ===
+                String(item.source_id)
+            );
+
+          const toSource = item.type === 'transfer' || item.transfer_group_id
+            ? sources.find(
+              (x) => String(x.id) === String(item.toAccount || item.to_account)
+            )
+            : null;
 
           const isLast =
-          index ===
-          section.data.length - 1;
+            index ===
+            section.data.length - 1;
 
           return (
             <TransactionListItem
               item={item}
               category={category}
               source={source}
+              toSource={toSource}
               isLast={isLast}
               onPress={() => handleEdit(item)} />);
 
 
         }} />
-      
+
     </View>);
 
 }

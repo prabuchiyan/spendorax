@@ -15,8 +15,8 @@ import CategoryDonut from "../components/CategoryDonut";
 import { getHomeExpenseTransactions } from "../services/transactions";
 import { getHomeBudgets as getHomeBudgetsService } from "../services/budgets";
 import { getHomeCategoryBudgets as getHomeCategoryBudgetsService } from "../services/categoryBudgets";
-import { getBillsForCurrentMonth, getBillsSummary } from "../services/bills";
-import { getBillDisplayStatus, formatCurrency } from "../services/billUtils";
+import { getBillsForCurrentMonth, getBillsSummary, getBillSeriesMultiple } from "../services/bills";
+import { getBillDisplayStatus, formatCurrency, getPreferredBillOccurrence } from "../services/billUtils";
 import { getSources } from "../services/sources";
 import { getCategories } from "../services/categories";
 import events from "../services/events";
@@ -25,8 +25,10 @@ import Card from "../components/Card";
 import FAB from "../components/FAB";
 import { Spacing } from "../components/Theme";
 import BottomStatsBar from "../components/BottomStatsBar";
+import CurrencyText from "../components/CurrencyText";
 import { useBalanceVisibility } from "../context/BalanceVisibilityContext";
 import { usePageLoader } from "../context/PageLoaderContext";
+import PageLoader from "../components/PageLoader";
 import {
   setTopCategories,
   setSources,
@@ -348,7 +350,7 @@ function BudgetDonut({
     if (!loaderVisible) {
       Animated.timing(anim, {
         toValue: Math.min(1, percent),
-        duration: 1000,
+        duration: 1500,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
       }).start();
@@ -414,7 +416,7 @@ function BudgetDonut({
             originY={size / 2}
             style={{
               transition:
-                "stroke-dashoffset 1s cubic-bezier(0.215, 0.61, 0.355, 1)",
+                "stroke-dashoffset 1.5s cubic-bezier(0.215, 0.61, 0.355, 1)",
             }}
           />
         ) : (
@@ -522,7 +524,7 @@ export default function HomeScreen({ navigation }) {
 
   const budgetDonutSize = Math.min(240, Math.max(190, screenWidth - 80));
 
-  const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
+  const { visible: pageLoaderVisible, show: showPageLoader, hide: hidePageLoader } = usePageLoader();
 
   const dispatch = useAppDispatch();
 
@@ -647,6 +649,61 @@ export default function HomeScreen({ navigation }) {
 
       const allBills = Array.isArray(bl) ? bl : [];
 
+      const templateIdsToFetch = Array.from(
+        new Set(
+          allBills
+            .filter(
+              (bill) =>
+                (bill.is_recurring || bill._isRecurringSeries) &&
+                !bill._isCreditCardStatement,
+            )
+            .map((bill) => bill._templateId || bill.parent_bill_id || bill.id),
+        ),
+      );
+
+      const preferredMap = {};
+      if (templateIdsToFetch.length > 0) {
+        try {
+          const seriesMap = await getBillSeriesMultiple(templateIdsToFetch);
+          allBills.forEach((bill) => {
+            if (!bill.is_recurring && !bill._isRecurringSeries) return;
+            if (bill._isCreditCardStatement) return;
+
+            const templateId = bill._templateId || bill.parent_bill_id || bill.id;
+            if (seriesMap[templateId]) {
+              preferredMap[String(templateId)] = getPreferredBillOccurrence(
+                bill,
+                seriesMap[templateId],
+              );
+            }
+          });
+        } catch (e) {
+          console.warn("Home preferred bill occurrence error:", e);
+        }
+      }
+
+      const displayItems = allBills.map((bill) => {
+        const templateId = bill._templateId || bill.parent_bill_id || bill.id;
+        const preferred = preferredMap[String(templateId)];
+        if (
+          preferred &&
+          !bill._isCreditCardParent &&
+          !bill._isCreditCardStatement
+        ) {
+          return {
+            ...bill,
+            due_date: preferred.due_date,
+            status: preferred.status,
+            amount: preferred.amount,
+            _noDueDate: preferred._noDueDate === true,
+            _templateId: bill._templateId || templateId,
+            _displayOccurrenceId: preferred.id,
+            _displayOccurrence: preferred,
+          };
+        }
+        return bill;
+      });
+
       const todayStart = new Date(
         currentYear,
         currentMonth,
@@ -657,12 +714,13 @@ export default function HomeScreen({ navigation }) {
         0,
       );
 
-      const currentMonthBills = allBills.filter((bill) => {
+      const currentMonthBills = displayItems.filter((bill) => {
         if (!bill?.due_date) {
           return false;
         }
 
-        const dueDate = new Date(bill.due_date);
+        const dueDateStr = String(bill.due_date || "").replace(" ", "T");
+        const dueDate = new Date(dueDateStr);
 
         if (Number.isNaN(dueDate.getTime())) {
           return false;
@@ -699,7 +757,8 @@ export default function HomeScreen({ navigation }) {
 
         let isPaidThisMonth = false;
         if (isPaid && bill.paid_at) {
-          const paidDate = new Date(bill.paid_at);
+          const paidDateStr = String(bill.paid_at || "").replace(" ", "T");
+          const paidDate = new Date(paidDateStr);
           if (!Number.isNaN(paidDate.getTime())) {
             isPaidThisMonth =
               paidDate.getFullYear() === currentYear &&
@@ -724,7 +783,9 @@ export default function HomeScreen({ navigation }) {
         if (isPaidA && !isPaidB) return 1;
         if (!isPaidA && isPaidB) return -1;
 
-        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+        const aDueStr = String(a.due_date || "").replace(" ", "T");
+        const bDueStr = String(b.due_date || "").replace(" ", "T");
+        return new Date(aDueStr).getTime() - new Date(bDueStr).getTime();
       });
 
       const summary = await getBillsSummary();
@@ -765,7 +826,7 @@ export default function HomeScreen({ navigation }) {
        */
       const result = await import("../services/transactions");
 
-      const tx = await result.getTransactions(3, "Yes");
+      const tx = await result.getTransactionsPaginated({ limit: 10, filterType: "all" });
 
       dispatch(setRecentTransactions(Array.isArray(tx) ? tx : []));
 
@@ -1056,9 +1117,9 @@ export default function HomeScreen({ navigation }) {
     if (isPaidA && !isPaidB) return 1;
     if (!isPaidA && isPaidB) return -1;
 
-    return (
-      new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime()
-    );
+    const aDueStr = String(a.due_date || 0).replace(" ", "T");
+    const bDueStr = String(b.due_date || 0).replace(" ", "T");
+    return new Date(aDueStr).getTime() - new Date(bDueStr).getTime();
   });
 
   /* ==========================================================
@@ -2203,6 +2264,11 @@ export default function HomeScreen({ navigation }) {
                   ? "income"
                   : "expense";
 
+              const toSource =
+                transactionType === "transfer"
+                  ? sources.find((s) => String(s.id) === String(r.toAccount))
+                  : null;
+
               const amountColor =
                 transactionType === "income"
                   ? "#20A56A"
@@ -2214,7 +2280,9 @@ export default function HomeScreen({ navigation }) {
 
               const iconColor = cat.color || accentColor;
 
-              const transactionDate = new Date(r.date);
+              const transactionDate = new Date(
+                String(r.date || "").replace(" ", "T"),
+              );
 
               const dateText = transactionDate.toLocaleDateString(undefined, {
                 day: "2-digit",
@@ -2342,57 +2410,124 @@ export default function HomeScreen({ navigation }) {
                             minWidth: 0,
                           }}
                         >
-                          <View
-                            style={{
-                              flexShrink: 1,
-                              maxWidth: "58%",
-                              backgroundColor: iconColor + "12",
-                              borderRadius: 6,
-                              paddingHorizontal: 7,
-                              paddingVertical: 4,
-                              borderWidth: 1,
-                              borderColor: iconColor + "18",
-                            }}
-                          >
-                            <Text
-                              numberOfLines={1}
-                              ellipsizeMode="tail"
-                              style={{
-                                color: iconColor,
-                                fontSize: 11,
-                                lineHeight: 13,
-                                fontWeight: "800",
-                              }}
-                            >
-                              {cat.name || "Uncategorized"}
-                            </Text>
-                          </View>
-
-                          <View
-                            style={{
-                              width: 3,
-                              height: 3,
-                              borderRadius: 2,
-                              backgroundColor: "#C7CBD1",
-                              marginHorizontal: 6,
-                              flexShrink: 0,
-                            }}
-                          />
-
-                          <Text
-                            numberOfLines={1}
-                            ellipsizeMode="tail"
-                            style={{
-                              flex: 1,
-                              minWidth: 0,
-                              color: "#9299A3",
-                              fontSize: 11,
-                              lineHeight: 14,
-                              fontWeight: "600",
-                            }}
-                          >
-                            {source?.name || "No source"}
-                          </Text>
+                          {transactionType === "transfer" ? (
+                            <>
+                               <View
+                                  style={{
+                                    flexShrink: 0,
+                                    backgroundColor: '#F1F3F5',
+                                    borderRadius: 6,
+                                    paddingHorizontal: 7,
+                                    paddingVertical: 4,
+                                    borderWidth: 1,
+                                    borderColor: '#E5E7EB',
+                                    marginRight: 6,
+                                  }}
+                                >
+                                  <Text
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                    style={{
+                                      color: '#718096',
+                                      fontSize: 11,
+                                      lineHeight: 13,
+                                      fontWeight: '900',
+                                      letterSpacing: 0.25,
+                                    }}
+                                  >
+                                    TRANSFER
+                                  </Text>
+                               </View>
+                               <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1, minWidth: 0 }}>
+                                  <Text
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                    style={{
+                                      flexShrink: 1,
+                                      color: '#9299A3',
+                                      fontSize: 11,
+                                      lineHeight: 14,
+                                      fontWeight: '600',
+                                    }}
+                                  >
+                                    {source?.name || 'No source'}
+                                  </Text>
+                                  <MaterialCommunityIcons
+                                    name="arrow-right"
+                                    size={10}
+                                    color="#9299A3"
+                                    style={{ marginHorizontal: 4 }}
+                                  />
+                                  <Text
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                    style={{
+                                      flexShrink: 1,
+                                      color: '#9299A3',
+                                      fontSize: 11,
+                                      lineHeight: 14,
+                                      fontWeight: '600',
+                                    }}
+                                  >
+                                    {toSource?.name || 'No source'}
+                                  </Text>
+                               </View>
+                            </>
+                          ) : (
+                            <>
+                              <View
+                                style={{
+                                  flexShrink: 1,
+                                  maxWidth: "58%",
+                                  backgroundColor: iconColor + "12",
+                                  borderRadius: 6,
+                                  paddingHorizontal: 7,
+                                  paddingVertical: 4,
+                                  borderWidth: 1,
+                                  borderColor: iconColor + "18",
+                                }}
+                              >
+                                <Text
+                                  numberOfLines={1}
+                                  ellipsizeMode="tail"
+                                  style={{
+                                    color: iconColor,
+                                    fontSize: 11,
+                                    lineHeight: 13,
+                                    fontWeight: "800",
+                                  }}
+                                >
+                                  {cat.name || "Uncategorized"}
+                                </Text>
+                              </View>
+    
+                              <View
+                                style={{
+                                  width: 3,
+                                  height: 3,
+                                  borderRadius: 2,
+                                  backgroundColor: "#C7CBD1",
+                                  marginHorizontal: 6,
+                                  flexShrink: 0,
+                                }}
+                              />
+    
+                              <Text
+                                numberOfLines={1}
+                                ellipsizeMode="tail"
+                                style={{
+                                  flex: 1,
+                                  minWidth: 0,
+                                  color: "#9299A3",
+                                  fontSize: 11,
+                                  lineHeight: 14,
+                                  fontWeight: "600",
+                                }}
+                              >
+                                {source?.name || "No source"}
+                              </Text>
+                            </>
+                          )}
                         </View>
                       </View>
 
@@ -2867,7 +3002,7 @@ export default function HomeScreen({ navigation }) {
                       }}
                     >
                       {balanceVisible
-                        ? formatCurrency(billsSummary.totalThisMonth)
+                        ? <CurrencyText amount={billsSummary.totalThisMonth} />
                         : "••••••"}
                     </Text>
                   </View>
@@ -2963,7 +3098,7 @@ export default function HomeScreen({ navigation }) {
                     }}
                   >
                     {balanceVisible
-                      ? formatCurrency(billsSummary.totalPaid)
+                      ? <CurrencyText amount={billsSummary.totalPaid} />
                       : "••••••"}
                   </Text>
                 </View>
@@ -3017,7 +3152,7 @@ export default function HomeScreen({ navigation }) {
                     }}
                   >
                     {balanceVisible
-                      ? formatCurrency(billsSummary.overdueAmount)
+                      ? <CurrencyText amount={billsSummary.overdueAmount} />
                       : "••••••"}
                   </Text>
                 </View>
@@ -3071,7 +3206,7 @@ export default function HomeScreen({ navigation }) {
                     }}
                   >
                     {balanceVisible
-                      ? formatCurrency(billsSummary.upcoming7)
+                      ? <CurrencyText amount={billsSummary.upcoming7} />
                       : "••••••"}
                   </Text>
                 </View>
@@ -3183,16 +3318,22 @@ export default function HomeScreen({ navigation }) {
                             marginLeft: 4,
                           }}
                         >
-                          Due{" "}
-                          {bill.due_date
-                            ? new Date(bill.due_date).toLocaleDateString(
-                                undefined,
-                                {
-                                  day: "2-digit",
-                                  month: "short",
-                                },
-                              )
-                            : "—"}
+                          {bill._noDueDate
+                            ? "No due date"
+                            : `Due ${
+                                bill.due_date
+                                  ? new Date(
+                                      String(bill.due_date || "").replace(
+                                        " ",
+                                        "T",
+                                      ),
+                                    ).toLocaleDateString(undefined, {
+                                      day: "2-digit",
+                                      month: "short",
+                                      year: "numeric",
+                                    })
+                                  : "—"
+                              }`}
                         </Text>
                       </View>
                     </View>
@@ -3212,11 +3353,11 @@ export default function HomeScreen({ navigation }) {
                         style={{
                           fontSize: 13,
                           fontWeight: "900",
-                          color: "#2F7355",
+                          color: statusColor,
                         }}
                       >
                         {balanceVisible
-                          ? formatCurrency(bill.amount)
+                          ? <CurrencyText amount={bill.amount} />
                           : "••••••"}
                       </Text>
 
@@ -3315,6 +3456,7 @@ export default function HomeScreen({ navigation }) {
           elevation: 20,
         }}
       />
+      <PageLoader visible={pageLoaderVisible} />
     </View>
   );
 }

@@ -89,6 +89,7 @@ export async function getNotifications() {
     const res = await executeSql(
         `SELECT id, type, title, body, enabled, hour, minute, payload 
             FROM notifications 
+            WHERE reference_id IS NULL
             ORDER BY id ASC`
     );
     const rows = [];

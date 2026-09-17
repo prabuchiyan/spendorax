@@ -16,6 +16,7 @@ import { Colors, Spacing } from '../components/Theme';
 import FAB from '../components/FAB';
 import { useFocusEffect } from '@react-navigation/native';
 import { usePageLoader } from '../context/PageLoaderContext';
+import PageLoader from '../components/PageLoader';
 // Redux imports
 import {
   setTransactions,
@@ -33,10 +34,11 @@ import { getDateKey } from '../utils/dateUtils';
 import TransactionListItem from '../components/TransactionListItem';
 import { setSources as setReduxSources } from '../redux/slices/sourceSlice';
 import { useAppDispatch } from '../redux/hooks';
+import CurrencyText from '../components/CurrencyText';
 
 export default function TransactionsScreen({ navigation }) {
   const dispatch = useAppDispatch();
-  const { show: showLoader, hide: hideLoader } = usePageLoader();
+  const { visible: loaderVisible, show: showLoader, hide: hideLoader } = usePageLoader();
 
   // Local state
   const [items, setItems] = useState([]);
@@ -613,7 +615,7 @@ export default function TransactionsScreen({ navigation }) {
                   marginRight: 8
                 }}>
                 
-                    +₹{section.dailyIncome.toFixed(0)}
+                    +<CurrencyText amount={section.dailyIncome} minimumFractionDigits={0} maximumFractionDigits={0} />
                   </Text>
               }
 
@@ -625,7 +627,7 @@ export default function TransactionsScreen({ navigation }) {
                   color: '#E35D6A'
                 }}>
                 
-                    -₹{section.dailyExpense.toFixed(0)}
+                    -<CurrencyText amount={section.dailyExpense} minimumFractionDigits={0} maximumFractionDigits={0} />
                   </Text>
               }
               </View>
@@ -640,12 +642,16 @@ export default function TransactionsScreen({ navigation }) {
           const source = sourceOptions.find(
             (x) => x.id === item.source_id
           );
+          const toSource = item.type === 'transfer' ? sourceOptions.find(
+            (x) => x.id === item.toAccount
+          ) : null;
           const isLast = index === section.data.length - 1;
           return (
             <TransactionListItem
               item={item}
               category={category}
               source={source}
+              toSource={toSource}
               isLast={isLast}
               onPress={() => handleEdit(item)} />);
 
@@ -653,14 +659,13 @@ export default function TransactionsScreen({ navigation }) {
         }} />
       
 
-      {/* global PageLoader is provided by PageLoaderProvider */}
-
       {/* FAB */}
       <FAB
         onPress={() =>
         navigation.navigate('TransactionAdd')
         } />
       
+      <PageLoader visible={loaderVisible} />
     </View>);
 
 }

@@ -182,14 +182,30 @@ export async function checkBillDue() {
   const res = await executeSql(
     `SELECT * FROM bills
          WHERE is_paid = 0
-         AND deleted_at IS NULL
-         AND date(due_date) <= date(?, '+' || IFNULL(reminder_days_before, 2) || ' days')
-         AND date(due_date) >= date(?)`,
-    [today, today]
+         AND deleted_at IS NULL`
   );
 
   const rows = [];
-  for (let i = 0; i < res.rows.length; i++) rows.push(res.rows.item(i));
+  const todayObj = new Date(today);
+  
+  for (let i = 0; i < res.rows.length; i++) {
+    const bill = res.rows.item(i);
+    if (!bill.due_date) continue;
+    
+    const dueDate = new Date(bill.due_date.substring(0, 10));
+    const reminderDays = bill.reminder_days_before !== null && bill.reminder_days_before !== undefined 
+      ? Number(bill.reminder_days_before) 
+      : 2;
+      
+    // Calculate the trigger date (due_date - reminder_days_before)
+    const triggerDate = new Date(dueDate);
+    triggerDate.setDate(triggerDate.getDate() - reminderDays);
+    
+    // Check if today is between triggerDate and dueDate (inclusive)
+    if (todayObj >= triggerDate && todayObj <= dueDate) {
+      rows.push(bill);
+    }
+  }
   return rows;
 }
 

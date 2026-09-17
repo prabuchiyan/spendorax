@@ -41,6 +41,7 @@ import { getSources } from "../services/sources";
 import Card from "../components/Card";
 import ConfirmDialog from "../components/ConfirmDialog";
 import BillForm from "../components/BillForm";
+import CurrencyText from "../components/CurrencyText";
 import { Colors, Spacing } from "../components/Theme";
 import {
   formatCurrency,
@@ -51,6 +52,7 @@ import {
 "../services/billUtils";
 import { getCreditCards, payCreditCardBill } from "../services/creditCards";
 import { usePageLoader } from "../context/PageLoaderContext";
+import PageLoader from "../components/PageLoader";
 import { onStatementPaid } from "../services/creditCardScheduler";
 import { setCategoriesMap } from "../redux/slices/categorySlice";
 import {
@@ -360,7 +362,7 @@ function OccurrenceList({ series, selectedId, onSelect }) {
                     color: selected ? "#fff" : "#2DBE60"
                   }}>
                   
-                  {formatCurrency(occ.paid_amount || 0)}
+                  <CurrencyText amount={occ.paid_amount || 0} />
                 </Text>
               </View>
               <MaterialCommunityIcons
@@ -673,7 +675,7 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
                   fontSize: 15
                 }}>
                 
-                    {formatCurrency(tx.amount)}
+                    <CurrencyText amount={tx.amount} />
                   </Text>
                 </TouchableOpacity>
             } />
@@ -884,7 +886,7 @@ export default function BillDetailScreen({ route, navigation }) {
   const [paymentSources, setPaymentSources] = useState([]);
   const [paymentSourceSearch, setPaymentSourceSearch] = useState("");
   const [selectedCreditCard, setSelectedCreditCard] = useState(null);
-  const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
+  const { visible: loaderVisible, show: showPageLoader, hide: hidePageLoader } = usePageLoader();
   const dispatch = useAppDispatch();
   const reduxBills = useBills();
   const reduxSummary = useBillsSummary();
@@ -1273,7 +1275,7 @@ export default function BillDetailScreen({ route, navigation }) {
                 color: "#2DBE60"
               }}>
               
-              {formatCurrency(totalPaidAmount)}
+              <CurrencyText amount={totalPaidAmount} />
             </Text>
 
             <Text
@@ -1313,7 +1315,7 @@ export default function BillDetailScreen({ route, navigation }) {
               
 
               <Text style={styles.summaryValue}>
-                {formatCurrency(pendingAmount)}
+                <CurrencyText amount={pendingAmount} />
               </Text>
 
               <Text style={styles.summaryLabel}>Pending</Text>
@@ -1362,8 +1364,8 @@ export default function BillDetailScreen({ route, navigation }) {
                 fontWeight: "600"
               }}>
               
-              {formatCurrency(totalPaidAmount)} of{" "}
-              {formatCurrency(totalDueAmount)} Paid
+              <CurrencyText amount={totalPaidAmount} /> of{" "}
+              <CurrencyText amount={totalDueAmount} /> Paid
             </Text>
           </View>
         </Card>
@@ -1532,7 +1534,7 @@ export default function BillDetailScreen({ route, navigation }) {
                     color: display.color
                   }}>
                   
-                  {formatCurrency(activeBill.amount)}
+                  <CurrencyText amount={activeBill.amount} />
                 </Text>
 
                 <Text
@@ -1552,7 +1554,7 @@ export default function BillDetailScreen({ route, navigation }) {
                     color: "#2DBE60"
                   }}>
                   
-                  {formatCurrency(activeBill.paid_amount || 0)}
+                  <CurrencyText amount={activeBill.paid_amount || 0} />
                 </Text>
               </View>
               <View
@@ -1877,6 +1879,7 @@ export default function BillDetailScreen({ route, navigation }) {
           </View>
         </View>
       </Modal>
+      <PageLoader visible={loaderVisible} />
     </View>);
 
 }

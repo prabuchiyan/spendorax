@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import Card from './Card';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from './Theme';
+import CurrencyText from './CurrencyText';
 
 const typeIcon = (t) => {
   switch ((t||'').toLowerCase()) {
@@ -32,8 +33,8 @@ export default function ActiveLoanCard({ loan }) {
           <Text style={styles.lender}>{loan.lender}</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={styles.outstanding}>₹{Number(loan.outstanding_amount||0).toLocaleString('en-IN')}</Text>
-          <Text style={styles.emi}>EMI ₹{Number(loan.emi_amount||0).toLocaleString('en-IN')}</Text>
+          <Text style={styles.outstanding}><CurrencyText amount={loan.outstanding_amount} /></Text>
+          <Text style={styles.emi}>EMI <CurrencyText amount={loan.emi_amount} /></Text>
         </View>
       </View>
 
