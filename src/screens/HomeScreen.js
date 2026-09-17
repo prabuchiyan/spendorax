@@ -28,6 +28,7 @@ import BottomStatsBar from "../components/BottomStatsBar";
 import CurrencyText from "../components/CurrencyText";
 import { useBalanceVisibility } from "../context/BalanceVisibilityContext";
 import { usePageLoader } from "../context/PageLoaderContext";
+import PageLoader from "../components/PageLoader";
 import {
   setTopCategories,
   setSources,
@@ -523,7 +524,7 @@ export default function HomeScreen({ navigation }) {
 
   const budgetDonutSize = Math.min(240, Math.max(190, screenWidth - 80));
 
-  const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
+  const { visible: pageLoaderVisible, show: showPageLoader, hide: hidePageLoader } = usePageLoader();
 
   const dispatch = useAppDispatch();
 
@@ -3455,6 +3456,7 @@ export default function HomeScreen({ navigation }) {
           elevation: 20,
         }}
       />
+      <PageLoader visible={pageLoaderVisible} />
     </View>
   );
 }

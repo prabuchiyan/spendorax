@@ -52,6 +52,7 @@ import {
 "../services/billUtils";
 import { getCreditCards, payCreditCardBill } from "../services/creditCards";
 import { usePageLoader } from "../context/PageLoaderContext";
+import PageLoader from "../components/PageLoader";
 import { onStatementPaid } from "../services/creditCardScheduler";
 import { setCategoriesMap } from "../redux/slices/categorySlice";
 import {
@@ -885,7 +886,7 @@ export default function BillDetailScreen({ route, navigation }) {
   const [paymentSources, setPaymentSources] = useState([]);
   const [paymentSourceSearch, setPaymentSourceSearch] = useState("");
   const [selectedCreditCard, setSelectedCreditCard] = useState(null);
-  const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
+  const { visible: loaderVisible, show: showPageLoader, hide: hidePageLoader } = usePageLoader();
   const dispatch = useAppDispatch();
   const reduxBills = useBills();
   const reduxSummary = useBillsSummary();
@@ -1878,6 +1879,7 @@ export default function BillDetailScreen({ route, navigation }) {
           </View>
         </View>
       </Modal>
+      <PageLoader visible={loaderVisible} />
     </View>);
 
 }

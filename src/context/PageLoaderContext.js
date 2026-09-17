@@ -29,7 +29,6 @@ export function PageLoaderProvider({ children }) {
   return (
     <PageLoaderContext.Provider value={{ visible, show, hide, options }}>
       {children}
-      <PageLoader visible={visible} source={options.source} size={options.size || 130} />
     </PageLoaderContext.Provider>
   );
 }

@@ -40,6 +40,7 @@ import MuiDateTimePicker from "./MuiDateTimePicker";
 import { Feather } from "@expo/vector-icons";
 import LinkedBillCard from "./LinkedBillCard";
 import { usePageLoader } from "../context/PageLoaderContext";
+import PageLoader from "../components/PageLoader";
 import { onCardTransactionChanged } from "../services/creditCardScheduler";
 
 export default function TransactionForm({
@@ -51,7 +52,7 @@ export default function TransactionForm({
   sourceId: initialSourceId,
   categoryId: initialCategoryId,
 }) {
-  const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
+  const { visible: loaderVisible, show: showPageLoader, hide: hidePageLoader } = usePageLoader();
   const [amount, setAmount] = useState(
     isEdit && transaction ? String(transaction.amount) : "",
   );
@@ -3074,6 +3075,7 @@ export default function TransactionForm({
       >
         {snackbarMsg}
       </Snackbar>
+      <PageLoader visible={loaderVisible} />
     </ScrollView>
   );
 }

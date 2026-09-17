@@ -16,6 +16,7 @@ import { Colors, Spacing } from '../components/Theme';
 import FAB from '../components/FAB';
 import { useFocusEffect } from '@react-navigation/native';
 import { usePageLoader } from '../context/PageLoaderContext';
+import PageLoader from '../components/PageLoader';
 // Redux imports
 import {
   setTransactions,
@@ -37,7 +38,7 @@ import CurrencyText from '../components/CurrencyText';
 
 export default function TransactionsScreen({ navigation }) {
   const dispatch = useAppDispatch();
-  const { show: showLoader, hide: hideLoader } = usePageLoader();
+  const { visible: loaderVisible, show: showLoader, hide: hideLoader } = usePageLoader();
 
   // Local state
   const [items, setItems] = useState([]);
@@ -658,14 +659,13 @@ export default function TransactionsScreen({ navigation }) {
         }} />
       
 
-      {/* global PageLoader is provided by PageLoaderProvider */}
-
       {/* FAB */}
       <FAB
         onPress={() =>
         navigation.navigate('TransactionAdd')
         } />
       
+      <PageLoader visible={loaderVisible} />
     </View>);
 
 }
