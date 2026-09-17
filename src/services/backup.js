@@ -962,16 +962,30 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           // Match on name + due_date + parent_bill_id to uniquely identify a bill slot.
           // parent_bill_id distinguishes child occurrences from each other and from
           // the template, preventing false merges across different recurring series.
-          const existing = await executeSql(
-            `SELECT id FROM bills
-             WHERE name = ?
-               AND due_date = ?
-               AND IFNULL(parent_bill_id, 0) = IFNULL(?, 0)
-             LIMIT 1`,
-            [bill.name, bill.due_date, bill.parent_bill_id ?
+          let parentBillIdQuery = bill.parent_bill_id ?
             billMap[bill.parent_bill_id] || bill.parent_bill_id :
-            null]
-          );
+            null;
+          
+          let existing;
+          if (parentBillIdQuery) {
+            existing = await executeSql(
+              `SELECT id FROM bills
+               WHERE name = ?
+                 AND due_date = ?
+                 AND parent_bill_id = ?
+               LIMIT 1`,
+              [bill.name, bill.due_date, parentBillIdQuery]
+            );
+          } else {
+            existing = await executeSql(
+              `SELECT id FROM bills
+               WHERE name = ?
+                 AND due_date = ?
+                 AND parent_bill_id IS NULL
+               LIMIT 1`,
+              [bill.name, bill.due_date]
+            );
+          }
 
           if (existing.rows.length > 0) {
             billMap[bill.id] = existing.rows.item(0).id;
@@ -1041,23 +1055,31 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       sortedLoans,
       async (loan) => {
         if (mode === 'merge') {
-          const existing = await executeSql(
-            `SELECT id
+          const existingRes = await executeSql(
+            `SELECT id, loan_direction
               FROM loans
               WHERE loan_name = ?
                 AND lender = ?
                 AND principal_amount = ?
-                AND loan_start_date = ?
-                AND IFNULL(loan_direction, 'BORROWED') = ?
-              LIMIT 1`,
+                AND loan_start_date = ?`,
             [
             loan.loan_name,
             loan.lender,
             loan.principal_amount,
-            loan.loan_start_date,
-            loan.loan_direction || 'BORROWED']
-
+            loan.loan_start_date]
           );
+
+          let existing;
+          const targetDir = loan.loan_direction || 'BORROWED';
+          for(let i = 0; i < existingRes.rows.length; i++) {
+             const row = existingRes.rows.item(i);
+             const rowDir = row.loan_direction || 'BORROWED';
+             if (rowDir === targetDir) {
+                existing = { rows: { length: 1, item: () => row } };
+                break;
+             }
+          }
+          if (!existing) existing = { rows: { length: 0 } };
 
           if (existing.rows.length > 0) {
             loanMap[loan.id] = existing.rows.item(0).id;
@@ -1112,25 +1134,35 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           // restored row, leaving every other bill unlinked (the "duplicate unlinked bill"
           // symptom). bill_id is remapped via billMap before comparison.
           const mappedBillId = tx.bill_id ? billMap[tx.bill_id] || null : null;
-          const existing = await executeSql(
-            `SELECT id
+          const existingRes = await executeSql(
+            `SELECT id, notes, loan_id, bill_id
               FROM transactions
               WHERE type = ?
               AND amount = ?
-              AND date = ?
-              AND IFNULL(notes,'') = IFNULL(?, '')
-              AND IFNULL(loan_id,0) = IFNULL(?,0)
-              AND IFNULL(bill_id,0) = IFNULL(?,0)
-              LIMIT 1`,
+              AND date = ?`,
             [
             tx.type,
             tx.amount,
-            tx.date,
-            tx.notes,
-            tx.loan_id ? loanMap[tx.loan_id] || null : null,
-            mappedBillId]
-
+            tx.date]
           );
+
+          let existing;
+          const targetNotes = tx.notes || '';
+          const targetLoan = tx.loan_id ? loanMap[tx.loan_id] || 0 : 0;
+          const targetBill = mappedBillId || 0;
+
+          for(let i = 0; i < existingRes.rows.length; i++) {
+             const row = existingRes.rows.item(i);
+             const rowNotes = row.notes || '';
+             const rowLoan = row.loan_id || 0;
+             const rowBill = row.bill_id || 0;
+
+             if (rowNotes === targetNotes && rowLoan === targetLoan && rowBill === targetBill) {
+                 existing = { rows: { length: 1, item: () => row } };
+                 break;
+             }
+          }
+          if (!existing) existing = { rows: { length: 0 } };
 
           if (existing.rows.length > 0) {
             transactionMap[tx.id] = existing.rows.item(0).id;
@@ -1524,12 +1556,19 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       if (!newBillId || !newTransactionId) continue;
 
       try {
-        await executeSql(
-          `UPDATE transactions
-           SET bill_id = ?
-           WHERE id = ? AND (bill_id IS NULL OR bill_id = 0)`,
-          [newBillId, newTransactionId]
+        const txRes = await executeSql(
+          `SELECT bill_id FROM transactions WHERE id = ?`,
+          [newTransactionId]
         );
+        let currentBillId = txRes.rows.length > 0 ? txRes.rows.item(0).bill_id : null;
+        if (currentBillId == null || currentBillId === 0) {
+          await executeSql(
+            `UPDATE transactions
+             SET bill_id = ?
+             WHERE id = ?`,
+            [newBillId, newTransactionId]
+          );
+        }
       } catch (e) {
         console.warn(`Failed to backfill bill_id on transaction ${newTransactionId}`, e);
       }

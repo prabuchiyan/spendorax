@@ -288,12 +288,15 @@ export async function getCreditCardById(id) {
   if (!row.source_id) return row;
 
   const txRes = await executeSql(
-    `SELECT type, amount FROM transactions WHERE source_id = ? AND IFNULL(is_counted, 1) = 1`,
+    `SELECT type, amount, is_counted FROM transactions WHERE source_id = ?`,
     [row.source_id],
   );
   let outstanding = 0;
   for (let i = 0; i < txRes.rows.length; i++) {
     const tx = txRes.rows.item(i);
+    if (tx.is_counted !== null && tx.is_counted !== undefined && Number(tx.is_counted) === 0) {
+      continue;
+    }
     const amount = Number(tx.amount || 0);
     if (tx.type === "expense") {
       outstanding += amount;
@@ -324,12 +327,15 @@ export async function refreshCreditCardTotals(cardId) {
   if (!card || !card.source_id) return null;
 
   const txRes = await executeSql(
-    `SELECT type, amount FROM transactions WHERE source_id = ?`, // AND IFNULL(is_counted, 1) = 1
+    `SELECT type, amount, is_counted FROM transactions WHERE source_id = ?`,
     [card.source_id],
   );
   let outstanding = 0;
   for (let i = 0; i < txRes.rows.length; i++) {
     const tx = txRes.rows.item(i);
+    if (tx.is_counted !== null && tx.is_counted !== undefined && Number(tx.is_counted) === 0) {
+      continue;
+    }
     const amount = Number(tx.amount || 0);
     if (tx.type === "expense") {
       outstanding += amount;
