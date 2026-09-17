@@ -825,7 +825,7 @@ export default function HomeScreen({ navigation }) {
        */
       const result = await import("../services/transactions");
 
-      const tx = await result.getTransactions(3, "Yes");
+      const tx = await result.getTransactionsPaginated({ limit: 10, filterType: "all" });
 
       dispatch(setRecentTransactions(Array.isArray(tx) ? tx : []));
 
@@ -2263,6 +2263,11 @@ export default function HomeScreen({ navigation }) {
                   ? "income"
                   : "expense";
 
+              const toSource =
+                transactionType === "transfer"
+                  ? sources.find((s) => String(s.id) === String(r.toAccount))
+                  : null;
+
               const amountColor =
                 transactionType === "income"
                   ? "#20A56A"
@@ -2404,57 +2409,124 @@ export default function HomeScreen({ navigation }) {
                             minWidth: 0,
                           }}
                         >
-                          <View
-                            style={{
-                              flexShrink: 1,
-                              maxWidth: "58%",
-                              backgroundColor: iconColor + "12",
-                              borderRadius: 6,
-                              paddingHorizontal: 7,
-                              paddingVertical: 4,
-                              borderWidth: 1,
-                              borderColor: iconColor + "18",
-                            }}
-                          >
-                            <Text
-                              numberOfLines={1}
-                              ellipsizeMode="tail"
-                              style={{
-                                color: iconColor,
-                                fontSize: 11,
-                                lineHeight: 13,
-                                fontWeight: "800",
-                              }}
-                            >
-                              {cat.name || "Uncategorized"}
-                            </Text>
-                          </View>
-
-                          <View
-                            style={{
-                              width: 3,
-                              height: 3,
-                              borderRadius: 2,
-                              backgroundColor: "#C7CBD1",
-                              marginHorizontal: 6,
-                              flexShrink: 0,
-                            }}
-                          />
-
-                          <Text
-                            numberOfLines={1}
-                            ellipsizeMode="tail"
-                            style={{
-                              flex: 1,
-                              minWidth: 0,
-                              color: "#9299A3",
-                              fontSize: 11,
-                              lineHeight: 14,
-                              fontWeight: "600",
-                            }}
-                          >
-                            {source?.name || "No source"}
-                          </Text>
+                          {transactionType === "transfer" ? (
+                            <>
+                               <View
+                                  style={{
+                                    flexShrink: 0,
+                                    backgroundColor: '#F1F3F5',
+                                    borderRadius: 6,
+                                    paddingHorizontal: 7,
+                                    paddingVertical: 4,
+                                    borderWidth: 1,
+                                    borderColor: '#E5E7EB',
+                                    marginRight: 6,
+                                  }}
+                                >
+                                  <Text
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                    style={{
+                                      color: '#718096',
+                                      fontSize: 11,
+                                      lineHeight: 13,
+                                      fontWeight: '900',
+                                      letterSpacing: 0.25,
+                                    }}
+                                  >
+                                    TRANSFER
+                                  </Text>
+                               </View>
+                               <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1, minWidth: 0 }}>
+                                  <Text
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                    style={{
+                                      flexShrink: 1,
+                                      color: '#9299A3',
+                                      fontSize: 11,
+                                      lineHeight: 14,
+                                      fontWeight: '600',
+                                    }}
+                                  >
+                                    {source?.name || 'No source'}
+                                  </Text>
+                                  <MaterialCommunityIcons
+                                    name="arrow-right"
+                                    size={10}
+                                    color="#9299A3"
+                                    style={{ marginHorizontal: 4 }}
+                                  />
+                                  <Text
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                    style={{
+                                      flexShrink: 1,
+                                      color: '#9299A3',
+                                      fontSize: 11,
+                                      lineHeight: 14,
+                                      fontWeight: '600',
+                                    }}
+                                  >
+                                    {toSource?.name || 'No source'}
+                                  </Text>
+                               </View>
+                            </>
+                          ) : (
+                            <>
+                              <View
+                                style={{
+                                  flexShrink: 1,
+                                  maxWidth: "58%",
+                                  backgroundColor: iconColor + "12",
+                                  borderRadius: 6,
+                                  paddingHorizontal: 7,
+                                  paddingVertical: 4,
+                                  borderWidth: 1,
+                                  borderColor: iconColor + "18",
+                                }}
+                              >
+                                <Text
+                                  numberOfLines={1}
+                                  ellipsizeMode="tail"
+                                  style={{
+                                    color: iconColor,
+                                    fontSize: 11,
+                                    lineHeight: 13,
+                                    fontWeight: "800",
+                                  }}
+                                >
+                                  {cat.name || "Uncategorized"}
+                                </Text>
+                              </View>
+    
+                              <View
+                                style={{
+                                  width: 3,
+                                  height: 3,
+                                  borderRadius: 2,
+                                  backgroundColor: "#C7CBD1",
+                                  marginHorizontal: 6,
+                                  flexShrink: 0,
+                                }}
+                              />
+    
+                              <Text
+                                numberOfLines={1}
+                                ellipsizeMode="tail"
+                                style={{
+                                  flex: 1,
+                                  minWidth: 0,
+                                  color: "#9299A3",
+                                  fontSize: 11,
+                                  lineHeight: 14,
+                                  fontWeight: "600",
+                                }}
+                              >
+                                {source?.name || "No source"}
+                              </Text>
+                            </>
+                          )}
                         </View>
                       </View>
 

@@ -16,6 +16,7 @@ import {
   getTransactionNoteSuggestions,
   updateTransaction,
   deleteTransaction,
+  updateTransfer,
   getCategoryAndSourceUsage,
 } from "../services/transactions";
 import {
@@ -83,7 +84,11 @@ export default function TransactionForm({
   const [showCategoryCreateModal, setShowCategoryCreateModal] = useState(false);
   const [pickerMode, setPickerMode] = useState("date");
   const [notesError, setNotesError] = useState(false);
-  const [toAccount, setToAccount] = useState(null);
+  const [toAccount, setToAccount] = useState(
+    isEdit && transaction && transaction.type === "transfer"
+      ? transaction.toAccount
+      : null,
+  );
   const [selectingFor, setSelectingFor] = useState("from");
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [noteSuggestions, setNoteSuggestions] = useState([]);
@@ -98,7 +103,9 @@ export default function TransactionForm({
   const [showSourceGrid, setShowSourceGrid] = useState(
     !((isEdit && transaction?.source_id) || (!isEdit && initialSourceId)),
   );
-  const [showToAccountGrid, setShowToAccountGrid] = useState(true);
+  const [showToAccountGrid, setShowToAccountGrid] = useState(
+    !(isEdit && transaction?.type === "transfer" && transaction?.toAccount)
+  );
   const [showSourceModal, setShowSourceModal] = useState(false);
   const [sourceSearch, setSourceSearch] = useState("");
   const sourceSearchRef = useRef(null);
@@ -292,13 +299,24 @@ export default function TransactionForm({
           return;
         }
         try {
-          await createTransfer({
-            fromAccount: sourceId,
-            toAccount,
-            amount: val,
-            note: notes,
-            date,
-          });
+          if (isEdit && transaction && transaction.transfer_group_id) {
+            await updateTransfer({
+              groupId: transaction.transfer_group_id,
+              fromAccount: sourceId,
+              toAccount,
+              amount: val,
+              note: notes,
+              date,
+            });
+          } else {
+            await createTransfer({
+              fromAccount: sourceId,
+              toAccount,
+              amount: val,
+              note: notes,
+              date,
+            });
+          }
         } catch (e) {
           console.log(e);
           setSnackbarMsg(e?.message || "Operation failed");

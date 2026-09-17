@@ -641,12 +641,16 @@ export default function TransactionsScreen({ navigation }) {
           const source = sourceOptions.find(
             (x) => x.id === item.source_id
           );
+          const toSource = item.type === 'transfer' ? sourceOptions.find(
+            (x) => x.id === item.toAccount
+          ) : null;
           const isLast = index === section.data.length - 1;
           return (
             <TransactionListItem
               item={item}
               category={category}
               source={source}
+              toSource={toSource}
               isLast={isLast}
               onPress={() => handleEdit(item)} />);
 

@@ -1157,8 +1157,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           // Preserve transfer metadata
           transfer_group_id: tx.transfer_group_id || null,
           direction: tx.direction || null,
-
-          // Preserve counted/excluded flag — default to 1 if missing (old backups)
+          // Preserve counted/excluded flag - default to 1 if missing (old backups)
           is_counted: tx.is_counted !== undefined ? tx.is_counted : 1
         };
 
