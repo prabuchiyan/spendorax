@@ -28,7 +28,6 @@ function ActionButton({ icon, title, color, bg, onPress, width = "31%" }) {
         backgroundColor: "#FFFFFF",
         borderRadius: 18,
         paddingVertical: 12,
-        marginBottom: 12,
         alignItems: "center",
         elevation: 3,
         shadowColor: "#000",
@@ -77,7 +76,8 @@ export default function LoanDetailsScreen({ route, navigation }) {
   const isVerySmallPhone = screenWidth < 340;
 
   const horizontalPadding = isSmallPhone ? 8 : 12;
-  const actionWidth = "31%";
+  const ACTION_GAP = 12;
+  const actionWidth = Math.floor((screenWidth - (horizontalPadding * 2) - (ACTION_GAP * 2)) / 3);
 
   const id = route?.params?.id;
 
@@ -513,6 +513,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
             flexDirection: "row",
             flexWrap: "wrap",
             justifyContent: "flex-start",
+            gap: 12,
             marginTop: 8,
           }}
         >
