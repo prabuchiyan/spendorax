@@ -105,7 +105,7 @@ export async function removeTransactionFromBill(billId, transactionId) {
     //    reset that statement back to generated/unpaid.
     await executeSql(
       `UPDATE credit_card_statements
-       SET status = ?
+       SET status = ?, payments = 0
        WHERE bill_id = ?`,
       ["generated", billId],
     );
@@ -1916,6 +1916,14 @@ export async function markBillPaid(
     await addTransactionToBill(billId, txId);
   }
 
+  // If this bill is linked to a credit card statement, update the statement status too
+  await executeSql(
+    `UPDATE credit_card_statements
+     SET status = 'paid', payments = closing_balance
+     WHERE bill_id = ?`,
+    [billId]
+  );
+
   // IMPORTANT:
   // Marking a bill as paid must NOT create the next recurring occurrence.
   // The recurring scheduler handles future occurrences.
@@ -3177,7 +3185,8 @@ export async function deleteBill(id) {
 
     for (const targetBillId of billIds) {
       const result = await executeSql(
-        `DELETE FROM credit_card_statements
+        `UPDATE credit_card_statements
+         SET bill_id = NULL, status = 'generated', payments = 0
          WHERE bill_id = ?`,
         [targetBillId],
       );

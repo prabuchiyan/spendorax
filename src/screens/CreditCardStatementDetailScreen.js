@@ -164,6 +164,16 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
 
   };
 
+  const isStatementPaid = (stmt) => {
+    if (!stmt) return false;
+    const isBillPaid = Number(stmt.bill_is_paid) === 1 || stmt.bill_is_paid === true || stmt.bill_is_paid === '1' || String(stmt.bill_is_paid).toLowerCase() === 'true';
+    const isStatusPaid = String(stmt.bill_status).toLowerCase() === 'paid' || String(stmt.status).toLowerCase() === 'paid';
+    const closingBal = Number(stmt.closing_balance || 0);
+    const isBalancePaid = closingBal <= 0;
+    
+    return isBillPaid || isStatusPaid || isBalancePaid;
+  };
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -180,7 +190,7 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
         } />
       
       
-      {statement.bill_id && statement.status !== 'paid' &&
+      {statement.bill_id && !isStatementPaid(statement) &&
       <View style={styles.footer}>
           <TouchableOpacity
           style={styles.payButton}

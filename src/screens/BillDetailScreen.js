@@ -1822,10 +1822,7 @@ export default function BillDetailScreen({ route, navigation }) {
                       card: selectedCreditCard,
                       paymentSourceId: source.id
                     });
-                    await markBillPaid(activeBill.id, {
-                      createTransaction: false,
-                      existingTransactionId: paymentId
-                    });
+                    await markBillPaid(activeBill.id, null, paymentId);
                     try {
                       await onStatementPaid(selectedCreditCard.id);
                     } catch (e) {

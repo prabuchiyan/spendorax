@@ -576,7 +576,7 @@ template)
     0, // refunds
     0, // fees
     autoInterest, // auto calculated interest
-    payments,
+    0, // INITIALIZE PAYMENTS TO 0 (cycle payments are already factored into closingBalance)
     closingBalance,
     minimumDue,
     1,
@@ -650,7 +650,6 @@ card)
     `UPDATE credit_card_statements SET
        opening_balance = ?,
        purchases       = ?,
-       payments        = ?,
        closing_balance = ?,
        minimum_due     = ?,
        generated_at    = ?
@@ -658,7 +657,6 @@ card)
     [
     openingBalance,
     purchases,
-    payments,
     closingBalance,
     minimumDue,
     ts,

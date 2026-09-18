@@ -31,8 +31,8 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
   const dispatch = useAppDispatch();
   const reduxStatements = useCreditCardStatements();
   const statements = reduxStatements || [];
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [deleting, setDeleting] = useState(false);
+  const [regenerateTarget, setRegenerateTarget] = useState(null);
+  const [regenerating, setRegenerating] = useState(false);
 
   const load = async () => {
     const items = await getAllCreditCardStatements();
@@ -43,33 +43,33 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
     }
   };
 
-  const handleDeleteStatement = useCallback((statement) => {
-    setDeleteTarget(statement);
+  const handleRegenerateStatement = useCallback((statement) => {
+    setRegenerateTarget(statement);
   }, []);
 
-  const confirmDeleteStatement = useCallback(async () => {
-    if (!deleteTarget || deleting) return;
+  const confirmRegenerateStatement = useCallback(async () => {
+    if (!regenerateTarget || regenerating) return;
     try {
-      setDeleting(true);
-      await deleteStatement(deleteTarget.id);
+      setRegenerating(true);
+      await deleteStatement(regenerateTarget.id);
       const items = await getAllCreditCardStatements();
       if (sourceId) {
         dispatch(setStatements(items.filter(item => Number(item.source_id) === Number(sourceId))));
       } else {
         dispatch(setStatements(items || []));
       }
-      setDeleteTarget(null);
+      setRegenerateTarget(null);
     } catch (error) {
-      console.error("[CreditCardStatements] Delete failed:", error);
-      setDeleteTarget(null);
+      console.error("[CreditCardStatements] Regenerate failed:", error);
+      setRegenerateTarget(null);
       Alert.alert(
-        "Delete Failed",
-        error?.message || "Unable to delete the statement.",
+        "Regenerate Failed",
+        error?.message || "Unable to regenerate the statement.",
       );
     } finally {
-      setDeleting(false);
+      setRegenerating(false);
     }
-  }, [deleteTarget, deleting, dispatch, sourceId]);
+  }, [regenerateTarget, regenerating, dispatch, sourceId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -78,10 +78,12 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
   );
 
   const isStatementPaid = (statement) => {
-    return statement.bill_is_paid === 1 || 
-           String(statement.bill_status).toLowerCase() === 'paid' || 
-           String(statement.status).toLowerCase() === 'paid' || 
-           (Number(statement.closing_balance || 0) > 0 && Number(statement.payments || 0) >= Number(statement.closing_balance || 0));
+    const isBillPaid = Number(statement.bill_is_paid) === 1 || statement.bill_is_paid === true || statement.bill_is_paid === '1' || String(statement.bill_is_paid).toLowerCase() === 'true';
+    const isStatusPaid = String(statement.bill_status).toLowerCase() === 'paid' || String(statement.status).toLowerCase() === 'paid';
+    const closingBal = Number(statement.closing_balance || 0);
+    const isBalancePaid = closingBal <= 0;
+    
+    return isBillPaid || isStatusPaid || isBalancePaid;
   };
 
   const totalDue = useMemo(() => statements.reduce(
@@ -230,13 +232,13 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
 
                     <TouchableOpacity
                       activeOpacity={0.7}
-                      style={styles.deleteBtn}
+                      style={styles.regenerateBtn}
                       onPress={(e) => {
                         e.stopPropagation();
-                        handleDeleteStatement(item);
+                        handleRegenerateStatement(item);
                       }}
                     >
-                      <Feather name="trash-2" size={16} color="#DC2626" />
+                      <Feather name="refresh-cw" size={16} color="#4B7CF3" />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -247,50 +249,50 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
       />
 
       <Modal
-        visible={!!deleteTarget}
+        visible={!!regenerateTarget}
         transparent
         animationType="fade"
         onRequestClose={() => {
-          if (!deleting) setDeleteTarget(null);
+          if (!regenerating) setRegenerateTarget(null);
         }}
       >
-        <View style={styles.deleteOverlay}>
-          <View style={styles.deleteModal}>
-            <View style={styles.deleteIconCircle}>
+        <View style={styles.regenerateOverlay}>
+          <View style={styles.regenerateModal}>
+            <View style={styles.regenerateIconCircle}>
               <MaterialCommunityIcons
-                name="alert-circle-outline"
+                name="refresh"
                 size={40}
-                color="#DC2626"
+                color="#4B7CF3"
               />
             </View>
 
-            <Text style={styles.deleteTitle}>Delete Statement?</Text>
+            <Text style={styles.regenerateTitle}>Regenerate Statement?</Text>
 
-            <Text style={styles.deleteMessage}>
-              Are you sure you want to delete the statement from <Text style={{ fontWeight: '800' }}>{deleteTarget ? formatDate(deleteTarget.statement_date) : ""}</Text> for <Text style={{ fontWeight: '800' }}>{deleteTarget?.card_name || "Credit Card"}</Text>?
+            <Text style={styles.regenerateMessage}>
+              Are you sure you want to regenerate the statement from <Text style={{ fontWeight: '800' }}>{regenerateTarget ? formatDate(regenerateTarget.statement_date) : ""}</Text> for <Text style={{ fontWeight: '800' }}>{regenerateTarget?.card_name || "Credit Card"}</Text>?
             </Text>
 
-            <Text style={styles.deleteWarning}>
-              The linked bill will also be removed. Original transactions will remain intact.
+            <Text style={styles.regenerateWarning}>
+              This will recreate the statement and its linked bill based on your latest transactions.
             </Text>
 
-            <View style={styles.deleteModalActions}>
+            <View style={styles.regenerateModalActions}>
               <TouchableOpacity
-                disabled={deleting}
-                onPress={() => setDeleteTarget(null)}
-                style={styles.cancelDeleteButton}
+                disabled={regenerating}
+                onPress={() => setRegenerateTarget(null)}
+                style={styles.cancelRegenerateButton}
               >
-                <Text style={styles.cancelDeleteText}>Keep Statement</Text>
+                <Text style={styles.cancelRegenerateText}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                disabled={deleting}
-                onPress={confirmDeleteStatement}
-                style={styles.confirmDeleteButton}
+                disabled={regenerating}
+                onPress={confirmRegenerateStatement}
+                style={styles.confirmRegenerateButton}
               >
-                <Feather name="trash-2" size={16} color="#FFF" style={{ marginRight: 6 }} />
-                <Text style={styles.confirmDeleteText}>
-                  {deleting ? "Deleting..." : "Delete"}
+                <Feather name="refresh-cw" size={16} color="#FFF" style={{ marginRight: 6 }} />
+                <Text style={styles.confirmRegenerateText}>
+                  {regenerating ? "Regenerating..." : "Regenerate"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -525,22 +527,22 @@ const styles = StyleSheet.create({
     color: '#334155',
     marginTop: 2,
   },
-  deleteBtn: {
+  regenerateBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#F0F5FF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deleteOverlay: {
+  regenerateOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
   },
-  deleteModal: {
+  regenerateModal: {
     width: '100%',
     maxWidth: 380,
     backgroundColor: '#FFFFFF',
@@ -553,29 +555,29 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 20,
   },
-  deleteIconCircle: {
+  regenerateIconCircle: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#F0F5FF',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
-  deleteTitle: {
+  regenerateTitle: {
     fontSize: 22,
     fontWeight: '900',
     color: '#0F172A',
     marginBottom: 12,
   },
-  deleteMessage: {
+  regenerateMessage: {
     fontSize: 15,
     lineHeight: 22,
     textAlign: 'center',
     color: '#475569',
     marginBottom: 12,
   },
-  deleteWarning: {
+  regenerateWarning: {
     fontSize: 13,
     lineHeight: 20,
     textAlign: 'center',
@@ -583,12 +585,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     paddingHorizontal: 10,
   },
-  deleteModalActions: {
+  regenerateModalActions: {
     flexDirection: 'row',
     gap: 12,
     width: '100%',
   },
-  cancelDeleteButton: {
+  cancelRegenerateButton: {
     flex: 1,
     height: 48,
     borderRadius: 14,
@@ -596,21 +598,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#F1F5F9',
   },
-  cancelDeleteText: {
+  cancelRegenerateText: {
     fontSize: 15,
     fontWeight: '700',
     color: '#475569',
   },
-  confirmDeleteButton: {
+  confirmRegenerateButton: {
     flex: 1,
     height: 48,
     borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#EF4444',
+    backgroundColor: '#4B7CF3',
   },
-  confirmDeleteText: {
+  confirmRegenerateText: {
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',

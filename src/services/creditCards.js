@@ -522,12 +522,36 @@ export async function getCreditCardStatementById(statementId) {
   );
   const card = cardRes.rows.length > 0 ? cardRes.rows.item(0) : {};
 
+  let billStatus = null;
+  let billIsPaid = 0;
+  let derivedStatus = statement.status;
+  if (statement.bill_id) {
+      const billRes = await executeSql(
+          `SELECT status, is_paid
+           FROM bills
+           WHERE id = ?`,
+          [statement.bill_id]
+      );
+      if (billRes.rows.length > 0) {
+          const bill = billRes.rows.item(0);
+          billStatus = bill.status;
+          billIsPaid = bill.is_paid;
+          
+          if (billIsPaid === 1 || String(billStatus).toLowerCase() === 'paid') {
+              derivedStatus = 'paid';
+          }
+      }
+  }
+
   return {
     ...statement,
+    status: derivedStatus,
     card_name: card.name,
     card_color: card.color,
     card_currency: card.currency,
     source_id: card.source_id,
+    bill_status: billStatus,
+    bill_is_paid: billIsPaid,
   };
 }
 
@@ -599,8 +623,14 @@ export async function getAllCreditCardStatements() {
         
         const card = cardsMap[statement.card_id] || {};
 
+        let derivedStatus = statement.status;
+        if (billIsPaid === 1 || String(billStatus).toLowerCase() === 'paid') {
+            derivedStatus = 'paid';
+        }
+
         rows.push({
             ...statement,
+            status: derivedStatus,
             card_name: card.name,
             card_color: card.color,
             card_currency: card.currency,
