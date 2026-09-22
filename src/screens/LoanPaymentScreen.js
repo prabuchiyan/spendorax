@@ -390,7 +390,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
 
       // Give React Native one render cycle to display the loader
       await new Promise((resolve) => {
-        requestAnimationFrame(resolve);
+        setTimeout(resolve, 10);
       });
 
       if (mode === "prepayment") {

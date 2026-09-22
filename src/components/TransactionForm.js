@@ -289,8 +289,8 @@ export default function TransactionForm({
     }
 
     setSubmitting(true);
-    // Give React Native one frame to render the loading spinner
-    await new Promise((resolve) => requestAnimationFrame(resolve));
+    // Give React Native time to render the loading spinner
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
     let id;
     try {
