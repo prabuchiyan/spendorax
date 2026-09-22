@@ -14,7 +14,7 @@ import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
 import { Colors, Spacing } from '../components/Theme';
 import { Feather } from '@expo/vector-icons';
-import FAB from '../components/FAB';
+import ContextualFAB from '../components/ContextualFAB';
 import { useFocusEffect } from '@react-navigation/native';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { Chip } from 'react-native-paper';
@@ -581,12 +581,31 @@ export default function CategoriesDetails({ route, navigation }) {
         onConfirm={handleDeleteConfirm} />
       
 
-      <FAB
-        onPress={() =>
-        navigation.navigate('TransactionAdd', {
-          categoryId: Number(categoryId)
-        })
-        }
+      <ContextualFAB
+        icon="plus"
+        actions={[
+          {
+            icon: 'arrow-down',
+            label: 'Expense',
+            color: '#E35D6A',
+            style: { backgroundColor: '#fff' },
+            onPress: () => navigation.navigate("TransactionAdd", { categoryId: Number(categoryId), initialType: 'expense' }),
+          },
+          {
+            icon: 'arrow-up',
+            label: 'Income',
+            color: '#3F8F6B',
+            style: { backgroundColor: '#fff' },
+            onPress: () => navigation.navigate("TransactionAdd", { categoryId: Number(categoryId), initialType: 'income' }),
+          },
+          {
+            icon: 'swap-horizontal',
+            label: 'Transfer',
+            color: '#4B7CF3',
+            style: { backgroundColor: '#fff' },
+            onPress: () => navigation.navigate("TransactionAdd", { categoryId: Number(categoryId), initialType: 'transfer' }),
+          },
+        ]}
         style={{
           position: 'absolute',
           bottom: 70,

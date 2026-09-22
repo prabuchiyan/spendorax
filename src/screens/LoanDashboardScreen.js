@@ -10,7 +10,7 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { getLoans, getLoanPayments } from "../services/loans";
 import events from "../services/events";
-import FAB from "../components/FAB";
+import ContextualFAB from "../components/ContextualFAB";
 import { Colors, Spacing } from "../components/Theme";
 import { useAppDispatch, useLoans } from '../redux/hooks';
 import { setLoans } from '../redux/slices/loanSlice';
@@ -1276,15 +1276,25 @@ function LoanDirectionDashboard({ navigation }) {
           FAB
       ================================================= */}
 
-      <View
-        style={{
-          position: "absolute",
-          right: 16,
-          bottom: 18,
-        }}
-      >
-        <FAB onPress={() => navigation.navigate("LoanForm")} />
-      </View>
+        <ContextualFAB
+          icon="plus"
+          actions={[
+            {
+              icon: 'account-arrow-right-outline',
+              label: 'Given',
+              color: '#7C3AED',
+              style: { backgroundColor: '#fff' },
+              onPress: () => navigation.navigate("LoanForm", { initialDirection: 'LENT' }),
+            },
+            {
+              icon: 'account-arrow-left-outline',
+              label: 'Received',
+              color: '#2563EB',
+              style: { backgroundColor: '#fff' },
+              onPress: () => navigation.navigate("LoanForm", { initialDirection: 'BORROWED' }),
+            },
+          ]}
+        />
     </View>
   );
 }

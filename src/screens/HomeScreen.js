@@ -22,7 +22,7 @@ import { getCategories } from "../services/categories";
 import events from "../services/events";
 import { Button as PaperButton } from "react-native-paper";
 import Card from "../components/Card";
-import FAB from "../components/FAB";
+import ContextualFAB from "../components/ContextualFAB";
 import { Spacing } from "../components/Theme";
 import BottomStatsBar from "../components/BottomStatsBar";
 import CurrencyText from "../components/CurrencyText";
@@ -3446,8 +3446,31 @@ export default function HomeScreen({ navigation }) {
         </Card>
       </ScrollView>
       <BottomStatsBar navigation={navigation} />
-      <FAB
-        onPress={() => navigation.navigate("TransactionAdd")}
+      <ContextualFAB
+        icon="plus"
+        actions={[
+          {
+            icon: 'arrow-down',
+            label: 'Expense',
+            color: '#E35D6A',
+            style: { backgroundColor: '#fff' },
+            onPress: () => navigation.navigate("TransactionAdd", { initialType: 'expense' }),
+          },
+          {
+            icon: 'arrow-up',
+            label: 'Income',
+            color: '#3F8F6B',
+            style: { backgroundColor: '#fff' },
+            onPress: () => navigation.navigate("TransactionAdd", { initialType: 'income' }),
+          },
+          {
+            icon: 'swap-horizontal',
+            label: 'Transfer',
+            color: '#4B7CF3',
+            style: { backgroundColor: '#fff' },
+            onPress: () => navigation.navigate("TransactionAdd", { initialType: 'transfer' }),
+          },
+        ]}
         style={{
           position: "absolute",
           bottom: 70,

@@ -16,7 +16,7 @@ import {
   Easing,
   ActivityIndicator,
 } from "react-native";
-import FAB from "../components/FAB";
+import ContextualFAB from '../components/ContextualFAB';
 import {
   getTransactionsPaginated,
   getSourceTransactionBalance,
@@ -720,12 +720,31 @@ export default function SourcesDetails({ route, navigation }) {
         />
       )}
 
-      <FAB
-        onPress={() =>
-          navigation.navigate("TransactionAdd", {
-            sourceId: Number(sourceId),
-          })
-        }
+      <ContextualFAB
+        icon="plus"
+        actions={[
+          {
+            icon: 'arrow-down',
+            label: 'Expense',
+            color: '#E35D6A',
+            style: { backgroundColor: '#fff' },
+            onPress: () => navigation.navigate("TransactionAdd", { sourceId: Number(sourceId), initialType: 'expense' }),
+          },
+          {
+            icon: 'arrow-up',
+            label: 'Income',
+            color: '#3F8F6B',
+            style: { backgroundColor: '#fff' },
+            onPress: () => navigation.navigate("TransactionAdd", { sourceId: Number(sourceId), initialType: 'income' }),
+          },
+          {
+            icon: 'swap-horizontal',
+            label: 'Transfer',
+            color: '#4B7CF3',
+            style: { backgroundColor: '#fff' },
+            onPress: () => navigation.navigate("TransactionAdd", { sourceId: Number(sourceId), initialType: 'transfer' }),
+          },
+        ]}
         style={{
           position: "absolute",
           bottom: 70,

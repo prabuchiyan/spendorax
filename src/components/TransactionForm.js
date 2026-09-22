@@ -51,6 +51,7 @@ export default function TransactionForm({
   onPressBill,
   sourceId: initialSourceId,
   categoryId: initialCategoryId,
+  initialType,
 }) {
   const { visible: loaderVisible, show: showPageLoader, hide: hidePageLoader } = usePageLoader();
   const [amount, setAmount] = useState(
@@ -58,7 +59,7 @@ export default function TransactionForm({
   );
   const [amountError, setAmountError] = useState(false);
   const [type, setType] = useState(
-    isEdit && transaction ? transaction.type : "expense",
+    isEdit && transaction ? transaction.type : (initialType || "expense"),
   );
   const [categories, setCategories] = useState([]);
   const [sources, setSources] = useState([]);

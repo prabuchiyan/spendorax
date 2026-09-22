@@ -11,7 +11,7 @@ import { getCreditCards, deleteCreditCard } from "../services/creditCards";
 import Card from "../components/Card";
 import ConfirmDialog from "../components/ConfirmDialog";
 import CreditCardCreateModal from "../components/CreditCardCreateModal";
-import FAB from "../components/FAB";
+import ContextualFAB from "../components/ContextualFAB";
 import { Colors, Spacing } from "../components/Theme";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import {
@@ -330,7 +330,7 @@ export default function CreditCardsScreen({ navigation }) {
         }}
       />
 
-      <FAB
+      <ContextualFAB
         onPress={() => {
           setEditCard(null);
           setShowModal(true);

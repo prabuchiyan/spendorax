@@ -11,7 +11,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { getCreditCardStatementById, getStatementTransactions, updateCreditCardStatement } from "../services/creditCards";
 import { Colors, Spacing } from "../components/Theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import FAB from "../components/FAB";
+import ContextualFAB from "../components/ContextualFAB";
 import CreditCardStatementEditModal from "../components/CreditCardStatementEditModal";
 import { formatAmount, formatCurrency } from "../utils/numberUtils";
 import CurrencyText from "../components/CurrencyText";
@@ -210,7 +210,7 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
           loadData();
         }} />
       
-      <FAB onPress={() => setShowEditModal(true)} icon="pencil" />
+      <ContextualFAB onPress={() => setShowEditModal(true)} icon="pencil" />
     </View>);
 
 }

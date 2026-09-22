@@ -15,7 +15,7 @@ import Card from '../components/Card';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { Colors } from '../components/Theme';
 import SourceCreateModal from '../components/SourceCreateModal';
-import FAB from '../components/FAB';
+import ContextualFAB from '../components/ContextualFAB';
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 import { useAppDispatch, useSourcesList } from '../redux/hooks';
 import { setSources } from '../redux/slices/sourceSlice';
@@ -495,7 +495,7 @@ export default function SourcesScreen({ route, navigation }) {
       {/* =====================================================
            FAB
         ====================================================== */}
-      <FAB
+      <ContextualFAB
         onPress={() => {
           setEditSource(null);
           setShowModal(true);
