@@ -632,62 +632,56 @@ export default function TransactionForm({
           marginBottom: 12,
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Chip
-            mode="outlined"
-            selected={type === "expense"}
-            showSelectedCheck={false}
-            onPress={() => {
-              setType("expense");
-              markDirty();
-            }}
-            disabled={submitting}
-            style={{
-              marginRight: 8,
-              borderColor: type === "expense" ? accent : undefined,
-            }}
-          >
-            Expense
-          </Chip>
-
-          <Chip
-            mode="outlined"
-            selected={type === "income"}
-            showSelectedCheck={false}
-            onPress={() => {
-              setType("income");
-              markDirty();
-            }}
-            disabled={submitting}
-            style={{
-              marginRight: 8,
-              borderColor: type === "income" ? accent : undefined,
-            }}
-          >
-            Income
-          </Chip>
-
-          {!isEdit && (
-            <Chip
-              mode="outlined"
-              selected={type === "transfer"}
-              showSelectedCheck={false}
-              onPress={() => {
-                setType("transfer");
-                markDirty();
-              }}
-              disabled={submitting}
-              style={{
-                borderColor: type === "transfer" ? "#000" : undefined,
-              }}
-              textStyle={{
-                color: type === "transfer" ? "#000" : undefined,
-                fontWeight: type === "transfer" ? "700" : "normal",
-              }}
-            >
-              Transfer
-            </Chip>
-          )}
+        <View
+          style={{
+            flex: 1,
+            flexDirection: "row",
+            backgroundColor: "#F4F6F8",
+            borderRadius: 12,
+            padding: 3,
+            marginRight: isEdit ? 12 : 0,
+          }}
+        >
+          {[
+            { id: "expense", label: "Expense", activeColor: "#E46A6A" },
+            { id: "income", label: "Income", activeColor: "#36B37E" },
+            ...(!isEdit
+              ? [
+                  { id: "transfer", label: "Transfer", activeColor: "#000" },
+                ]
+              : []),
+          ].map((tab) => {
+            const active = type === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                disabled={submitting}
+                onPress={() => {
+                  setType(tab.id);
+                  markDirty();
+                }}
+                style={{
+                  flex: 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingVertical: 8,
+                  borderRadius: 9,
+                  backgroundColor: active ? "#FFFFFF" : "transparent",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: "800",
+                    color: active ? tab.activeColor : "#718078",
+                  }}
+                >
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {isEdit && (
@@ -711,7 +705,7 @@ export default function TransactionForm({
       </View>
 
       <PaperTextInput
-        label="Amount"
+            label="Amount"
         value={amount}
         onChangeText={(t) => {
           setAmount(t);
