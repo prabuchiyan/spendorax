@@ -916,10 +916,6 @@ export default function LoanFormScreen({ navigation, route }) {
     try {
       setSubmitting(true);
 
-      await new Promise((resolve) => {
-        setTimeout(resolve, 10);
-      });
-
       console.log(
         "[LoanForm] Saving loan_start_date:",
         payload.loan_start_date,

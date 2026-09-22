@@ -388,11 +388,6 @@ export default function LoanPaymentScreen({ route, navigation }) {
       // Immediately disable the button and show loader
       setLoading(true);
 
-      // Give React Native one render cycle to display the loader
-      await new Promise((resolve) => {
-        setTimeout(resolve, 10);
-      });
-
       if (mode === "prepayment") {
         await recordPrepayment({
           loanId,
@@ -647,10 +642,10 @@ export default function LoanPaymentScreen({ route, navigation }) {
                     backgroundColor: "#FEF2F2",
                   },
                   amountFocused &&
-                    !errors.amount && {
-                      borderColor: "#2563EB",
-                      borderWidth: 2,
-                    },
+                  !errors.amount && {
+                    borderColor: "#2563EB",
+                    borderWidth: 2,
+                  },
                 ]}
               >
                 <Text
