@@ -11,7 +11,7 @@ import Card from '../components/Card';
 import IconButton from '../components/IconButton';
 import { Colors } from '../components/Theme';
 import CategoryCreateModal from '../components/CategoryCreateModal';
-import FAB from '../components/FAB';
+import ContextualFAB from '../components/ContextualFAB';
 import { useCategories, useAppDispatch } from '../redux/hooks';
 import { setCategories, setCategoriesMap } from '../redux/slices/categorySlice';
 
@@ -22,6 +22,7 @@ export default function CategoriesScreen({ route, navigation }) {
 
   const [name, setName] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [initialCategoryType, setInitialCategoryType] = useState('expense');
   const [editCategory, setEditCategory] = useState(null);
   const [type, setType] = useState('expense');
   const [editingId, setEditingId] = useState(null);
@@ -715,6 +716,7 @@ export default function CategoriesScreen({ route, navigation }) {
       {/* ───────────── Create / Edit Modal ───────────── */}
       <CategoryCreateModal
         visible={showModal}
+        currentType={initialCategoryType}
         onClose={() => setShowModal(false)}
         editData={editCategory}
         onSave={() => {
@@ -724,11 +726,33 @@ export default function CategoriesScreen({ route, navigation }) {
       
 
       {/* ───────────── FAB ───────────── */}
-      <FAB
-        onPress={() => {
-          setEditCategory(null);
-          setShowModal(true);
-        }} />
+      <ContextualFAB
+        icon="plus"
+        actions={[
+          {
+            icon: 'arrow-down',
+            label: 'Expense',
+            color: '#E35D6A',
+            style: { backgroundColor: '#fff' },
+            onPress: () => {
+              setEditCategory(null);
+              setInitialCategoryType('expense');
+              setShowModal(true);
+            },
+          },
+          {
+            icon: 'arrow-up',
+            label: 'Income',
+            color: '#3F8F6B',
+            style: { backgroundColor: '#fff' },
+            onPress: () => {
+              setEditCategory(null);
+              setInitialCategoryType('income');
+              setShowModal(true);
+            },
+          },
+        ]}
+      />
       
     </View>);
 

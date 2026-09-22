@@ -18,14 +18,19 @@ import { getSources } from "../services/sources";
 import { getCategories } from "../services/categories";
 import Card from "../components/Card";
 
-function FieldCard({ icon, title, value, color = "#2563EB", onPress, error }) {
+function FieldCard({ icon, title, value, color = "#2563EB", onPress, error, disabled }) {
   const hasError = !!error;
   return (
     <View style={styles.fieldWrapper}>
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={onPress}
-        style={[styles.fieldCard, hasError && styles.fieldCardError]}
+        disabled={disabled}
+        style={[
+          styles.fieldCard, 
+          hasError && styles.fieldCardError,
+          disabled && { opacity: 0.6 }
+        ]}
       >
         <View
           style={[
@@ -461,6 +466,7 @@ export default function LendMoreScreen({ route, navigation }) {
               selectedSource ? selectedSource.name : "Select Bank / Wallet"
             }
             error={errors.source}
+            disabled={loading}
             onPress={() => {
               setShowSourcePicker(true);
 
@@ -478,6 +484,7 @@ export default function LendMoreScreen({ route, navigation }) {
             title="Category"
             value={selectedCategory ? selectedCategory.name : "Select Category"}
             error={errors.category}
+            disabled={loading}
             onPress={() => {
               setShowCategoryPicker(true);
 
@@ -495,6 +502,7 @@ export default function LendMoreScreen({ route, navigation }) {
             title="Date & Time"
             value={formatDateTime(transactionDate)}
             error={errors.date}
+            disabled={loading}
             onPress={() => {
               setErrors((prev) => ({
                 ...prev,
@@ -546,6 +554,7 @@ export default function LendMoreScreen({ route, navigation }) {
                   </Text>
 
                   <TextInput
+                    editable={!loading}
                     onFocus={() => setAmountFocused(true)}
                     onBlur={() => setAmountFocused(false)}
                     placeholder="Enter Amount"
@@ -594,6 +603,7 @@ export default function LendMoreScreen({ route, navigation }) {
           <View style={styles.notesCard}>
             <Text style={styles.notesLabel}>Notes (Optional)</Text>
             <TextInput
+              editable={!loading}
               value={notes}
               onChangeText={setNotes}
               placeholder="Add remarks (optional)"

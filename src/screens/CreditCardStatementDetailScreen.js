@@ -11,7 +11,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { getCreditCardStatementById, getStatementTransactions, updateCreditCardStatement } from "../services/creditCards";
 import { Colors, Spacing } from "../components/Theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import FAB from "../components/FAB";
+import ContextualFAB from "../components/ContextualFAB";
 import CreditCardStatementEditModal from "../components/CreditCardStatementEditModal";
 import { formatAmount, formatCurrency } from "../utils/numberUtils";
 import CurrencyText from "../components/CurrencyText";
@@ -164,6 +164,16 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
 
   };
 
+  const isStatementPaid = (stmt) => {
+    if (!stmt) return false;
+    const isBillPaid = Number(stmt.bill_is_paid) === 1 || stmt.bill_is_paid === true || stmt.bill_is_paid === '1' || String(stmt.bill_is_paid).toLowerCase() === 'true';
+    const isStatusPaid = String(stmt.bill_status).toLowerCase() === 'paid' || String(stmt.status).toLowerCase() === 'paid';
+    const closingBal = Number(stmt.closing_balance || 0);
+    const isBalancePaid = closingBal <= 0;
+    
+    return isBillPaid || isStatusPaid || isBalancePaid;
+  };
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -180,7 +190,7 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
         } />
       
       
-      {statement.bill_id && statement.status !== 'paid' &&
+      {statement.bill_id && !isStatementPaid(statement) &&
       <View style={styles.footer}>
           <TouchableOpacity
           style={styles.payButton}
@@ -200,7 +210,7 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
           loadData();
         }} />
       
-      <FAB onPress={() => setShowEditModal(true)} icon="pencil" />
+      <ContextualFAB onPress={() => setShowEditModal(true)} icon="pencil" />
     </View>);
 
 }

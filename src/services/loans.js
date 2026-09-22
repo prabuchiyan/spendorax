@@ -1084,6 +1084,15 @@ export async function recalculateLoanFromLinkedTransactions(loanId) {
         lp.notes,
       ],
     );
+
+    await executeSql(
+      `UPDATE transactions 
+       SET principal_component = ?,
+           interest_component = ?,
+           outstanding_after_payment = ?
+       WHERE id = ?`,
+       [lp.principalComponent, lp.interestComponent, lp.remainingBalance, lp.txId]
+    );
   }
 
   // ── Single loan row update ──

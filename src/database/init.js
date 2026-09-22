@@ -406,7 +406,8 @@ export async function clearAllTables() {
     'credit_card_payments',
     'loan_payments',
     'loans',
-    'notifications'
+    'notifications',
+    'bill_deleted_occurrences'
   ];
   console.log('Prabu tables', tables);
 

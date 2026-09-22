@@ -115,7 +115,7 @@ export default function SourcesDashboard({ navigation }) {
           return (
             sum +
             Number(
-              card?.available_limit || 0
+              card?.outstanding || 0
             ));
 
         },
@@ -251,18 +251,18 @@ export default function SourcesDashboard({ navigation }) {
                 <MaterialCommunityIcons
                   name={
                   tab === 'creditCards' ?
-                  'credit-card-check-outline' :
+                  'credit-card-outline' :
                   'wallet-outline'
                   }
                   size={19}
-                  color={Colors.primary} />
+                  color="#60A5FA" />
                 
               </View>
 
               <View>
                 <Text style={styles.balanceLabel}>
                   {tab === 'creditCards' ?
-                  'Available Credit' :
+                  'Total Outstanding' :
                   'Available Balance'}
                 </Text>
 
@@ -278,7 +278,7 @@ export default function SourcesDashboard({ navigation }) {
               <MaterialCommunityIcons
                 name="chart-line"
                 size={13}
-                color={Colors.primary} />
+                color="#60A5FA" />
               
 
               <Text style={styles.balanceBadgeText}>
@@ -302,11 +302,11 @@ export default function SourcesDashboard({ navigation }) {
           </Text>
 
           <View style={styles.balanceFooter}>
-            <View style={styles.footerDot} />
+            <View style={[styles.footerDot, tab === 'creditCards' && { backgroundColor: '#F59E0B' }]} />
 
             <Text style={styles.footerText}>
               {tab === 'creditCards' ?
-              'Credit available across your cards' :
+              'Total amount owed across your cards' :
               'Total money available across sources'}
             </Text>
           </View>
@@ -828,18 +828,18 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
   balanceCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    padding: 18,
-    marginBottom: 18,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
+    backgroundColor: '#1E293B',
+    borderRadius: 24,
+    padding: 24,
+    marginBottom: 30,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
     shadowOffset: {
       width: 0,
-      height: 5
+      height: 10
     },
-    elevation: 3
+    elevation: 8
   },
   balanceTopRow: {
     flexDirection: 'row',
@@ -855,7 +855,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: '#EEF3FF',
+    backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10
@@ -863,18 +863,18 @@ const styles = StyleSheet.create({
   balanceLabel: {
     fontSize: 13,
     fontWeight: '800',
-    color: Colors.text
+    color: '#F8FAFC'
   },
   balanceSubLabel: {
     marginTop: 2,
     fontSize: 11,
     fontWeight: '500',
-    color: Colors.muted
+    color: '#94A3B8'
   },
   balanceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F7FA',
+    backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 10,
     paddingHorizontal: 9,
     paddingVertical: 6
@@ -883,31 +883,34 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontSize: 10,
     fontWeight: '700',
-    color: Colors.muted
+    color: '#94A3B8'
   },
   summaryAmount: {
     marginTop: 17,
     fontSize: 30,
     fontWeight: '900',
     letterSpacing: -0.5,
-    color: Colors.text
+    color: '#F8FAFC'
   },
   balanceFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)'
   },
   footerDot: {
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: '#22C55E',
+    backgroundColor: '#60A5FA',
     marginRight: 7
   },
   footerText: {
     fontSize: 11,
     fontWeight: '600',
-    color: Colors.muted
+    color: '#94A3B8'
   },
   sectionHeader: {
     flexDirection: 'row',

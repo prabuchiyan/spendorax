@@ -10,7 +10,7 @@ import Card from '../components/Card';
 import { Spacing } from '../components/Theme';
 import ConfirmDialog from '../components/ConfirmDialog';
 import BudgetCreateModal from '../components/BudgetCreateModal';
-import FAB from '../components/FAB';
+import ContextualFAB from '../components/ContextualFAB';
 // Redux imports
 import { setCategoryBudgets } from '../redux/slices/budgetSlice';
 import { setCategoriesMap } from '../redux/slices/categorySlice';
@@ -940,28 +940,7 @@ export default function BudgetsScreen({ route, navigation }) {
                           </View>
 
                           {/* EDIT */}
-                          <TouchableOpacity
-                        activeOpacity={0.7}
-                        onPress={(event) => {
-                          event?.stopPropagation?.();
-
-                          setEditBudget(budget);
-
-                          setSelectedCategory({
-                            id: budget.categoryId,
-                            name: budget.categoryName,
-                            icon: budget.icon,
-                            color: budget.color
-                          });
-
-                          setCategoryBudgetAmount(
-                            String(budget.budget)
-                          );
-
-                          setSearchText('');
-                          setShowCategoryDropdown(false);
-                          setShowModal(true);
-                        }}
+                          <View
                         style={{
                           width: 34,
                           height: 34,
@@ -978,39 +957,49 @@ export default function BudgetsScreen({ route, navigation }) {
                           iconColor="#287A57"
                           style={{
                             margin: 0
+                          }}
+                          onPress={(event) => {
+                            event?.stopPropagation?.();
+                            setEditBudget(budget);
+                            setSelectedCategory({
+                              id: budget.categoryId,
+                              name: budget.categoryName,
+                              icon: budget.icon,
+                              color: budget.color
+                            });
+                            setCategoryBudgetAmount(String(budget.budget));
+                            setSearchText('');
+                            setShowCategoryDropdown(false);
+                            setShowModal(true);
                           }} />
                         
-                          </TouchableOpacity>
+                          </View>
 
                           {/* DELETE */}
-                          <TouchableOpacity
-                        activeOpacity={0.7}
-                        onPress={(event) => {
-                          event?.stopPropagation?.();
-
-                          handleDeleteCategoryBudget(
-                            budget.id
-                          );
-                        }}
+                          <View
                         style={{
                           width: 34,
                           height: 34,
                           borderRadius: 10,
-                          backgroundColor: '#FFF2F2',
+                          backgroundColor: '#FEF2F2',
                           alignItems: 'center',
                           justifyContent: 'center',
                           marginLeft: 5
                         }}>
                         
                             <IconButton
-                          icon="trash-can-outline"
+                          icon="delete"
                           size={17}
-                          iconColor="#D64545"
+                          iconColor="#DC2626"
                           style={{
                             margin: 0
+                          }}
+                          onPress={(event) => {
+                            event?.stopPropagation?.();
+                            handleDeleteCategoryBudget(budget.id);
                           }} />
                         
-                          </TouchableOpacity>
+                          </View>
                         </View>
 
                         {/* Compact progress */}
@@ -1155,7 +1144,7 @@ export default function BudgetsScreen({ route, navigation }) {
       
 
       {tab === 'category' &&
-      <FAB
+      <ContextualFAB
         onPress={() => {
           setEditBudget(null);
           setSelectedCategory(null);

@@ -496,11 +496,13 @@ export default function LoanFormScreen({ navigation, route }) {
 
   const editId = rawId != null && rawId !== "" ? Number(rawId) : null;
 
+  const initialDirection = route?.params?.initialDirection;
+
   const [loanData, setLoanData] = useState({
     loan_name: "",
     loan_type: "Other",
     lender: "",
-    loan_direction: "BORROWED",
+    loan_direction: initialDirection || "BORROWED",
     principal_amount: "",
     interest_rate: "0",
     loan_start_date: new Date().toISOString(),

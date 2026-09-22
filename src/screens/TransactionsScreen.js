@@ -13,7 +13,7 @@ import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Spacing } from '../components/Theme';
-import FAB from '../components/FAB';
+import ContextualFAB from '../components/ContextualFAB';
 import { useFocusEffect } from '@react-navigation/native';
 import { usePageLoader } from '../context/PageLoaderContext';
 import PageLoader from '../components/PageLoader';
@@ -660,10 +660,32 @@ export default function TransactionsScreen({ navigation }) {
       
 
       {/* FAB */}
-      <FAB
-        onPress={() =>
-        navigation.navigate('TransactionAdd')
-        } />
+      <ContextualFAB
+        icon="plus"
+        actions={[
+          {
+            icon: 'arrow-down',
+            label: 'Expense',
+            color: '#E35D6A',
+            style: { backgroundColor: '#fff' },
+            onPress: () => navigation.navigate("TransactionAdd", { initialType: 'expense' }),
+          },
+          {
+            icon: 'arrow-up',
+            label: 'Income',
+            color: '#3F8F6B',
+            style: { backgroundColor: '#fff' },
+            onPress: () => navigation.navigate("TransactionAdd", { initialType: 'income' }),
+          },
+          {
+            icon: 'swap-horizontal',
+            label: 'Transfer',
+            color: '#4B7CF3',
+            style: { backgroundColor: '#fff' },
+            onPress: () => navigation.navigate("TransactionAdd", { initialType: 'transfer' }),
+          },
+        ]}
+      />
       
       <PageLoader visible={loaderVisible} />
     </View>);

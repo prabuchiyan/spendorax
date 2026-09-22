@@ -33,7 +33,7 @@ import SwipeableBillCard from "../components/SwipeableBillCard";
 import BillCalendarView from "../components/BillCalendarView";
 import BillForm from "../components/BillForm";
 import ConfirmDialog from "../components/ConfirmDialog";
-import FAB from "../components/FAB";
+import ContextualFAB from "../components/ContextualFAB";
 import { Colors, Spacing } from "../components/Theme";
 import { BILL_STATUS, formatCurrency } from "../services/billUtils";
 import CurrencyText from "../components/CurrencyText";
@@ -1118,7 +1118,7 @@ export default function BillsScreen({ navigation }) {
         </TouchableOpacity>
       </Modal>
 
-      <FAB
+      <ContextualFAB
         onPress={() => {
           setEditingBill(null);
           setShowForm(true);

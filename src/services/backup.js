@@ -651,10 +651,11 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       for (const stmt of originalData.credit_card_statements) {
         try {
           await executeSql(
-            `INSERT INTO credit_card_statements (id, card_id, statement_start, statement_end, statement_date, due_date, opening_balance, purchases, refunds, fees, interest, payments, closing_balance, minimum_due, status, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            `INSERT INTO credit_card_statements (id, card_id, bill_id, statement_start, statement_end, statement_date, due_date, opening_balance, purchases, refunds, fees, interest, payments, closing_balance, minimum_due, is_generated, generated_at, status, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
             [
             stmt.id,
             stmt.card_id,
+            stmt.bill_id ? (billMap[stmt.bill_id] || stmt.bill_id) : null,
             stmt.statement_start,
             stmt.statement_end,
             stmt.statement_date,
@@ -667,6 +668,8 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
             stmt.payments,
             stmt.closing_balance,
             stmt.minimum_due,
+            stmt.is_generated !== undefined ? stmt.is_generated : 1,
+            stmt.generated_at || null,
             stmt.status,
             stmt.created_at]
 
@@ -680,12 +683,13 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       for (const payment of originalData.credit_card_payments) {
         try {
           await executeSql(
-            `INSERT INTO credit_card_payments (id, card_id, statement_id, transaction_id, amount, payment_date, source_id, notes, created_at) VALUES (?,?,?,?,?,?,?,?,?)`,
+            `INSERT INTO credit_card_payments (id, card_id, statement_id, bank_transaction_id, card_transaction_id, amount, payment_date, source_id, notes, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)`,
             [
             payment.id,
             payment.card_id,
             payment.statement_id,
-            payment.transaction_id,
+            payment.bank_transaction_id,
+            payment.card_transaction_id,
             payment.amount,
             payment.payment_date,
             payment.source_id,
@@ -1288,12 +1292,13 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
 
         const insertRes = await executeSql(
           `INSERT INTO credit_card_statements (
-            card_id, statement_start, statement_end, statement_date, due_date,
+            card_id, bill_id, statement_start, statement_end, statement_date, due_date,
             opening_balance, purchases, refunds, fees, interest, payments,
-            closing_balance, minimum_due, status, created_at
-          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            closing_balance, minimum_due, is_generated, generated_at, status, created_at
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [
           newCardId,
+          statement.bill_id ? (billMap[statement.bill_id] || statement.bill_id) : null,
           statement.statement_start,
           statement.statement_end,
           statement.statement_date,
@@ -1306,6 +1311,8 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
           statement.payments,
           statement.closing_balance,
           statement.minimum_due,
+          statement.is_generated !== undefined ? statement.is_generated : 1,
+          statement.generated_at || null,
           statement.status,
           statement.created_at || new Date().toISOString()]
 
@@ -1324,8 +1331,11 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         const newCardId = cardMap[payment.card_id];
         if (!newCardId) return;
 
-        const newTransactionId = payment.transaction_id ?
-        transactionMap[payment.transaction_id] || null :
+        const newBankTransactionId = payment.bank_transaction_id ?
+        transactionMap[payment.bank_transaction_id] || null :
+        null;
+        const newCardTransactionId = payment.card_transaction_id ?
+        transactionMap[payment.card_transaction_id] || null :
         null;
 
         if (mode === 'merge') {
@@ -1338,13 +1348,14 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
 
         await executeSql(
           `INSERT INTO credit_card_payments (
-            card_id, statement_id, transaction_id, amount, payment_date,
+            card_id, statement_id, bank_transaction_id, card_transaction_id, amount, payment_date,
             source_id, notes, created_at
-          ) VALUES (?,?,?,?,?,?,?,?)`,
+          ) VALUES (?,?,?,?,?,?,?,?,?)`,
           [
           newCardId,
           payment.statement_id ? statementMap?.[payment.statement_id] || null : null,
-          newTransactionId,
+          newBankTransactionId,
+          newCardTransactionId,
           payment.amount,
           payment.payment_date,
           payment.source_id ? sourceMap[payment.source_id] || null : null,
