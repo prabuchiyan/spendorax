@@ -172,7 +172,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
     try {
       const l = await getLoanById(id);
-      setLoan(l);
+      setLocalLoan(l);
     } catch (error) {
       console.error("Failed to refresh loan:", error);
     }

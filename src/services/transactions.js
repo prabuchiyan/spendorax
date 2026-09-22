@@ -477,7 +477,7 @@ export async function getSourceTransactionBalance(sourceId) {
 export async function deleteTransaction(id) {
   // Query existing transaction before delete so we can refresh credit card totals.
   const txRes = await executeSql(
-    `SELECT source_id, transfer_group_id FROM transactions WHERE id = ? LIMIT 1`,
+    `SELECT source_id, transfer_group_id, loan_id FROM transactions WHERE id = ? LIMIT 1`,
     [id],
   );
   const existingTx = txRes.rows.length > 0 ? txRes.rows.item(0) : null;
@@ -535,11 +535,20 @@ export async function deleteTransaction(id) {
   } catch (e) {}
 
   await refreshCreditCardBySource(existingTx?.source_id || null);
+
+  if (existingTx?.loan_id) {
+    try {
+      const { recalculateLoanFromLinkedTransactions } = require("./loans");
+      await recalculateLoanFromLinkedTransactions(existingTx.loan_id);
+    } catch (e) {
+      console.warn("Failed to recalculate loan after transaction delete", e);
+    }
+  }
 }
 
 export async function updateTransaction(id, fields) {
   const txRes = await executeSql(
-    `SELECT source_id FROM transactions WHERE id = ? LIMIT 1`,
+    `SELECT source_id, loan_id FROM transactions WHERE id = ? LIMIT 1`,
     [id],
   );
   const existingTx = txRes.rows.length > 0 ? txRes.rows.item(0) : null;
@@ -564,6 +573,21 @@ export async function updateTransaction(id, fields) {
     fields.source_id !== existingTx?.source_id
   ) {
     await refreshCreditCardBySource(fields.source_id);
+  }
+
+  const loansToRecalculate = new Set();
+  if (existingTx?.loan_id) loansToRecalculate.add(existingTx.loan_id);
+  if (fields.loan_id) loansToRecalculate.add(fields.loan_id);
+
+  if (loansToRecalculate.size > 0) {
+    try {
+      const { recalculateLoanFromLinkedTransactions } = require("./loans");
+      for (const lId of loansToRecalculate) {
+        await recalculateLoanFromLinkedTransactions(lId);
+      }
+    } catch (e) {
+      console.warn("Failed to recalculate loan after transaction update", e);
+    }
   }
 }
 
