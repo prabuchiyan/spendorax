@@ -385,8 +385,11 @@ export default function LoanPaymentScreen({ route, navigation }) {
     const value = Number(amount);
 
     try {
-      // Immediately disable the button and show loader
       setLoading(true);
+      // Give React Native one render cycle to display the loader
+      await new Promise((resolve) => {
+        requestAnimationFrame(resolve);
+      });
 
       if (mode === "prepayment") {
         await recordPrepayment({

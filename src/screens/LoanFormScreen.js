@@ -915,6 +915,9 @@ export default function LoanFormScreen({ navigation, route }) {
 
     try {
       setSubmitting(true);
+      await new Promise((resolve) => {
+        requestAnimationFrame(resolve);
+      });
 
       console.log(
         "[LoanForm] Saving loan_start_date:",
