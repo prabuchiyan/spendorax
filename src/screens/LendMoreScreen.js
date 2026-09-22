@@ -624,8 +624,7 @@ export default function LendMoreScreen({ route, navigation }) {
               mode="contained"
               onPress={save}
               loading={loading}
-              disabled={loading}
-              style={[styles.saveButton, { backgroundColor: "#7C3AED" }]}
+              style={[styles.saveButton, { backgroundColor: loading ? "#A78BFA" : "#7C3AED" }]}
               contentStyle={{ height: 54 }}
               labelStyle={{
                 fontSize: 16,

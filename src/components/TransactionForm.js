@@ -1680,24 +1680,26 @@ export default function TransactionForm({
                                     compact
                                     textColor="#E46A6A"
                                     disabled={linking || submitting}
-                                    onPress={async () => {
+                                    onPress={() => {
                                       if (linking || submitting || !transaction?.id) return;
-                                      try {
-                                        setLinking(true);
-                                        // Show global loader because Unlink is outside the loan modal
-                                        showPageLoader();
-                                        await unlinkTransactionFromLoan(transaction.id);
-                                        setSelectedLoanId(null);
-                                        setLoanSearch("");
-                                      } catch (e) {
-                                        console.error(
-                                          "[TransactionForm] Unlink loan failed:",
-                                          e,
-                                        );
-                                      } finally {
-                                        setLinking(false);
-                                        hidePageLoader();
-                                      }
+                                      setLinking(true);
+                                      showPageLoader();
+                                      
+                                      setTimeout(async () => {
+                                        try {
+                                          await unlinkTransactionFromLoan(transaction.id);
+                                          setSelectedLoanId(null);
+                                          setLoanSearch("");
+                                        } catch (e) {
+                                          console.error(
+                                            "[TransactionForm] Unlink loan failed:",
+                                            e,
+                                          );
+                                        } finally {
+                                          setLinking(false);
+                                          hidePageLoader();
+                                        }
+                                      }, 0);
                                     }}
                                   >
                                     Unlink
@@ -2910,33 +2912,35 @@ export default function TransactionForm({
                         paymentType: "FORECLOSURE",
                       },
                     ];
-                const doLink = async (paymentType) => {
-                  try {
-                    setLinking(true);
-                    showPageLoader();
-                    setShowLoanActionSheet(false);
+                const doLink = (paymentType) => {
+                  setLinking(true);
+                  showPageLoader();
+                  
+                  setTimeout(async () => {
+                    try {
+                      if (isEdit && transaction?.id) {
+                        await linkTransactionToLoan(
+                          transaction.id,
+                          pendingLoan.id,
+                          {
+                            paymentType,
+                            linkedDate: transaction.date || date,
+                          },
+                        );
+                      }
 
-                    if (isEdit && transaction?.id) {
-                      await linkTransactionToLoan(
-                        transaction.id,
-                        pendingLoan.id,
-                        {
-                          paymentType,
-                          linkedDate: transaction.date || date,
-                        },
-                      );
+                      setSelectedLoanId(pendingLoan.id);
+                      setPendingLoan(null);
+                      setLoanSearch("");
+                      markDirty();
+                    } catch (e) {
+                      console.error("[TransactionForm] Link loan failed:", e);
+                    } finally {
+                      setLinking(false);
+                      hidePageLoader();
+                      setShowLoanActionSheet(false);
                     }
-
-                    setSelectedLoanId(pendingLoan.id);
-                    setPendingLoan(null);
-                    setLoanSearch("");
-                    markDirty();
-                  } catch (e) {
-                    console.error("[TransactionForm] Link loan failed:", e);
-                  } finally {
-                    setLinking(false);
-                    hidePageLoader();
-                  }
+                  }, 0);
                 };
 
                 return (

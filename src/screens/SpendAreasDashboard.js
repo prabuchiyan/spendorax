@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { getCategories } from '../services/categories';
 import { getTransactionDates, getTransactionsByDateRange } from '../services/transactions';
@@ -234,6 +234,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
   const periodChipPositions = useRef({});
   const periodScrollWidth = useRef(0);
   const [transactions, setTransactions] = useState([]);
+  const [isFetching, setIsFetching] = useState(true);
   const [transactionDates, setTransactionDates] = useState([]);
   const [categoriesMap, setLocalCategoriesMap] = useState({});
   const [sourcesMap, setSourcesMap] = useState({});
@@ -241,7 +242,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
   const [selectedPeriod, setSelectedPeriod] = useState(params.periodLabel || null);
 
   async function loadInitialData() {
-    showPageLoader();
+    setIsFetching(true);
     try {
       const [
         catsAll,
@@ -275,7 +276,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
       setTransactionDates([]);
       setTransactions([]);
     } finally {
-      hidePageLoader();
+      setIsFetching(false);
     }
   }
 
@@ -502,7 +503,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
   useEffect(() => {
     async function loadPeriodTransactions() {
       if (!selectedPeriod) return;
-      showPageLoader();
+      setIsFetching(true);
       try {
         let startDate = null;
         let endDate = null;
@@ -535,7 +536,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
         console.error(e);
         setTransactions([]);
       } finally {
-        hidePageLoader();
+        setIsFetching(false);
       }
     }
     loadPeriodTransactions();
@@ -819,9 +820,12 @@ export default function SpendAreasDashboard({ route, navigation }) {
                 selected={false}
                 onPress={() => {
                   if (filterMode === m) return;
-                  
-                  setFilterMode(m);
-                  setSelectedPeriod(null);
+                  setIsFetching(true);
+                  setTransactions([]);
+                  setTimeout(() => {
+                    setFilterMode(m);
+                    setSelectedPeriod(null);
+                  }, 0);
                 }}
                 style={[
                   styles.chip,
@@ -889,12 +893,15 @@ export default function SpendAreasDashboard({ route, navigation }) {
                     }}
                     onPress={() => {
                       if (selectedPeriod === p) return;
-                      
-                      setSelectedPeriod(p);
-                      // Immediately focus the selected period.
-                      requestAnimationFrame(() => {
-                        focusSelectedPeriod(p);
-                      });
+                      setIsFetching(true);
+                      setTransactions([]);
+                      setTimeout(() => {
+                        setSelectedPeriod(p);
+                        // Immediately focus the selected period.
+                        requestAnimationFrame(() => {
+                          focusSelectedPeriod(p);
+                        });
+                      }, 0);
                     }}
                     style={[
                       styles.periodChip,
@@ -918,7 +925,14 @@ export default function SpendAreasDashboard({ route, navigation }) {
           </View>
         )}
 
-        {/* SPEND SUMMARY CARD */}
+        {isFetching ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 50 }}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={{ marginTop: 12, color: Colors.muted, fontWeight: '600' }}>Loading data...</Text>
+          </View>
+        ) : (
+          <>
+            {/* SPEND SUMMARY CARD */}
         <Card>
           <Text
             style={{
@@ -1490,6 +1504,8 @@ export default function SpendAreasDashboard({ route, navigation }) {
             ))
           )}
         </View>
+        </>
+        )}
       </ScrollView>
       <PageLoader visible={loaderVisible} />
     </View>

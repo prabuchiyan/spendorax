@@ -160,13 +160,10 @@ export default function CategoryCreateModal({
           mode="contained"
           onPress={handleCreateCategory}
           loading={saving}
-          disabled={saving}
           style={[
           styles.submitButton,
           {
-            backgroundColor: isIncome ?
-            '#36B37E' :
-            '#4B7CF3'
+            backgroundColor: saving ? (isIncome ? '#8CE2B4' : '#9EB9F9') : (isIncome ? '#36B37E' : '#4B7CF3')
           }]
           }
           contentStyle={styles.actionContent}
