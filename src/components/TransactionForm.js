@@ -547,13 +547,13 @@ export default function TransactionForm({
     );
 
   return (
-    <View pointerEvents={submitting ? "none" : "auto"} style={{ flex: 1, opacity: submitting ? 0.6 : 1 }}>
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="none"
-        nestedScrollEnabled
-        showsVerticalScrollIndicator={false}
-      >
+    <ScrollView
+      style={{ flex: 1 }}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="none"
+      nestedScrollEnabled
+      showsVerticalScrollIndicator={false}
+    >
       <View style={{ borderRadius: 12, overflow: "hidden", marginBottom: 12 }}>
         <View
           style={{
@@ -661,7 +661,7 @@ export default function TransactionForm({
             return (
               <TouchableOpacity
                 key={tab.id}
-                
+                disabled={submitting}
                 onPress={() => {
                   setType(tab.id);
                   markDirty();
@@ -693,7 +693,7 @@ export default function TransactionForm({
         {isEdit && (
           <TouchableOpacity
             onPress={() => setConfirmVisible(true)}
-            
+            disabled={submitting}
             style={{
               width: 40,
               height: 40,
@@ -869,7 +869,7 @@ export default function TransactionForm({
       <View style={{ marginBottom: 12 }}>
         <TouchableOpacity
           activeOpacity={0.8}
-          
+          disabled={submitting}
           onPress={() => {
             setPickerMode("date");
             setShowDateTimePicker(true);
@@ -915,7 +915,7 @@ export default function TransactionForm({
                     {visibleCategories.map((c, index) => (
                       <TouchableOpacity
                         key={c.id}
-                        
+                        disabled={submitting}
                         onPress={() => {
                           setCategoryId(c.id);
                           setShowCategoryModal(false);
@@ -985,7 +985,7 @@ export default function TransactionForm({
                 <TouchableOpacity
                   onPress={() => setShowCategoryModal(true)}
                   activeOpacity={0.85}
-                  
+                  disabled={submitting}
                   style={{
                     backgroundColor: "#fff",
                     borderRadius: 14,
@@ -1062,7 +1062,7 @@ export default function TransactionForm({
 
               {showCategoryGrid && filteredCategories.length > 12 && (
                 <TouchableOpacity
-                  
+                  disabled={submitting}
                   onPress={() => {
                     setCategorySearch("");
                     setShowCategoryModal(true);
@@ -1109,7 +1109,7 @@ export default function TransactionForm({
               {visibleSources.map((s, index) => (
                 <TouchableOpacity
                   key={s.id}
-                  
+                  disabled={submitting}
                   onPress={() => {
                     setSourceId(s.id);
                     setShowSourceGrid(false);
@@ -1181,7 +1181,7 @@ export default function TransactionForm({
 
             {searchedSources.length > 4 && (
               <TouchableOpacity
-                
+                disabled={submitting}
                 onPress={() => {
                   setSourceSearch("");
                   setShowSourceModal(true);
@@ -1204,7 +1204,7 @@ export default function TransactionForm({
           </>
         ) : (
           <TouchableOpacity
-            
+            disabled={submitting}
             onPress={() => {
               setSourceSearch("");
               setShowSourceModal(true);
@@ -1376,7 +1376,7 @@ export default function TransactionForm({
                     }}
                   >
                     <TouchableOpacity
-                      
+                      disabled={submitting}
                       onPress={() => {
                         setIsCounted((v) => !v);
                         markDirty();
@@ -1474,7 +1474,7 @@ export default function TransactionForm({
                       </Text>
                       {!selectedLoanId ? (
                         <TouchableOpacity
-                          
+                          disabled={submitting}
                           activeOpacity={0.85}
                           onPress={() => {
                             setLoanSearch("");
@@ -1671,7 +1671,7 @@ export default function TransactionForm({
                                     setLoanSearch("");
                                     setShowLoanModal(true);
                                   }}
-                                  
+                                  disabled={submitting}
                                 >
                                   Change
                                 </PaperButton>
@@ -1709,7 +1709,7 @@ export default function TransactionForm({
                                   <PaperButton
                                     compact
                                     textColor="#E46A6A"
-                                    
+                                    disabled={submitting}
                                     onPress={() => {
                                       setSelectedLoanId(null);
                                       markDirty();
@@ -2171,7 +2171,7 @@ export default function TransactionForm({
                 {visibleToAccountSources.map((s, index) => (
                   <TouchableOpacity
                     key={s.id}
-                    
+                    disabled={submitting}
                     onPress={() => {
                       setToAccount(s.id);
                       setShowToAccountGrid(false);
@@ -2243,7 +2243,7 @@ export default function TransactionForm({
 
               {toAccountSources.length > 4 && (
                 <TouchableOpacity
-                  
+                  disabled={submitting}
                   onPress={() => {
                     setSelectingFor("to");
                     setSourceSearch("");
@@ -2267,7 +2267,7 @@ export default function TransactionForm({
             </>
           ) : (
             <TouchableOpacity
-              
+              disabled={submitting}
               onPress={() => {
                 setSelectingFor("to");
                 setSourceSearch("");
@@ -2361,7 +2361,7 @@ export default function TransactionForm({
           mode="contained"
           onPress={submit}
           loading={submitting}
-          
+          disabled={submitting}
           style={{ backgroundColor: accent }}
           labelStyle={{ color: "#fff" }}
         >
@@ -2376,7 +2376,7 @@ export default function TransactionForm({
         <View style={{ width: 12 }} />
         <PaperButton
           mode="outlined"
-          
+          disabled={submitting}
           onPress={() => {
             if (isDirty) {
               setShowUnsavedDialog(true);
@@ -3187,6 +3187,5 @@ export default function TransactionForm({
       </Snackbar>
       <PageLoader visible={loaderVisible} />
     </ScrollView>
-    </View>
   );
 }
