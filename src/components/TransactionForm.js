@@ -61,6 +61,7 @@ export default function TransactionForm({
   const [type, setType] = useState(
     isEdit && transaction ? transaction.type : (initialType || "expense"),
   );
+  const [isReady, setIsReady] = useState(false);
   const [categories, setCategories] = useState([]);
   const [sources, setSources] = useState([]);
   const [categoryUsage, setCategoryUsage] = useState({});
@@ -156,6 +157,7 @@ export default function TransactionForm({
         if (cancelled) return;
         setCategories(cats || []);
         setSources(src || []);
+        setIsReady(true);
         /* Everything below is secondary data.
          * It is intentionally loaded after the form's primary data has been rendered
          * so opening Add Transaction does not wait for transaction history, notes or loans. */
@@ -201,6 +203,7 @@ export default function TransactionForm({
       } catch (error) {
         if (cancelled) return;
         console.warn("TransactionForm initial load failed:", error);
+        setIsReady(true);
       }
     }
     loadInitialData();
@@ -444,6 +447,14 @@ export default function TransactionForm({
   }
 
   const filterTimeoutRef = useRef(null);
+
+  if (!isReady) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", minHeight: 200 }}>
+        <ActivityIndicator size="large" color="#4B7CF3" />
+      </View>
+    );
+  }
 
   const handleNotesChange = (text) => {
     setNotes(text);
