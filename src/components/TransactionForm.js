@@ -253,6 +253,20 @@ export default function TransactionForm({
   }, [isEdit, transaction]);
 
   useEffect(() => {
+    if (!isEdit) {
+      if (initialType) setType(initialType);
+      if (initialCategoryId) {
+        setCategoryId(initialCategoryId);
+        setShowCategoryGrid(false);
+      }
+      if (initialSourceId) {
+        setSourceId(initialSourceId);
+        setShowSourceGrid(false);
+      }
+    }
+  }, [initialType, initialCategoryId, initialSourceId, isEdit]);
+
+  useEffect(() => {
     if (Platform.OS !== "android") return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       if (isDirty) {
