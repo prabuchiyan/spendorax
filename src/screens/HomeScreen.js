@@ -22,7 +22,7 @@ import { getCategories } from "../services/categories";
 import events from "../services/events";
 import { Button as PaperButton } from "react-native-paper";
 import Card from "../components/Card";
-import ContextualFAB from "../components/ContextualFAB";
+import FAB from "../components/FAB";
 import { Spacing } from "../components/Theme";
 import BottomStatsBar from "../components/BottomStatsBar";
 import CurrencyText from "../components/CurrencyText";
@@ -1481,8 +1481,8 @@ export default function HomeScreen({ navigation }) {
                           >
                             {balanceVisible
                               ? `₹${dailyAllowance.toLocaleString("en-IN", {
-                                  maximumFractionDigits: 0,
-                                })} / day`
+                                maximumFractionDigits: 0,
+                              })} / day`
                               : "•••••• / day"}
                           </Text>
                         </View>
@@ -1755,8 +1755,8 @@ export default function HomeScreen({ navigation }) {
                         >
                           {balanceVisible
                             ? `₹${spent.toLocaleString(
-                                "en-IN",
-                              )} of ₹${budgetAmount.toLocaleString("en-IN")}`
+                              "en-IN",
+                            )} of ₹${budgetAmount.toLocaleString("en-IN")}`
                             : "•••••• of ••••••"}
                         </Text>
 
@@ -1818,8 +1818,8 @@ export default function HomeScreen({ navigation }) {
                             ? remaining >= 0
                               ? `₹${remaining.toLocaleString("en-IN")} left`
                               : `₹${Math.abs(remaining).toLocaleString(
-                                  "en-IN",
-                                )} over`
+                                "en-IN",
+                              )} over`
                             : "••••••"}
                         </Text>
                       </View>
@@ -2129,8 +2129,8 @@ export default function HomeScreen({ navigation }) {
                                   >
                                     {balanceVisible
                                       ? `₹${amount.toLocaleString(
-                                          "en-IN",
-                                        )} spent`
+                                        "en-IN",
+                                      )} spent`
                                       : "•••••• spent"}
                                   </Text>
 
@@ -2412,66 +2412,66 @@ export default function HomeScreen({ navigation }) {
                         >
                           {transactionType === "transfer" ? (
                             <>
-                               <View
+                              <View
+                                style={{
+                                  flexShrink: 0,
+                                  backgroundColor: '#F1F3F5',
+                                  borderRadius: 6,
+                                  paddingHorizontal: 7,
+                                  paddingVertical: 4,
+                                  borderWidth: 1,
+                                  borderColor: '#E5E7EB',
+                                  marginRight: 6,
+                                }}
+                              >
+                                <Text
+                                  numberOfLines={1}
+                                  ellipsizeMode="tail"
                                   style={{
-                                    flexShrink: 0,
-                                    backgroundColor: '#F1F3F5',
-                                    borderRadius: 6,
-                                    paddingHorizontal: 7,
-                                    paddingVertical: 4,
-                                    borderWidth: 1,
-                                    borderColor: '#E5E7EB',
-                                    marginRight: 6,
+                                    color: '#718096',
+                                    fontSize: 11,
+                                    lineHeight: 13,
+                                    fontWeight: '900',
+                                    letterSpacing: 0.25,
                                   }}
                                 >
-                                  <Text
-                                    numberOfLines={1}
-                                    ellipsizeMode="tail"
-                                    style={{
-                                      color: '#718096',
-                                      fontSize: 11,
-                                      lineHeight: 13,
-                                      fontWeight: '900',
-                                      letterSpacing: 0.25,
-                                    }}
-                                  >
-                                    TRANSFER
-                                  </Text>
-                               </View>
-                               <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1, minWidth: 0 }}>
-                                  <Text
-                                    numberOfLines={1}
-                                    ellipsizeMode="tail"
-                                    style={{
-                                      flexShrink: 1,
-                                      color: '#9299A3',
-                                      fontSize: 11,
-                                      lineHeight: 14,
-                                      fontWeight: '600',
-                                    }}
-                                  >
-                                    {source?.name || 'No source'}
-                                  </Text>
-                                  <MaterialCommunityIcons
-                                    name="arrow-right"
-                                    size={10}
-                                    color="#9299A3"
-                                    style={{ marginHorizontal: 4 }}
-                                  />
-                                  <Text
-                                    numberOfLines={1}
-                                    ellipsizeMode="tail"
-                                    style={{
-                                      flexShrink: 1,
-                                      color: '#9299A3',
-                                      fontSize: 11,
-                                      lineHeight: 14,
-                                      fontWeight: '600',
-                                    }}
-                                  >
-                                    {toSource?.name || 'No source'}
-                                  </Text>
-                               </View>
+                                  TRANSFER
+                                </Text>
+                              </View>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1, minWidth: 0 }}>
+                                <Text
+                                  numberOfLines={1}
+                                  ellipsizeMode="tail"
+                                  style={{
+                                    flexShrink: 1,
+                                    color: '#9299A3',
+                                    fontSize: 11,
+                                    lineHeight: 14,
+                                    fontWeight: '600',
+                                  }}
+                                >
+                                  {source?.name || 'No source'}
+                                </Text>
+                                <MaterialCommunityIcons
+                                  name="arrow-right"
+                                  size={10}
+                                  color="#9299A3"
+                                  style={{ marginHorizontal: 4 }}
+                                />
+                                <Text
+                                  numberOfLines={1}
+                                  ellipsizeMode="tail"
+                                  style={{
+                                    flexShrink: 1,
+                                    color: '#9299A3',
+                                    fontSize: 11,
+                                    lineHeight: 14,
+                                    fontWeight: '600',
+                                  }}
+                                >
+                                  {toSource?.name || 'No source'}
+                                </Text>
+                              </View>
                             </>
                           ) : (
                             <>
@@ -2500,7 +2500,7 @@ export default function HomeScreen({ navigation }) {
                                   {cat.name || "Uncategorized"}
                                 </Text>
                               </View>
-    
+
                               <View
                                 style={{
                                   width: 3,
@@ -2511,7 +2511,7 @@ export default function HomeScreen({ navigation }) {
                                   flexShrink: 0,
                                 }}
                               />
-    
+
                               <Text
                                 numberOfLines={1}
                                 ellipsizeMode="tail"
@@ -3228,8 +3228,8 @@ export default function HomeScreen({ navigation }) {
                   .includes("overdue")
                   ? "#E46A6A"
                   : String(display?.label || "")
-                        .toLowerCase()
-                        .includes("paid")
+                    .toLowerCase()
+                    .includes("paid")
                     ? "#3F8F6B"
                     : "#FFB020");
 
@@ -3320,20 +3320,19 @@ export default function HomeScreen({ navigation }) {
                         >
                           {bill._noDueDate
                             ? "No due date"
-                            : `Due ${
-                                bill.due_date
-                                  ? new Date(
-                                      String(bill.due_date || "").replace(
-                                        " ",
-                                        "T",
-                                      ),
-                                    ).toLocaleDateString(undefined, {
-                                      day: "2-digit",
-                                      month: "short",
-                                      year: "numeric",
-                                    })
-                                  : "—"
-                              }`}
+                            : `Due ${bill.due_date
+                              ? new Date(
+                                String(bill.due_date || "").replace(
+                                  " ",
+                                  "T",
+                                ),
+                              ).toLocaleDateString(undefined, {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })
+                              : "—"
+                            }`}
                         </Text>
                       </View>
                     </View>
@@ -3446,31 +3445,8 @@ export default function HomeScreen({ navigation }) {
         </Card>
       </ScrollView>
       <BottomStatsBar navigation={navigation} />
-      <ContextualFAB
-        icon="plus"
-        actions={[
-          {
-            icon: 'arrow-down',
-            label: 'Expense',
-            color: '#E35D6A',
-            style: { backgroundColor: '#fff' },
-            onPress: () => navigation.navigate("TransactionAdd", { initialType: 'expense' }),
-          },
-          {
-            icon: 'arrow-up',
-            label: 'Income',
-            color: '#3F8F6B',
-            style: { backgroundColor: '#fff' },
-            onPress: () => navigation.navigate("TransactionAdd", { initialType: 'income' }),
-          },
-          {
-            icon: 'swap-horizontal',
-            label: 'Transfer',
-            color: '#4B7CF3',
-            style: { backgroundColor: '#fff' },
-            onPress: () => navigation.navigate("TransactionAdd", { initialType: 'transfer' }),
-          },
-        ]}
+      <FAB
+        onPress={() => navigation.navigate("TransactionAdd")}
         style={{
           position: "absolute",
           bottom: 70,

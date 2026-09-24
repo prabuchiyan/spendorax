@@ -51,19 +51,14 @@ export default function TransactionForm({
   onPressBill,
   sourceId: initialSourceId,
   categoryId: initialCategoryId,
-  initialType,
 }) {
-  const {
-    visible: loaderVisible,
-    show: showPageLoader,
-    hide: hidePageLoader,
-  } = usePageLoader();
+  const { visible: loaderVisible, show: showPageLoader, hide: hidePageLoader } = usePageLoader();
   const [amount, setAmount] = useState(
     isEdit && transaction ? String(transaction.amount) : "",
   );
   const [amountError, setAmountError] = useState(false);
   const [type, setType] = useState(
-    isEdit && transaction ? transaction.type : (initialType || "expense"),
+    isEdit && transaction ? transaction.type : "expense",
   );
   const [categories, setCategories] = useState([]);
   const [sources, setSources] = useState([]);
@@ -110,7 +105,7 @@ export default function TransactionForm({
     !((isEdit && transaction?.source_id) || (!isEdit && initialSourceId)),
   );
   const [showToAccountGrid, setShowToAccountGrid] = useState(
-    !(isEdit && transaction?.type === "transfer" && transaction?.toAccount),
+    !(isEdit && transaction?.type === "transfer" && transaction?.toAccount)
   );
   const [showSourceModal, setShowSourceModal] = useState(false);
   const [sourceSearch, setSourceSearch] = useState("");
@@ -251,20 +246,6 @@ export default function TransactionForm({
       setShowSourceGrid(false);
     }
   }, [isEdit, transaction]);
-
-  useEffect(() => {
-    if (!isEdit) {
-      if (initialType) setType(initialType);
-      if (initialCategoryId) {
-        setCategoryId(initialCategoryId);
-        setShowCategoryGrid(false);
-      }
-      if (initialSourceId) {
-        setSourceId(initialSourceId);
-        setShowSourceGrid(false);
-      }
-    }
-  }, [initialType, initialCategoryId, initialSourceId, isEdit]);
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -595,8 +576,8 @@ export default function TransactionForm({
             <Text style={{ fontSize: 22, fontWeight: "800", color: accent }}>
               {amount
                 ? Number(amount).toLocaleString("en-IN", {
-                    minimumFractionDigits: 2,
-                  })
+                  minimumFractionDigits: 2,
+                })
                 : "0.00"}
             </Text>
           </View>
@@ -607,7 +588,7 @@ export default function TransactionForm({
                   type === "transfer"
                     ? "currency-inr"
                     : (categories.find((x) => x.id === categoryId) || {})
-                        .icon || "currency-inr"
+                      .icon || "currency-inr"
                 }
                 size={26}
                 color={
@@ -619,7 +600,7 @@ export default function TransactionForm({
                 {type === "transfer"
                   ? "Uncategorized"
                   : (categories.find((x) => x.id === categoryId) || {}).name ||
-                    "Uncategorized"}
+                  "Uncategorized"}
               </Text>
             </View>
             <View style={{ alignItems: "center" }}>
@@ -2768,62 +2749,62 @@ export default function TransactionForm({
                 const options = isLentLoan
                   ? type === "income"
                     ? [
-                        {
-                          label: "Receive Payment",
-                          sublabel: "Borrower paid back part or full amount",
-                          icon: "cash-check",
-                          color: "#16A34A",
-                          bg: "#DCFCE7",
-                          paymentType: "EMI",
-                        },
-                      ]
+                      {
+                        label: "Receive Payment",
+                        sublabel: "Borrower paid back part or full amount",
+                        icon: "cash-check",
+                        color: "#16A34A",
+                        bg: "#DCFCE7",
+                        paymentType: "EMI",
+                      },
+                    ]
                     : [
-                        {
-                          label: "Lend More",
-                          sublabel: "Give additional money to the borrower",
-                          icon: "cash-plus",
-                          color: "#7C3AED",
-                          bg: "#EDE9FE",
-                          paymentType: "ADVANCE",
-                        },
-                      ]
+                      {
+                        label: "Lend More",
+                        sublabel: "Give additional money to the borrower",
+                        icon: "cash-plus",
+                        color: "#7C3AED",
+                        bg: "#EDE9FE",
+                        paymentType: "ADVANCE",
+                      },
+                    ]
                   : type === "income"
                     ? [
-                        {
-                          label: "Top Up",
-                          sublabel: "Received additional amount from lender",
-                          icon: "bank-plus",
-                          color: "#7C3AED",
-                          bg: "#EDE9FE",
-                          paymentType: "TOP_UP",
-                        },
-                      ]
+                      {
+                        label: "Top Up",
+                        sublabel: "Received additional amount from lender",
+                        icon: "bank-plus",
+                        color: "#7C3AED",
+                        bg: "#EDE9FE",
+                        paymentType: "TOP_UP",
+                      },
+                    ]
                     : [
-                        {
-                          label: "Pay EMI",
-                          sublabel: "Regular monthly instalment payment",
-                          icon: "cash-fast",
-                          color: "#2563EB",
-                          bg: "#DBEAFE",
-                          paymentType: "EMI",
-                        },
-                        {
-                          label: "Prepayment",
-                          sublabel: "Extra payment to reduce principal faster",
-                          icon: "trending-up",
-                          color: "#EA580C",
-                          bg: "#FED7AA",
-                          paymentType: "PREPAYMENT",
-                        },
-                        {
-                          label: "Foreclose",
-                          sublabel: "Close the loan with full & final payment",
-                          icon: "bank-remove",
-                          color: "#DC2626",
-                          bg: "#FEE2E2",
-                          paymentType: "FORECLOSURE",
-                        },
-                      ];
+                      {
+                        label: "Pay EMI",
+                        sublabel: "Regular monthly instalment payment",
+                        icon: "cash-fast",
+                        color: "#2563EB",
+                        bg: "#DBEAFE",
+                        paymentType: "EMI",
+                      },
+                      {
+                        label: "Prepayment",
+                        sublabel: "Extra payment to reduce principal faster",
+                        icon: "trending-up",
+                        color: "#EA580C",
+                        bg: "#FED7AA",
+                        paymentType: "PREPAYMENT",
+                      },
+                      {
+                        label: "Foreclose",
+                        sublabel: "Close the loan with full & final payment",
+                        icon: "bank-remove",
+                        color: "#DC2626",
+                        bg: "#FEE2E2",
+                        paymentType: "FORECLOSURE",
+                      },
+                    ];
                 const doLink = async (paymentType) => {
                   try {
                     setLinking(true);
