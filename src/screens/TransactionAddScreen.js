@@ -1,5 +1,5 @@
 import React, { useLayoutEffect } from 'react';
-import { View } from 'react-native';
+import { ScrollView } from 'react-native';
 import TransactionForm from '../components/TransactionForm';
 import Card from '../components/Card';
 
@@ -14,10 +14,12 @@ export default function TransactionAddScreen({ navigation, route }) {
   }, [navigation, isEdit]);
 
   return (
-    <View
-      style={{ flex: 1, padding: 4 }}
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={{ padding: 4 }}
+      keyboardShouldPersistTaps="handled"
     >
-      <Card style={{ margin: 0, flex: 1 }}>
+      <Card style={{ margin: 0 }}>
         <TransactionForm
           {...params}
           onCancel={() => navigation.goBack()}
@@ -29,6 +31,6 @@ export default function TransactionAddScreen({ navigation, route }) {
           }
         />
       </Card>
-    </View>
+    </ScrollView>
   );
 }
