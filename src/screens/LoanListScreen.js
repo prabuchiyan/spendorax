@@ -220,7 +220,7 @@ export default function LoanListScreen({ navigation, route }) {
                 marginBottom: 18,
               }}
             >
-              {["ALL", "Active", "Closed"].map((f) => (
+              {["ALL", "Active", "Closed (Fixed)"].map((f) => (
                 <TouchableOpacity
                   key={f}
                   onPress={() => setFilter(f)}

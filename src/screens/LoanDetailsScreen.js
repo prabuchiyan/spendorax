@@ -15,7 +15,7 @@ import events from "../services/events";
 import Card from "../components/Card";
 import calc from "../services/loanCalculations";
 import { Colors } from "../components/Theme";
-import { useLoans } from '../redux/hooks';
+import { useLoans } from "../redux/hooks";
 import CurrencyText from "../components/CurrencyText";
 
 function ActionButton({ icon, title, color, bg, onPress, width = "31%" }) {
@@ -77,13 +77,15 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
   const horizontalPadding = isSmallPhone ? 8 : 12;
   const ACTION_GAP = 12;
-  const actionWidth = Math.floor((screenWidth - (horizontalPadding * 2) - (ACTION_GAP * 2)) / 3);
+  const actionWidth = Math.floor(
+    (screenWidth - horizontalPadding * 2 - ACTION_GAP * 2) / 3,
+  );
 
   const id = route?.params?.id;
 
   const reduxLoans = useLoans();
-  const reduxLoan = reduxLoans?.find(l => String(l.id) === String(id));
-  
+  const reduxLoan = reduxLoans?.find((l) => String(l.id) === String(id));
+
   const [localLoan, setLocalLoan] = useState(null);
   const loan = reduxLoan || localLoan;
 
@@ -111,10 +113,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
     loadLinkedTransactions();
 
     const offTx = events.on("transactionsChanged", (payload) => {
-      if (
-        payload?.action === "recalculate" ||
-        payload?.action === "unlink"
-      ) {
+      if (payload?.action === "recalculate" || payload?.action === "unlink") {
         return;
       }
 
@@ -150,14 +149,10 @@ export default function LoanDetailsScreen({ route, navigation }) {
     try {
       const txs = await getTransactions(1000000, "Yes");
 
-      const linked = txs.filter(
-        (t) => Number(t.loan_id) === Number(id)
-      );
+      const linked = txs.filter((t) => Number(t.loan_id) === Number(id));
 
       linked.sort(
-        (a, b) =>
-          new Date(b.date).getTime() -
-          new Date(a.date).getTime()
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       );
 
       setLinkedTxs(linked);
@@ -180,17 +175,15 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
   if (!loan) return null;
 
+  const totalPrincipal = Number(loan.principal_amount || 0);
+
   const originalPrincipal = Number(
-    loan.principal_amount || 0
+    loan.original_principal_amount ?? loan.principal_amount ?? 0,
   );
 
-  const paidSoFar = Number(
-    loan.total_paid || 0
-  );
+  const paidSoFar = Number(loan.total_paid || 0);
 
-  const remainingAmount = Number(
-    loan.outstanding_amount || 0
-  );
+  const remainingAmount = Number(loan.outstanding_amount || 0);
 
   const remainingMonths =
     Number(loan.remaining_months || 0) === Infinity
@@ -198,36 +191,27 @@ export default function LoanDetailsScreen({ route, navigation }) {
       : Number(loan.remaining_months || 0);
 
   const interestToPay =
-    remainingAmount > 0 &&
-      remainingMonths > 0 &&
-      loan.emi_amount > 0
+    remainingAmount > 0 && remainingMonths > 0 && loan.emi_amount > 0
       ? calc
-        .generateAmortizationSchedule(
-          remainingAmount,
-          loan.interest_rate,
-          remainingMonths
-        )
-        .reduce(
-          (sum, item) =>
-            sum + Number(item.interest || 0),
-          0
-        )
+          .generateAmortizationSchedule(
+            remainingAmount,
+            loan.interest_rate,
+            remainingMonths,
+          )
+          .reduce((sum, item) => sum + Number(item.interest || 0), 0)
       : 0;
 
   const repaymentPercentage =
-    originalPrincipal > 0
+    totalPrincipal > 0
       ? Math.max(
-        0,
-        Math.min(
-          100,
-          Math.round(
-            ((originalPrincipal -
-              remainingAmount) /
-              originalPrincipal) *
-            100
-          )
+          0,
+          Math.min(
+            100,
+            Math.round(
+              ((totalPrincipal - remainingAmount) / totalPrincipal) * 100,
+            ),
+          ),
         )
-      )
       : 0;
 
   return (
@@ -270,9 +254,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
             style={{
               flexDirection: isSmallPhone ? "column" : "row",
               justifyContent: "space-between",
-              alignItems: isSmallPhone
-                ? "stretch"
-                : "center",
+              alignItems: isSmallPhone ? "stretch" : "center",
             }}
           >
             <View
@@ -312,24 +294,17 @@ export default function LoanDetailsScreen({ route, navigation }) {
             <View
               style={{
                 backgroundColor:
-                  loan.status === "Closed"
-                    ? "#DCFCE7"
-                    : "#DBEAFE",
+                  loan.status === "Closed" ? "#DCFCE7" : "#DBEAFE",
                 paddingHorizontal: 12,
                 paddingVertical: 7,
                 borderRadius: 30,
-                alignSelf: isSmallPhone
-                  ? "flex-start"
-                  : "auto",
+                alignSelf: isSmallPhone ? "flex-start" : "auto",
                 marginTop: isSmallPhone ? 10 : 0,
               }}
             >
               <Text
                 style={{
-                  color:
-                    loan.status === "Closed"
-                      ? "#16A34A"
-                      : "#2563EB",
+                  color: loan.status === "Closed" ? "#16A34A" : "#2563EB",
                   fontWeight: "800",
                   fontSize: 12,
                 }}
@@ -356,16 +331,8 @@ export default function LoanDetailsScreen({ route, navigation }) {
             <Text
               style={{
                 color: "#FFFFFF",
-                fontSize: isVerySmallPhone
-                  ? 28
-                  : isSmallPhone
-                    ? 31
-                    : 34,
-                lineHeight: isVerySmallPhone
-                  ? 34
-                  : isSmallPhone
-                    ? 38
-                    : 42,
+                fontSize: isVerySmallPhone ? 28 : isSmallPhone ? 31 : 34,
+                lineHeight: isVerySmallPhone ? 34 : isSmallPhone ? 38 : 42,
                 fontWeight: "900",
                 marginTop: 4,
               }}
@@ -468,9 +435,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
             <View
               key={index}
               style={{
-                width: isVerySmallPhone
-                  ? "100%"
-                  : "48%",
+                width: isVerySmallPhone ? "100%" : "48%",
                 backgroundColor: "#F8FAFC",
                 padding: isSmallPhone ? 12 : 14,
                 borderRadius: 16,
@@ -517,8 +482,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
             marginTop: 8,
           }}
         >
-          {(loan.loan_direction || "BORROWED") ===
-            "LENT" ? (
+          {(loan.loan_direction || "BORROWED") === "LENT" ? (
             <>
               <ActionButton
                 width={actionWidth}
@@ -527,13 +491,10 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 icon="cash-plus"
                 title="Receive Payment"
                 onPress={() =>
-                  navigation.navigate(
-                    "LoanPayment",
-                    {
-                      id: loan.id,
-                      mode: "receive",
-                    }
-                  )
+                  navigation.navigate("LoanPayment", {
+                    id: loan.id,
+                    mode: "receive",
+                  })
                 }
               />
 
@@ -544,12 +505,9 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 icon="hand-coin-outline"
                 title="Lend More"
                 onPress={() =>
-                  navigation.navigate(
-                    "LendMore",
-                    {
-                      id: loan.id,
-                    }
-                  )
+                  navigation.navigate("LendMore", {
+                    id: loan.id,
+                  })
                 }
               />
 
@@ -560,12 +518,9 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 icon="history"
                 title="History"
                 onPress={() =>
-                  navigation.navigate(
-                    "LoanHistory",
-                    {
-                      id: loan.id,
-                    }
-                  )
+                  navigation.navigate("LoanHistory", {
+                    id: loan.id,
+                  })
                 }
               />
 
@@ -575,11 +530,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 bg="#E2E8F0"
                 icon="file-chart"
                 title="Reports"
-                onPress={() =>
-                  navigation.navigate(
-                    "LoanReports"
-                  )
-                }
+                onPress={() => navigation.navigate("LoanReports")}
               />
 
               <ActionButton
@@ -589,12 +540,9 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 icon="pencil"
                 title="Edit"
                 onPress={() =>
-                  navigation.navigate(
-                    "LoanForm",
-                    {
-                      id: loan.id,
-                    }
-                  )
+                  navigation.navigate("LoanForm", {
+                    id: loan.id,
+                  })
                 }
               />
             </>
@@ -607,12 +555,9 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 icon="cash-fast"
                 title="Pay EMI"
                 onPress={() =>
-                  navigation.navigate(
-                    "LoanPayment",
-                    {
-                      id: loan.id,
-                    }
-                  )
+                  navigation.navigate("LoanPayment", {
+                    id: loan.id,
+                  })
                 }
               />
 
@@ -623,13 +568,10 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 icon="cash-plus"
                 title="Top Up"
                 onPress={() =>
-                  navigation.navigate(
-                    "TopUp",
-                    {
-                      id: loan.id,
-                      loanName: loan.loan_name,
-                    }
-                  )
+                  navigation.navigate("TopUp", {
+                    id: loan.id,
+                    loanName: loan.loan_name,
+                  })
                 }
               />
 
@@ -640,13 +582,10 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 icon="trending-up"
                 title="Prepay"
                 onPress={() =>
-                  navigation.navigate(
-                    "LoanPayment",
-                    {
-                      id: loan.id,
-                      mode: "prepayment",
-                    }
-                  )
+                  navigation.navigate("LoanPayment", {
+                    id: loan.id,
+                    mode: "prepayment",
+                  })
                 }
               />
 
@@ -657,12 +596,9 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 icon="bank-remove"
                 title="Close"
                 onPress={() =>
-                  navigation.navigate(
-                    "LoanForeclose",
-                    {
-                      id: loan.id,
-                    }
-                  )
+                  navigation.navigate("LoanForeclose", {
+                    id: loan.id,
+                  })
                 }
               />
 
@@ -673,12 +609,9 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 icon="history"
                 title="History"
                 onPress={() =>
-                  navigation.navigate(
-                    "LoanHistory",
-                    {
-                      id: loan.id,
-                    }
-                  )
+                  navigation.navigate("LoanHistory", {
+                    id: loan.id,
+                  })
                 }
               />
 
@@ -688,11 +621,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 bg="#E2E8F0"
                 icon="file-chart"
                 title="Reports"
-                onPress={() =>
-                  navigation.navigate(
-                    "LoanReports"
-                  )
-                }
+                onPress={() => navigation.navigate("LoanReports")}
               />
 
               <ActionButton
@@ -702,12 +631,9 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 icon="pencil"
                 title="Edit"
                 onPress={() =>
-                  navigation.navigate(
-                    "LoanForm",
-                    {
-                      id: loan.id,
-                    }
-                  )
+                  navigation.navigate("LoanForm", {
+                    id: loan.id,
+                  })
                 }
               />
             </>
@@ -740,24 +666,16 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 minWidth: 0,
               }}
             >
-              <Text style={styles.activityTitle}>
-                Loan Activity
-              </Text>
+              <Text style={styles.activityTitle}>Loan Activity</Text>
 
-              <Text
-                style={styles.activitySubtitle}
-                numberOfLines={2}
-              >
-                Payments and top-ups recorded for this
-                loan
+              <Text style={styles.activitySubtitle} numberOfLines={2}>
+                Payments and top-ups recorded for this loan
               </Text>
             </View>
           </View>
 
           <View style={styles.activityCount}>
-            <Text style={styles.activityCountText}>
-              {linkedTxs.length}
-            </Text>
+            <Text style={styles.activityCountText}>{linkedTxs.length}</Text>
           </View>
         </View>
 
@@ -773,129 +691,83 @@ export default function LoanDetailsScreen({ route, navigation }) {
               />
             </View>
 
-            <Text style={styles.activityEmptyTitle}>
-              No loan activity yet
-            </Text>
+            <Text style={styles.activityEmptyTitle}>No loan activity yet</Text>
 
             <Text style={styles.activityEmptyText}>
-              Payments and additional borrowing will
-              appear here.
+              Payments and additional borrowing will appear here.
             </Text>
           </View>
         ) : (
           <View style={styles.activityList}>
             {linkedTxs.map((tx, index) => {
-              const amount = Number(
-                tx.amount || 0
-              );
+              const amount = Number(tx.amount || 0);
 
-              const principal = Number(
-                tx.principal_component || 0
-              );
+              const principal = Number(tx.principal_component || 0);
 
-              const interest = Number(
-                tx.interest_component || 0
-              );
+              const interest = Number(tx.interest_component || 0);
 
               const balance = Number(
-                tx.outstanding_after_payment ??
-                loan.outstanding_amount ??
-                0
+                tx.outstanding_after_payment ?? loan.outstanding_amount ?? 0,
               );
 
-              const note = String(
-                tx.notes || ""
-              ).toLowerCase();
+              const note = String(tx.notes || "").toLowerCase();
 
               const isTopUp =
                 note.includes("top up") ||
                 note.includes("topup") ||
-                note.includes(
-                  "additional borrowing"
-                ) ||
+                note.includes("additional borrowing") ||
                 note.includes("borrowed");
 
               const isPayment = !isTopUp;
 
               const transactionType = String(
-                tx.type ||
-                tx.transaction_type ||
-                tx.direction ||
-                ""
+                tx.type || tx.transaction_type || tx.direction || "",
               ).toLowerCase();
 
               const isExpense =
                 transactionType === "expense" ||
                 transactionType === "debit" ||
-                transactionType ===
-                "debit_expense";
+                transactionType === "debit_expense";
 
-              const activityTitle = isTopUp
-                ? "Loan Top Up"
-                : "Loan Payment";
+              const activityTitle = isTopUp ? "Loan Top Up" : "Loan Payment";
 
               const activityDescription = isTopUp
                 ? "Additional amount added to this loan"
                 : "Payment made towards this loan";
 
-              const activityIcon = isTopUp
-                ? "cash-plus"
-                : "cash-check";
+              const activityIcon = isTopUp ? "cash-plus" : "cash-check";
 
-              const activityColor = isTopUp
-                ? "#7C3AED"
-                : "#16A34A";
+              const activityColor = isTopUp ? "#7C3AED" : "#16A34A";
 
-              const activityBg = isTopUp
-                ? "#EDE9FE"
-                : "#DCFCE7";
+              const activityBg = isTopUp ? "#EDE9FE" : "#DCFCE7";
 
-              const transactionColor = isExpense
-                ? "#DC2626"
-                : activityColor;
+              const transactionColor = isExpense ? "#DC2626" : activityColor;
 
-              const transactionBg = isExpense
-                ? "#FEE2E2"
-                : activityBg;
+              const transactionBg = isExpense ? "#FEE2E2" : activityBg;
 
-              const transactionDate =
-                new Date(tx.date);
+              const transactionDate = new Date(tx.date);
 
-              const formattedDate =
-                Number.isNaN(
-                  transactionDate.getTime()
-                )
-                  ? "Date unavailable"
-                  : transactionDate.toLocaleDateString(
-                    "en-IN",
-                    {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    }
-                  );
+              const formattedDate = Number.isNaN(transactionDate.getTime())
+                ? "Date unavailable"
+                : transactionDate.toLocaleDateString("en-IN", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  });
 
-              const formattedTime =
-                Number.isNaN(
-                  transactionDate.getTime()
-                )
-                  ? ""
-                  : transactionDate.toLocaleTimeString(
-                    "en-IN",
-                    {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }
-                  );
+              const formattedTime = Number.isNaN(transactionDate.getTime())
+                ? ""
+                : transactionDate.toLocaleTimeString("en-IN", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
 
               return (
                 <View
                   key={tx.id}
                   style={[
                     styles.activityRow,
-                    index ===
-                    linkedTxs.length - 1 &&
-                    styles.activityRowLast,
+                    index === linkedTxs.length - 1 && styles.activityRowLast,
                   ]}
                 >
                   {/* ================= TIMELINE ================= */}
@@ -905,32 +777,20 @@ export default function LoanDetailsScreen({ route, navigation }) {
                       style={[
                         styles.activityTimelineIcon,
                         {
-                          backgroundColor:
-                            transactionBg,
+                          backgroundColor: transactionBg,
                         },
                       ]}
                     >
                       <MaterialCommunityIcons
-                        name={
-                          isExpense
-                            ? "cash-minus"
-                            : activityIcon
-                        }
+                        name={isExpense ? "cash-minus" : activityIcon}
                         size={20}
-                        color={
-                          transactionColor
-                        }
+                        color={transactionColor}
                       />
                     </View>
 
-                    {index !==
-                      linkedTxs.length - 1 && (
-                        <View
-                          style={
-                            styles.activityTimelineLine
-                          }
-                        />
-                      )}
+                    {index !== linkedTxs.length - 1 && (
+                      <View style={styles.activityTimelineLine} />
+                    )}
                   </View>
 
                   {/* ================= ACTIVITY CARD ================= */}
@@ -940,40 +800,22 @@ export default function LoanDetailsScreen({ route, navigation }) {
                     style={[
                       styles.activityItemCard,
                       {
-                        borderLeftColor:
-                          activityColor,
+                        borderLeftColor: activityColor,
                       },
                     ]}
                     onPress={() =>
                       setExpandedActivityId(
-                        expandedActivityId ===
-                          tx.id
-                          ? null
-                          : tx.id
+                        expandedActivityId === tx.id ? null : tx.id,
                       )
                     }
                   >
                     {/* ================= TOP ================= */}
 
-                    <View
-                      style={
-                        styles.activityItemTop
-                      }
-                    >
-                      <View
-                        style={
-                          styles.activityItemTitleWrap
-                        }
-                      >
-                        <View
-                          style={
-                            styles.activityTitleRow
-                          }
-                        >
+                    <View style={styles.activityItemTop}>
+                      <View style={styles.activityItemTitleWrap}>
+                        <View style={styles.activityTitleRow}>
                           <Text
-                            style={
-                              styles.activityItemTitle
-                            }
+                            style={styles.activityItemTitle}
                             numberOfLines={2}
                           >
                             {activityTitle}
@@ -983,8 +825,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
                             style={[
                               styles.activityTypeBadge,
                               {
-                                backgroundColor:
-                                  transactionBg,
+                                backgroundColor: transactionBg,
                               },
                             ]}
                           >
@@ -992,8 +833,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
                               style={[
                                 styles.activityTypeBadgeText,
                                 {
-                                  color:
-                                    transactionColor,
+                                  color: transactionColor,
                                 },
                               ]}
                             >
@@ -1007,59 +847,36 @@ export default function LoanDetailsScreen({ route, navigation }) {
                         </View>
 
                         <Text
-                          style={
-                            styles.activityItemDescription
-                          }
+                          style={styles.activityItemDescription}
                           numberOfLines={2}
                         >
                           {isTopUp
                             ? activityDescription
-                            : tx.notes ||
-                            activityDescription}
+                            : tx.notes || activityDescription}
                         </Text>
 
-                        <View
-                          style={
-                            styles.activityMetaRow
-                          }
-                        >
-                          <View
-                            style={
-                              styles.activityMetaItem
-                            }
-                          >
+                        <View style={styles.activityMetaRow}>
+                          <View style={styles.activityMetaItem}>
                             <MaterialCommunityIcons
                               name="calendar-outline"
                               size={14}
                               color="#64748B"
                             />
 
-                            <Text
-                              style={
-                                styles.activityMetaText
-                              }
-                            >
+                            <Text style={styles.activityMetaText}>
                               {formattedDate}
                             </Text>
                           </View>
 
                           {!!formattedTime && (
-                            <View
-                              style={
-                                styles.activityMetaItem
-                              }
-                            >
+                            <View style={styles.activityMetaItem}>
                               <MaterialCommunityIcons
                                 name="clock-outline"
                                 size={14}
                                 color="#64748B"
                               />
 
-                              <Text
-                                style={
-                                  styles.activityMetaText
-                                }
-                              >
+                              <Text style={styles.activityMetaText}>
                                 {formattedTime}
                               </Text>
                             </View>
@@ -1069,33 +886,25 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
                       {/* Amount */}
 
-                      <View
-                        style={
-                          styles.activityAmountWrap
-                        }
-                      >
+                      <View style={styles.activityAmountWrap}>
                         <Text
                           style={[
                             styles.activityAmount,
                             {
-                              color:
-                                transactionColor,
+                              color: transactionColor,
                             },
                           ]}
                           numberOfLines={1}
                           adjustsFontSizeToFit
                           minimumFontScale={0.7}
                         >
-                          {isExpense
-                            ? "− "
-                            : "+ "}
+                          {isExpense ? "− " : "+ "}
                           <CurrencyText amount={amount} />
                         </Text>
 
                         <MaterialCommunityIcons
                           name={
-                            expandedActivityId ===
-                              tx.id
+                            expandedActivityId === tx.id
                               ? "chevron-up"
                               : "chevron-down"
                           }
@@ -1107,362 +916,214 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
                     {/* ================= EXPANDED DETAILS ================= */}
 
-                    {expandedActivityId ===
-                      tx.id && (
-                        <View
-                          style={
-                            styles.expandedActivity
-                          }
-                        >
-                          <View
-                            style={
-                              styles.expandedDivider
-                            }
-                          />
+                    {expandedActivityId === tx.id && (
+                      <View style={styles.expandedActivity}>
+                        <View style={styles.expandedDivider} />
 
-                          {/* Payment Breakdown */}
+                        {/* Payment Breakdown */}
 
-                          {isPayment && (
-                            <View
-                              style={
-                                styles.breakdownCard
-                              }
-                            >
-                              <View
-                                style={
-                                  styles.breakdownHeader
-                                }
-                              >
-                                <MaterialCommunityIcons
-                                  name="chart-donut"
-                                  size={16}
-                                  color="#64748B"
-                                />
-
-                                <Text
-                                  style={
-                                    styles.breakdownHeaderText
-                                  }
-                                >
-                                  Payment Breakdown
-                                </Text>
-                              </View>
-
-                              <View
-                                style={
-                                  styles.breakdownGrid
-                                }
-                              >
-                                <View
-                                  style={
-                                    styles.breakdownItem
-                                  }
-                                >
-                                  <Text
-                                    style={
-                                      styles.breakdownLabel
-                                    }
-                                  >
-                                    Principal
-                                  </Text>
-
-                                  <Text
-                                    style={[
-                                      styles.breakdownValue,
-                                      {
-                                        color:
-                                          "#2563EB",
-                                      },
-                                    ]}
-                                    numberOfLines={1}
-                                    adjustsFontSizeToFit
-                                    minimumFontScale={
-                                      0.7
-                                    }
-                                  >
-                                    <CurrencyText amount={principal} />
-                                  </Text>
-                                </View>
-
-                                <View
-                                  style={
-                                    styles.breakdownDivider
-                                  }
-                                />
-
-                                <View
-                                  style={
-                                    styles.breakdownItem
-                                  }
-                                >
-                                  <Text
-                                    style={
-                                      styles.breakdownLabel
-                                    }
-                                  >
-                                    Interest
-                                  </Text>
-
-                                  <Text
-                                    style={[
-                                      styles.breakdownValue,
-                                      {
-                                        color:
-                                          "#EA580C",
-                                      },
-                                    ]}
-                                    numberOfLines={1}
-                                    adjustsFontSizeToFit
-                                    minimumFontScale={
-                                      0.7
-                                    }
-                                  >
-                                    <CurrencyText amount={interest} />
-                                  </Text>
-                                </View>
-
-                                <View
-                                  style={
-                                    styles.breakdownDivider
-                                  }
-                                />
-
-                                <View
-                                  style={
-                                    styles.breakdownItem
-                                  }
-                                >
-                                  <Text
-                                    style={
-                                      styles.breakdownLabel
-                                    }
-                                  >
-                                    Balance After
-                                  </Text>
-
-                                  <Text
-                                    style={[
-                                      styles.breakdownValue,
-                                      {
-                                        color:
-                                          "#DC2626",
-                                      },
-                                    ]}
-                                    numberOfLines={1}
-                                    adjustsFontSizeToFit
-                                    minimumFontScale={
-                                      0.7
-                                    }
-                                  >
-                                    <CurrencyText amount={balance} />
-                                  </Text>
-                                </View>
-                              </View>
-                            </View>
-                          )}
-
-                          {/* Top Up Information */}
-
-                          {isTopUp && (
-                            <View
-                              style={
-                                styles.topUpInfo
-                              }
-                            >
+                        {isPayment && (
+                          <View style={styles.breakdownCard}>
+                            <View style={styles.breakdownHeader}>
                               <MaterialCommunityIcons
-                                name="information-outline"
-                                size={17}
-                                color="#7C3AED"
+                                name="chart-donut"
+                                size={16}
+                                color="#64748B"
                               />
 
+                              <Text style={styles.breakdownHeaderText}>
+                                Payment Breakdown
+                              </Text>
+                            </View>
+
+                            <View style={styles.breakdownGrid}>
+                              <View style={styles.breakdownItem}>
+                                <Text style={styles.breakdownLabel}>
+                                  Principal
+                                </Text>
+
+                                <Text
+                                  style={[
+                                    styles.breakdownValue,
+                                    {
+                                      color: "#2563EB",
+                                    },
+                                  ]}
+                                  numberOfLines={1}
+                                  adjustsFontSizeToFit
+                                  minimumFontScale={0.7}
+                                >
+                                  <CurrencyText amount={principal} />
+                                </Text>
+                              </View>
+
+                              <View style={styles.breakdownDivider} />
+
+                              <View style={styles.breakdownItem}>
+                                <Text style={styles.breakdownLabel}>
+                                  Interest
+                                </Text>
+
+                                <Text
+                                  style={[
+                                    styles.breakdownValue,
+                                    {
+                                      color: "#EA580C",
+                                    },
+                                  ]}
+                                  numberOfLines={1}
+                                  adjustsFontSizeToFit
+                                  minimumFontScale={0.7}
+                                >
+                                  <CurrencyText amount={interest} />
+                                </Text>
+                              </View>
+
+                              <View style={styles.breakdownDivider} />
+
+                              <View style={styles.breakdownItem}>
+                                <Text style={styles.breakdownLabel}>
+                                  Balance After
+                                </Text>
+
+                                <Text
+                                  style={[
+                                    styles.breakdownValue,
+                                    {
+                                      color: "#DC2626",
+                                    },
+                                  ]}
+                                  numberOfLines={1}
+                                  adjustsFontSizeToFit
+                                  minimumFontScale={0.7}
+                                >
+                                  <CurrencyText amount={balance} />
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
+                        )}
+
+                        {/* Top Up Information */}
+
+                        {isTopUp && (
+                          <View style={styles.topUpInfo}>
+                            <MaterialCommunityIcons
+                              name="information-outline"
+                              size={17}
+                              color="#7C3AED"
+                            />
+
+                            <Text style={styles.topUpInfoText}>
+                              <CurrencyText amount={amount} /> was added to the
+                              loan balance.
+                            </Text>
+                          </View>
+                        )}
+
+                        {/* Transaction Details */}
+
+                        <View style={styles.transactionDetails}>
+                          <Text style={styles.transactionDetailsTitle}>
+                            Transaction Details
+                          </Text>
+
+                          <View style={styles.detailRow}>
+                            <Text style={styles.detailLabel}>Date & Time</Text>
+
+                            <Text style={styles.detailValue}>
+                              {formattedDate}
+                              {formattedTime ? ` • ${formattedTime}` : ""}
+                            </Text>
+                          </View>
+
+                          {!!tx.notes && (
+                            <View style={styles.detailRow}>
+                              <Text style={styles.detailLabel}>Notes</Text>
+
                               <Text
-                                style={
-                                  styles.topUpInfoText
-                                }
+                                style={styles.detailValue}
+                                numberOfLines={4}
                               >
-                                <CurrencyText amount={amount} />{" "}
-                                was added to the loan
-                                balance.
+                                {tx.notes}
                               </Text>
                             </View>
                           )}
 
-                          {/* Transaction Details */}
-
-                          <View
-                            style={
-                              styles.transactionDetails
-                            }
-                          >
-                            <Text
-                              style={
-                                styles.transactionDetailsTitle
-                              }
-                            >
-                              Transaction Details
-                            </Text>
-
-                            <View
-                              style={
-                                styles.detailRow
-                              }
-                            >
-                              <Text
-                                style={
-                                  styles.detailLabel
-                                }
-                              >
-                                Date & Time
+                          {!!tx.source_name && (
+                            <View style={styles.detailRow}>
+                              <Text style={styles.detailLabel}>
+                                Payment Source
                               </Text>
 
                               <Text
-                                style={
-                                  styles.detailValue
-                                }
+                                style={styles.detailValue}
+                                numberOfLines={2}
                               >
-                                {formattedDate}
-                                {formattedTime
-                                  ? ` • ${formattedTime}`
-                                  : ""}
+                                {tx.source_name}
                               </Text>
                             </View>
+                          )}
 
-                            {!!tx.notes && (
-                              <View
-                                style={
-                                  styles.detailRow
-                                }
+                          {!!tx.category_name && (
+                            <View style={styles.detailRow}>
+                              <Text style={styles.detailLabel}>Category</Text>
+
+                              <Text
+                                style={styles.detailValue}
+                                numberOfLines={2}
                               >
-                                <Text
-                                  style={
-                                    styles.detailLabel
-                                  }
-                                >
-                                  Notes
-                                </Text>
-
-                                <Text
-                                  style={
-                                    styles.detailValue
-                                  }
-                                  numberOfLines={4}
-                                >
-                                  {tx.notes}
-                                </Text>
-                              </View>
-                            )}
-
-                            {!!tx.source_name && (
-                              <View
-                                style={
-                                  styles.detailRow
-                                }
-                              >
-                                <Text
-                                  style={
-                                    styles.detailLabel
-                                  }
-                                >
-                                  Payment Source
-                                </Text>
-
-                                <Text
-                                  style={
-                                    styles.detailValue
-                                  }
-                                  numberOfLines={2}
-                                >
-                                  {tx.source_name}
-                                </Text>
-                              </View>
-                            )}
-
-                            {!!tx.category_name && (
-                              <View
-                                style={
-                                  styles.detailRow
-                                }
-                              >
-                                <Text
-                                  style={
-                                    styles.detailLabel
-                                  }
-                                >
-                                  Category
-                                </Text>
-
-                                <Text
-                                  style={
-                                    styles.detailValue
-                                  }
-                                  numberOfLines={2}
-                                >
-                                  {tx.category_name}
-                                </Text>
-                              </View>
-                            )}
-                          </View>
-
-                          {/* Remove From Loan */}
-
-                          <TouchableOpacity
-                            activeOpacity={0.8}
-                            onPress={async (event) => {
-                              event.stopPropagation?.();
-
-                              try {
-                                await unlinkTransactionFromLoan(
-                                  tx.id
-                                );
-
-                                await loadLinkedTransactions();
-                                await refresh();
-
-                                if (
-                                  expandedActivityId ===
-                                  tx.id
-                                ) {
-                                  setExpandedActivityId(
-                                    null
-                                  );
-                                }
-
-                                setSnackbarMsg(
-                                  "Transaction removed from this loan."
-                                );
-                              } catch (e) {
-                                console.error(e);
-
-                                setSnackbarMsg(
-                                  e?.message ||
-                                  "Unable to remove this transaction."
-                                );
-                              }
-
-                              setSnackbarVisible(
-                                true
-                              );
-                            }}
-                            style={
-                              styles.unlinkButton
-                            }
-                          >
-                            <MaterialCommunityIcons
-                              name="link-variant-off"
-                              size={16}
-                              color="#DC2626"
-                            />
-
-                            <Text
-                              style={
-                                styles.unlinkButtonText
-                              }
-                            >
-                              Remove from loan
-                            </Text>
-                          </TouchableOpacity>
+                                {tx.category_name}
+                              </Text>
+                            </View>
+                          )}
                         </View>
-                      )}
+
+                        {/* Remove From Loan */}
+
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          onPress={async (event) => {
+                            event.stopPropagation?.();
+
+                            try {
+                              await unlinkTransactionFromLoan(tx.id);
+
+                              await loadLinkedTransactions();
+                              await refresh();
+
+                              if (expandedActivityId === tx.id) {
+                                setExpandedActivityId(null);
+                              }
+
+                              setSnackbarMsg(
+                                "Transaction removed from this loan.",
+                              );
+                            } catch (e) {
+                              console.error(e);
+
+                              setSnackbarMsg(
+                                e?.message ||
+                                  "Unable to remove this transaction.",
+                              );
+                            }
+
+                            setSnackbarVisible(true);
+                          }}
+                          style={styles.unlinkButton}
+                        >
+                          <MaterialCommunityIcons
+                            name="link-variant-off"
+                            size={16}
+                            color="#DC2626"
+                          />
+
+                          <Text style={styles.unlinkButtonText}>
+                            Remove from loan
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 </View>
               );
@@ -1475,14 +1136,11 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
       <Snackbar
         visible={snackbarVisible}
-        onDismiss={() =>
-          setSnackbarVisible(false)
-        }
+        onDismiss={() => setSnackbarVisible(false)}
         duration={3000}
         action={{
           label: "OK",
-          onPress: () =>
-            setSnackbarVisible(false),
+          onPress: () => setSnackbarVisible(false),
         }}
       >
         {snackbarMsg}

@@ -1,4 +1,4 @@
-import { executeSql } from './db';
+import { executeSql } from "./db";
 
 export async function createLoanTables() {
   // loans table
@@ -24,7 +24,8 @@ export async function createLoanTables() {
     status TEXT DEFAULT 'Active',
     notes TEXT,
     created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now'))
+    updated_at TEXT DEFAULT (datetime('now')),
+    original_principal_amount REAL NULL
   );`);
 
   // loan payments table
@@ -48,7 +49,12 @@ export async function createLoanTables() {
   // ── Migration: add transaction_id if upgrading from older schema ──
   await executeSql(`
     ALTER TABLE loans ADD COLUMN transaction_id INTEGER NULL
-  `).catch(() => { });
+  `).catch(() => {});
+
+  // ── Migration: add original_principal_amount ──
+  await executeSql(`
+    ALTER TABLE loans ADD COLUMN original_principal_amount REAL NULL
+  `).catch(() => {});
 }
 
 export default createLoanTables;
