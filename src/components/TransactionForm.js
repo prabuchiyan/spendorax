@@ -51,15 +51,21 @@ export default function TransactionForm({
   onPressBill,
   sourceId: initialSourceId,
   categoryId: initialCategoryId,
+  initialType,
 }) {
-  const { visible: loaderVisible, show: showPageLoader, hide: hidePageLoader } = usePageLoader();
+  const {
+    visible: loaderVisible,
+    show: showPageLoader,
+    hide: hidePageLoader,
+  } = usePageLoader();
   const [amount, setAmount] = useState(
     isEdit && transaction ? String(transaction.amount) : "",
   );
   const [amountError, setAmountError] = useState(false);
   const [type, setType] = useState(
-    isEdit && transaction ? transaction.type : "expense",
+    isEdit && transaction ? transaction.type : initialType || "expense",
   );
+  const [isReady, setIsReady] = useState(false);
   const [categories, setCategories] = useState([]);
   const [sources, setSources] = useState([]);
   const [categoryUsage, setCategoryUsage] = useState({});
@@ -105,7 +111,7 @@ export default function TransactionForm({
     !((isEdit && transaction?.source_id) || (!isEdit && initialSourceId)),
   );
   const [showToAccountGrid, setShowToAccountGrid] = useState(
-    !(isEdit && transaction?.type === "transfer" && transaction?.toAccount)
+    !(isEdit && transaction?.type === "transfer" && transaction?.toAccount),
   );
   const [showSourceModal, setShowSourceModal] = useState(false);
   const [sourceSearch, setSourceSearch] = useState("");
@@ -125,6 +131,13 @@ export default function TransactionForm({
   const [showLoanActionSheet, setShowLoanActionSheet] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState(
+    isEdit && transaction
+      ? transaction.loan_id ||
+      transaction.is_counted === 0 ||
+      transaction.is_counted === false
+      : false,
+  );
   const [isCounted, setIsCounted] = useState(
     isEdit && transaction
       ? transaction.is_counted !== undefined
@@ -150,6 +163,7 @@ export default function TransactionForm({
         if (cancelled) return;
         setCategories(cats || []);
         setSources(src || []);
+        setIsReady(true);
         /* Everything below is secondary data.
          * It is intentionally loaded after the form's primary data has been rendered
          * so opening Add Transaction does not wait for transaction history, notes or loans. */
@@ -195,6 +209,7 @@ export default function TransactionForm({
       } catch (error) {
         if (cancelled) return;
         console.warn("TransactionForm initial load failed:", error);
+        setIsReady(true);
       }
     }
     loadInitialData();
@@ -246,6 +261,20 @@ export default function TransactionForm({
       setShowSourceGrid(false);
     }
   }, [isEdit, transaction]);
+
+  useEffect(() => {
+    if (!isEdit) {
+      if (initialType) setType(initialType);
+      if (initialCategoryId) {
+        setCategoryId(initialCategoryId);
+        setShowCategoryGrid(false);
+      }
+      if (initialSourceId) {
+        setSourceId(initialSourceId);
+        setShowSourceGrid(false);
+      }
+    }
+  }, [initialType, initialCategoryId, initialSourceId, isEdit]);
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -439,6 +468,21 @@ export default function TransactionForm({
 
   const filterTimeoutRef = useRef(null);
 
+  if (!isReady) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: 200,
+        }}
+      >
+        <ActivityIndicator size="large" color="#4B7CF3" />
+      </View>
+    );
+  }
+
   const handleNotesChange = (text) => {
     setNotes(text);
     setNotesError(false);
@@ -542,6 +586,7 @@ export default function TransactionForm({
 
   return (
     <ScrollView
+      style={{ flex: 1 }}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="none"
       nestedScrollEnabled
@@ -631,62 +676,54 @@ export default function TransactionForm({
           marginBottom: 12,
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Chip
-            mode="outlined"
-            selected={type === "expense"}
-            showSelectedCheck={false}
-            onPress={() => {
-              setType("expense");
-              markDirty();
-            }}
-            disabled={submitting}
-            style={{
-              marginRight: 8,
-              borderColor: type === "expense" ? accent : undefined,
-            }}
-          >
-            Expense
-          </Chip>
-
-          <Chip
-            mode="outlined"
-            selected={type === "income"}
-            showSelectedCheck={false}
-            onPress={() => {
-              setType("income");
-              markDirty();
-            }}
-            disabled={submitting}
-            style={{
-              marginRight: 8,
-              borderColor: type === "income" ? accent : undefined,
-            }}
-          >
-            Income
-          </Chip>
-
-          {!isEdit && (
-            <Chip
-              mode="outlined"
-              selected={type === "transfer"}
-              showSelectedCheck={false}
-              onPress={() => {
-                setType("transfer");
-                markDirty();
-              }}
-              disabled={submitting}
-              style={{
-                borderColor: type === "transfer" ? "#000" : undefined,
-              }}
-              textStyle={{
-                color: type === "transfer" ? "#000" : undefined,
-                fontWeight: type === "transfer" ? "700" : "normal",
-              }}
-            >
-              Transfer
-            </Chip>
-          )}
+        <View
+          style={{
+            flex: 1,
+            flexDirection: "row",
+            backgroundColor: "#F4F6F8",
+            borderRadius: 12,
+            padding: 3,
+            marginRight: isEdit ? 12 : 0,
+          }}
+        >
+          {[
+            { id: "expense", label: "Expense", activeColor: "#E46A6A" },
+            { id: "income", label: "Income", activeColor: "#36B37E" },
+            ...(!isEdit
+              ? [{ id: "transfer", label: "Transfer", activeColor: "#000" }]
+              : []),
+          ].map((tab) => {
+            const active = type === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                disabled={submitting}
+                onPress={() => {
+                  setType(tab.id);
+                  markDirty();
+                }}
+                style={{
+                  flex: 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingVertical: 8,
+                  borderRadius: 9,
+                  backgroundColor: active ? "#FFFFFF" : "transparent",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: "800",
+                    color: active ? tab.activeColor : "#718078",
+                  }}
+                >
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {isEdit && (
@@ -1280,263 +1317,544 @@ export default function TransactionForm({
         )}
       </View>
 
-      {/* Loan Payment */}
-      {activeLoans.length > 0 && type !== "transfer" && (
-        <View style={{ marginBottom: 18 }}>
-          <Text style={{ marginBottom: 8, color: "#666" }}>
-            Link to Loan (Optional)
-          </Text>
-          {!selectedLoanId ? (
-            <TouchableOpacity
-              disabled={submitting}
-              activeOpacity={0.85}
-              onPress={() => {
-                setLoanSearch("");
-                setShowLoanModal(true);
-              }}
+      {type !== "transfer" && (
+        <View style={{ marginBottom: 18, alignItems: "center" }}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setShowMoreOptions(true)}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              paddingVertical: 10,
+              paddingHorizontal: 16,
+              backgroundColor: "#F4F6F8",
+              borderRadius: 20,
+            }}
+          >
+            <MaterialCommunityIcons name="tune" size={18} color="#4B7CF3" />
+            <Text
               style={{
-                backgroundColor: "#EEF4FF",
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: "#4B7CF3",
-                padding: 16,
+                marginLeft: 8,
+                fontSize: 14,
+                fontWeight: "700",
+                color: "#4B7CF3",
               }}
             >
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <View
-                  style={{
-                    width: 54,
-                    height: 54,
-                    borderRadius: 27,
-                    backgroundColor: "#4B7CF3",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    marginRight: 14,
-                  }}
-                >
-                  <MaterialCommunityIcons
-                    name="bank-outline"
-                    size={28}
-                    color="#fff"
-                  />
-                </View>
+              More Options
+            </Text>
+            {(!isCounted || selectedLoanId) && (
+              <View
+                style={{
+                  marginLeft: 8,
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: "#E46A6A",
+                }}
+              />
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
-                <View style={{ flex: 1 }}>
+      {/* MORE OPTIONS BOTTOM SHEET MODAL */}
+      <Modal
+        visible={showMoreOptions}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowMoreOptions(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            justifyContent: "flex-end",
+          }}
+        >
+          {/* Dismiss area */}
+          <TouchableOpacity
+            style={{ flex: 1, width: "100%" }}
+            activeOpacity={1}
+            onPress={() => setShowMoreOptions(false)}
+          />
+
+          <View
+            style={{
+              backgroundColor: "#fff",
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              padding: 20,
+              paddingBottom: 40,
+              maxHeight: "85%",
+            }}
+          >
+            {/* Drag Handle */}
+            <View
+              style={{
+                width: 40,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: "#D1D5DB",
+                alignSelf: "center",
+                marginBottom: 24,
+              }}
+            />
+
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 20,
+              }}
+            >
+              <Text style={{ fontSize: 20, fontWeight: "800", color: "#222" }}>
+                More Options
+              </Text>
+              <TouchableOpacity onPress={() => setShowMoreOptions(false)}>
+                <MaterialCommunityIcons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {type !== "transfer" && (
+                <View>
                   <Text
-                    style={{ fontSize: 17, fontWeight: "700", color: "#222" }}
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "800",
+                      color: "#94A3B8",
+                      marginBottom: 12,
+                      textTransform: "uppercase",
+                      letterSpacing: 0.8,
+                    }}
                   >
-                    Link to Loan
+                    Visibility
                   </Text>
-                  <Text style={{ color: "#666", marginTop: 3, lineHeight: 20 }}>
-                    {type === "expense"
-                      ? "Counts as EMI / prepayment on a borrowed loan, or lending more on a lent loan"
-                      : "Counts as a top-up on a borrowed loan, or repayment received on a lent loan"}
-                  </Text>
-                </View>
-
-                <MaterialCommunityIcons
-                  name="chevron-right"
-                  size={28}
-                  color="#4B7CF3"
-                />
-              </View>
-            </TouchableOpacity>
-          ) : (
-            (() => {
-              const loan = activeLoans.find((l) => l.id === selectedLoanId);
-              // Safety check:
-              // If the selected loan is no longer active, don't display the linked loan card.
-              if (!loan) {
-                return null;
-              }
-              // Derive the effect label from loan direction + transaction type
-              const loanDir = (
-                loan?.loan_direction || "BORROWED"
-              ).toUpperCase();
-              const isLentLoan = loanDir === "LENT";
-
-              // effect: what this transaction means for the loan
-              const effectLabel = (() => {
-                if (type === "expense") {
-                  return isLentLoan
-                    ? "Lend More (increases outstanding)"
-                    : "EMI / Payment (reduces outstanding)";
-                }
-                // income
-                return isLentLoan
-                  ? "Repayment Received (reduces outstanding)"
-                  : "Top Up (increases outstanding)";
-              })();
-
-              const effectColor = (() => {
-                if (type === "expense") {
-                  return isLentLoan ? "#7C3AED" : "#16A34A";
-                }
-                return isLentLoan ? "#16A34A" : "#7C3AED";
-              })();
-
-              const effectIcon = (() => {
-                if (type === "expense") {
-                  return isLentLoan ? "cash-plus" : "cash-minus";
-                }
-                return isLentLoan ? "cash-check" : "bank-plus";
-              })();
-
-              return (
-                <TouchableOpacity
-                  activeOpacity={0.9}
-                  style={{
-                    backgroundColor: "#F4FFF7",
-                    borderRadius: 16,
-                    borderWidth: 1,
-                    borderColor: "#36B37E",
-                    padding: 16,
-                  }}
-                >
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <View
-                      style={{
-                        width: 54,
-                        height: 54,
-                        borderRadius: 27,
-                        backgroundColor: "#36B37E",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        marginRight: 14,
-                      }}
-                    >
-                      <MaterialCommunityIcons
-                        name="bank-check"
-                        size={28}
-                        color="#fff"
-                      />
-                    </View>
-
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          fontSize: 17,
-                          fontWeight: "700",
-                          color: "#222",
-                        }}
-                      >
-                        {loan?.loan_name}
-                      </Text>
-
-                      <Text style={{ marginTop: 3, color: "#666" }}>
-                        Outstanding ₹
-                        {Number(loan?.outstanding_amount || 0).toLocaleString(
-                          "en-IN",
-                        )}
-                      </Text>
-
-                      {/* Effect indicator */}
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          marginTop: 8,
-                          backgroundColor: effectColor + "15",
-                          borderRadius: 8,
-                          paddingHorizontal: 8,
-                          paddingVertical: 5,
-                          alignSelf: "flex-start",
-                        }}
-                      >
-                        <MaterialCommunityIcons
-                          name={effectIcon}
-                          size={14}
-                          color={effectColor}
-                        />
-                        <Text
-                          style={{
-                            marginLeft: 5,
-                            fontSize: 12,
-                            fontWeight: "700",
-                            color: effectColor,
-                          }}
-                        >
-                          {effectLabel}
-                        </Text>
-                      </View>
-
-                      <Text
-                        style={{
-                          marginTop: 6,
-                          color: "#36B37E",
-                          fontWeight: "700",
-                        }}
-                      >
-                        ✓ Linked
-                      </Text>
-                    </View>
-                  </View>
+                  {/* is_counted toggle ΓÇö only for expense and income, not transfer */}
 
                   <View
                     style={{
                       flexDirection: "row",
-                      justifyContent: "flex-end",
-                      marginTop: 14,
+                      alignItems: "center",
+                      marginTop: 10,
+                      marginBottom: 4,
+                      paddingHorizontal: 2,
                     }}
                   >
-                    <PaperButton
-                      compact
-                      onPress={() => {
-                        setLoanSearch("");
-                        setShowLoanModal(true);
-                      }}
+                    <TouchableOpacity
                       disabled={submitting}
+                      onPress={() => {
+                        setIsCounted((v) => !v);
+                        markDirty();
+                      }}
+                      activeOpacity={0.8}
+                      style={{
+                        flex: 1,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        backgroundColor: isCounted
+                          ? type === "expense"
+                            ? "#FFF2F2"
+                            : "#F1FFF6"
+                          : "#F3F4F6",
+                        borderRadius: 20,
+                        borderWidth: 1,
+                        borderColor: isCounted
+                          ? type === "expense"
+                            ? "#E46A6A"
+                            : "#36B37E"
+                          : "#D1D5DB",
+                        paddingHorizontal: 12,
+                        paddingVertical: 7,
+                      }}
                     >
-                      Change
-                    </PaperButton>
-
-                    {isEdit ? (
-                      <PaperButton
-                        compact
-                        textColor="#E46A6A"
-                        disabled={linking || submitting}
-                        onPress={async () => {
-                          if (linking || submitting || !transaction?.id) return;
-                          try {
-                            setLinking(true);
-                            // Show global loader because Unlink is outside the loan modal
-                            showPageLoader();
-                            await unlinkTransactionFromLoan(transaction.id);
-                            setSelectedLoanId(null);
-                            setLoanSearch("");
-                          } catch (e) {
-                            console.error(
-                              "[TransactionForm] Unlink loan failed:",
-                              e,
-                            );
-                          } finally {
-                            setLinking(false);
-                            hidePageLoader();
-                          }
+                      {/* Toggle track */}
+                      <View
+                        style={{
+                          width: 36,
+                          height: 20,
+                          borderRadius: 10,
+                          backgroundColor: isCounted
+                            ? type === "expense"
+                              ? "#E46A6A"
+                              : "#36B37E"
+                            : "#D1D5DB",
+                          justifyContent: "center",
+                          paddingHorizontal: 2,
+                          marginRight: 10,
                         }}
                       >
-                        Unlink
-                      </PaperButton>
-                    ) : (
-                      <PaperButton
-                        compact
-                        textColor="#E46A6A"
-                        disabled={submitting}
-                        onPress={() => {
-                          setSelectedLoanId(null);
-                          markDirty();
-                        }}
-                      >
-                        Clear
-                      </PaperButton>
-                    )}
+                        <View
+                          style={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: 8,
+                            backgroundColor: "#fff",
+                            alignSelf: isCounted ? "flex-end" : "flex-start",
+                          }}
+                        />
+                      </View>
+                      {/* Full-width text area */}
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            fontWeight: "700",
+                            color: "#222",
+                          }}
+                        >
+                          {type === "expense"
+                            ? isCounted
+                              ? "Spend"
+                              : "Not a Spend"
+                            : isCounted
+                              ? "Income"
+                              : "Not a Income"}
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            color: "#888",
+                            marginTop: 1,
+                          }}
+                        >
+                          {isCounted
+                            ? "Included in everywhere"
+                            : "Excluded from everywhere"}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
                   </View>
-                </TouchableOpacity>
-              );
-            })()
-          )}
+
+                  <View
+                    style={{
+                      height: 1,
+                      backgroundColor: "#F1F5F9",
+                      marginVertical: 24,
+                    }}
+                  />
+
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "800",
+                      color: "#94A3B8",
+                      marginBottom: 12,
+                      textTransform: "uppercase",
+                      letterSpacing: 0.8,
+                    }}
+                  >
+                    Linked Loan
+                  </Text>
+                  {/* Loan Payment */}
+                  {activeLoans.length > 0 && type !== "transfer" && (
+                    <View style={{ marginBottom: 18 }}>
+                      <Text style={{ marginBottom: 8, color: "#666" }}>
+                        Link to Loan (Optional)
+                      </Text>
+                      {!selectedLoanId ? (
+                        <TouchableOpacity
+                          disabled={submitting}
+                          activeOpacity={0.85}
+                          onPress={() => {
+                            setLoanSearch("");
+                            setShowLoanModal(true);
+                          }}
+                          style={{
+                            backgroundColor: "#EEF4FF",
+                            borderRadius: 16,
+                            borderWidth: 1,
+                            borderColor: "#4B7CF3",
+                            padding: 16,
+                          }}
+                        >
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                            }}
+                          >
+                            <View
+                              style={{
+                                width: 54,
+                                height: 54,
+                                borderRadius: 27,
+                                backgroundColor: "#4B7CF3",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                marginRight: 14,
+                              }}
+                            >
+                              <MaterialCommunityIcons
+                                name="bank-outline"
+                                size={28}
+                                color="#fff"
+                              />
+                            </View>
+
+                            <View style={{ flex: 1 }}>
+                              <Text
+                                style={{
+                                  fontSize: 17,
+                                  fontWeight: "700",
+                                  color: "#222",
+                                }}
+                              >
+                                Link to Loan
+                              </Text>
+                              <Text
+                                style={{
+                                  color: "#666",
+                                  marginTop: 3,
+                                  lineHeight: 20,
+                                }}
+                              >
+                                {type === "expense"
+                                  ? "Counts as EMI / prepayment on a borrowed loan, or lending more on a lent loan"
+                                  : "Counts as a top-up on a borrowed loan, or repayment received on a lent loan"}
+                              </Text>
+                            </View>
+
+                            <MaterialCommunityIcons
+                              name="chevron-right"
+                              size={28}
+                              color="#4B7CF3"
+                            />
+                          </View>
+                        </TouchableOpacity>
+                      ) : (
+                        (() => {
+                          const loan = activeLoans.find(
+                            (l) => l.id === selectedLoanId,
+                          );
+                          // Safety check:
+                          // If the selected loan is no longer active, don't display the linked loan card.
+                          if (!loan) {
+                            return null;
+                          }
+                          // Derive the effect label from loan direction + transaction type
+                          const loanDir = (
+                            loan?.loan_direction || "BORROWED"
+                          ).toUpperCase();
+                          const isLentLoan = loanDir === "LENT";
+
+                          // effect: what this transaction means for the loan
+                          const effectLabel = (() => {
+                            if (type === "expense") {
+                              return isLentLoan
+                                ? "Lend More (increases outstanding)"
+                                : "EMI / Payment (reduces outstanding)";
+                            }
+                            // income
+                            return isLentLoan
+                              ? "Repayment Received (reduces outstanding)"
+                              : "Top Up (increases outstanding)";
+                          })();
+
+                          const effectColor = (() => {
+                            if (type === "expense") {
+                              return isLentLoan ? "#7C3AED" : "#16A34A";
+                            }
+                            return isLentLoan ? "#16A34A" : "#7C3AED";
+                          })();
+
+                          const effectIcon = (() => {
+                            if (type === "expense") {
+                              return isLentLoan ? "cash-plus" : "cash-minus";
+                            }
+                            return isLentLoan ? "cash-check" : "bank-plus";
+                          })();
+
+                          return (
+                            <TouchableOpacity
+                              activeOpacity={0.9}
+                              style={{
+                                backgroundColor: "#F4FFF7",
+                                borderRadius: 16,
+                                borderWidth: 1,
+                                borderColor: "#36B37E",
+                                padding: 16,
+                              }}
+                            >
+                              <View
+                                style={{
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                }}
+                              >
+                                <View
+                                  style={{
+                                    width: 54,
+                                    height: 54,
+                                    borderRadius: 27,
+                                    backgroundColor: "#36B37E",
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                    marginRight: 14,
+                                  }}
+                                >
+                                  <MaterialCommunityIcons
+                                    name="bank-check"
+                                    size={28}
+                                    color="#fff"
+                                  />
+                                </View>
+
+                                <View style={{ flex: 1 }}>
+                                  <Text
+                                    style={{
+                                      fontSize: 17,
+                                      fontWeight: "700",
+                                      color: "#222",
+                                    }}
+                                  >
+                                    {loan?.loan_name}
+                                  </Text>
+
+                                  <Text style={{ marginTop: 3, color: "#666" }}>
+                                    Outstanding ₹
+                                    {Number(
+                                      loan?.outstanding_amount || 0,
+                                    ).toLocaleString("en-IN")}
+                                  </Text>
+
+                                  {/* Effect indicator */}
+                                  <View
+                                    style={{
+                                      flexDirection: "row",
+                                      alignItems: "center",
+                                      marginTop: 8,
+                                      backgroundColor: effectColor + "15",
+                                      borderRadius: 8,
+                                      paddingHorizontal: 8,
+                                      paddingVertical: 5,
+                                      alignSelf: "flex-start",
+                                    }}
+                                  >
+                                    <MaterialCommunityIcons
+                                      name={effectIcon}
+                                      size={14}
+                                      color={effectColor}
+                                    />
+                                    <Text
+                                      style={{
+                                        marginLeft: 5,
+                                        fontSize: 12,
+                                        fontWeight: "700",
+                                        color: effectColor,
+                                      }}
+                                    >
+                                      {effectLabel}
+                                    </Text>
+                                  </View>
+
+                                  <Text
+                                    style={{
+                                      marginTop: 6,
+                                      color: "#36B37E",
+                                      fontWeight: "700",
+                                    }}
+                                  >
+                                    ✓ Linked
+                                  </Text>
+                                </View>
+                              </View>
+
+                              <View
+                                style={{
+                                  flexDirection: "row",
+                                  justifyContent: "flex-end",
+                                  marginTop: 14,
+                                }}
+                              >
+                                <PaperButton
+                                  compact
+                                  onPress={() => {
+                                    setLoanSearch("");
+                                    setShowLoanModal(true);
+                                  }}
+                                  disabled={submitting}
+                                >
+                                  Change
+                                </PaperButton>
+
+                                {isEdit ? (
+                                  <PaperButton
+                                    compact
+                                    textColor="#E46A6A"
+                                    disabled={linking || submitting}
+                                    onPress={() => {
+                                      if (
+                                        linking ||
+                                        submitting ||
+                                        !transaction?.id
+                                      )
+                                        return;
+                                      setLinking(true);
+                                      showPageLoader();
+
+                                      setTimeout(async () => {
+                                        try {
+                                          await unlinkTransactionFromLoan(
+                                            transaction.id,
+                                          );
+                                          setSelectedLoanId(null);
+                                          setLoanSearch("");
+                                        } catch (e) {
+                                          console.error(
+                                            "[TransactionForm] Unlink loan failed:",
+                                            e,
+                                          );
+                                        } finally {
+                                          setLinking(false);
+                                          hidePageLoader();
+                                        }
+                                      }, 0);
+                                    }}
+                                  >
+                                    Unlink
+                                  </PaperButton>
+                                ) : (
+                                  <PaperButton
+                                    compact
+                                    textColor="#E46A6A"
+                                    disabled={submitting}
+                                    onPress={() => {
+                                      setSelectedLoanId(null);
+                                      markDirty();
+                                    }}
+                                  >
+                                    Clear
+                                  </PaperButton>
+                                )}
+                              </View>
+                            </TouchableOpacity>
+                          );
+                        })()
+                      )}
+                    </View>
+                  )}
+                </View>
+              )}
+            </ScrollView>
+
+            <PaperButton
+              mode="contained"
+              onPress={() => setShowMoreOptions(false)}
+              style={{
+                backgroundColor: "#4B7CF3",
+                marginTop: 24,
+                borderRadius: 12,
+                paddingVertical: 4,
+              }}
+              labelStyle={{ fontSize: 16, fontWeight: "700" }}
+            >
+              Done
+            </PaperButton>
+          </View>
         </View>
-      )}
+      </Modal>
 
       <Modal
         visible={showCategoryModal}
@@ -2149,103 +2467,6 @@ export default function TransactionForm({
         />
       )}
 
-      {/* is_counted toggle — only for expense and income, not transfer */}
-      {type !== "transfer" && (
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            marginTop: 10,
-            marginBottom: 4,
-            paddingHorizontal: 2,
-          }}
-        >
-          <TouchableOpacity
-            disabled={submitting}
-            onPress={() => {
-              setIsCounted((v) => !v);
-              markDirty();
-            }}
-            activeOpacity={0.8}
-            style={{
-              flex: 1,
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: isCounted
-                ? type === "expense"
-                  ? "#FFF2F2"
-                  : "#F1FFF6"
-                : "#F3F4F6",
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: isCounted
-                ? type === "expense"
-                  ? "#E46A6A"
-                  : "#36B37E"
-                : "#D1D5DB",
-              paddingHorizontal: 12,
-              paddingVertical: 7,
-            }}
-          >
-            {/* Toggle track */}
-            <View
-              style={{
-                width: 36,
-                height: 20,
-                borderRadius: 10,
-                backgroundColor: isCounted
-                  ? type === "expense"
-                    ? "#E46A6A"
-                    : "#36B37E"
-                  : "#D1D5DB",
-                justifyContent: "center",
-                paddingHorizontal: 2,
-                marginRight: 10,
-              }}
-            >
-              <View
-                style={{
-                  width: 16,
-                  height: 16,
-                  borderRadius: 8,
-                  backgroundColor: "#fff",
-                  alignSelf: isCounted ? "flex-end" : "flex-start",
-                }}
-              />
-            </View>
-            {/* Full-width text area */}
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: "700",
-                  color: "#222",
-                }}
-              >
-                {type === "expense"
-                  ? isCounted
-                    ? "Spend"
-                    : "Not a Spend"
-                  : isCounted
-                    ? "Income"
-                    : "Not a Income"}
-              </Text>
-              <Text
-                style={{
-                  fontSize: 11,
-                  color: "#888",
-                  marginTop: 1,
-                }}
-              >
-                {isCounted
-                  ? "Included in everywhere"
-                  : "Excluded from everywhere"}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-      )}
-
       <View
         style={{ flexDirection: "row", alignItems: "center", marginTop: 12 }}
       >
@@ -2641,7 +2862,7 @@ export default function TransactionForm({
             </View>
           </View>
 
-          {/* LOADER — ABOVE THE LOAN POPUP */}
+          {/* LOADER ΓÇö ABOVE THE LOAN POPUP */}
           {linking && (
             <View
               pointerEvents="auto"
@@ -2805,33 +3026,35 @@ export default function TransactionForm({
                         paymentType: "FORECLOSURE",
                       },
                     ];
-                const doLink = async (paymentType) => {
-                  try {
-                    setLinking(true);
-                    showPageLoader();
-                    setShowLoanActionSheet(false);
+                const doLink = (paymentType) => {
+                  setLinking(true);
+                  showPageLoader();
 
-                    if (isEdit && transaction?.id) {
-                      await linkTransactionToLoan(
-                        transaction.id,
-                        pendingLoan.id,
-                        {
-                          paymentType,
-                          linkedDate: transaction.date || date,
-                        },
-                      );
+                  setTimeout(async () => {
+                    try {
+                      if (isEdit && transaction?.id) {
+                        await linkTransactionToLoan(
+                          transaction.id,
+                          pendingLoan.id,
+                          {
+                            paymentType,
+                            linkedDate: transaction.date || date,
+                          },
+                        );
+                      }
+
+                      setSelectedLoanId(pendingLoan.id);
+                      setPendingLoan(null);
+                      setLoanSearch("");
+                      markDirty();
+                    } catch (e) {
+                      console.error("[TransactionForm] Link loan failed:", e);
+                    } finally {
+                      setLinking(false);
+                      hidePageLoader();
+                      setShowLoanActionSheet(false);
                     }
-
-                    setSelectedLoanId(pendingLoan.id);
-                    setPendingLoan(null);
-                    setLoanSearch("");
-                    markDirty();
-                  } catch (e) {
-                    console.error("[TransactionForm] Link loan failed:", e);
-                  } finally {
-                    setLinking(false);
-                    hidePageLoader();
-                  }
+                  }, 0);
                 };
 
                 return (
