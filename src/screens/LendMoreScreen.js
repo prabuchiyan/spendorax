@@ -27,7 +27,7 @@ function FieldCard({ icon, title, value, color = "#2563EB", onPress, error, disa
         onPress={onPress}
         disabled={disabled}
         style={[
-          styles.fieldCard, 
+          styles.fieldCard,
           hasError && styles.fieldCardError,
           disabled && { opacity: 0.6 }
         ]}
@@ -380,264 +380,265 @@ export default function LendMoreScreen({ route, navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F3F6FB" }}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-      >
-        <Card style={{ borderRadius: 24, overflow: "hidden" }}>
-          {/* ── HEADER (purple, matching lend direction) ── */}
-          <View
-            style={{
-              backgroundColor: "#7C3AED",
-              margin: -16,
-              marginBottom: 18,
-              padding: 20,
-              borderBottomLeftRadius: 24,
-              borderBottomRightRadius: 24,
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <View
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 18,
-                  backgroundColor: "rgba(255,255,255,0.18)",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  marginRight: 16,
-                }}
-              >
-                <MaterialCommunityIcons
-                  name="hand-coin-outline"
-                  size={28}
-                  color="#FFF"
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{ color: "#FFF", fontSize: 22, fontWeight: "900" }}
-                >
-                  Lend More
-                </Text>
-                <Text style={{ color: "#DDD6FE", marginTop: 4 }}>
-                  Give additional money to borrower
-                </Text>
-              </View>
-            </View>
-
-            {/* Loan summary pill */}
-            {loan && (
-              <View
-                style={{
-                  marginTop: 22,
-                  backgroundColor: "rgba(255,255,255,0.12)",
-                  borderRadius: 18,
-                  padding: 16,
-                }}
-              >
-                <Text style={{ color: "#DDD6FE", fontSize: 12 }}>
-                  Lending To
-                </Text>
-                <Text
+      <View pointerEvents={loading ? "none" : "auto"} style={{ flex: 1, opacity: loading ? 0.6 : 1 }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+        >
+          <Card style={{ borderRadius: 24, overflow: "hidden" }}>
+            {/* ── HEADER (purple, matching lend direction) ── */}
+            <View
+              style={{
+                backgroundColor: "#7C3AED",
+                margin: -16,
+                marginBottom: 18,
+                padding: 20,
+                borderBottomLeftRadius: 24,
+                borderBottomRightRadius: 24,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <View
                   style={{
-                    color: "#FFF",
-                    marginTop: 4,
-                    fontWeight: "900",
-                    fontSize: 18,
+                    width: 56,
+                    height: 56,
+                    borderRadius: 18,
+                    backgroundColor: "rgba(255,255,255,0.18)",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    marginRight: 16,
                   }}
                 >
-                  {loan.loan_name}
-                </Text>
-                <Text style={{ color: "#DDD6FE", marginTop: 6 }}>
-                  Current Outstanding ₹
-                  {Number(loan.outstanding_amount || 0).toLocaleString("en-IN")}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* ── SOURCE ── */}
-          <FieldCard
-            icon="wallet-outline"
-            color="#16A34A"
-            title="Payment Source"
-            value={
-              selectedSource ? selectedSource.name : "Select Bank / Wallet"
-            }
-            error={errors.source}
-            disabled={loading}
-            onPress={() => {
-              setShowSourcePicker(true);
-
-              setErrors((prev) => ({
-                ...prev,
-                source: undefined,
-              }));
-            }}
-          />
-
-          {/* ── CATEGORY ── */}
-          <FieldCard
-            icon="shape-outline"
-            color="#EA580C"
-            title="Category"
-            value={selectedCategory ? selectedCategory.name : "Select Category"}
-            error={errors.category}
-            disabled={loading}
-            onPress={() => {
-              setShowCategoryPicker(true);
-
-              setErrors((prev) => ({
-                ...prev,
-                category: undefined,
-              }));
-            }}
-          />
-
-          {/* ── DATE & TIME ── */}
-          <FieldCard
-            icon="calendar-clock"
-            color="#7C3AED"
-            title="Date & Time"
-            value={formatDateTime(transactionDate)}
-            error={errors.date}
-            disabled={loading}
-            onPress={() => {
-              setErrors((prev) => ({
-                ...prev,
-                date: undefined,
-              }));
-
-              openDatePicker();
-            }}
-          />
-
-          {/* ── AMOUNT ── */}
-          <View style={styles.fieldWrapper}>
-            <View
-              style={[
-                styles.amountCard,
-                errors.amount && styles.amountCardError,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.amountLabel,
-                  errors.amount && styles.amountLabelError,
-                ]}
-              >
-                Amount to Lend
-                <Text style={styles.requiredMark}> *</Text>
-              </Text>
-
-              <View style={styles.amountRow}>
-                <View
-                  style={[
-                    styles.amountInputContainer,
-                    amountFocused && {
-                      borderColor: "#7C3AED",
-                      borderWidth: 2,
-                    },
-                    errors.amount && styles.amountInputError,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.currency,
-                      errors.amount
-                        ? styles.currencyError
-                        : { color: "#7C3AED" },
-                    ]}
-                  >
-                    ₹
-                  </Text>
-
-                  <TextInput
-                    editable={!loading}
-                    onFocus={() => setAmountFocused(true)}
-                    onBlur={() => setAmountFocused(false)}
-                    placeholder="Enter Amount"
-                    value={String(amount)}
-                    keyboardType="decimal-pad"
-                    selectionColor="#7C3AED"
-                    cursorColor="#7C3AED"
-                    underlineColorAndroid="transparent"
-                    placeholderTextColor="#94A3B8"
-                    maxLength={12}
-                    autoCorrect={false}
-                    style={[
-                      styles.amountInput,
-                      errors.amount && styles.amountInputTextError,
-                      { outlineStyle: "none" },
-                    ]}
-                    onChangeText={(text) => {
-                      let value = text.replace(/[^0-9.]/g, "");
-
-                      const dotIndex = value.indexOf(".");
-
-                      if (dotIndex !== -1) {
-                        value =
-                          value.substring(0, dotIndex + 1) +
-                          value.substring(dotIndex + 1).replace(/\./g, "");
-                      }
-
-                      setAmount(value);
-
-                      if (errors.amount) {
-                        setErrors((prev) => ({
-                          ...prev,
-                          amount: undefined,
-                        }));
-                      }
-                    }}
+                  <MaterialCommunityIcons
+                    name="hand-coin-outline"
+                    size={28}
+                    color="#FFF"
                   />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{ color: "#FFF", fontSize: 22, fontWeight: "900" }}
+                  >
+                    Lend More
+                  </Text>
+                  <Text style={{ color: "#DDD6FE", marginTop: 4 }}>
+                    Give additional money to borrower
+                  </Text>
                 </View>
               </View>
 
-              <FieldError message={errors.amount} />
+              {/* Loan summary pill */}
+              {loan && (
+                <View
+                  style={{
+                    marginTop: 22,
+                    backgroundColor: "rgba(255,255,255,0.12)",
+                    borderRadius: 18,
+                    padding: 16,
+                  }}
+                >
+                  <Text style={{ color: "#DDD6FE", fontSize: 12 }}>
+                    Lending To
+                  </Text>
+                  <Text
+                    style={{
+                      color: "#FFF",
+                      marginTop: 4,
+                      fontWeight: "900",
+                      fontSize: 18,
+                    }}
+                  >
+                    {loan.loan_name}
+                  </Text>
+                  <Text style={{ color: "#DDD6FE", marginTop: 6 }}>
+                    Current Outstanding ₹
+                    {Number(loan.outstanding_amount || 0).toLocaleString("en-IN")}
+                  </Text>
+                </View>
+              )}
             </View>
-          </View>
 
-          {/* ── NOTES ── */}
-          <View style={styles.notesCard}>
-            <Text style={styles.notesLabel}>Notes (Optional)</Text>
-            <TextInput
-              editable={!loading}
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="Add remarks (optional)"
-              placeholderTextColor="#94A3B8"
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              selectionColor="#7C3AED"
-              cursorColor="#7C3AED"
-              underlineColorAndroid="transparent"
-              maxLength={250}
-              style={[styles.notesInput, { outlineStyle: "none" }]}
-            />
-          </View>
+            {/* ── SOURCE ── */}
+            <FieldCard
+              icon="wallet-outline"
+              color="#16A34A"
+              title="Payment Source"
+              value={
+                selectedSource ? selectedSource.name : "Select Bank / Wallet"
+              }
+              error={errors.source}
 
-          <View style={{ marginTop: 10, marginBottom: 25 }}>
-            <PaperButton
-              mode="contained"
-              onPress={save}
-              loading={loading}
-              disabled={loading}
-              style={[styles.saveButton, { backgroundColor: "#7C3AED" }]}
-              contentStyle={{ height: 54 }}
-              labelStyle={{
-                fontSize: 16,
-                fontWeight: "800",
+              onPress={() => {
+                setShowSourcePicker(true);
+
+                setErrors((prev) => ({
+                  ...prev,
+                  source: undefined,
+                }));
               }}
-              icon={loading ? undefined : "hand-coin-outline"}
-            >
-              {loading ? "Recording..." : "Give Money"}
-            </PaperButton>
-          </View>
-        </Card>
-      </ScrollView>
+            />
+
+            {/* ── CATEGORY ── */}
+            <FieldCard
+              icon="shape-outline"
+              color="#EA580C"
+              title="Category"
+              value={selectedCategory ? selectedCategory.name : "Select Category"}
+              error={errors.category}
+
+              onPress={() => {
+                setShowCategoryPicker(true);
+
+                setErrors((prev) => ({
+                  ...prev,
+                  category: undefined,
+                }));
+              }}
+            />
+
+            {/* ── DATE & TIME ── */}
+            <FieldCard
+              icon="calendar-clock"
+              color="#7C3AED"
+              title="Date & Time"
+              value={formatDateTime(transactionDate)}
+              error={errors.date}
+
+              onPress={() => {
+                setErrors((prev) => ({
+                  ...prev,
+                  date: undefined,
+                }));
+
+                openDatePicker();
+              }}
+            />
+
+            {/* ── AMOUNT ── */}
+            <View style={styles.fieldWrapper}>
+              <View
+                style={[
+                  styles.amountCard,
+                  errors.amount && styles.amountCardError,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.amountLabel,
+                    errors.amount && styles.amountLabelError,
+                  ]}
+                >
+                  Amount to Lend
+                  <Text style={styles.requiredMark}> *</Text>
+                </Text>
+
+                <View style={styles.amountRow}>
+                  <View
+                    style={[
+                      styles.amountInputContainer,
+                      amountFocused && {
+                        borderColor: "#7C3AED",
+                        borderWidth: 2,
+                      },
+                      errors.amount && styles.amountInputError,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.currency,
+                        errors.amount
+                          ? styles.currencyError
+                          : { color: "#7C3AED" },
+                      ]}
+                    >
+                      ₹
+                    </Text>
+
+                    <TextInput
+                      editable={!loading}
+                      onFocus={() => setAmountFocused(true)}
+                      onBlur={() => setAmountFocused(false)}
+                      placeholder="Enter Amount"
+                      value={String(amount)}
+                      keyboardType="decimal-pad"
+                      selectionColor="#7C3AED"
+                      cursorColor="#7C3AED"
+                      underlineColorAndroid="transparent"
+                      placeholderTextColor="#94A3B8"
+                      maxLength={12}
+                      autoCorrect={false}
+                      style={[
+                        styles.amountInput,
+                        errors.amount && styles.amountInputTextError,
+                        { outlineStyle: "none" },
+                      ]}
+                      onChangeText={(text) => {
+                        let value = text.replace(/[^0-9.]/g, "");
+
+                        const dotIndex = value.indexOf(".");
+
+                        if (dotIndex !== -1) {
+                          value =
+                            value.substring(0, dotIndex + 1) +
+                            value.substring(dotIndex + 1).replace(/\./g, "");
+                        }
+
+                        setAmount(value);
+
+                        if (errors.amount) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            amount: undefined,
+                          }));
+                        }
+                      }}
+                    />
+                  </View>
+                </View>
+
+                <FieldError message={errors.amount} />
+              </View>
+            </View>
+
+            {/* ── NOTES ── */}
+            <View style={styles.notesCard}>
+              <Text style={styles.notesLabel}>Notes (Optional)</Text>
+              <TextInput
+                editable={!loading}
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="Add remarks (optional)"
+                placeholderTextColor="#94A3B8"
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                selectionColor="#7C3AED"
+                cursorColor="#7C3AED"
+                underlineColorAndroid="transparent"
+                maxLength={250}
+                style={[styles.notesInput, { outlineStyle: "none" }]}
+              />
+            </View>
+
+            <View style={{ marginTop: 10, marginBottom: 25 }}>
+              <PaperButton
+                mode="contained"
+                onPress={save}
+                loading={loading}
+                style={[styles.saveButton, { backgroundColor: loading ? "#A78BFA" : "#7C3AED" }]}
+                contentStyle={{ height: 54 }}
+                labelStyle={{
+                  fontSize: 16,
+                  fontWeight: "800",
+                }}
+                icon={loading ? undefined : "hand-coin-outline"}
+              >
+                {loading ? "Recording..." : "Give Money"}
+              </PaperButton>
+            </View>
+          </Card>
+        </ScrollView>
+      </View>
 
       {/* ── SOURCE PICKER MODAL ── */}
       <Modal visible={showSourcePicker} transparent animationType="slide">

@@ -385,9 +385,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
     const value = Number(amount);
 
     try {
-      // Immediately disable the button and show loader
       setLoading(true);
-
       // Give React Native one render cycle to display the loader
       await new Promise((resolve) => {
         requestAnimationFrame(resolve);
@@ -449,6 +447,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
         backgroundColor: "#F3F6FB",
       }}
     >
+    <View pointerEvents={loading ? "none" : "auto"} style={{ flex: 1, opacity: loading ? 0.6 : 1 }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
@@ -571,7 +570,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
             title="Loan"
             value={selectedLoan ? selectedLoan.loan_name : "Select Loan"}
             onPress={() => setShowLoanPicker(true)}
-            disabled={loading}
+            
           />
 
           <FieldCard
@@ -582,7 +581,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
               selectedSource ? selectedSource.name : "Select Bank / Wallet"
             }
             error={errors.source}
-            disabled={loading}
+            
             onPress={() => {
               setErrors((prev) => ({
                 ...prev,
@@ -598,7 +597,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
             title="Category"
             value={selectedCategory ? selectedCategory.name : "Select Category"}
             error={errors.category}
-            disabled={loading}
+            
             onPress={() => {
               setErrors((prev) => ({
                 ...prev,
@@ -614,7 +613,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
             title="Date & Time"
             value={formatDateTime(transactionDate)}
             error={errors.date}
-            disabled={loading}
+            
             onPress={() => {
               setErrors((prev) => ({
                 ...prev,
@@ -647,10 +646,10 @@ export default function LoanPaymentScreen({ route, navigation }) {
                     backgroundColor: "#FEF2F2",
                   },
                   amountFocused &&
-                    !errors.amount && {
-                      borderColor: "#2563EB",
-                      borderWidth: 2,
-                    },
+                  !errors.amount && {
+                    borderColor: "#2563EB",
+                    borderWidth: 2,
+                  },
                 ]}
               >
                 <Text
@@ -747,7 +746,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
                   activeOpacity={0.85}
                   onPress={() => setReduceEMI(!reduceEMI)}
                   style={[styles.toggle, reduceEMI && styles.toggleOn]}
-                  disabled={loading}
+                  
                 >
                   <View
                     style={[
@@ -788,7 +787,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
               mode="contained"
               onPress={save}
               loading={loading}
-              disabled={loading}
+              
               style={styles.saveButton}
               contentStyle={{
                 height: 54,
@@ -1228,6 +1227,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
           }}
         />
       </ScrollView>
+    </View>
     </View>
   );
 }

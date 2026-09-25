@@ -915,7 +915,6 @@ export default function LoanFormScreen({ navigation, route }) {
 
     try {
       setSubmitting(true);
-
       await new Promise((resolve) => {
         requestAnimationFrame(resolve);
       });

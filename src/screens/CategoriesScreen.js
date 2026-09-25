@@ -42,6 +42,7 @@ export default function CategoriesScreen({ route, navigation }) {
   const [confirmTargetId, setConfirmTargetId] = useState(null);
   const [confirmMessage, setConfirmMessage] = useState('Are you sure you want to delete this item?');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   async function load() {
     const rows = await getCategories(true);
@@ -86,14 +87,19 @@ export default function CategoriesScreen({ route, navigation }) {
   }
 
   async function saveEdit() {
-    await updateCategory(editingId, { name: editName, type: editType, icon: editIcon, color: editColor, is_active: 1 });
-    setEditingId(null);
-    setEditName('');
-    setEditType('expense');
-    setEditIcon('tag');
-    setEditColor('#4B7CF3');
-    setUserPickedIconEdit(false);
-    load();
+    setIsSaving(true);
+    try {
+      await updateCategory(editingId, { name: editName, type: editType, icon: editIcon, color: editColor, is_active: 1 });
+      setEditingId(null);
+      setEditName('');
+      setEditType('expense');
+      setEditIcon('tag');
+      setEditColor('#4B7CF3');
+      setUserPickedIconEdit(false);
+      load();
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function cancelEdit() {
@@ -390,6 +396,7 @@ export default function CategoriesScreen({ route, navigation }) {
                 <PaperTextInput
               value={editName}
               onChangeText={handleEditNameChange}
+              disabled={isSaving}
               mode="outlined"
               style={styles.editInput}
               label="Category Name"
@@ -404,6 +411,7 @@ export default function CategoriesScreen({ route, navigation }) {
                 'flat' :
                 'outlined'
                 }
+                disabled={isSaving}
                 selected={editType === 'expense'}
                 onPress={() => setEditType('expense')}
                 style={[
@@ -422,6 +430,7 @@ export default function CategoriesScreen({ route, navigation }) {
                 'flat' :
                 'outlined'
                 }
+                disabled={isSaving}
                 selected={editType === 'income'}
                 onPress={() => setEditType('income')}
                 style={[
@@ -438,6 +447,7 @@ export default function CategoriesScreen({ route, navigation }) {
                 <View style={styles.customizationRow}>
                   <TouchableOpacity
                 activeOpacity={0.75}
+                disabled={isSaving}
                 onPress={() =>
                 setShowIconPickerForEdit(true)
                 }
@@ -461,6 +471,7 @@ export default function CategoriesScreen({ route, navigation }) {
                   <IconButton
                 label="Colors"
                 icon="droplet"
+                disabled={isSaving}
                 onPress={() =>
                 setShowColorPickerForEdit(true)
                 } />
@@ -469,6 +480,7 @@ export default function CategoriesScreen({ route, navigation }) {
                   <IconButton
                 label="Icon"
                 icon="image"
+                disabled={isSaving}
                 onPress={() =>
                 setShowIconPickerForEdit(true)
                 } />
@@ -479,19 +491,17 @@ export default function CategoriesScreen({ route, navigation }) {
                   <PaperButton
                 mode="contained"
                 onPress={saveEdit}
+                loading={isSaving}
                 style={[
                 styles.saveButton,
                 {
-                  backgroundColor:
-                  editType === 'expense' ?
-                  '#E46A6A' :
-                  '#36B37E'
+                  backgroundColor: isSaving ? (editType === 'expense' ? '#F1A5A5' : '#8CE2B4') : (editType === 'expense' ? '#E46A6A' : '#36B37E')
                 }]
                 }
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.saveButtonLabel}>
                 
-                    Save
+                    {isSaving ? '' : 'Save'}
                   </PaperButton>
 
                   <View style={{ width: 10 }} />
@@ -499,6 +509,7 @@ export default function CategoriesScreen({ route, navigation }) {
                   <PaperButton
                 mode="outlined"
                 onPress={cancelEdit}
+                disabled={isSaving}
                 style={styles.cancelButton}
                 contentStyle={styles.buttonContent}>
                 

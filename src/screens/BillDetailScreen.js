@@ -391,6 +391,7 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [linkingId, setLinkingId] = useState(null);
 
   useEffect(() => {
     if (!visible || !bill) return;
@@ -601,7 +602,17 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
             showsVerticalScrollIndicator={false}
             renderItem={({ item: tx }) =>
             <TouchableOpacity
-              onPress={() => onLink(tx)}
+              onPress={() => {
+                setLinkingId(tx.id);
+                setTimeout(async () => {
+                  try {
+                    await onLink(tx);
+                  } finally {
+                    setLinkingId(null);
+                  }
+                }, 0);
+              }}
+              disabled={linkingId !== null}
               activeOpacity={0.7}
               style={{
                 flexDirection: "row",
@@ -667,16 +678,21 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
                     </Text>
                   </View>
                   {/* Amount */}
-                  <Text
-                style={{
-                  fontWeight: "800",
-                  color: "#E46A6A",
-                  marginLeft: 8,
-                  fontSize: 15
-                }}>
-                
-                    <CurrencyText amount={tx.amount} />
-                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Text
+                  style={{
+                    fontWeight: "800",
+                    color: "#E46A6A",
+                    marginLeft: 8,
+                    fontSize: 15
+                  }}>
+                  
+                      <CurrencyText amount={tx.amount} />
+                    </Text>
+                    {linkingId === tx.id && (
+                      <ActivityIndicator size="small" color={Colors.primary} style={{ marginLeft: 8 }} />
+                    )}
+                  </View>
                 </TouchableOpacity>
             } />
 
@@ -684,6 +700,7 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
           {/* Cancel */}
           <PaperButton
             mode="outlined"
+            disabled={linkingId !== null}
             onPress={onClose}
             style={{ marginTop: 10 }}>
             
@@ -817,8 +834,7 @@ function OccurrenceEditModal({ visible, occurrence, bill, onSave, onClose }) {
             <PaperButton
               mode="contained"
               loading={isSubmitting}
-              disabled={isSubmitting}
-              buttonColor="#2563EB"
+              buttonColor={isSubmitting ? "#93C5FD" : "#2563EB"}
               style={{ borderRadius: 12, paddingHorizontal: 8 }}
               onPress={async () => {
                 const amt = parseFloat(amount);
