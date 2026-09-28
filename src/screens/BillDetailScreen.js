@@ -1001,7 +1001,7 @@ export default function BillDetailScreen({ route, navigation }) {
 
             setEditing(false);
 
-            await load();
+            await load(selectedOcc?.id);
           } catch (e) {
             console.error("[BillDetail] Bill save refresh failed:", e);
           } finally {
@@ -1015,7 +1015,7 @@ export default function BillDetailScreen({ route, navigation }) {
 
   // ── helpers / actions ─────────────────────────────────────────────────────
 
-  async function load() {
+  async function load(preserveOccId = null) {
     if (!rawId) {
       hidePageLoader();
       return;
@@ -1052,7 +1052,10 @@ export default function BillDetailScreen({ route, navigation }) {
 
       // Select the right occurrence
       let occ = null;
-      if (occurrenceId) {
+      if (preserveOccId) {
+        occ = s.find((o) => o.id === preserveOccId) || null;
+      }
+      if (!occ && occurrenceId) {
         occ = s.find((o) => o.id === occurrenceId) || null;
       }
       if (!occ && rawBill?.parent_bill_id) {
@@ -1137,7 +1140,7 @@ export default function BillDetailScreen({ route, navigation }) {
         await markBillPaid(targetBill.id, {
           source_id: targetBill.source_id
         });
-        await load();
+        await load(targetBill.id);
         hidePageLoader();
         return;
       }
@@ -1167,7 +1170,7 @@ export default function BillDetailScreen({ route, navigation }) {
       showPageLoader();
       await unskipBill(selectedOcc.id);
       await refreshSelectedOccurrence();
-      await load();
+      await load(selectedOcc.id);
     } catch (e) {
       console.error("[BillDetail] Unskip failed:", e);
     } finally {
@@ -1182,7 +1185,7 @@ export default function BillDetailScreen({ route, navigation }) {
       await linkAdditionalTransaction(selectedOcc.id, tx.id);
       setShowLinkModal(false);
       await refreshSelectedOccurrence();
-      await load();
+      await load(selectedOcc.id);
     } catch (e) {
       console.error("[BillDetail] Link transaction failed:", e);
     } finally {
@@ -1196,7 +1199,7 @@ export default function BillDetailScreen({ route, navigation }) {
       showPageLoader();
       await removeTransactionFromBill(selectedOcc.id, tx.id);
       await refreshSelectedOccurrence();
-      await load();
+      await load(selectedOcc.id);
     } catch (e) {
       console.error("[BillDetail] Unlink transaction failed:", e);
     } finally {
@@ -1246,7 +1249,7 @@ export default function BillDetailScreen({ route, navigation }) {
         });
       }
       setShowEditOcc(false);
-      await load();
+      await load(selectedOcc.id);
     } catch (e) {
       console.error("[BillDetail] Save occurrence failed:", e);
     } finally {
@@ -1669,7 +1672,7 @@ export default function BillDetailScreen({ route, navigation }) {
               } else if (confirmAction === "skip") {
                 await skipBill(activeBill.id);
                 await refreshSelectedOccurrence();
-                await load();
+                await load(activeBill.id);
               }
             } catch (e) {
               console.error("[BillDetail] Action failed:", e);

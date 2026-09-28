@@ -127,6 +127,14 @@ function PickerItem({
 
 }
 
+function getLocalDateStr(d) {
+  const dt = d || new Date();
+  const year = dt.getFullYear();
+  const month = String(dt.getMonth() + 1).padStart(2, "0");
+  const day = String(dt.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function LendMoreSheet({
   visible,
   loanId,
@@ -135,7 +143,7 @@ export default function LendMoreSheet({
   onSuccess
 }) {
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(getLocalDateStr());
   const [notes, setNotes] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -174,7 +182,7 @@ export default function LendMoreSheet({
 
   function reset() {
     setAmount("");
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(getLocalDateStr());
     setNotes("");
     setErrors({});
     // keep sourceId/categoryId so user doesn't re-pick every time
@@ -352,7 +360,7 @@ export default function LendMoreSheet({
           onClose={() => setShowDatePicker(false)}
           onSelect={(selectedDate) => {
             if (selectedDate) {
-              setDate(selectedDate.toISOString().slice(0, 10));
+              setDate(getLocalDateStr(selectedDate));
             }
             setShowDatePicker(false);
           }} />

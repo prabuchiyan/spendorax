@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   useWindowDimensions,
+  ActivityIndicator,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Snackbar } from "react-native-paper";
@@ -93,6 +94,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
   const [expandedActivityId, setExpandedActivityId] = useState(null);
+  const [unlinkingTxId, setUnlinkingTxId] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -708,19 +710,22 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 tx.outstanding_after_payment ?? loan.outstanding_amount ?? 0,
               );
 
-              const note = String(tx.notes || "").toLowerCase();
-
-              const isTopUp =
-                note.includes("top up") ||
-                note.includes("topup") ||
-                note.includes("additional borrowing") ||
-                note.includes("borrowed");
-
-              const isPayment = !isTopUp;
-
               const transactionType = String(
                 tx.type || tx.transaction_type || tx.direction || "",
               ).toLowerCase();
+
+              const paymentType = (tx.loan_payment_type || "").toUpperCase();
+              let isTopUp = paymentType === "TOP_UP" || paymentType === "ADVANCE";
+
+              if (paymentType === "LINKED" || !paymentType) {
+                const isLent = (loan.loan_direction || "BORROWED") === "LENT";
+                const txDirection = String(tx.direction || "").toLowerCase();
+                isTopUp =
+                  (!isLent && (transactionType === "income" || txDirection === "credit")) ||
+                  (isLent && (transactionType === "expense" || txDirection === "debit"));
+              }
+
+              const isPayment = !isTopUp;
 
               const isExpense =
                 transactionType === "expense" ||
@@ -1081,9 +1086,10 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
                         <TouchableOpacity
                           activeOpacity={0.8}
+                          disabled={unlinkingTxId === tx.id}
                           onPress={async (event) => {
                             event.stopPropagation?.();
-
+                            setUnlinkingTxId(tx.id);
                             try {
                               await unlinkTransactionFromLoan(tx.id);
 
@@ -1104,20 +1110,26 @@ export default function LoanDetailsScreen({ route, navigation }) {
                                 e?.message ||
                                   "Unable to remove this transaction.",
                               );
+                            } finally {
+                              setUnlinkingTxId(null);
                             }
 
                             setSnackbarVisible(true);
                           }}
                           style={styles.unlinkButton}
                         >
-                          <MaterialCommunityIcons
-                            name="link-variant-off"
-                            size={16}
-                            color="#DC2626"
-                          />
+                          {unlinkingTxId === tx.id ? (
+                            <ActivityIndicator size="small" color="#DC2626" />
+                          ) : (
+                            <MaterialCommunityIcons
+                              name="link-variant-off"
+                              size={16}
+                              color="#DC2626"
+                            />
+                          )}
 
                           <Text style={styles.unlinkButtonText}>
-                            Remove from loan
+                            {unlinkingTxId === tx.id ? "Removing..." : "Remove from loan"}
                           </Text>
                         </TouchableOpacity>
                       </View>

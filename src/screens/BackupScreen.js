@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert, Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 import {
   Text,
   Button,
@@ -52,9 +53,25 @@ export default function BackupScreen() {
   }
 
   async function toggleAutoBackup(newValue) {
-    const newConfig = { ...autoConfig, enabled: newValue };
-    setAutoConfig(newConfig);
-    await setAutomaticBackupConfig(newConfig);
+    if (newValue && Platform.OS === 'android') {
+      try {
+        const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+        if (!permissions.granted) {
+          Alert.alert("Permission Required", "You must select a folder to save automatic backups.");
+          return;
+        }
+        const newConfig = { ...autoConfig, enabled: true, directoryUri: permissions.directoryUri };
+        setAutoConfig(newConfig);
+        await setAutomaticBackupConfig(newConfig);
+      } catch (e) {
+        Alert.alert("Error", "Could not request folder permissions.");
+        console.error(e);
+      }
+    } else {
+      const newConfig = { ...autoConfig, enabled: newValue };
+      setAutoConfig(newConfig);
+      await setAutomaticBackupConfig(newConfig);
+    }
   }
 
   async function handleTimeChange(date) {

@@ -10,7 +10,11 @@ export const RECURRENCE_TYPES = ["MONTHLY", "BI_MONTHLY", "QUARTERLY", "HALF_YEA
 
 
 export function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function daysBetween(fromStr, toStr) {
@@ -275,7 +279,10 @@ export function getPreferredBillOccurrence(bill, allBills) {
     return bill;
   }
   const today = new Date();
-  const todayString = today.toISOString().slice(0, 10);
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  const todayString = `${year}-${month}-${day}`;
   const currentYear = today.getFullYear();
   const currentMonth = today.getMonth();
   const currentMonthPrefix = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`;
