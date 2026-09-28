@@ -41,6 +41,7 @@ import ExitConfirmationModal from './src/components/ExitConfirmationModal';
 import useExitConfirmation from './src/hooks/useExitConfirmation';
 import { runBillMaintenance } from './src/services/bills';
 import { runCreditCardStatementScheduler } from './src/services/creditCardScheduler';
+import { initializeAutomaticBackup } from './src/services/automaticBackupService';
 import { Provider as PaperProvider, DefaultTheme as PaperDefaultTheme } from 'react-native-paper';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { Colors } from './src/components/Theme';
@@ -84,6 +85,12 @@ export default function App() {
           await runBillMaintenance();
         } catch (e) {
           console.warn('Bill maintenance error', e);
+        }
+
+        try {
+          await initializeAutomaticBackup();
+        } catch (e) {
+          console.warn('Auto backup init error', e);
         }
 
         try {

@@ -12,12 +12,16 @@ import {
   ActivityIndicator,
   List,
   Surface,
-  ProgressBar
+  ProgressBar,
+  Switch,
+  TouchableRipple
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { exportBackup, pickBackupFile, restoreBackup } from '../services/backup';
 import { Colors, Spacing } from '../components/Theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAutomaticBackupConfig, setAutomaticBackupConfig, getAutomaticBackupStatus } from '../services/automaticBackupService';
+import MuiDateTimePicker from '../components/MuiDateTimePicker';
 
 const LAST_BACKUP_KEY = 'mm_last_backup_time';
 
@@ -31,9 +35,47 @@ export default function BackupScreen() {
   const [showConfirmRestore, setShowConfirmRestore] = useState(false);
   const [restoreMode, setRestoreMode] = useState(null); // 'merge' or 'replace'
 
+  const [autoConfig, setAutoConfig] = useState({ enabled: false, backupTime: '23:00' });
+  const [autoStatus, setAutoStatus] = useState(null);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+
   useEffect(() => {
     loadLastBackupTime();
+    loadAutoBackupSettings();
   }, []);
+
+  async function loadAutoBackupSettings() {
+    const config = await getAutomaticBackupConfig();
+    const status = await getAutomaticBackupStatus();
+    setAutoConfig(config);
+    setAutoStatus(status);
+  }
+
+  async function toggleAutoBackup(newValue) {
+    const newConfig = { ...autoConfig, enabled: newValue };
+    setAutoConfig(newConfig);
+    await setAutomaticBackupConfig(newConfig);
+  }
+
+  async function handleTimeChange(date) {
+    setShowTimePicker(false);
+    if (!date) return;
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const newTime = `${hours}:${minutes}`;
+    const newConfig = { ...autoConfig, backupTime: newTime };
+    setAutoConfig(newConfig);
+    await setAutomaticBackupConfig(newConfig);
+  }
+
+  function formatTime(timeStr) {
+    if (!timeStr) return '';
+    const [h, m] = timeStr.split(':');
+    const date = new Date();
+    date.setHours(parseInt(h, 10));
+    date.setMinutes(parseInt(m, 10));
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  }
 
   async function loadLastBackupTime() {
     try {
@@ -197,7 +239,57 @@ export default function BackupScreen() {
             </Button>
           </Card.Content>
         </Card>
+
+        <Card style={styles.card}>
+          <Card.Content>
+            <Title style={styles.cardTitle}>
+              <MaterialCommunityIcons name="calendar-clock" size={24} color={Colors.primary} /> Automatic Backup
+            </Title>
+            <Paragraph style={styles.description}>
+              Automatically backup your data every day to your device's Download folder.
+            </Paragraph>
+
+            <View style={styles.rowItem}>
+              <Text style={styles.rowLabel}>Enable Automatic Backup</Text>
+              <Switch
+                value={autoConfig.enabled}
+                onValueChange={toggleAutoBackup}
+                color={Colors.primary}
+              />
+            </View>
+            <Divider style={{ marginVertical: 8 }} />
+
+            <TouchableRipple onPress={() => setShowTimePicker(true)} disabled={!autoConfig.enabled}>
+              <View style={[styles.rowItem, { opacity: autoConfig.enabled ? 1 : 0.5 }]}>
+                <Text style={styles.rowLabel}>Backup Time</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.timeValue}>{formatTime(autoConfig.backupTime)}</Text>
+                  <MaterialCommunityIcons name="chevron-right" size={20} color={Colors.muted} />
+                </View>
+              </View>
+            </TouchableRipple>
+            
+            {autoStatus && autoStatus.lastAttemptDate && (
+               <Text style={styles.timestamp}>
+                 Last attempted: {autoStatus.lastAttemptDate} ({autoStatus.lastStatus})
+               </Text>
+            )}
+          </Card.Content>
+        </Card>
       </ScrollView>
+
+      <MuiDateTimePicker
+        visible={showTimePicker}
+        initialDate={(() => {
+           const d = new Date();
+           const [h, m] = autoConfig.backupTime.split(':');
+           d.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
+           return d;
+        })()}
+        onClose={() => setShowTimePicker(false)}
+        onSelect={handleTimeChange}
+        hideDate={true}
+      />
 
       {/* Preview Dialog */}
       <Portal>
@@ -300,6 +392,22 @@ const styles = StyleSheet.create({
   dialogActions: {
     flexDirection: 'column',
     alignItems: 'stretch',
+  },
+  rowItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  rowLabel: {
+    fontSize: 16,
+    color: '#333',
+  },
+  timeValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    marginRight: 8,
   },
   statsContainer: {
     backgroundColor: '#f8f8f8',
