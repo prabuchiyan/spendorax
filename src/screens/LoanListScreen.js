@@ -85,34 +85,31 @@ export default function LoanListScreen({ navigation, route }) {
       });
   }, [loans, search, filter, directionFilter]);
 
-  const Chip = ({ title, value }) => (
+  const Chip = ({ title, value, bg, color, icon }) => (
     <View
       style={{
         flex: 1,
-        backgroundColor: "#fff",
-        padding: 14,
-        borderRadius: 16,
-        marginHorizontal: 4,
+        backgroundColor: bg || "#fff",
+        padding: 16,
+        borderRadius: 20,
+        marginHorizontal: 5,
         alignItems: "center",
       }}
     >
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+        {icon && <MaterialCommunityIcons name={icon} size={14} color={color} style={{ marginRight: 4 }} />}
+        <Text style={{ color: color, fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          {title}
+        </Text>
+      </View>
       <Text
         style={{
-          fontSize: 22,
+          fontSize: 28,
           fontWeight: "900",
-          color: Colors.primary,
+          color: color,
         }}
       >
         {value}
-      </Text>
-
-      <Text
-        style={{
-          marginTop: 4,
-          color: Colors.muted,
-        }}
-      >
-        {title}
       </Text>
     </View>
   );
@@ -134,12 +131,12 @@ export default function LoanListScreen({ navigation, route }) {
             <View
               style={{
                 flexDirection: "row",
-                marginBottom: 16,
+                marginBottom: 20,
               }}
             >
-              <Chip title="Total" value={stats.total} />
-              <Chip title="Active" value={stats.active} />
-              <Chip title="Closed" value={stats.closed} />
+              <Chip title="Total" value={stats.total} bg="#F3E8FF" color="#9333EA" icon="finance" />
+              <Chip title="Active" value={stats.active} bg="#DBEAFE" color="#2563EB" icon="lightning-bolt" />
+              <Chip title="Closed" value={stats.closed} bg="#DCFCE7" color="#16A34A" icon="check-decagram" />
             </View>
 
             {/* Search */}
@@ -213,65 +210,61 @@ export default function LoanListScreen({ navigation, route }) {
             </View>
 
             {/* Filter */}
-
-            <View
-              style={{
-                flexDirection: "row",
-                marginBottom: 18,
-              }}
-            >
-              {["ALL", "Active", "Closed (Fixed)"].map((f) => (
-                <TouchableOpacity
-                  key={f}
-                  onPress={() => setFilter(f)}
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 20,
-                    backgroundColor: filter === f ? Colors.primary : "#E5E7EB",
-                    marginRight: 10,
-                  }}
-                >
-                  <Text
+            {/* Filter */}
+            <Text style={{ fontSize: 13, fontWeight: "700", color: "#64748B", marginBottom: 8, marginLeft: 4 }}>Status Filter</Text>
+            <View style={{ backgroundColor: '#F1F5F9', borderRadius: 12, padding: 4, flexDirection: 'row', marginBottom: 18 }}>
+              {["ALL", "Active", "Closed"].map((f) => {
+                const isActive = filter === f;
+                return (
+                  <TouchableOpacity
+                    key={f}
+                    onPress={() => setFilter(f)}
                     style={{
-                      color: filter === f ? "#fff" : "#374151",
-                      fontWeight: "700",
+                      flex: 1,
+                      paddingVertical: 10,
+                      borderRadius: 10,
+                      backgroundColor: isActive ? '#fff' : 'transparent',
+                      alignItems: 'center',
+                      elevation: isActive ? 2 : 0,
+                      shadowColor: '#000',
+                      shadowOpacity: isActive ? 0.05 : 0,
+                      shadowRadius: 4,
+                      shadowOffset: { width: 0, height: 2 },
                     }}
                   >
-                    {f}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text style={{ color: isActive ? Colors.primary : "#64748B", fontWeight: isActive ? "800" : "600", fontSize: 13 }}>{f}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
+            
             {/* Direction Filter */}
-            <View style={{ flexDirection: "row", marginBottom: 18 }}>
-              {["ALL", "BORROWED", "LENT"].map((d) => (
-                <TouchableOpacity
-                  key={d}
-                  onPress={() => setDirectionFilter(d)}
-                  style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    borderRadius: 20,
-                    backgroundColor:
-                      directionFilter === d ? Colors.primary : "#E5E7EB",
-                    marginRight: 10,
-                  }}
-                >
-                  <Text
+            <Text style={{ fontSize: 13, fontWeight: "700", color: "#64748B", marginBottom: 8, marginLeft: 4 }}>Type Filter</Text>
+            <View style={{ backgroundColor: '#F1F5F9', borderRadius: 12, padding: 4, flexDirection: 'row', marginBottom: 18 }}>
+              {["ALL", "BORROWED", "LENT"].map((d) => {
+                const isActive = directionFilter === d;
+                const label = d === "ALL" ? "All" : d === "BORROWED" ? "Borrowed" : "Lent";
+                return (
+                  <TouchableOpacity
+                    key={d}
+                    onPress={() => setDirectionFilter(d)}
                     style={{
-                      color: directionFilter === d ? "#fff" : "#374151",
-                      fontWeight: "700",
+                      flex: 1,
+                      paddingVertical: 10,
+                      borderRadius: 10,
+                      backgroundColor: isActive ? '#fff' : 'transparent',
+                      alignItems: 'center',
+                      elevation: isActive ? 2 : 0,
+                      shadowColor: '#000',
+                      shadowOpacity: isActive ? 0.05 : 0,
+                      shadowRadius: 4,
+                      shadowOffset: { width: 0, height: 2 },
                     }}
                   >
-                    {d === "ALL"
-                      ? "All"
-                      : d === "BORROWED"
-                        ? "Borrowed"
-                        : "Lent"}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text style={{ color: isActive ? Colors.primary : "#64748B", fontWeight: isActive ? "800" : "600", fontSize: 13 }}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </>
         }
