@@ -26,7 +26,11 @@ import { Colors } from "./Theme";
 
 function toDateStr(isoOrDate) {
   if (!isoOrDate) {
-    return new Date().toISOString().slice(0, 10);
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }
   return String(isoOrDate).slice(0, 10);
 }
@@ -1051,7 +1055,10 @@ export default function BillForm({ bill, onSaved, onCancel }) {
         onClose={() => setShowDuePicker(false)}
         onSelect={(selectedDate) => {
           if (selectedDate) {
-            setDueDate(selectedDate.toISOString().slice(0, 10));
+            const year = selectedDate.getFullYear();
+            const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+            const day = String(selectedDate.getDate()).padStart(2, "0");
+            setDueDate(`${year}-${month}-${day}`);
             if (errors.dueDate) {
               setErrors((prev) => ({ ...prev, dueDate: undefined }));
             }
@@ -1080,7 +1087,10 @@ export default function BillForm({ bill, onSaved, onCancel }) {
         }}
         onSelect={(selectedDate) => {
           if (selectedDate) {
-            setRecurrenceEndDate(selectedDate.toISOString().slice(0, 10));
+            const year = selectedDate.getFullYear();
+            const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+            const day = String(selectedDate.getDate()).padStart(2, "0");
+            setRecurrenceEndDate(`${year}-${month}-${day}`);
           } else {
             setRecurrenceEndDate("");
           }
