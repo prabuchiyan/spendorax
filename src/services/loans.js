@@ -11,6 +11,7 @@ export async function createLoan(loan) {
             lender,
             loan_direction,
             principal_amount,
+            original_principal_amount,
             interest_rate,
             loan_start_date,
             loan_end_date,
@@ -25,12 +26,13 @@ export async function createLoan(loan) {
             status,
             notes
         )
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       loan.loan_name,
       loan.loan_type,
       loan.lender,
       loan.loan_direction ?? "BORROWED",
+      loan.principal_amount ?? 0,
       loan.principal_amount ?? 0,
       loan.interest_rate ?? 0,
       loan.loan_start_date ?? null,
@@ -94,7 +96,8 @@ export async function createLoan(loan) {
         loan_payment_type: "PRINCIPAL",
         principal_component: loan.principal_amount ?? 0,
         interest_component: 0,
-        outstanding_after_payment: loan.outstanding_amount ?? loan.principal_amount ?? 0,
+        outstanding_after_payment:
+          loan.outstanding_amount ?? loan.principal_amount ?? 0,
         /*
          * Keep linked_date aligned with
          * the exact loan start datetime.
@@ -113,7 +116,7 @@ export async function createLoan(loan) {
 
   try {
     events.emit("loansChanged", { action: "create", id: loanId });
-  } catch (e) { }
+  } catch (e) {}
   return loanId;
 }
 
@@ -132,7 +135,7 @@ export async function updateLoan(id, fields) {
   );
   try {
     events.emit("loansChanged", { action: "update", id, fields });
-  } catch (e) { }
+  } catch (e) {}
 }
 
 export async function getLoans() {
@@ -244,21 +247,21 @@ export async function deleteLoan(loanId) {
         action: "delete",
         loanId,
       });
-    } catch (e) { }
+    } catch (e) {}
 
     try {
       events.emit("loanPaymentsChanged", {
         action: "delete",
         loanId,
       });
-    } catch (e) { }
+    } catch (e) {}
 
     try {
       events.emit("loansChanged", {
         action: "delete",
         id: loanId,
       });
-    } catch (e) { }
+    } catch (e) {}
 
     return true;
   } catch (error) {
@@ -330,7 +333,10 @@ export async function recordPayment({
     2,
   );
 
-  const newStatus = remaining <= 0 ? "Closed" : loan.status;
+  const newStatus =
+    remaining <= 0 && Number(loan.principal_amount || 0) > 0
+      ? "Closed"
+      : loan.status;
 
   await executeSql(
     `UPDATE loans SET outstanding_amount = ?, principal_paid = ?, interest_paid = ?, total_paid = ?, remaining_months = ?, status = ?, updated_at = datetime('now') WHERE id = ?`,
@@ -391,10 +397,10 @@ export async function recordPayment({
       id: pRes.insertId,
       loanId,
     });
-  } catch (e) { }
+  } catch (e) {}
   try {
     events.emit("loansChanged", { action: "update", id: loanId });
-  } catch (e) { }
+  } catch (e) {}
 
   return pRes.insertId;
 }
@@ -476,7 +482,10 @@ export async function recordPrepayment({
       loan.emi_amount;
   }
 
-  const newStatus = remaining <= 0 ? "Closed" : loan.status;
+  const newStatus =
+    remaining <= 0 && Number(loan.principal_amount || 0) > 0
+      ? "Closed"
+      : loan.status;
 
   await executeSql(
     `UPDATE loans SET outstanding_amount = ?, principal_paid = ?, total_prepayment = ?, interest_paid = ?, total_paid = ?, emi_amount = ?, remaining_months = ?, status = ?, updated_at = datetime('now') WHERE id = ?`,
@@ -526,10 +535,10 @@ export async function recordPrepayment({
       id: pRes.insertId,
       loanId,
     });
-  } catch (e) { }
+  } catch (e) {}
   try {
     events.emit("loansChanged", { action: "update", id: loanId });
-  } catch (e) { }
+  } catch (e) {}
 
   return pRes.insertId;
 }
@@ -642,10 +651,10 @@ export async function forecloseLoan({
       id: pRes.insertId,
       loanId,
     });
-  } catch (e) { }
+  } catch (e) {}
   try {
     events.emit("loansChanged", { action: "update", id: loanId });
-  } catch (e) { }
+  } catch (e) {}
 
   return pRes.insertId;
 }
@@ -733,10 +742,10 @@ export async function recordAdvance({
       id: pRes.insertId,
       loanId,
     });
-  } catch (e) { }
+  } catch (e) {}
   try {
     events.emit("loansChanged", { action: "update", id: loanId });
-  } catch (e) { }
+  } catch (e) {}
 
   return pRes.insertId;
 }
@@ -860,14 +869,14 @@ export async function recordTopUp({
       id: pRes.insertId,
       loanId,
     });
-  } catch (e) { }
+  } catch (e) {}
 
   try {
     events.emit("loansChanged", {
       action: "update",
       id: loanId,
     });
-  } catch (e) { }
+  } catch (e) {}
 
   return pRes.insertId;
 }
@@ -914,24 +923,54 @@ export async function recalculateLoanFromLinkedTransactions(loanId) {
 
   // ── Seed: derive creation principal from the initial transaction ──
   let creationPrincipal = 0;
+
   if (initialLoanTransactionId > 0) {
     const initTx = allTxs.find(
       (tx) => Number(tx.id) === initialLoanTransactionId,
     );
-    creationPrincipal = initTx ? Number(initTx.amount || 0) : 0;
-  }
-  if (creationPrincipal === 0) {
-    const additionSum = allTxs
-      .filter((tx) => {
-        if (Number(tx.id) === initialLoanTransactionId) return false;
-        const pt = (tx.loan_payment_type || "").toUpperCase();
-        return pt === "TOP_UP" || pt === "ADVANCE";
-      })
-      .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
-    creationPrincipal = Math.max(
-      0,
-      +(Number(loan.principal_amount || 0) - additionSum).toFixed(2),
-    );
+    if (initTx) {
+      creationPrincipal = Number(initTx.amount || 0);
+
+      if (loan.original_principal_amount !== creationPrincipal) {
+        await executeSql(
+          `UPDATE loans SET original_principal_amount = ? WHERE id = ?`,
+          [creationPrincipal, loanId],
+        );
+      }
+    } else {
+      creationPrincipal = Number(loan.original_principal_amount || 0);
+    }
+  } else {
+    creationPrincipal = loan.original_principal_amount != null ? Number(loan.original_principal_amount) : null;
+
+    if (creationPrincipal == null) {
+      const additionSum = allTxs
+        .filter((tx) => {
+          const pt = (tx.loan_payment_type || "").toUpperCase();
+          if (pt === "TOP_UP" || pt === "ADVANCE") return true;
+
+          const txType = (tx.type || "").toLowerCase();
+          const txDirection = (tx.direction || "").toLowerCase();
+          const isLent = (loan.loan_direction || "BORROWED") === "LENT";
+
+          return (
+            pt === "LINKED" &&
+            ((!isLent && (txType === "income" || txDirection === "credit")) ||
+              (isLent && (txType === "expense" || txDirection === "debit")))
+          );
+        })
+        .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+
+      creationPrincipal = Math.max(
+        0,
+        +(Number(loan.principal_amount || 0) - additionSum).toFixed(2),
+      );
+
+      await executeSql(
+        `UPDATE loans SET original_principal_amount = ? WHERE id = ?`,
+        [creationPrincipal, loanId],
+      );
+    }
   }
 
   // Exclude initial transaction from replay
@@ -1000,10 +1039,8 @@ export async function recalculateLoanFromLinkedTransactions(loanId) {
     // - LENT + expense/debit
     const isInferredAddition =
       paymentType === "LINKED" &&
-      (
-        (!isLent && (txType === "income" || txDirection === "credit")) ||
-        (isLent && (txType === "expense" || txDirection === "debit"))
-      );
+      ((!isLent && (txType === "income" || txDirection === "credit")) ||
+        (isLent && (txType === "expense" || txDirection === "debit")));
 
     if (isInferredAddition) {
       // Treat the same as TOP_UP / ADVANCE — increases outstanding
@@ -1091,12 +1128,30 @@ export async function recalculateLoanFromLinkedTransactions(loanId) {
            interest_component = ?,
            outstanding_after_payment = ?
        WHERE id = ?`,
-       [lp.principalComponent, lp.interestComponent, lp.remainingBalance, lp.txId]
+      [
+        lp.principalComponent,
+        lp.interestComponent,
+        lp.remainingBalance,
+        lp.txId,
+      ],
     );
   }
 
   // ── Single loan row update ──
-  const newStatus = outstanding <= 0 ? "Closed" : "Active";
+  let newStatus =
+    outstanding <= 0 && computedPrincipalAmount > 0 && totalPaid > 0 ? "Closed" : "Active";
+
+  if (totalPaid <= 0) {
+    newStatus = "Active";
+  }
+
+  console.log("LOAN RECALCULATE STATUS CHECK:", {
+    outstanding,
+    computedPrincipalAmount,
+    totalPaid,
+    newStatus,
+  });
+
   const remainingMonths = calc.calculateRemainingMonths(
     outstanding,
     loan.emi_amount || 0,
@@ -1131,9 +1186,11 @@ export async function recalculateLoanFromLinkedTransactions(loanId) {
   try {
     events.emit("loanPaymentsChanged", { action: "recalculate", loanId });
     events.emit("loansChanged", { action: "recalculate", id: loanId });
-  } catch (e) { }
+  } catch (e) {}
   // Small timeout so all sync event handlers finish before clearing guard
-  setTimeout(() => { _isRecalculating = false; }, 100);
+  setTimeout(() => {
+    _isRecalculating = false;
+  }, 100);
 
   return {
     outstanding: Math.max(0, outstanding),
@@ -1176,7 +1233,7 @@ export async function linkTransactionToLoan(transactionId, loanId, opts = {}) {
       id: transactionId,
       loanId,
     });
-  } catch (e) { }
+  } catch (e) {}
 }
 
 export async function unlinkTransactionFromLoan(transactionId) {
@@ -1205,7 +1262,11 @@ export async function unlinkTransactionFromLoan(transactionId) {
   await recalculateLoanFromLinkedTransactions(loanId);
 
   try {
-    events.emit("transactionsChanged", { action: "unlink", id: transactionId, loanId });
+    events.emit("transactionsChanged", {
+      action: "unlink",
+      id: transactionId,
+      loanId,
+    });
     events.emit("loansChanged", { action: "update", id: loanId });
   } catch (e) {
     console.warn(e);

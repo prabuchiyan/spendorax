@@ -7,9 +7,12 @@ import {
     Modal,
     ScrollView,
     StyleSheet,
+    Platform,
+    Alert,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button as PaperButton } from 'react-native-paper';
+import MuiDateTimePicker from "../components/MuiDateTimePicker";
 import {
     forecloseLoan,
     getLoans,
@@ -21,55 +24,75 @@ import { getCategories } from '../services/categories';
 import Card from '../components/Card';
 
 function FieldCard({
-    icon,
-    title,
-    value,
-    color = '#2563EB',
-    onPress,
-    disabled = false,
+  icon,
+  title,
+  value,
+  color = "#2563EB",
+  onPress,
+  error,
+  disabled = false,
 }) {
-    return (
-        <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={onPress}
-            style={styles.fieldCard}
-            disabled={disabled}
+  const hasError = !!error;
+
+  return (
+    <View style={styles.fieldWrapper}>
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={onPress}
+        style={[styles.fieldCard, hasError && styles.fieldCardError]}
+        disabled={disabled}
+      >
+        <View
+          style={[
+            styles.fieldIcon,
+            {
+              backgroundColor: hasError ? "#FEE2E2" : color + "20",
+            },
+          ]}
         >
-            <View
-                style={[
-                    styles.fieldIcon,
-                    {
-                        backgroundColor: color + '20',
-                    },
-                ]}
-            >
-                <MaterialCommunityIcons
-                    name={icon}
-                    size={22}
-                    color={color}
-                />
-            </View>
+          <MaterialCommunityIcons
+            name={hasError ? "alert-circle-outline" : icon}
+            size={22}
+            color={hasError ? "#DC2626" : color}
+          />
+        </View>
 
-            <View style={{ flex: 1 }}>
-                <Text style={styles.fieldTitle}>
-                    {title}
-                </Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.fieldTitle, hasError && styles.fieldTitleError]}>
+            {title}
+            <Text style={styles.requiredMark}> *</Text>
+          </Text>
 
-                <Text
-                    style={styles.fieldValue}
-                    numberOfLines={1}
-                >
-                    {value}
-                </Text>
-            </View>
+          <Text
+            style={[styles.fieldValue, hasError && styles.fieldValueError]}
+            numberOfLines={1}
+          >
+            {value}
+          </Text>
+        </View>
 
-            <MaterialCommunityIcons
-                name="chevron-right"
-                size={22}
-                color="#94A3B8"
-            />
-        </TouchableOpacity>
-    );
+        <MaterialCommunityIcons
+          name={hasError ? "alert-circle" : "chevron-right"}
+          size={22}
+          color={hasError ? "#DC2626" : "#94A3B8"}
+        />
+      </TouchableOpacity>
+
+      <FieldError message={error} />
+    </View>
+  );
+}
+
+function FieldError({ message }) {
+  if (!message) return null;
+
+  return (
+    <View style={styles.fieldErrorContainer}>
+      <MaterialCommunityIcons name="alert-circle" size={16} color="#DC2626" />
+
+      <Text style={styles.fieldErrorText}>{message}</Text>
+    </View>
+  );
 }
 
 function PickerItem({
@@ -168,6 +191,32 @@ function PickerItem({
     );
 }
 
+function safeDate(value) {
+  if (!value) {
+    return new Date();
+  }
+
+  const d = new Date(value);
+
+  if (!Number.isNaN(d.getTime())) {
+    return d;
+  }
+
+  return new Date();
+}
+
+function formatDateTime(value) {
+  const d = safeDate(value);
+
+  return d.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function LoanForeclosureScreen({
     route,
     navigation,
@@ -187,6 +236,9 @@ export default function LoanForeclosureScreen({
     const [charges, setCharges] = useState('');
     const [notes, setNotes] = useState('');
     const [loading, setLoading] = useState(false);
+    const [transactionDate, setTransactionDate] = useState(new Date().toISOString());
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [errors, setErrors] = useState({});
 
     const [loans, setLoans] = useState([]);
     const [sources, setSources] = useState([]);
@@ -198,9 +250,18 @@ export default function LoanForeclosureScreen({
     const [showLoanPicker, setShowLoanPicker] = useState(false);
     const [showSourcePicker, setShowSourcePicker] = useState(false);
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+    const [categorySearch, setCategorySearch] = useState('');
 
     const [amountFocused, setAmountFocused] = useState(false);
     const [chargesFocused, setChargesFocused] = useState(false);
+
+    const closeDatePicker = () => {
+        setShowDatePicker(false);
+    };
+
+    const openDatePicker = () => {
+        setShowDatePicker(true);
+    };
 
     useEffect(() => {
         (async () => {
@@ -249,26 +310,48 @@ export default function LoanForeclosureScreen({
     }, [sourceId]);
 
     function validate() {
+        const nextErrors = {};
+
         if (!loanId) {
-            alert('Select a loan');
-            return false;
+            nextErrors.loan = 'Please select a loan before continuing.';
         }
 
         if (!sourceId) {
-            alert('Select a payment source');
-            return false;
+            nextErrors.source = 'Please choose the account or wallet used for this payment.';
         }
 
         if (!categoryId) {
-            alert('Select a category');
-            return false;
+            nextErrors.category = 'Please choose a category for this payment.';
         }
 
-        if (
-            !amount ||
-            Number(amount) <= 0
-        ) {
-            alert('Enter final payment amount');
+        const trimmedAmount = String(amount || '').trim();
+        const numericAmount = Number(trimmedAmount);
+
+        if (!trimmedAmount) {
+            nextErrors.amount = 'Please enter the payment amount.';
+        } else if (Number.isNaN(numericAmount)) {
+            nextErrors.amount = 'Please enter a valid amount.';
+        } else if (numericAmount <= 0) {
+            nextErrors.amount = 'Payment amount must be greater than ₹0.';
+        }
+
+        if (!transactionDate || Number.isNaN(safeDate(transactionDate).getTime())) {
+            nextErrors.date = 'Please select when this payment was made.';
+        }
+
+        setErrors(nextErrors);
+
+        if (Object.keys(nextErrors).length > 0) {
+            const errorCount = Object.keys(nextErrors).length;
+
+            Alert.alert(
+                'Almost there! ✨',
+                errorCount === 1
+                    ? 'Please fix the highlighted field before continuing.'
+                    : `Please complete the ${errorCount} highlighted fields before continuing.`,
+                [{ text: 'Got it' }],
+            );
+
             return false;
         }
 
@@ -283,7 +366,7 @@ export default function LoanForeclosureScreen({
             setLoading(true);
             await forecloseLoan({
                 loanId,
-                date: new Date().toISOString(),
+                date: safeDate(transactionDate).toISOString(),
                 finalPaymentAmount: Number(amount),
                 foreclosureCharges: Number(
                     charges || 0
@@ -319,6 +402,16 @@ export default function LoanForeclosureScreen({
         categories.find(
             (c) => c.id === categoryId
         );
+
+    const expenseCategories = categories.filter(
+        (category) => String(category.type || '').toLowerCase() === 'expense'
+    );
+
+    const filteredExpenseCategories = expenseCategories.filter((category) =>
+        String(category.name || '')
+            .toLowerCase()
+            .includes(categorySearch.trim().toLowerCase())
+    );
 
     return (
         <View
@@ -456,49 +549,83 @@ export default function LoanForeclosureScreen({
                     />
 
                     <FieldCard
-                        icon="wallet-outline"
-                        color="#16A34A"
+                        icon={selectedSource?.icon || "wallet-outline"}
+                        color={selectedSource?.color || "#16A34A"}
                         title="Payment Source"
                         value={
                             selectedSource
                                 ? selectedSource.name
                                 : 'Select Bank / Wallet'
                         }
-                        onPress={() => setShowSourcePicker(true)}
+                        error={errors.source}
+                        onPress={() => {
+                            setErrors((prev) => ({
+                                ...prev,
+                                source: undefined,
+                            }));
+                            setShowSourcePicker(true);
+                        }}
                         disabled={loading}
                     />
 
                     <FieldCard
-                        icon="shape-outline"
-                        color="#EA580C"
-                        title="Category *"
+                        icon={selectedCategory?.icon || "shape-outline"}
+                        color={selectedCategory?.color || "#EA580C"}
+                        title="Category"
                         value={
                             selectedCategory
                                 ? selectedCategory.name
                                 : 'Select Category'
                         }
-                        onPress={() => setShowCategoryPicker(true)}
+                        error={errors.category}
+                        onPress={() => {
+                            setErrors((prev) => ({
+                                ...prev,
+                                category: undefined,
+                            }));
+                            setShowCategoryPicker(true);
+                        }}
+                        disabled={loading}
+                    />
+
+                    <FieldCard
+                        icon="calendar-clock"
+                        color="#2563EB"
+                        title="Date & Time"
+                        value={formatDateTime(transactionDate)}
+                        error={errors.date}
+                        onPress={() => {
+                            setErrors((prev) => ({
+                                ...prev,
+                                date: undefined,
+                            }));
+                            openDatePicker();
+                        }}
                         disabled={loading}
                     />
 
                     {/* Final Payment */}
 
                     <View style={styles.amountCard}>
-                        <Text style={styles.amountLabel}>
-                            Final Payment Amount
+                        <Text style={[styles.amountLabel, errors.amount && { color: "#DC2626" }]}>
+                            Final Payment Amount <Text style={{ color: "#DC2626" }}> *</Text>
                         </Text>
 
                         <View style={styles.amountRow}>
                             <View
                                 style={[
                                     styles.amountInputContainer,
-                                    amountFocused && {
+                                    errors.amount && {
+                                        borderColor: "#DC2626",
+                                        backgroundColor: "#FEF2F2",
+                                    },
+                                    amountFocused && !errors.amount && {
                                         borderColor: '#DC2626',
                                         borderWidth: 2,
                                     },
                                 ]}
                             >
-                                <Text style={styles.currency}>
+                                <Text style={[styles.currency, errors.amount && { color: "#DC2626" }]}>
                                     ₹
                                 </Text>
 
@@ -510,14 +637,18 @@ export default function LoanForeclosureScreen({
                                     selectionColor="#DC2626"
                                     cursorColor="#DC2626"
                                     underlineColorAndroid="transparent"
-                                    onFocus={() =>
-                                        setAmountFocused(true)
-                                    }
+                                    onFocus={() => {
+                                        setAmountFocused(true);
+                                        setErrors((prev) => ({
+                                            ...prev,
+                                            amount: undefined,
+                                        }));
+                                    }}
                                     onBlur={() =>
                                         setAmountFocused(false)
                                     }
                                     editable={!loading}
-                                    style={styles.amountInput}
+                                    style={[styles.amountInput, { outlineStyle: "none" }]}
                                     onChangeText={(text) => {
                                         let value = text.replace(
                                             /[^0-9.]/g,
@@ -544,10 +675,17 @@ export default function LoanForeclosureScreen({
                                         }
 
                                         setAmount(value);
+                                        if (errors.amount) {
+                                            setErrors((prev) => ({
+                                                ...prev,
+                                                amount: undefined,
+                                            }));
+                                        }
                                     }}
                                 />
                             </View>
                         </View>
+                        <FieldError message={errors.amount} />
                     </View>
 
                     {/* Charges */}
@@ -854,12 +992,12 @@ export default function LoanForeclosureScreen({
                                 {sources.map((source) => (
                                     <PickerItem
                                         key={source.id}
-                                        icon="wallet-outline"
-                                        iconColor="#16A34A"
-                                        iconBg="#DCFCE7"
+                                        icon={source.icon || "wallet-outline"}
+                                        iconColor={source.color || "#16A34A"}
+                                        iconBg={(source.color || "#16A34A") + "20"}
                                         selected={source.id === sourceId}
                                         title={source.name}
-                                        subtitle="Payment Account"
+                                        subtitle={source.type ? `${source.type} Account` : "Payment Account"}
                                         onPress={() => {
                                             setSourceId(source.id);
                                             setShowSourcePicker(false);
@@ -890,6 +1028,10 @@ export default function LoanForeclosureScreen({
                     visible={showCategoryPicker}
                     transparent
                     animationType="slide"
+                    onRequestClose={() => {
+                        setCategorySearch("");
+                        setShowCategoryPicker(false);
+                    }}
                 >
                     <View
                         style={{
@@ -947,7 +1089,10 @@ export default function LoanForeclosureScreen({
                                 </View>
 
                                 <TouchableOpacity
-                                    onPress={() => setShowCategoryPicker(false)}
+                                    onPress={() => {
+                                        setCategorySearch("");
+                                        setShowCategoryPicker(false);
+                                    }}
                                 >
                                     <MaterialCommunityIcons
                                         name="close-circle"
@@ -957,10 +1102,40 @@ export default function LoanForeclosureScreen({
                                 </TouchableOpacity>
                             </View>
 
+                            <View style={styles.categorySearchContainer}>
+                                <MaterialCommunityIcons
+                                    name="magnify"
+                                    size={21}
+                                    color="#64748B"
+                                />
+
+                                <TextInput
+                                    value={categorySearch}
+                                    onChangeText={setCategorySearch}
+                                    placeholder="Search category..."
+                                    placeholderTextColor="#94A3B8"
+                                    style={styles.categorySearchInput}
+                                    autoCorrect={false}
+                                    returnKeyType="search"
+                                    outlineStyle="none"
+                                />
+
+                                {!!categorySearch && (
+                                    <TouchableOpacity onPress={() => setCategorySearch("")}>
+                                        <MaterialCommunityIcons
+                                            name="close-circle"
+                                            size={20}
+                                            color="#94A3B8"
+                                        />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+
                             <ScrollView
+                                keyboardShouldPersistTaps="handled"
                                 showsVerticalScrollIndicator={false}
                             >
-                                {categories.map((category) => (
+                                {filteredExpenseCategories.map((category) => (
                                     <PickerItem
                                         key={category.id}
                                         icon={category.icon || 'shape-outline'}
@@ -982,10 +1157,31 @@ export default function LoanForeclosureScreen({
                                         }
                                         onPress={() => {
                                             setCategoryId(category.id);
+                                            setCategorySearch("");
                                             setShowCategoryPicker(false);
                                         }}
                                     />
                                 ))}
+
+                                {!filteredExpenseCategories.length && (
+                                    <View style={styles.emptyPicker}>
+                                        <View style={styles.emptyPickerIcon}>
+                                            <MaterialCommunityIcons
+                                                name="shape-outline"
+                                                size={30}
+                                                color="#94A3B8"
+                                            />
+                                        </View>
+                                        <Text style={styles.emptyPickerTitle}>
+                                            No expense category found
+                                        </Text>
+                                        <Text style={styles.emptyPickerText}>
+                                            {categorySearch
+                                                ? `No category matches "${categorySearch}".`
+                                                : "No expense categories available."}
+                                        </Text>
+                                    </View>
+                                )}
 
                                 <View style={{ height: 10 }} />
                             </ScrollView>
@@ -996,13 +1192,29 @@ export default function LoanForeclosureScreen({
                                     marginTop: 12,
                                     borderRadius: 14,
                                 }}
-                                onPress={() => setShowCategoryPicker(false)}
+                                onPress={() => {
+                                    setCategorySearch("");
+                                    setShowCategoryPicker(false);
+                                }}
                             >
                                 Close
                             </PaperButton>
                         </View>
                     </View>
                 </Modal>
+
+                <MuiDateTimePicker
+                    visible={showDatePicker}
+                    disableFutureDates={true}
+                    initialDate={safeDate(transactionDate)}
+                    onClose={closeDatePicker}
+                    onSelect={(selectedDate) => {
+                        if (selectedDate) {
+                            setTransactionDate(selectedDate.toISOString());
+                        }
+                        closeDatePicker();
+                    }}
+                />
 
             </ScrollView>
         </View>
@@ -1037,6 +1249,36 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         fontSize: 15,
         color: '#111827',
+    },
+    fieldWrapper: {
+        marginBottom: 14,
+    },
+    fieldCardError: {
+        borderColor: "#FCA5A5",
+        borderWidth: 1.5,
+        backgroundColor: "#FEF2F2",
+        marginBottom: 4,
+    },
+    fieldTitleError: {
+        color: "#DC2626",
+    },
+    requiredMark: {
+        color: "#DC2626",
+    },
+    fieldValueError: {
+        color: "#991B1B",
+    },
+    fieldErrorContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 8,
+        marginTop: 4,
+    },
+    fieldErrorText: {
+        color: "#DC2626",
+        fontSize: 12,
+        marginLeft: 6,
+        fontWeight: "500",
     },
     amountCard: {
         backgroundColor: '#FFFFFF',
@@ -1162,6 +1404,49 @@ const styles = StyleSheet.create({
     },
     contentStyle: {
         height: 56,
+    },
+    categorySearchContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#FFFFFF",
+        borderWidth: 1,
+        borderColor: "#E2E8F0",
+        borderRadius: 16,
+        paddingHorizontal: 12,
+        minHeight: 48,
+        marginBottom: 14,
+    },
+    categorySearchInput: {
+        flex: 1,
+        marginLeft: 8,
+        fontSize: 15,
+        color: "#111827",
+        paddingVertical: 10,
+    },
+    emptyPicker: {
+        alignItems: "center",
+        justifyContent: "center",
+        paddingVertical: 40,
+        paddingHorizontal: 20,
+    },
+    emptyPickerIcon: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: "#F1F5F9",
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: 14,
+    },
+    emptyPickerTitle: {
+        fontSize: 16,
+        fontWeight: "800",
+        color: "#334155",
+    },
+    emptyPickerText: {
+        marginTop: 6,
+        fontSize: 13,
+        color: "#64748B",
+        textAlign: "center",
     }
-
 });

@@ -830,6 +830,7 @@ export default function LoanFormScreen({ navigation, route }) {
       "lender",
       "loan_direction",
       "principal_amount",
+      "original_principal_amount",
       "interest_rate",
       "loan_start_date",
       "loan_end_date",
@@ -838,9 +839,16 @@ export default function LoanFormScreen({ navigation, route }) {
       "emi_day",
       "outstanding_amount",
       "notes",
+      "status",
     ];
 
     const payload = {};
+
+    loanData.original_principal_amount = loanData.principal_amount;
+
+    if (editId && loanData.status === "Closed" && Number(loanData.principal_amount) > Number(loanData.principal_paid || 0)) {
+        loanData.status = "Active";
+    }
 
     allowed.forEach((key) => {
       const value = loanData[key];

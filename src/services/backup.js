@@ -15,7 +15,7 @@ import { rescheduleAll, syncBillNotifications } from './notificationService';
 
 const BACKUP_VERSION = 3;
 
-export async function exportBackup() {
+export async function generateBackupData() {
   try {
     const categories = await getCategories(false);
     const sources = await getSources(false);
@@ -100,17 +100,7 @@ export async function exportBackup() {
     }
 
     // Backfill bill_id on transactions from bill_linked_transactions.
-    // When a transaction is linked to a bill via addTransactionToBill /
-    // linkAdditionalTransaction, the junction table is updated but the
-    // bill_id column on the transaction row itself may remain null.
-    // Without this backfill the restore has no way to know which bill
-    // a transaction belongs to, breaking the bill↔transaction link.
-    // We build a map of transaction_id → bill_id from the junction table
-    // and apply it to any transaction whose bill_id is currently null.
     if (billLinkedTransactions.length > 0) {
-      // A transaction can appear in multiple bill_linked_transactions rows
-      // (one bill per occurrence paid). Use the first (lowest id) entry as
-      // the canonical bill_id so we don't pick arbitrarily.
       const txToBillId = {};
       for (const link of billLinkedTransactions) {
         if (
@@ -160,6 +150,16 @@ export async function exportBackup() {
     };
 
     const backupJson = JSON.stringify(backupData);
+    return { backupJson, backupData };
+  } catch (error) {
+    console.error('Data generation for backup failed:', error);
+    throw error;
+  }
+}
+
+export async function exportBackup() {
+  try {
+    const { backupJson, backupData } = await generateBackupData();
     const fileName = `SpendoraX_Backup_${new Date().toISOString().split('T')[0]}.json`;
 
     if (Platform.OS === 'web') {

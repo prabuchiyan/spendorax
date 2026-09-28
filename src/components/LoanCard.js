@@ -24,8 +24,7 @@ export default function LoanCard({ loan }) {
         )
       : 0;
 
-  const status =
-    loan.status || (outstanding > 0 ? 'Active' : 'Closed');
+  const status = loan.status || 'Active';
 
   const statusColor =
     status === 'Closed'
