@@ -652,8 +652,8 @@ export default function TopUpScreen({ route, navigation }) {
           {/* Payment Source                                             */}
           {/* ========================================================= */}
           <FieldCard
-            icon="wallet-outline"
-            color="#16A34A"
+            icon={selectedSource?.icon || "wallet-outline"}
+            color={selectedSource?.color || "#16A34A"}
             title="Payment Source"
             value={
               selectedSource ? selectedSource.name : "Select Bank / Wallet"
@@ -672,8 +672,8 @@ export default function TopUpScreen({ route, navigation }) {
           {/* Category                                                   */}
           {/* ========================================================= */}
           <FieldCard
-            icon="shape-outline"
-            color="#EA580C"
+            icon={selectedCategory?.icon || "shape-outline"}
+            color={selectedCategory?.color || "#EA580C"}
             title="Category"
             value={selectedCategory ? selectedCategory.name : "Select Category"}
             error={errors.category}
@@ -869,12 +869,12 @@ export default function TopUpScreen({ route, navigation }) {
               {sources.map((source) => (
                 <PickerItem
                   key={source.id}
-                  icon="wallet-outline"
-                  iconColor="#16A34A"
-                  iconBg="#DCFCE7"
+                  icon={source.icon || "wallet-outline"}
+                  iconColor={source.color || "#16A34A"}
+                  iconBg={(source.color || "#16A34A") + "20"}
                   selected={Number(source.id) === Number(sourceId)}
                   title={source.name}
-                  subtitle="Payment Account"
+                  subtitle={source.type ? `${source.type} Account` : "Payment Account"}
                   onPress={() => {
                     setSourceId(source.id);
 
