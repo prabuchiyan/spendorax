@@ -145,6 +145,7 @@ export default function TransactionForm({
         : true
       : true,
   );
+  const [loanTab, setLoanTab] = useState("active");
 
   function markDirty() {
     setIsDirty(true);
@@ -574,8 +575,13 @@ export default function TransactionForm({
   const activeLoans = loansList.filter(
     (loan) => String(loan.status || "").toLowerCase() === "active",
   );
+  const closedLoans = loansList.filter(
+    (loan) => String(loan.status || "").toLowerCase() === "closed",
+  );
 
-  const filteredLoans = [...activeLoans]
+  const baseLoans = loanTab === "active" ? activeLoans : closedLoans;
+
+  const filteredLoans = [...baseLoans]
     .sort((a, b) => b.id - a.id)
     .filter(
       (l) =>
@@ -1548,7 +1554,7 @@ export default function TransactionForm({
                     Linked Loan
                   </Text>
                   {/* Loan Payment */}
-                  {activeLoans.length > 0 && type !== "transfer" && (
+                  {loansList.length > 0 && type !== "transfer" && (
                     <View style={{ marginBottom: 18 }}>
                       <Text style={{ marginBottom: 8, color: "#666" }}>
                         Link to Loan (Optional)
@@ -1625,7 +1631,7 @@ export default function TransactionForm({
                         </TouchableOpacity>
                       ) : (
                         (() => {
-                          const loan = activeLoans.find(
+                          const loan = loansList.find(
                             (l) => l.id === selectedLoanId,
                           );
                           // Safety check:
@@ -2644,6 +2650,44 @@ export default function TransactionForm({
               }}
             />
 
+            {/* LOAN TABS */}
+            <View style={{ flexDirection: "row", marginBottom: 14 }}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  alignItems: "center",
+                  borderBottomWidth: 2,
+                  borderBottomColor: loanTab === "active" ? "#4B7CF3" : "transparent",
+                }}
+                onPress={() => {
+                  setLoanTab("active");
+                  setLoanSearch("");
+                }}
+              >
+                <Text style={{ fontWeight: "700", color: loanTab === "active" ? "#4B7CF3" : "#888" }}>
+                  Active ({activeLoans.length})
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  alignItems: "center",
+                  borderBottomWidth: 2,
+                  borderBottomColor: loanTab === "closed" ? "#4B7CF3" : "transparent",
+                }}
+                onPress={() => {
+                  setLoanTab("closed");
+                  setLoanSearch("");
+                }}
+              >
+                <Text style={{ fontWeight: "700", color: loanTab === "closed" ? "#4B7CF3" : "#888" }}>
+                  Closed ({closedLoans.length})
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             {/* COUNT */}
             <Text
               style={{
@@ -2714,6 +2758,7 @@ export default function TransactionForm({
                   }}
                   renderItem={({ item }) => {
                     const isSelected = selectedLoanId === item.id;
+                    const isClosed = String(item.status || "").toLowerCase() === "closed";
                     return (
                       <TouchableOpacity
                         activeOpacity={0.85}
@@ -2726,13 +2771,13 @@ export default function TransactionForm({
                           setShowLoanActionSheet(true);
                         }}
                         style={{
-                          backgroundColor: isSelected ? "#F0FFF6" : "#fff",
+                          backgroundColor: isSelected ? "#F0FFF6" : isClosed ? "#F9FAFB" : "#fff",
                           borderRadius: 16,
                           borderWidth: 1,
                           borderColor: isSelected ? "#36B37E" : "#E6EAF2",
                           padding: 14,
                           marginBottom: 10,
-                          opacity: linking || submitting ? 0.65 : 1,
+                          opacity: isClosed ? 0.6 : (linking || submitting ? 0.65 : 1),
                         }}
                       >
                         <View
@@ -3026,6 +3071,18 @@ export default function TransactionForm({
                         paymentType: "FORECLOSURE",
                       },
                     ];
+                
+                const isClosed = String(pendingLoan.status || "").toLowerCase() === "closed";
+                let displayOptions = options;
+                if (isClosed) {
+                  displayOptions = options
+                    .filter(opt => opt.paymentType !== "FORECLOSURE")
+                    .map(opt => ({
+                      ...opt,
+                      sublabel: `${opt.sublabel} (This will reopen the loan)`
+                    }));
+                }
+
                 const doLink = (paymentType) => {
                   setLinking(true);
                   showPageLoader();
@@ -3129,7 +3186,7 @@ export default function TransactionForm({
                     </Text>
 
                     {/* Options */}
-                    {options.map((opt) => (
+                    {displayOptions.map((opt) => (
                       <TouchableOpacity
                         key={opt.paymentType}
                         activeOpacity={0.85}
