@@ -177,9 +177,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
 
   const totalPrincipal = Number(loan.principal_amount || 0);
 
-  const originalPrincipal = Number(
-    loan.original_principal_amount ?? loan.principal_amount ?? 0,
-  );
+  const originalPrincipal = Number(loan.principal_amount || 0);
 
   const paidSoFar = Number(loan.total_paid || 0);
 
