@@ -708,19 +708,22 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 tx.outstanding_after_payment ?? loan.outstanding_amount ?? 0,
               );
 
-              const note = String(tx.notes || "").toLowerCase();
-
-              const isTopUp =
-                note.includes("top up") ||
-                note.includes("topup") ||
-                note.includes("additional borrowing") ||
-                note.includes("borrowed");
-
-              const isPayment = !isTopUp;
-
               const transactionType = String(
                 tx.type || tx.transaction_type || tx.direction || "",
               ).toLowerCase();
+
+              const paymentType = (tx.loan_payment_type || "").toUpperCase();
+              let isTopUp = paymentType === "TOP_UP" || paymentType === "ADVANCE";
+
+              if (paymentType === "LINKED" || !paymentType) {
+                const isLent = (loan.loan_direction || "BORROWED") === "LENT";
+                const txDirection = String(tx.direction || "").toLowerCase();
+                isTopUp =
+                  (!isLent && (transactionType === "income" || txDirection === "credit")) ||
+                  (isLent && (transactionType === "expense" || txDirection === "debit"));
+              }
+
+              const isPayment = !isTopUp;
 
               const isExpense =
                 transactionType === "expense" ||
