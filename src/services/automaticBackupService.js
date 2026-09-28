@@ -15,6 +15,7 @@ let appStateSubscription = null;
 
 // Define background task
 TaskManager.defineTask(BACKGROUND_BACKUP_TASK, async () => {
+  if (Platform.OS === 'web') return BackgroundFetch.BackgroundFetchResult.NoData;
   try {
     const { success } = await performAutomaticBackup();
     return success ? BackgroundFetch.BackgroundFetchResult.NewData : BackgroundFetch.BackgroundFetchResult.NoData;
@@ -47,6 +48,7 @@ function calculateMsUntilNextBackup(backupTimeStr) {
 }
 
 export async function initializeAutomaticBackup() {
+  if (Platform.OS === 'web') return;
   try {
     const config = await getAutomaticBackupConfig();
     
@@ -133,6 +135,8 @@ async function updateStatus(updates) {
 }
 
 export async function performAutomaticBackup() {
+  if (Platform.OS === 'web') return { success: false };
+
   if (backupInProgress) {
     console.log('[AutoBackup] Already running, skip');
     return { success: false };
@@ -156,7 +160,8 @@ export async function performAutomaticBackup() {
   }
 
   backupInProgress = true;
-  await updateStatus({ lastAttemptDate: todayStr, lastStatus: 'RUNNING' });
+  const dateTimeStr = now.toLocaleString();
+  await updateStatus({ lastAttemptDate: dateTimeStr, lastStatus: 'RUNNING' });
   console.log('[AutoBackup] Starting backup...');
 
   try {
@@ -217,14 +222,17 @@ export async function performAutomaticBackup() {
 
 export async function verifyAutomaticBackup(filePath) {
   try {
-    const info = await FileSystem.getInfoAsync(filePath);
-    if (!info.exists || info.size === 0) return false;
+    if (!filePath.startsWith('content://')) {
+      const info = await FileSystem.getInfoAsync(filePath);
+      if (!info.exists || info.size === 0) return false;
+    }
     
     // Read and parse to verify JSON structure
     const content = await FileSystem.readAsStringAsync(filePath);
     const parsed = JSON.parse(content);
     return parsed && parsed.version !== undefined && parsed.data !== undefined;
   } catch (e) {
+    console.error('[AutoBackup] verify error:', e);
     return false;
   }
 }
@@ -232,10 +240,15 @@ export async function verifyAutomaticBackup(filePath) {
 export async function deletePreviousAutomaticBackup(filePath) {
   try {
     // Delete file using standard FileSystem or SAF
-    const info = await FileSystem.getInfoAsync(filePath);
-    if (info.exists) {
-      await FileSystem.deleteAsync(filePath, { idempotent: true });
-      console.log(`[AutoBackup] Deleted previous backup: ${filePath}`);
+    if (filePath.startsWith('content://')) {
+       await FileSystem.deleteAsync(filePath, { idempotent: true });
+       console.log(`[AutoBackup] Deleted previous backup: ${filePath}`);
+    } else {
+       const info = await FileSystem.getInfoAsync(filePath);
+       if (info.exists) {
+         await FileSystem.deleteAsync(filePath, { idempotent: true });
+         console.log(`[AutoBackup] Deleted previous backup: ${filePath}`);
+       }
     }
   } catch (error) {
     console.error('[AutoBackup] Failed to delete previous backup', error);
