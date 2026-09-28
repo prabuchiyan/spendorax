@@ -438,20 +438,25 @@ export default function TransactionForm({
   }
 
   const handleDelete = async () => {
-    await deleteTransaction(transaction.id);
-    // Notify scheduler — deleted transaction may affect a credit card statement
+    setSubmitting(true);
     try {
-      if (transaction.source_id) {
-        await onCardTransactionChanged(transaction.source_id);
+      await deleteTransaction(transaction.id);
+      // Notify scheduler — deleted transaction may affect a credit card statement
+      try {
+        if (transaction.source_id) {
+          await onCardTransactionChanged(transaction.source_id);
+        }
+      } catch (e) {
+        console.warn(
+          "[TransactionForm] onCardTransactionChanged on delete failed:",
+          e,
+        );
       }
-    } catch (e) {
-      console.warn(
-        "[TransactionForm] onCardTransactionChanged on delete failed:",
-        e,
-      );
+      setConfirmVisible(false);
+      onCancel?.();
+    } finally {
+      setSubmitting(false);
     }
-    setConfirmVisible(false);
-    onCancel?.();
   };
 
   function formatDateTime(isoString) {
@@ -2532,6 +2537,7 @@ export default function TransactionForm({
         message={`Delete this ${type} transaction?`}
         onCancel={() => setConfirmVisible(false)}
         onConfirm={handleDelete}
+        loading={submitting}
       />
 
       <ConfirmDialog

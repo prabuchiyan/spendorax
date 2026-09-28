@@ -217,12 +217,14 @@ export default function CategoriesDetails({ route, navigation }) {
   const handleDeleteConfirm = async () => {
     if (!confirmTargetId) return;
 
+    setLoading(true);
     try {
       await deleteTransaction(confirmTargetId);
       await loadTransactions();
     } catch (e) {
       console.error('Delete failed', e);
     } finally {
+      setLoading(false);
       setConfirmVisible(false);
       setConfirmTargetId(null);
     }
@@ -578,7 +580,8 @@ export default function CategoriesDetails({ route, navigation }) {
         title="Delete Transaction"
         message="Are you sure?"
         onCancel={() => setConfirmVisible(false)}
-        onConfirm={handleDeleteConfirm} />
+        onConfirm={handleDeleteConfirm}
+        loading={loading} />
       
 
       <ContextualFAB
