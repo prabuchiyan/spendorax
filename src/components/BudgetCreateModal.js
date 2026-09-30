@@ -216,14 +216,14 @@ export default function BudgetCreateModal({
                                     try {
                                         const success = await handleSaveBudget();
                                         if (success) {
-                                            onSave();
+                                            await onSave();
                                         }
                                     } finally {
                                         setSubmitting(false);
                                     }
                                 }}
                             >
-                                {editData ? 'Update' : 'Save'}
+                                {submitting ? 'Saving...' : (editData ? 'Update' : 'Save')}
                             </Button>
                         </View>
                     </Card>
