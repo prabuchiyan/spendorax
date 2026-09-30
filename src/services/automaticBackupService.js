@@ -124,7 +124,8 @@ export async function getAutomaticBackupStatus() {
     lastAttemptDate: null,
     lastSuccessfulBackupDate: null,
     lastSuccessfulBackupPath: null,
-    lastStatus: 'IDLE'
+    lastStatus: 'IDLE',
+    lastErrorMessage: null
   };
 }
 
@@ -200,7 +201,8 @@ export async function performAutomaticBackup() {
     await updateStatus({ 
       lastSuccessfulBackupDate: todayStr, 
       lastSuccessfulBackupPath: newFilePath,
-      lastStatus: 'SUCCESS' 
+      lastStatus: 'SUCCESS',
+      lastErrorMessage: null
     });
     console.log('[AutoBackup] Backup generated successfully');
 
@@ -213,7 +215,7 @@ export async function performAutomaticBackup() {
   } catch (error) {
     console.error('[AutoBackup] Backup generation failed. Reason:', error);
     console.log('[AutoBackup] Existing backup preserved');
-    await updateStatus({ lastStatus: 'FAILED' });
+    await updateStatus({ lastStatus: 'FAILED', lastErrorMessage: error.message || error.toString() });
     return { success: false };
   } finally {
     backupInProgress = false;

@@ -287,9 +287,16 @@ export default function BackupScreen() {
             </TouchableRipple>
             
             {autoStatus && autoStatus.lastAttemptDate && (
-               <Text style={styles.timestamp}>
-                 Last attempted: {autoStatus.lastAttemptDate} ({autoStatus.lastStatus})
-               </Text>
+               <View style={{ marginTop: 8 }}>
+                 <Text style={[styles.timestamp, { color: autoStatus.lastStatus === 'FAILED' ? '#E46A6A' : Colors.muted }]}>
+                   Last attempted: {autoStatus.lastAttemptDate} ({autoStatus.lastStatus})
+                 </Text>
+                 {autoStatus.lastStatus === 'FAILED' && autoStatus.lastErrorMessage && (
+                   <Text style={[styles.timestamp, { color: '#E46A6A', marginTop: 4 }]}>
+                     Error: {autoStatus.lastErrorMessage}
+                   </Text>
+                 )}
+               </View>
             )}
           </Card.Content>
         </Card>
