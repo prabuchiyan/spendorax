@@ -1,4 +1,5 @@
 import { Platform, AppState } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as BackgroundFetch from 'expo-background-fetch';
@@ -215,7 +216,19 @@ export async function performAutomaticBackup() {
   } catch (error) {
     console.error('[AutoBackup] Backup generation failed. Reason:', error);
     console.log('[AutoBackup] Existing backup preserved');
-    await updateStatus({ lastStatus: 'FAILED', lastErrorMessage: error.message || error.toString() });
+    const errorMsg = error.message || error.toString();
+    await updateStatus({ lastStatus: 'FAILED', lastErrorMessage: errorMsg });
+    
+    // Alert the user via Push Notification so they are aware
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Automatic Backup Failed \u26A0\uFE0F",
+        body: `We couldn't create your backup: ${errorMsg}. Please open Backup settings to fix the folder permission.`,
+        sound: true,
+      },
+      trigger: null,
+    }).catch(e => console.error("Failed to send error notification", e));
+
     return { success: false };
   } finally {
     backupInProgress = false;
