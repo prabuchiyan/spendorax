@@ -260,7 +260,7 @@ export default function BudgetsScreen({ route, navigation }) {
     );
     await syncOverallBudget();
     events.emit('budgetsChanged');
-    await loadCategoryBudgetsForMonth(selectedMonth, selectedYear);
+    await load();
     setSelectedCategory(null);
     setCategoryBudgetAmount('');
     return true;
@@ -284,7 +284,7 @@ export default function BudgetsScreen({ route, navigation }) {
         await deleteCategoryBudget(deletingBudgetId);
         await syncOverallBudget();
         events.emit('budgetsChanged', null);
-        await loadCategoryBudgetsForMonth(selectedMonth, selectedYear);
+        await load();
         setConfirmVisible(false);
         setDeletingBudgetId(null);
       } finally {
@@ -324,10 +324,7 @@ export default function BudgetsScreen({ route, navigation }) {
       }
       await syncOverallBudget();
       events.emit('budgetsChanged');
-      await loadCategoryBudgetsForMonth(
-        currentMonth,
-        currentYear
-      );
+      await load();
       setShowCopyModal(false);
       
       setToastMsg(`Copied budgets from ${getMonthLabel(sourceDate)} to ${getMonthLabel(targetDate)}.`);
@@ -961,6 +958,7 @@ export default function BudgetsScreen({ route, navigation }) {
                           </View>
 
                           {/* EDIT */}
+                          {isCurrentMonthSelected && (
                           <View
                         style={{
                           width: 34,
@@ -995,8 +993,10 @@ export default function BudgetsScreen({ route, navigation }) {
                           }} />
                         
                           </View>
+                          )}
 
                           {/* DELETE */}
+                          {isCurrentMonthSelected && (
                           <View
                         style={{
                           width: 34,
@@ -1021,6 +1021,7 @@ export default function BudgetsScreen({ route, navigation }) {
                           }} />
                         
                           </View>
+                          )}
                         </View>
 
                         {/* Compact progress */}
@@ -1164,7 +1165,7 @@ export default function BudgetsScreen({ route, navigation }) {
         handleSaveBudget={handleSaveBudget} />
       
 
-      {tab === 'category' &&
+      {tab === 'category' && isCurrentMonthSelected &&
       <ContextualFAB
         onPress={() => {
           setEditBudget(null);
