@@ -10,7 +10,6 @@ import { getCategories, softDeleteCategory, updateCategory } from '../services/c
 import Card from '../components/Card';
 import IconButton from '../components/IconButton';
 import { Colors } from '../components/Theme';
-import CategoryCreateModal from '../components/CategoryCreateModal';
 import ContextualFAB from '../components/ContextualFAB';
 import { useCategories, useAppDispatch } from '../redux/hooks';
 import { setCategories, setCategoriesMap } from '../redux/slices/categorySlice';
@@ -53,7 +52,13 @@ export default function CategoriesScreen({ route, navigation }) {
     dispatch(setCategoriesMap(catMap));
   }
 
-  useEffect(() => {load();}, []);
+  useEffect(() => {
+    load();
+    const unsubscribe = navigation.addListener('focus', () => {
+      load();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   // If navigated with an editId param, start editing that category
   useEffect(() => {
@@ -614,8 +619,10 @@ export default function CategoriesScreen({ route, navigation }) {
                       <TouchableOpacity
                     activeOpacity={0.7}
                     onPress={() => {
-                      setEditCategory(item);
-                      setShowModal(true);
+                      navigation.navigate('CategoryCreate', {
+                        editData: item,
+                        currentType: item.type,
+                      });
                     }}
                     style={styles.actionButton}>
                     
@@ -725,17 +732,7 @@ export default function CategoriesScreen({ route, navigation }) {
         currentColor={editColor} />
       
 
-      {/* ───────────── Create / Edit Modal ───────────── */}
-      <CategoryCreateModal
-        visible={showModal}
-        currentType={initialCategoryType}
-        onClose={() => setShowModal(false)}
-        editData={editCategory}
-        onSave={() => {
-          setShowModal(false);
-          load();
-        }} />
-      
+
 
       {/* ───────────── FAB ───────────── */}
       <ContextualFAB
@@ -747,9 +744,9 @@ export default function CategoriesScreen({ route, navigation }) {
             color: '#E35D6A',
             style: { backgroundColor: '#fff' },
             onPress: () => {
-              setEditCategory(null);
-              setInitialCategoryType('expense');
-              setShowModal(true);
+              navigation.navigate('CategoryCreate', {
+                currentType: 'expense',
+              });
             },
           },
           {
@@ -758,9 +755,9 @@ export default function CategoriesScreen({ route, navigation }) {
             color: '#3F8F6B',
             style: { backgroundColor: '#fff' },
             onPress: () => {
-              setEditCategory(null);
-              setInitialCategoryType('income');
-              setShowModal(true);
+              navigation.navigate('CategoryCreate', {
+                currentType: 'income',
+              });
             },
           },
         ]}

@@ -10,7 +10,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { getCreditCards, deleteCreditCard } from "../services/creditCards";
 import Card from "../components/Card";
 import ConfirmDialog from "../components/ConfirmDialog";
-import CreditCardCreateModal from "../components/CreditCardCreateModal";
+
 import ContextualFAB from "../components/ContextualFAB";
 import { Colors, Spacing } from "../components/Theme";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
@@ -280,8 +280,7 @@ export default function CreditCardsScreen({ navigation }) {
                     <TouchableOpacity
                       onPress={async () => {
                         const card = await getCreditCardById(item.id);
-                        setEditCard({ ...card });
-                        setShowModal(true);
+                        navigation.navigate('CreditCardCreate', { editData: { ...card } });
                       }}
                       style={styles.cardIconButton}
                     >
@@ -312,28 +311,11 @@ export default function CreditCardsScreen({ navigation }) {
         onConfirm={handleDelete}
       />
 
-      <CreditCardCreateModal
-        key={editCard ? `edit-${editCard.id}` : "new"}
-        visible={showModal}
-        onClose={() => {
-          setShowModal(false);
-          setEditCard(null);
-        }}
-        editData={editCard}
-        onSave={async (payload) => {
-          if (editCard) {
-            await updateCreditCard(editCard.id, payload);
-          } else {
-            await createCreditCard(payload);
-          }
-          load();
-        }}
-      />
+
 
       <ContextualFAB
         onPress={() => {
-          setEditCard(null);
-          setShowModal(true);
+          navigation.navigate('CreditCardCreate');
         }}
       />
     </View>

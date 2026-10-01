@@ -9,7 +9,7 @@ import events from '../services/events';
 import Card from '../components/Card';
 import { Spacing } from '../components/Theme';
 import ConfirmDialog from '../components/ConfirmDialog';
-import BudgetCreateModal from '../components/BudgetCreateModal';
+
 import ContextualFAB from '../components/ContextualFAB';
 import CopyBudgetModal from '../components/CopyBudgetModal';
 import { usePageLoader } from '../context/PageLoaderContext';
@@ -979,17 +979,17 @@ export default function BudgetsScreen({ route, navigation }) {
                           }}
                           onPress={(event) => {
                             event?.stopPropagation?.();
-                            setEditBudget(budget);
-                            setSelectedCategory({
-                              id: budget.categoryId,
-                              name: budget.categoryName,
-                              icon: budget.icon,
-                              color: budget.color
+                            navigation.navigate('BudgetCreate', {
+                              editData: {
+                                categoryId: budget.categoryId,
+                                budget: budget.budget,
+                                categoryName: budget.categoryName,
+                                icon: budget.icon,
+                                color: budget.color
+                              },
+                              selectedMonth,
+                              selectedYear
                             });
-                            setCategoryBudgetAmount(String(budget.budget));
-                            setSearchText('');
-                            setShowCategoryDropdown(false);
-                            setShowModal(true);
                           }} />
                         
                           </View>
@@ -1141,39 +1141,13 @@ export default function BudgetsScreen({ route, navigation }) {
         }
       </ScrollView>
 
-      <BudgetCreateModal
-        visible={showModal}
-        editData={editBudget}
-        onClose={() => {
-          setShowModal(false);
-          setEditBudget(null);
-        }}
-        onSave={() => {
-          setShowModal(false);
-          setEditBudget(null);
-          load();
-        }}
-        selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
-        categoryBudgetAmount={categoryBudgetAmount}
-        setCategoryBudgetAmount={setCategoryBudgetAmount}
-        showCategoryDropdown={showCategoryDropdown}
-        setShowCategoryDropdown={setShowCategoryDropdown}
-        searchText={searchText}
-        setSearchText={setSearchText}
-        filteredCategories={filteredCategories}
-        handleSaveBudget={handleSaveBudget} />
+
       
 
       {tab === 'category' && isCurrentMonthSelected &&
       <ContextualFAB
         onPress={() => {
-          setEditBudget(null);
-          setSelectedCategory(null);
-          setCategoryBudgetAmount('');
-          setSearchText('');
-          setShowCategoryDropdown(false);
-          setShowModal(true);
+          navigation.navigate('BudgetCreate', { selectedMonth, selectedYear });
         }} />
 
       }

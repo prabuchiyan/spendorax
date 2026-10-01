@@ -14,7 +14,7 @@ import { getTransactions } from '../services/transactions';
 import Card from '../components/Card';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { Colors } from '../components/Theme';
-import SourceCreateModal from '../components/SourceCreateModal';
+
 import ContextualFAB from '../components/ContextualFAB';
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 import { useAppDispatch, useSourcesList } from '../redux/hooks';
@@ -409,8 +409,7 @@ export default function SourcesScreen({ route, navigation }) {
                     <TouchableOpacity
                       activeOpacity={0.7}
                       onPress={() => {
-                        setEditSource(item);
-                        setShowModal(true);
+                        navigation.navigate('SourceCreate', { editData: item });
                       }}
                       style={styles.actionButton}>
                       
@@ -479,26 +478,13 @@ export default function SourcesScreen({ route, navigation }) {
         }} />
       
 
-      {/* =====================================================
-           CREATE / EDIT MODAL
-        ====================================================== */}
-      <SourceCreateModal
-        visible={showModal}
-        onClose={() => setShowModal(false)}
-        editData={editSource}
-        onSave={() => {
-          setShowModal(false);
-          load();
-        }} />
-      
 
       {/* =====================================================
            FAB
         ====================================================== */}
       <ContextualFAB
         onPress={() => {
-          setEditSource(null);
-          setShowModal(true);
+          navigation.navigate('SourceCreate');
         }} />
       
 

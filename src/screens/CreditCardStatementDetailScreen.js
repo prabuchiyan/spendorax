@@ -12,7 +12,7 @@ import { getCreditCardStatementById, getStatementTransactions, updateCreditCardS
 import { Colors, Spacing } from "../components/Theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ContextualFAB from "../components/ContextualFAB";
-import CreditCardStatementEditModal from "../components/CreditCardStatementEditModal";
+
 import { formatAmount, formatCurrency } from "../utils/numberUtils";
 import CurrencyText from "../components/CurrencyText";
 
@@ -201,16 +201,11 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
         </View>
       }
 
-      <CreditCardStatementEditModal
-        visible={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        editData={statement}
-        onSave={async (payload) => {
-          await updateCreditCardStatement(statement.id, payload);
-          loadData();
-        }} />
-      
-      <ContextualFAB onPress={() => setShowEditModal(true)} icon="pencil" />
+      <ContextualFAB 
+        onPress={() => navigation.navigate("CreditCardStatementEdit", { editData: statement })} 
+        icon="pencil" 
+        style={{ marginBottom: (statement.bill_id && !isStatementPaid(statement)) ? 100 : 0 }} 
+      />
     </View>);
 
 }

@@ -20,8 +20,13 @@ import SearchScreen from './src/screens/SearchScreen';
 import TransactionAddScreen from './src/screens/TransactionAddScreen';
 import SourcesDashboard from './src/screens/SourcesDashboard';
 import SpendAreasDashboard from './src/screens/SpendAreasDashboard';
+import BudgetCreateScreen from './src/screens/BudgetCreateScreen';
 import SourcesDetails from './src/screens/SourcesDetails';
 import CategoriesDetails from './src/screens/CategoriesDetails';
+import CategoryCreateScreen from './src/screens/CategoryCreateScreen';
+import SourceCreateScreen from './src/screens/SourceCreateScreen';
+import CreditCardCreateScreen from './src/screens/CreditCardCreateScreen';
+import CreditCardStatementEditScreen from './src/screens/CreditCardStatementEditScreen';
 import ReportsScreen from './src/screens/ReportsScreen';
 import BillsScreen from './src/screens/BillsScreen';
 import BillDetailScreen from './src/screens/BillDetailScreen';
@@ -174,6 +179,11 @@ export default function App() {
               <Stack.Screen name="SourcesDetails" component={SourcesDetails} />
               <Stack.Screen name="SpendAreasDashboard" component={SpendAreasDashboard} />
               <Stack.Screen name="CategoriesDetails" component={CategoriesDetails} />
+              <Stack.Screen name="CategoryCreate" component={CategoryCreateScreen} options={{ title: 'Category Details' }} />
+              <Stack.Screen name="BudgetCreate" component={BudgetCreateScreen} options={{ title: 'Budget Details' }} />
+              <Stack.Screen name="SourceCreate" component={SourceCreateScreen} options={{ title: 'Account Details' }} />
+              <Stack.Screen name="CreditCardCreate" component={CreditCardCreateScreen} options={{ title: 'Credit Card Details' }} />
+              <Stack.Screen name="CreditCardStatementEdit" component={CreditCardStatementEditScreen} options={{ title: 'Edit Statement' }} />
               <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Financial Reports' }} />
               <Stack.Screen name="Bills" component={BillsScreen} options={{ title: 'Bills' }} />
               <Stack.Screen name="BillDetail" component={BillDetailScreen} options={{ title: 'Bill Details' }} />

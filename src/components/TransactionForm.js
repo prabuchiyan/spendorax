@@ -33,8 +33,8 @@ import {
   Snackbar,
 } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import CategoryCreateModal from "./CategoryCreateModal";
-import SourceCreateModal from "./SourceCreateModal";
+import CategoryCreateScreen from "../screens/CategoryCreateScreen";
+import SourceCreateScreen from "../screens/SourceCreateScreen";
 import ConfirmDialog from "./ConfirmDialog";
 import MuiDateTimePicker from "./MuiDateTimePicker";
 import { Feather } from "@expo/vector-icons";
@@ -3315,43 +3315,59 @@ export default function TransactionForm({
         </View>
       </Modal>
 
-      <CategoryCreateModal
-        visible={showCategoryCreateModal}
-        onClose={() => setShowCategoryCreateModal(false)}
-        onCategoryCreated={async (newCategory) => {
-          const cats = await getCategories(true);
-          setCategories(cats);
-          setCategoryId(newCategory.id);
-          requestAnimationFrame(() => {
-            setShowCategoryCreateModal(false);
-            setShowCategoryModal(false);
-            setShowCategoryGrid(false);
-            setCategorySearch("");
-          });
-        }}
-        currentType={type}
-      />
-
-      <SourceCreateModal
-        visible={showSourceCreateModal}
-        onClose={() => setShowSourceCreateModal(false)}
-        onSourceCreated={async () => {
-          const updatedSources = await getSources(true);
-          setSources(updatedSources);
-          const newestSource = [...updatedSources].sort(
-            (a, b) => b.id - a.id,
-          )[0];
-          requestAnimationFrame(() => {
-            if (newestSource) {
-              setSourceId(newestSource.id);
+      <Modal visible={showCategoryCreateModal} animationType="slide" onRequestClose={() => setShowCategoryCreateModal(false)}>
+        <CategoryCreateScreen
+          route={{
+            params: {
+              currentType: type,
+              onCategoryCreated: async (newCategory) => {
+                const cats = await getCategories(true);
+                setCategories(cats);
+                setCategoryId(newCategory.id);
+                requestAnimationFrame(() => {
+                  setShowCategoryCreateModal(false);
+                  setShowCategoryModal(false);
+                  setShowCategoryGrid(false);
+                  setCategorySearch("");
+                });
+              }
             }
-            setShowSourceGrid(false);
-            setSourceSearch("");
-            setShowSourceCreateModal(false);
-            setShowSourceModal(false);
-          });
-        }}
-      />
+          }}
+          navigation={{
+            goBack: () => setShowCategoryCreateModal(false)
+          }}
+        />
+      </Modal>
+
+      <Modal
+        visible={showSourceCreateModal}
+        animationType="slide"
+        onRequestClose={() => setShowSourceCreateModal(false)}
+      >
+        <SourceCreateScreen
+          route={{
+            params: {
+              onSourceCreated: async () => {
+                const updatedSources = await getSources(true);
+                setSources(updatedSources);
+                const newestSource = [...updatedSources].sort(
+                  (a, b) => b.id - a.id,
+                )[0];
+                requestAnimationFrame(() => {
+                  if (newestSource) {
+                    setSourceId(newestSource.id);
+                  }
+                  setShowSourceGrid(false);
+                  setSourceSearch("");
+                  setShowSourceCreateModal(false);
+                  setShowSourceModal(false);
+                });
+              }
+            }
+          }}
+          navigation={{ goBack: () => setShowSourceCreateModal(false) }}
+        />
+      </Modal>
 
       <Snackbar
         visible={snackbarVisible}
