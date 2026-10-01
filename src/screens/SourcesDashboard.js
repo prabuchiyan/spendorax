@@ -187,8 +187,7 @@ export default function SourcesDashboard({ navigation }) {
                 tab === 'banks' &&
                 styles.activeTabText]
               }>
-
-              Banks & Others
+              Accounts
             </Text>
           </TouchableOpacity>
 

@@ -46,7 +46,7 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
         </View>
         <View style={styles.headerTextContainer}>
           <Text style={styles.appName}>SpendoraX</Text>
-          <Text style={styles.appVersion}>v4.3.7</Text>
+          <Text style={styles.appVersion}>v4.6.5</Text>
         </View>
       </View>
 
