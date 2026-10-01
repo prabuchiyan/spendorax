@@ -8,7 +8,6 @@ import {
   StyleSheet,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-
 import { getLoanPayments } from '../services/loans';
 import Card from '../components/Card';
 import { Colors } from '../components/Theme';

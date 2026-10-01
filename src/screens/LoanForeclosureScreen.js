@@ -7,7 +7,6 @@ import {
     Modal,
     ScrollView,
     StyleSheet,
-    Platform,
     Alert,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -17,82 +16,80 @@ import {
     forecloseLoan,
     getLoans,
 } from '../services/loans';
-
 import { getSources } from '../services/sources';
 import { getCategories } from '../services/categories';
-
 import Card from '../components/Card';
 
 function FieldCard({
-  icon,
-  title,
-  value,
-  color = "#2563EB",
-  onPress,
-  error,
-  disabled = false,
+    icon,
+    title,
+    value,
+    color = "#2563EB",
+    onPress,
+    error,
+    disabled = false,
 }) {
-  const hasError = !!error;
+    const hasError = !!error;
 
-  return (
-    <View style={styles.fieldWrapper}>
-      <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={onPress}
-        style={[styles.fieldCard, hasError && styles.fieldCardError]}
-        disabled={disabled}
-      >
-        <View
-          style={[
-            styles.fieldIcon,
-            {
-              backgroundColor: hasError ? "#FEE2E2" : color + "20",
-            },
-          ]}
-        >
-          <MaterialCommunityIcons
-            name={hasError ? "alert-circle-outline" : icon}
-            size={22}
-            color={hasError ? "#DC2626" : color}
-          />
+    return (
+        <View style={styles.fieldWrapper}>
+            <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={onPress}
+                style={[styles.fieldCard, hasError && styles.fieldCardError]}
+                disabled={disabled}
+            >
+                <View
+                    style={[
+                        styles.fieldIcon,
+                        {
+                            backgroundColor: hasError ? "#FEE2E2" : color + "20",
+                        },
+                    ]}
+                >
+                    <MaterialCommunityIcons
+                        name={hasError ? "alert-circle-outline" : icon}
+                        size={22}
+                        color={hasError ? "#DC2626" : color}
+                    />
+                </View>
+
+                <View style={{ flex: 1 }}>
+                    <Text style={[styles.fieldTitle, hasError && styles.fieldTitleError]}>
+                        {title}
+                        <Text style={styles.requiredMark}> *</Text>
+                    </Text>
+
+                    <Text
+                        style={[styles.fieldValue, hasError && styles.fieldValueError]}
+                        numberOfLines={1}
+                    >
+                        {value}
+                    </Text>
+                </View>
+
+                <MaterialCommunityIcons
+                    name={hasError ? "alert-circle" : "chevron-right"}
+                    size={22}
+                    color={hasError ? "#DC2626" : "#94A3B8"}
+                />
+            </TouchableOpacity>
+
+            <FieldError message={error} />
         </View>
-
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.fieldTitle, hasError && styles.fieldTitleError]}>
-            {title}
-            <Text style={styles.requiredMark}> *</Text>
-          </Text>
-
-          <Text
-            style={[styles.fieldValue, hasError && styles.fieldValueError]}
-            numberOfLines={1}
-          >
-            {value}
-          </Text>
-        </View>
-
-        <MaterialCommunityIcons
-          name={hasError ? "alert-circle" : "chevron-right"}
-          size={22}
-          color={hasError ? "#DC2626" : "#94A3B8"}
-        />
-      </TouchableOpacity>
-
-      <FieldError message={error} />
-    </View>
-  );
+    );
 }
 
 function FieldError({ message }) {
-  if (!message) return null;
+    if (!message) return null;
 
-  return (
-    <View style={styles.fieldErrorContainer}>
-      <MaterialCommunityIcons name="alert-circle" size={16} color="#DC2626" />
+    return (
+        <View style={styles.fieldErrorContainer}>
+            <MaterialCommunityIcons name="alert-circle" size={16} color="#DC2626" />
 
-      <Text style={styles.fieldErrorText}>{message}</Text>
-    </View>
-  );
+            <Text style={styles.fieldErrorText}>{message}</Text>
+        </View>
+    );
 }
 
 function PickerItem({
@@ -192,29 +189,29 @@ function PickerItem({
 }
 
 function safeDate(value) {
-  if (!value) {
+    if (!value) {
+        return new Date();
+    }
+
+    const d = new Date(value);
+
+    if (!Number.isNaN(d.getTime())) {
+        return d;
+    }
+
     return new Date();
-  }
-
-  const d = new Date(value);
-
-  if (!Number.isNaN(d.getTime())) {
-    return d;
-  }
-
-  return new Date();
 }
 
 function formatDateTime(value) {
-  const d = safeDate(value);
+    const d = safeDate(value);
 
-  return d.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+    return d.toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
 }
 
 export default function LoanForeclosureScreen({

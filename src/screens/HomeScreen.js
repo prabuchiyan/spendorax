@@ -16,7 +16,7 @@ import { getHomeExpenseTransactions } from "../services/transactions";
 import { getHomeBudgets as getHomeBudgetsService } from "../services/budgets";
 import { getHomeCategoryBudgets as getHomeCategoryBudgetsService } from "../services/categoryBudgets";
 import { getBillsForCurrentMonth, getBillsSummary, getBillSeriesMultiple } from "../services/bills";
-import { getBillDisplayStatus, formatCurrency, getPreferredBillOccurrence } from "../services/billUtils";
+import { getBillDisplayStatus, getPreferredBillOccurrence } from "../services/billUtils";
 import { getSources } from "../services/sources";
 import { getCategories } from "../services/categories";
 import events from "../services/events";

@@ -5,15 +5,14 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator } from
-"react-native";
+  ActivityIndicator
+} from
+  "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { getCreditCardStatementById, getStatementTransactions, updateCreditCardStatement } from "../services/creditCards";
+import { getCreditCardStatementById, getStatementTransactions } from "../services/creditCards";
 import { Colors, Spacing } from "../components/Theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ContextualFAB from "../components/ContextualFAB";
-
-import { formatAmount, formatCurrency } from "../utils/numberUtils";
 import CurrencyText from "../components/CurrencyText";
 
 function formatDate(value) {
@@ -32,7 +31,6 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
   const [statement, setStatement] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showEditModal, setShowEditModal] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -75,7 +73,7 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
   }
 
   const renderHeader = () =>
-  <View>
+    <View>
       <View style={[styles.headerCard, { borderTopColor: statement.card_color || Colors.primary }]}>
         <View style={styles.headerTop}>
           <View>
@@ -123,9 +121,9 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
             <CurrencyText style={styles.summaryValue} amount={(Number(statement.fees) || 0) + (Number(statement.interest) || 0)} />
           </View>
         </View>
-        
+
         <View style={styles.divider} />
-        
+
         <View style={styles.totalsRow}>
           <View>
             <Text style={styles.totalLabel}>Total Amount Due</Text>
@@ -170,7 +168,7 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
     const isStatusPaid = String(stmt.bill_status).toLowerCase() === 'paid' || String(stmt.status).toLowerCase() === 'paid';
     const closingBal = Number(stmt.closing_balance || 0);
     const isBalancePaid = closingBal <= 0;
-    
+
     return isBillPaid || isStatusPaid || isBalancePaid;
   };
 
@@ -183,28 +181,28 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
         ListHeaderComponent={renderHeader}
         renderItem={renderTransaction}
         ListEmptyComponent={
-        <View style={styles.emptyState}>
+          <View style={styles.emptyState}>
             <MaterialCommunityIcons name="text-box-remove-outline" size={48} color="#ccc" />
             <Text style={styles.emptyText}>No transactions found for this period.</Text>
           </View>
         } />
-      
-      
+
+
       {statement.bill_id && !isStatementPaid(statement) &&
-      <View style={styles.footer}>
+        <View style={styles.footer}>
           <TouchableOpacity
-          style={styles.payButton}
-          onPress={() => navigation.navigate("BillDetail", { billId: statement.bill_id })}>
-          
+            style={styles.payButton}
+            onPress={() => navigation.navigate("BillDetail", { billId: statement.bill_id })}>
+
             <Text style={styles.payButtonText}>View & Pay Bill</Text>
           </TouchableOpacity>
         </View>
       }
 
-      <ContextualFAB 
-        onPress={() => navigation.navigate("CreditCardStatementEdit", { editData: statement })} 
-        icon="pencil" 
-        style={{ marginBottom: (statement.bill_id && !isStatementPaid(statement)) ? 100 : 0 }} 
+      <ContextualFAB
+        onPress={() => navigation.navigate("CreditCardStatementEdit", { editData: statement })}
+        icon="pencil"
+        style={{ marginBottom: (statement.bill_id && !isStatementPaid(statement)) ? 100 : 0 }}
       />
     </View>);
 

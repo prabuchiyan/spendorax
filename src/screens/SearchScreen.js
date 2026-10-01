@@ -23,12 +23,6 @@ import {
 import { setCategories } from '../redux/slices/categorySlice';
 import { setSources as setReduxSources } from '../redux/slices/sourceSlice';
 import { setFilteredTransactions } from '../redux/slices/transactionSlice';
-
-
-
-
-
-
 import { getDateKey } from '../utils/dateUtils';
 import TransactionListItem from '../components/TransactionListItem';
 

@@ -24,7 +24,6 @@ import {
 import { getCategories } from "../services/categories";
 import { getSources } from "../services/sources";
 import { Colors, Spacing } from "../components/Theme";
-
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import TransactionListItem from "../components/TransactionListItem";
 import { useFocusEffect } from "@react-navigation/native";
@@ -520,20 +519,20 @@ export default function SourcesDetails({ route, navigation }) {
         <Text style={styles.heroAmount}>
           {balanceVisible
             ? `₹ ${totalBalance.toLocaleString("en-IN", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}`
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`
             : "••••••"}
         </Text>
 
         {isCreditCard && (
-           <TouchableOpacity 
-             style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#F0F5FF', borderRadius: 20 }}
-             onPress={() => navigation.navigate('CreditCardStatements', { sourceId: source?.id })}
-           >
-             <MaterialCommunityIcons name="file-document-outline" size={15} color="#4B7CF3" style={{ marginRight: 6 }} />
-             <Text style={{ fontSize: 13, fontWeight: '700', color: '#4B7CF3' }}>View Statements</Text>
-           </TouchableOpacity>
+          <TouchableOpacity
+            style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#F0F5FF', borderRadius: 20 }}
+            onPress={() => navigation.navigate('CreditCardStatements', { sourceId: source?.id })}
+          >
+            <MaterialCommunityIcons name="file-document-outline" size={15} color="#4B7CF3" style={{ marginRight: 6 }} />
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#4B7CF3' }}>View Statements</Text>
+          </TouchableOpacity>
         )}
       </View>
 

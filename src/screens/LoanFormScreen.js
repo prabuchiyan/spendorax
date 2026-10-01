@@ -18,14 +18,12 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import MuiDateTimePicker from "../components/MuiDateTimePicker";
 import ConfirmDialog from "../components/ConfirmDialog";
-
 import {
   createLoan,
   getLoanById,
   updateLoan,
   deleteLoan,
 } from "../services/loans";
-
 import { getSources } from "../services/sources";
 import { getCategories } from "../services/categories";
 
@@ -847,7 +845,7 @@ export default function LoanFormScreen({ navigation, route }) {
     loanData.original_principal_amount = loanData.principal_amount;
 
     if (editId && loanData.status === "Closed" && Number(loanData.principal_amount) > Number(loanData.principal_paid || 0)) {
-        loanData.status = "Active";
+      loanData.status = "Active";
     }
 
     allowed.forEach((key) => {

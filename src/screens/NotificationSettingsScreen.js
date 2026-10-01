@@ -6,25 +6,22 @@ import {
   TouchableOpacity,
   StyleSheet,
   Switch,
-
-
-  Alert } from
-"react-native";
+  Alert
+} from
+  "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-
 import MuiDateTimePicker from "../components/MuiDateTimePicker";
 import {
   getNotifications,
-  updateNotification } from
-"../database/notifications";
+  updateNotification
+} from
+  "../database/notifications";
 import {
   scheduleNotification,
   cancelNotification,
-  requestPermission } from
-
-
-
-"../services/notificationService";
+  requestPermission
+} from
+  "../services/notificationService";
 
 const TYPE_META = {
   DAILY_SPEND: {
@@ -47,7 +44,7 @@ const TYPE_META = {
     bg: "#FEE2E2",
     label: "Bill Due Reminder",
     description:
-    "Alerts you before bills are due based on reminder days set per bill."
+      "Alerts you before bills are due based on reminder days set per bill."
   },
   LOAN_EMI: {
     icon: "bank-outline",
@@ -193,14 +190,14 @@ export default function NotificationSettingsScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
-        
+
         {/* Header info */}
         <View style={styles.infoCard}>
           <MaterialCommunityIcons
             name="bell-ring-outline"
             size={24}
             color="#7C3AED" />
-          
+
           <Text style={styles.infoText}>
             Enable reminders to stay on top of your expenses, bills, and loan
             EMIs. Each reminder can be scheduled at your preferred time.
@@ -222,7 +219,7 @@ export default function NotificationSettingsScreen() {
             <View
               key={notification.id}
               style={[styles.card, isEnabled && styles.cardActive]}>
-              
+
               {/* Icon + Label row */}
               <View style={styles.cardHeader}>
                 <View style={[styles.iconWrap, { backgroundColor: meta.bg }]}>
@@ -230,7 +227,7 @@ export default function NotificationSettingsScreen() {
                     name={meta.icon}
                     size={24}
                     color={meta.color} />
-                  
+
                 </View>
                 <View style={{ flex: 1, marginLeft: 14 }}>
                   <Text style={styles.cardTitle}>{meta.label}</Text>
@@ -242,30 +239,30 @@ export default function NotificationSettingsScreen() {
                   disabled={isSaving}
                   trackColor={{ false: "#E2E8F0", true: meta.color + "60" }}
                   thumbColor={isEnabled ? meta.color : "#94A3B8"} />
-                
+
               </View>
 
               {/* Time row — only shown when enabled */}
               {isEnabled &&
-              <TouchableOpacity
-                style={[styles.timeRow, { borderColor: meta.color + "40" }]}
-                onPress={() => openTimePicker(notification)}
-                activeOpacity={0.8}>
-                
+                <TouchableOpacity
+                  style={[styles.timeRow, { borderColor: meta.color + "40" }]}
+                  onPress={() => openTimePicker(notification)}
+                  activeOpacity={0.8}>
+
                   <MaterialCommunityIcons
-                  name="clock-outline"
-                  size={18}
-                  color={meta.color} />
-                
+                    name="clock-outline"
+                    size={18}
+                    color={meta.color} />
+
                   <Text style={[styles.timeText, { color: meta.color }]}>
                     {formatTime(notification.hour, notification.minute)}
                   </Text>
                   <MaterialCommunityIcons
-                  name="pencil-outline"
-                  size={16}
-                  color={meta.color}
-                  style={{ marginLeft: "auto" }} />
-                
+                    name="pencil-outline"
+                    size={16}
+                    color={meta.color}
+                    style={{ marginLeft: "auto" }} />
+
                 </TouchableOpacity>
               }
             </View>);
@@ -293,7 +290,7 @@ export default function NotificationSettingsScreen() {
             setEditingId(null);
           }
         }} />
-      
+
     </View>);
 
 }

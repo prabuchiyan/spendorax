@@ -8,17 +8,11 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { getCreditCards, deleteCreditCard } from "../services/creditCards";
-import Card from "../components/Card";
 import ConfirmDialog from "../components/ConfirmDialog";
-
 import ContextualFAB from "../components/ContextualFAB";
 import { Colors, Spacing } from "../components/Theme";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
-import {
-  createCreditCard,
-  updateCreditCard,
-  getCreditCardById,
-} from "../services/creditCards";
+import { getCreditCardById } from "../services/creditCards";
 import { useAppDispatch, useCreditCards } from "../redux/hooks";
 import { setCreditCards } from "../redux/slices/creditCardSlice";
 import { useBalanceVisibility } from "../context/BalanceVisibilityContext";
@@ -26,8 +20,6 @@ import { useBalanceVisibility } from "../context/BalanceVisibilityContext";
 export default function CreditCardsScreen({ navigation }) {
   const dispatch = useAppDispatch();
   const cards = useCreditCards() || [];
-  const [showModal, setShowModal] = useState(false);
-  const [editCard, setEditCard] = useState(null);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmTargetId, setConfirmTargetId] = useState(null);
   const { balanceVisible } = useBalanceVisibility();

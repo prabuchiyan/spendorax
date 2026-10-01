@@ -5,8 +5,9 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  StyleSheet } from
-'react-native';
+  StyleSheet
+} from
+  'react-native';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { Searchbar } from 'react-native-paper';
 import { getSources, deleteSource } from '../services/sources';
@@ -14,7 +15,6 @@ import { getTransactions } from '../services/transactions';
 import Card from '../components/Card';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { Colors } from '../components/Theme';
-
 import ContextualFAB from '../components/ContextualFAB';
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 import { useAppDispatch, useSourcesList } from '../redux/hooks';
@@ -60,8 +60,8 @@ export default function SourcesScreen({ route, navigation }) {
       const id = s.id;
 
       const balance =
-      Number(s.initial_balance || 0) +
-      Number(balanceMap[id] || 0);
+        Number(s.initial_balance || 0) +
+        Number(balanceMap[id] || 0);
 
       return {
         ...s,
@@ -90,7 +90,7 @@ export default function SourcesScreen({ route, navigation }) {
     const q = searchQuery.toLowerCase();
 
     return items.filter((item) =>
-    (item.name || '').toLowerCase().includes(q)
+      (item.name || '').toLowerCase().includes(q)
     );
   }, [items, searchQuery]);
 
@@ -160,7 +160,7 @@ export default function SourcesScreen({ route, navigation }) {
                 name="wallet-outline"
                 size={18}
                 color="#60A5FA" />
-              
+
             </View>
 
             <View>
@@ -180,7 +180,7 @@ export default function SourcesScreen({ route, navigation }) {
                 name="alert-circle-outline"
                 size={18}
                 color="#F87171" />
-              
+
             </View>
 
             <View>
@@ -209,7 +209,7 @@ export default function SourcesScreen({ route, navigation }) {
           inputStyle={styles.searchInput}
           iconColor="#7A8794"
           placeholderTextColor="#9AA5B1" />
-        
+
       </View>
 
       {/* =====================================================
@@ -220,13 +220,13 @@ export default function SourcesScreen({ route, navigation }) {
         keyExtractor={(item) => String(item.id)}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
-        styles.listContent,
-        filteredItems.length === 0 &&
-        styles.emptyListContent]
+          styles.listContent,
+          filteredItems.length === 0 &&
+          styles.emptyListContent]
         }
         ListHeaderComponent={
-        filteredItems.length > 0 ?
-        <View style={styles.listHeader}>
+          filteredItems.length > 0 ?
+            <View style={styles.listHeader}>
               <Text style={styles.listTitle}>
                 All Accounts
               </Text>
@@ -235,16 +235,16 @@ export default function SourcesScreen({ route, navigation }) {
                 {filteredItems.length}
               </Text>
             </View> :
-        null
+            null
         }
         ListEmptyComponent={
-        <View style={styles.emptyState}>
+          <View style={styles.emptyState}>
             <View style={styles.emptyIconContainer}>
               <MaterialCommunityIcons
-              name="wallet-outline"
-              size={39}
-              color="#9AA5B1" />
-            
+                name="wallet-outline"
+                size={39}
+                color="#9AA5B1" />
+
             </View>
 
             <Text style={styles.emptyTitle}>
@@ -253,8 +253,8 @@ export default function SourcesScreen({ route, navigation }) {
 
             <Text style={styles.emptySubtitle}>
               {searchQuery ?
-            'Try searching with a different name' :
-            'Create your first account to get started'}
+                'Try searching with a different name' :
+                'Create your first account to get started'}
             </Text>
           </View>
         }
@@ -266,7 +266,7 @@ export default function SourcesScreen({ route, navigation }) {
           const isNegative = itemBalance < 0;
 
           const itemColor =
-          item.color || '#4B7CF3';
+            item.color || '#4B7CF3';
 
           return (
             <Card style={styles.accountCard}>
@@ -281,7 +281,7 @@ export default function SourcesScreen({ route, navigation }) {
                     sourceName: item.name
                   });
                 }}>
-                
+
                 <View style={styles.accountRow}>
 
                   {/* =================================================
@@ -291,18 +291,18 @@ export default function SourcesScreen({ route, navigation }) {
 
                     <View
                       style={[
-                      styles.accountIconWrapper,
-                      {
-                        backgroundColor:
-                        `${itemColor}15`
-                      }]
+                        styles.accountIconWrapper,
+                        {
+                          backgroundColor:
+                            `${itemColor}15`
+                        }]
                       }>
-                      
+
                       <MaterialCommunityIcons
                         name={item.icon || 'cash'}
                         size={23}
                         color={itemColor} />
-                      
+
                     </View>
 
                     <View style={styles.accountInfo}>
@@ -310,7 +310,7 @@ export default function SourcesScreen({ route, navigation }) {
                       <Text
                         numberOfLines={1}
                         style={styles.accountName}>
-                        
+
                         {item.name}
                       </Text>
 
@@ -318,20 +318,20 @@ export default function SourcesScreen({ route, navigation }) {
 
                         <View
                           style={[
-                          styles.statusDot,
-                          {
-                            backgroundColor:
-                            isNegative ?
-                            '#E46A6A' :
-                            '#36B37E'
-                          }]
+                            styles.statusDot,
+                            {
+                              backgroundColor:
+                                isNegative ?
+                                  '#E46A6A' :
+                                  '#36B37E'
+                            }]
                           } />
-                        
+
 
                         <Text style={styles.accountMetaText}>
                           {isCreditCard ? 'Total outstanding' : (isNegative ?
-                          'Negative balance' :
-                          'Available balance')}
+                            'Negative balance' :
+                            'Available balance')}
                         </Text>
 
                       </View>
@@ -347,17 +347,17 @@ export default function SourcesScreen({ route, navigation }) {
                     <Text
                       numberOfLines={1}
                       style={[
-                      styles.accountBalance,
-                      {
-                        color: isNegative ?
-                        '#D95D5D' :
-                        '#2F9B6D'
-                      }]
+                        styles.accountBalance,
+                        {
+                          color: isNegative ?
+                            '#D95D5D' :
+                            '#2F9B6D'
+                        }]
                       }>
-                      
+
                       {balanceVisible ?
-                      `₹${formatAmount(itemBalance)}` :
-                      '••••••'}
+                        `₹${formatAmount(itemBalance)}` :
+                        '••••••'}
                     </Text>
 
                     <View style={styles.balanceCaptionRow}>
@@ -367,17 +367,17 @@ export default function SourcesScreen({ route, navigation }) {
 
                       <MaterialCommunityIcons
                         name={
-                        isNegative ?
-                        'arrow-down' :
-                        'arrow-up'
+                          isNegative ?
+                            'arrow-down' :
+                            'arrow-up'
                         }
                         size={12}
                         color={
-                        isNegative ?
-                        '#D95D5D' :
-                        '#2F9B6D'
+                          isNegative ?
+                            '#D95D5D' :
+                            '#2F9B6D'
                         } />
-                      
+
                     </View>
 
                   </View>
@@ -394,7 +394,7 @@ export default function SourcesScreen({ route, navigation }) {
                       name="bank-outline"
                       size={14}
                       color="#9AA5B1" />
-                    
+
 
                     <Text style={styles.initialBalanceText}>
                       Initial ₹
@@ -412,12 +412,12 @@ export default function SourcesScreen({ route, navigation }) {
                         navigation.navigate('SourceCreate', { editData: item });
                       }}
                       style={styles.actionButton}>
-                      
+
                       <Feather
                         name="edit-2"
                         size={15}
                         color={Colors.primary} />
-                      
+
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -427,15 +427,15 @@ export default function SourcesScreen({ route, navigation }) {
                         setConfirmVisible(true);
                       }}
                       style={[
-                      styles.actionButton,
-                      styles.deleteActionButton]
+                        styles.actionButton,
+                        styles.deleteActionButton]
                       }>
-                      
+
                       <Feather
                         name="trash-2"
                         size={15}
                         color="#E46A6A" />
-                      
+
                     </TouchableOpacity>
 
                     <View style={styles.arrowContainer}>
@@ -443,7 +443,7 @@ export default function SourcesScreen({ route, navigation }) {
                         name="chevron-right"
                         size={17}
                         color="#B5BEC8" />
-                      
+
                     </View>
 
                   </View>
@@ -455,7 +455,7 @@ export default function SourcesScreen({ route, navigation }) {
             </Card>);
 
         }} />
-      
+
 
       {/* =====================================================
            DELETE CONFIRMATION
@@ -476,7 +476,7 @@ export default function SourcesScreen({ route, navigation }) {
           setConfirmVisible(false);
           setConfirmTargetId(null);
         }} />
-      
+
 
 
       {/* =====================================================
@@ -486,7 +486,7 @@ export default function SourcesScreen({ route, navigation }) {
         onPress={() => {
           navigation.navigate('SourceCreate');
         }} />
-      
+
 
     </View>);
 

@@ -10,7 +10,6 @@ import {
   Alert,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   TextInput as PaperTextInput,
@@ -20,7 +19,6 @@ import {
   getBillsForCurrentMonth,
   getBillsSummary,
   getBillById,
-  getBillSeries,
   getBillSeriesMultiple,
   markBillPaid,
   skipBill,
@@ -35,12 +33,12 @@ import BillForm from "../components/BillForm";
 import ConfirmDialog from "../components/ConfirmDialog";
 import ContextualFAB from "../components/ContextualFAB";
 import { Colors, Spacing } from "../components/Theme";
-import { BILL_STATUS, formatCurrency } from "../services/billUtils";
+import { BILL_STATUS } from "../services/billUtils";
 import CurrencyText from "../components/CurrencyText";
 import { getSources } from "../services/sources";
 import { getCreditCards, payCreditCardBill } from "../services/creditCards";
 // Redux imports
-import { setBills, setBillsSummary } from "../redux/slices/billSlice";
+import { setBillsSummary } from "../redux/slices/billSlice";
 import { setCategoriesMap } from "../redux/slices/categorySlice";
 import {
   useBills,
@@ -439,16 +437,16 @@ export default function BillsScreen({ navigation }) {
     setConfirmMessage(
       isRecurringOccurrence
         ? `Delete "${actualBill.name}" for this period permanently?\n\n` +
-            `• This bill occurrence will be permanently removed.\n` +
-            `• Other recurring occurrences will remain.\n` +
-            `• Linked transactions will NOT be deleted.\n` +
-            `• Linked transactions will simply be unlinked.\n\n` +
-            `This action cannot be undone.`
+        `• This bill occurrence will be permanently removed.\n` +
+        `• Other recurring occurrences will remain.\n` +
+        `• Linked transactions will NOT be deleted.\n` +
+        `• Linked transactions will simply be unlinked.\n\n` +
+        `This action cannot be undone.`
         : `Delete "${actualBill.name}" permanently?\n\n` +
-            `• The bill will be permanently removed.\n` +
-            `• Linked transactions will NOT be deleted.\n` +
-            `• Linked transactions will simply be unlinked.\n\n` +
-            `This action cannot be undone.`,
+        `• The bill will be permanently removed.\n` +
+        `• Linked transactions will NOT be deleted.\n` +
+        `• Linked transactions will simply be unlinked.\n\n` +
+        `This action cannot be undone.`,
     );
 
     setConfirmVisible(true);

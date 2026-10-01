@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { List, Switch, Divider, Title, Button, Portal, Dialog, TextInput, Text } from 'react-native-paper';
+import { List, Switch, Divider, Button, Portal, Dialog, TextInput, Text } from 'react-native-paper';
 import { Colors, Spacing } from '../components/Theme';
 import {
   getSecuritySettings,
   saveSecuritySettings,
   setPasscode,
   verifyPasscode,
-  deletePasscode,
   hasPasscode,
   isBiometricSupported,
   isSecuritySupported
@@ -44,7 +43,7 @@ export default function SecuritySettingsScreen() {
     }
     const currentSettings = await getSecuritySettings();
     setSettings(currentSettings);
-    
+
     const isPasscodeSet = await hasPasscode();
     setHasPasscodeSet(isPasscodeSet);
 
@@ -113,14 +112,14 @@ export default function SecuritySettingsScreen() {
       setSetupError('Passcodes do not match');
       return;
     }
-    
+
     await setPasscode(newPasscode);
     setHasPasscodeSet(true);
     await updateSetting('appLockEnabled', true);
     setSetupDialogVisible(false);
     setNewPasscode('');
     setConfirmPasscode('');
-    
+
     Alert.alert("Success", "App lock has been enabled.");
   };
 
@@ -155,7 +154,7 @@ export default function SecuritySettingsScreen() {
             />
           )}
         />
-        
+
         {settings.appLockEnabled && (
           <>
             <Divider />

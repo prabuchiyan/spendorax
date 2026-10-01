@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import {
   TextInput as PaperInput,
-  Button as PaperButton } from
-'react-native-paper';
+  Button as PaperButton
+} from
+  'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import IconPicker from '../components/IconPicker';
 import ColorPickerModal from '../components/ColorPickerModal';
 import { usePageLoader } from '../context/PageLoaderContext';
-
-
 import { createCategory, updateCategory } from '../services/categories';
 import { suggestIconForText } from '../utils/iconSuggest';
 
 export default function CategoryCreateScreen({ route, navigation }) {
   const { editData, currentType = 'expense', onSave, onCategoryCreated } = route?.params || {};
-  
+
   const onClose = () => navigation.goBack();
   const [action, setAction] = useState('');
   const [submitText, setSubmitText] = useState('');
@@ -78,9 +77,9 @@ export default function CategoryCreateScreen({ route, navigation }) {
           icon: selectedIcon,
           color: selectedColor,
           is_active:
-          editData.is_active !== undefined ?
-          editData.is_active :
-          1
+            editData.is_active !== undefined ?
+              editData.is_active :
+              1
         });
 
         if (onSave) {

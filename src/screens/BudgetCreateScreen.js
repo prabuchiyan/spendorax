@@ -2,88 +2,87 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, FlatList, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { TextInput as PaperInput, Button as PaperButton, Avatar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Card from '../components/Card';
 import { saveCategoryBudget, getCategoryBudgetSummary } from '../services/categoryBudgets';
 import { getBudgetsForMonth, updateBudget, createBudget } from '../services/budgets';
 import { getCategories } from '../services/categories';
 import events from '../services/events';
 
 function FieldCard({ icon, title, value, color = "#2563EB", onPress, error, disabled }) {
-  const hasError = !!error;
-  return (
-    <View style={{ marginBottom: 16 }}>
-      <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={onPress}
-        disabled={disabled}
-        style={[
-          {
-            flexDirection: "row",
-            alignItems: "center",
-            backgroundColor: "#FFFFFF",
-            borderRadius: 18,
-            paddingHorizontal: 16,
-            paddingVertical: 14,
-            borderWidth: 1,
-            borderColor: hasError ? "#FECACA" : "#F1F5F9",
-          },
-          disabled && { opacity: 0.6 }
-        ]}
-      >
-        <View
-          style={[
-            {
-              width: 44,
-              height: 44,
-              borderRadius: 14,
-              justifyContent: "center",
-              alignItems: "center",
-              marginRight: 14,
-            },
-            {
-              backgroundColor: hasError ? "#FEE2E2" : color + "20",
-            },
-          ]}
-        >
-          <MaterialCommunityIcons
-            name={hasError ? "alert-circle-outline" : icon}
-            size={22}
-            color={hasError ? "#DC2626" : color}
-          />
+    const hasError = !!error;
+    return (
+        <View style={{ marginBottom: 16 }}>
+            <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={onPress}
+                disabled={disabled}
+                style={[
+                    {
+                        flexDirection: "row",
+                        alignItems: "center",
+                        backgroundColor: "#FFFFFF",
+                        borderRadius: 18,
+                        paddingHorizontal: 16,
+                        paddingVertical: 14,
+                        borderWidth: 1,
+                        borderColor: hasError ? "#FECACA" : "#F1F5F9",
+                    },
+                    disabled && { opacity: 0.6 }
+                ]}
+            >
+                <View
+                    style={[
+                        {
+                            width: 44,
+                            height: 44,
+                            borderRadius: 14,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            marginRight: 14,
+                        },
+                        {
+                            backgroundColor: hasError ? "#FEE2E2" : color + "20",
+                        },
+                    ]}
+                >
+                    <MaterialCommunityIcons
+                        name={hasError ? "alert-circle-outline" : icon}
+                        size={22}
+                        color={hasError ? "#DC2626" : color}
+                    />
+                </View>
+                <View style={{ flex: 1 }}>
+                    <Text style={[{ fontSize: 13, color: "#64748B", fontWeight: "600", marginBottom: 2 }, hasError && { color: "#DC2626" }]}>
+                        {title}
+                        <Text style={{ color: "#DC2626" }}> *</Text>
+                    </Text>
+                    <Text
+                        style={[{ fontSize: 16, color: "#0F172A", fontWeight: "700" }, hasError && { color: "#991B1B" }]}
+                        numberOfLines={1}
+                    >
+                        {value}
+                    </Text>
+                </View>
+                <MaterialCommunityIcons
+                    name={hasError ? "alert-circle" : "chevron-right"}
+                    size={22}
+                    color={hasError ? "#DC2626" : "#94A3B8"}
+                />
+            </TouchableOpacity>
+            {hasError && (
+                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6, marginLeft: 4 }}>
+                    <MaterialCommunityIcons name="alert-circle" size={16} color="#DC2626" />
+                    <Text style={{ color: "#DC2626", fontSize: 12, marginLeft: 6, fontWeight: "500" }}>{error}</Text>
+                </View>
+            )}
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[{ fontSize: 13, color: "#64748B", fontWeight: "600", marginBottom: 2 }, hasError && { color: "#DC2626" }]}>
-            {title}
-            <Text style={{ color: "#DC2626" }}> *</Text>
-          </Text>
-          <Text
-            style={[{ fontSize: 16, color: "#0F172A", fontWeight: "700" }, hasError && { color: "#991B1B" }]}
-            numberOfLines={1}
-          >
-            {value}
-          </Text>
-        </View>
-        <MaterialCommunityIcons
-          name={hasError ? "alert-circle" : "chevron-right"}
-          size={22}
-          color={hasError ? "#DC2626" : "#94A3B8"}
-        />
-      </TouchableOpacity>
-      {hasError && (
-        <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6, marginLeft: 4 }}>
-          <MaterialCommunityIcons name="alert-circle" size={16} color="#DC2626" />
-          <Text style={{ color: "#DC2626", fontSize: 12, marginLeft: 6, fontWeight: "500" }}>{error}</Text>
-        </View>
-      )}
-    </View>
-  );
+    );
 }
 
 export default function BudgetCreateScreen({ route, navigation }) {
     const editData = route.params?.editData;
     const selectedMonth = route.params?.selectedMonth;
     const selectedYear = route.params?.selectedYear;
-    
+
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [categoryBudgetAmount, setCategoryBudgetAmount] = useState('');
     const [searchText, setSearchText] = useState('');
@@ -114,7 +113,7 @@ export default function BudgetCreateScreen({ route, navigation }) {
         const now = new Date();
         const currentMonth = now.getMonth() + 1;
         const currentYear = now.getFullYear();
-        
+
         const budgets = await getCategoryBudgetSummary(currentMonth, currentYear);
         const totalCategoryBudgets = budgets.reduce((sum, item) => sum + item.budget, 0);
 
@@ -174,7 +173,7 @@ export default function BudgetCreateScreen({ route, navigation }) {
     );
 
     return (
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
             style={{ flex: 1, backgroundColor: "#FFF" }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
@@ -270,7 +269,7 @@ export default function BudgetCreateScreen({ route, navigation }) {
                             </View>
                         )}
                     </View>
-                    
+
                     {/* SPACER TO PUSH BUTTON TO BOTTOM */}
                     <View style={{ flex: 1, minHeight: 40 }} />
 
