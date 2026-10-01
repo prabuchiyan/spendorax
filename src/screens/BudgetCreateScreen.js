@@ -82,7 +82,6 @@ export default function BudgetCreateScreen({ route, navigation }) {
     const editData = route.params?.editData;
     const selectedMonth = route.params?.selectedMonth;
     const selectedYear = route.params?.selectedYear;
-
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [categoryBudgetAmount, setCategoryBudgetAmount] = useState('');
     const [searchText, setSearchText] = useState('');
@@ -113,13 +112,10 @@ export default function BudgetCreateScreen({ route, navigation }) {
         const now = new Date();
         const currentMonth = now.getMonth() + 1;
         const currentYear = now.getFullYear();
-
         const budgets = await getCategoryBudgetSummary(currentMonth, currentYear);
         const totalCategoryBudgets = budgets.reduce((sum, item) => sum + item.budget, 0);
-
         const rows = await getBudgetsForMonth();
         const general = rows.find((r) => r.category_id == null);
-
         if (general) {
             await updateBudget(general.id, {
                 category_id: null,
@@ -152,6 +148,7 @@ export default function BudgetCreateScreen({ route, navigation }) {
 
         try {
             setLoading(true);
+            await new Promise(resolve => requestAnimationFrame(resolve)); // Allow UI to render the loading state on button
             await saveCategoryBudget(
                 selectedCategory.id,
                 amount,

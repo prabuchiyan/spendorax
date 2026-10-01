@@ -8,13 +8,11 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import IconPicker from '../components/IconPicker';
 import ColorPickerModal from '../components/ColorPickerModal';
-import { usePageLoader } from '../context/PageLoaderContext';
 import { createCategory, updateCategory } from '../services/categories';
 import { suggestIconForText } from '../utils/iconSuggest';
 
 export default function CategoryCreateScreen({ route, navigation }) {
   const { editData, currentType = 'expense', onSave, onCategoryCreated } = route?.params || {};
-
   const onClose = () => navigation.goBack();
   const [action, setAction] = useState('');
   const [submitText, setSubmitText] = useState('');
@@ -26,7 +24,6 @@ export default function CategoryCreateScreen({ route, navigation }) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [nameError, setNameError] = useState(false);
   const [saving, setSaving] = useState(false);
-  const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
 
   useEffect(() => {
     if (editData) {
@@ -64,10 +61,7 @@ export default function CategoryCreateScreen({ route, navigation }) {
     }
     setNameError(false);
     setSaving(true);
-    showPageLoader({ message: editData ? 'Updating category...' : 'Creating category...' });
-
-    // Give React Native one frame to render the loader
-    await new Promise((resolve) => requestAnimationFrame(resolve));
+    await new Promise(resolve => requestAnimationFrame(resolve)); // Allow UI to render the loading state on button
 
     try {
       if (editData && editData.id) {
@@ -127,7 +121,6 @@ export default function CategoryCreateScreen({ route, navigation }) {
       alert('Failed to save category. Please try again.');
     } finally {
       setSaving(false);
-      hidePageLoader();
     }
   };
   const isIncome = type === 'income';

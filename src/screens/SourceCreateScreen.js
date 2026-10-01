@@ -55,6 +55,7 @@ export default function SourceCreateScreen({ route, navigation }) {
         };
 
         setSaving(true);
+        await new Promise(resolve => requestAnimationFrame(resolve)); // Allow UI to render the loading state on button
         try {
             if (editData && editData.id) {
                 await updateSource(editData.id, payload);

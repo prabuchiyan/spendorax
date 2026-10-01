@@ -33,6 +33,7 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
         if (saving) return;
 
         setSaving(true);
+        await new Promise(resolve => requestAnimationFrame(resolve)); // Allow UI to render the loading state on button
         try {
             const payload = {
                 opening_balance: parseFloat(openingBalance) || 0,
