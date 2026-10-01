@@ -518,18 +518,19 @@ export default function CategoriesScreen({ route, navigation }) {
                 </View>
               </View> :
 
-          <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={() => {
-              const parent = navigation.getParent();
+          <View style={styles.categoryRow}>
+            <TouchableOpacity
+              activeOpacity={0.75}
+              style={{ flex: 1 }}
+              onPress={() => {
+                const parent = navigation.getParent();
 
-              parent?.navigate('CategoriesDetails', {
-                categoryId: item.id,
-                categoryName: item.name
-              });
-            }}>
+                parent?.navigate('CategoriesDetails', {
+                  categoryId: item.id,
+                  categoryName: item.name
+                });
+              }}>
             
-                <View style={styles.categoryRow}>
                   {/* Left */}
                   <View style={styles.categoryLeft}>
                     <View
@@ -577,6 +578,7 @@ export default function CategoriesScreen({ route, navigation }) {
                       </View>
                     </View>
                   </View>
+            </TouchableOpacity>
 
                   {/* Right */}
                   <View style={styles.categoryRight}>
@@ -655,7 +657,6 @@ export default function CategoriesScreen({ route, navigation }) {
                     </View>
                   </View>
                 </View>
-              </TouchableOpacity>
           }
           </Card>
         } />
