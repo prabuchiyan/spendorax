@@ -295,47 +295,6 @@ export default function TransactionsScreen({ navigation }) {
         backgroundColor: '#F8F9FB'
       }}>
 
-      {/* HEADER */}
-      <View
-        style={{
-          paddingHorizontal: Spacing.s,
-          paddingTop: 12,
-          paddingBottom: 4
-        }}>
-
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-
-          <View>
-            <Text
-              style={{
-                fontSize: 24,
-                fontWeight: '800',
-                color: Colors.text,
-                letterSpacing: -0.5
-              }}>
-
-              Transactions
-            </Text>
-
-            <Text
-              style={{
-                fontSize: 12,
-                color: Colors.muted,
-                marginTop: 2
-              }}>
-
-              {items.length} transaction
-              {items.length === 1 ? '' : 's'}
-            </Text>
-          </View>
-        </View>
-      </View>
-
       {/* SEARCH */}
       <View
         style={{
@@ -416,6 +375,37 @@ export default function TransactionsScreen({ navigation }) {
         <Text style={{ fontSize: 11, color: Colors.muted, marginTop: 8, marginLeft: 16, fontWeight: '500' }}>
           Press Enter or click the search icon to search
         </Text>
+      </View>
+
+
+      {/* TRANSACTIONS COUNT */}
+      <View
+        style={{
+          paddingHorizontal: Spacing.s,
+          paddingTop: 12,
+          paddingBottom: 4
+        }}>
+
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+
+          <View>
+            <Text
+              style={{
+                fontSize: 12,
+                color: Colors.muted,
+                marginTop: 2
+              }}>
+
+              {items.length} transaction
+              {items.length === 1 ? '' : 's'}
+            </Text>
+          </View>
+        </View>
       </View>
 
       {/* FILTERS */}
