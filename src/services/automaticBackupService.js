@@ -1,4 +1,5 @@
 import { Platform, AppState } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as BackgroundFetch from 'expo-background-fetch';
@@ -15,6 +16,7 @@ let appStateSubscription = null;
 
 // Define background task
 TaskManager.defineTask(BACKGROUND_BACKUP_TASK, async () => {
+  if (Platform.OS === 'web') return BackgroundFetch.BackgroundFetchResult.NoData;
   try {
     const { success } = await performAutomaticBackup();
     return success ? BackgroundFetch.BackgroundFetchResult.NewData : BackgroundFetch.BackgroundFetchResult.NoData;
@@ -47,6 +49,7 @@ function calculateMsUntilNextBackup(backupTimeStr) {
 }
 
 export async function initializeAutomaticBackup() {
+  if (Platform.OS === 'web') return;
   try {
     const config = await getAutomaticBackupConfig();
     
@@ -122,7 +125,8 @@ export async function getAutomaticBackupStatus() {
     lastAttemptDate: null,
     lastSuccessfulBackupDate: null,
     lastSuccessfulBackupPath: null,
-    lastStatus: 'IDLE'
+    lastStatus: 'IDLE',
+    lastErrorMessage: null
   };
 }
 
@@ -133,6 +137,8 @@ async function updateStatus(updates) {
 }
 
 export async function performAutomaticBackup() {
+  if (Platform.OS === 'web') return { success: false };
+
   if (backupInProgress) {
     console.log('[AutoBackup] Already running, skip');
     return { success: false };
@@ -156,7 +162,8 @@ export async function performAutomaticBackup() {
   }
 
   backupInProgress = true;
-  await updateStatus({ lastAttemptDate: todayStr, lastStatus: 'RUNNING' });
+  const dateTimeStr = now.toLocaleString();
+  await updateStatus({ lastAttemptDate: dateTimeStr, lastStatus: 'RUNNING' });
   console.log('[AutoBackup] Starting backup...');
 
   try {
@@ -195,7 +202,8 @@ export async function performAutomaticBackup() {
     await updateStatus({ 
       lastSuccessfulBackupDate: todayStr, 
       lastSuccessfulBackupPath: newFilePath,
-      lastStatus: 'SUCCESS' 
+      lastStatus: 'SUCCESS',
+      lastErrorMessage: null
     });
     console.log('[AutoBackup] Backup generated successfully');
 
@@ -208,7 +216,19 @@ export async function performAutomaticBackup() {
   } catch (error) {
     console.error('[AutoBackup] Backup generation failed. Reason:', error);
     console.log('[AutoBackup] Existing backup preserved');
-    await updateStatus({ lastStatus: 'FAILED' });
+    const errorMsg = error.message || error.toString();
+    await updateStatus({ lastStatus: 'FAILED', lastErrorMessage: errorMsg });
+    
+    // Alert the user via Push Notification so they are aware
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Automatic Backup Failed \u26A0\uFE0F",
+        body: `We couldn't create your backup: ${errorMsg}. Please open Backup settings to fix the folder permission.`,
+        sound: true,
+      },
+      trigger: null,
+    }).catch(e => console.error("Failed to send error notification", e));
+
     return { success: false };
   } finally {
     backupInProgress = false;
@@ -217,14 +237,17 @@ export async function performAutomaticBackup() {
 
 export async function verifyAutomaticBackup(filePath) {
   try {
-    const info = await FileSystem.getInfoAsync(filePath);
-    if (!info.exists || info.size === 0) return false;
+    if (!filePath.startsWith('content://')) {
+      const info = await FileSystem.getInfoAsync(filePath);
+      if (!info.exists || info.size === 0) return false;
+    }
     
     // Read and parse to verify JSON structure
     const content = await FileSystem.readAsStringAsync(filePath);
     const parsed = JSON.parse(content);
     return parsed && parsed.version !== undefined && parsed.data !== undefined;
   } catch (e) {
+    console.error('[AutoBackup] verify error:', e);
     return false;
   }
 }
@@ -232,10 +255,15 @@ export async function verifyAutomaticBackup(filePath) {
 export async function deletePreviousAutomaticBackup(filePath) {
   try {
     // Delete file using standard FileSystem or SAF
-    const info = await FileSystem.getInfoAsync(filePath);
-    if (info.exists) {
-      await FileSystem.deleteAsync(filePath, { idempotent: true });
-      console.log(`[AutoBackup] Deleted previous backup: ${filePath}`);
+    if (filePath.startsWith('content://')) {
+       await FileSystem.deleteAsync(filePath, { idempotent: true });
+       console.log(`[AutoBackup] Deleted previous backup: ${filePath}`);
+    } else {
+       const info = await FileSystem.getInfoAsync(filePath);
+       if (info.exists) {
+         await FileSystem.deleteAsync(filePath, { idempotent: true });
+         console.log(`[AutoBackup] Deleted previous backup: ${filePath}`);
+       }
     }
   } catch (error) {
     console.error('[AutoBackup] Failed to delete previous backup', error);

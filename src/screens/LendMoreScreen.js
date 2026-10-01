@@ -380,11 +380,11 @@ export default function LendMoreScreen({ route, navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F3F6FB" }}>
-      <View pointerEvents={loading ? "none" : "auto"} style={{ flex: 1, opacity: loading ? 0.6 : 1 }}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-        >
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+      >
           <Card style={{ borderRadius: 24, overflow: "hidden" }}>
             {/* ── HEADER (purple, matching lend direction) ── */}
             <View
@@ -467,7 +467,7 @@ export default function LendMoreScreen({ route, navigation }) {
                 selectedSource ? selectedSource.name : "Select Bank / Wallet"
               }
               error={errors.source}
-
+              disabled={loading}
               onPress={() => {
                 setShowSourcePicker(true);
 
@@ -485,7 +485,7 @@ export default function LendMoreScreen({ route, navigation }) {
               title="Category"
               value={selectedCategory ? selectedCategory.name : "Select Category"}
               error={errors.category}
-
+              disabled={loading}
               onPress={() => {
                 setShowCategoryPicker(true);
 
@@ -503,7 +503,7 @@ export default function LendMoreScreen({ route, navigation }) {
               title="Date & Time"
               value={formatDateTime(transactionDate)}
               error={errors.date}
-
+              disabled={loading}
               onPress={() => {
                 setErrors((prev) => ({
                   ...prev,
@@ -623,22 +623,23 @@ export default function LendMoreScreen({ route, navigation }) {
             <View style={{ marginTop: 10, marginBottom: 25 }}>
               <PaperButton
                 mode="contained"
+                buttonColor="#7C3AED"
                 onPress={save}
                 loading={loading}
-                style={[styles.saveButton, { backgroundColor: loading ? "#A78BFA" : "#7C3AED" }]}
+                disabled={loading}
+                icon="hand-coin-outline"
+                style={styles.saveButton}
                 contentStyle={{ height: 54 }}
                 labelStyle={{
                   fontSize: 16,
                   fontWeight: "800",
                 }}
-                icon={loading ? undefined : "hand-coin-outline"}
               >
                 {loading ? "Recording..." : "Give Money"}
               </PaperButton>
             </View>
           </Card>
         </ScrollView>
-      </View>
 
       {/* ── SOURCE PICKER MODAL ── */}
       <Modal visible={showSourcePicker} transparent animationType="slide">

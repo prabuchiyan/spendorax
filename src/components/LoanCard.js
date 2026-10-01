@@ -33,129 +33,61 @@ export default function LoanCard({ loan }) {
 
   const isLent = (loan.loan_direction || 'BORROWED') === 'LENT';
 
+  const details = [
+    { label: 'Principal', value: `₹${principal.toLocaleString('en-IN')}`, show: true, bg: '#F3E8FF', labelColor: '#9333EA', valColor: '#7E22CE' },
+    { label: 'Paid', value: `₹${(principal - outstanding).toLocaleString('en-IN')}`, show: true, bg: '#DCFCE7', labelColor: '#16A34A', valColor: '#15803D' },
+    { label: 'Tenure', value: `${loan.tenure_months} mo`, show: !!loan.tenure_months, bg: '#FFEDD5', labelColor: '#EA580C', valColor: '#C2410C' },
+    { label: isLent ? 'Recovery' : 'EMI', value: `₹${emi.toLocaleString('en-IN')}`, show: emi > 0, bg: '#FCE7F3', labelColor: '#DB2777', valColor: '#BE185D' },
+    { label: 'Interest', value: `${loan.interest_rate}%`, show: !!loan.interest_rate, bg: '#DBEAFE', labelColor: '#2563EB', valColor: '#1D4ED8' },
+    { label: isLent ? 'Next Date' : 'EMI Date', value: `Day ${loan.emi_day}`, show: !!loan.emi_day, bg: '#FEF9C3', labelColor: '#CA8A04', valColor: '#A16207' },
+  ].filter((d) => d.show);
+
   return (
     <Card style={styles.card}>
-
       {/* Header */}
-
       <View style={styles.header}>
-
         <View style={styles.leftHeader}>
-
-          <View style={styles.iconBox}>
+          <View style={[styles.iconBox, { backgroundColor: isLent ? '#FEF3C7' : '#DBEAFE' }]}>
             <MaterialCommunityIcons
               name={isLent ? 'hand-coin' : 'bank-outline'}
-              size={24}
-              color={isLent ? '#B45309' : '#2563EB'}
+              size={20}
+              color={isLent ? '#D97706' : '#2563EB'}
             />
           </View>
-
           <View style={{ flex: 1 }}>
-            <Text style={styles.loanName}>
-              {loan.loan_name}
-            </Text>
-
-            <Text style={styles.lender}>
-              {loan.lender || (isLent ? 'Borrower' : 'Lender')}
-            </Text>
+            <Text style={styles.loanName} numberOfLines={1}>{loan.loan_name}</Text>
+            <Text style={styles.lender}>{loan.lender || (isLent ? 'Borrower' : 'Lender')}</Text>
           </View>
-
         </View>
-
-        <View
-          style={[
-            styles.statusChip,
-            {
-              backgroundColor:
-                status === 'Closed'
-                  ? '#DCFCE7'
-                  : '#DBEAFE',
-            },
-          ]}
-        >
-          <Text
-            style={[
-              styles.statusText,
-              {
-                color: statusColor,
-              },
-            ]}
-          >
-            {status}
-          </Text>
+        <View style={[styles.statusChip, { backgroundColor: status === 'Closed' ? '#DCFCE7' : '#DBEAFE' }]}>
+          <Text style={[styles.statusText, { color: statusColor }]}>{status}</Text>
         </View>
-
       </View>
 
-      {/* Outstanding */}
-
-      <View style={{ marginTop: 18 }}>
-
-        <Text style={styles.label}>
-          Outstanding
-        </Text>
-
-        <Text style={styles.amount}>
-          ₹{outstanding.toLocaleString('en-IN')}
-        </Text>
-
+      {/* Outstanding & Progress */}
+      <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+        <View>
+          <Text style={styles.label}>Outstanding Balance</Text>
+          <Text style={styles.amount}>₹{outstanding.toLocaleString('en-IN')}</Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={styles.progressText}>{progress}% Repaid</Text>
+        </View>
       </View>
-
-      {/* Progress */}
 
       <View style={styles.progressBg}>
-
-        <View
-          style={[
-            styles.progress,
-            {
-              width: `${progress}%`,
-            },
-          ]}
-        />
-
+        <View style={[styles.progress, { width: `${progress}%`, backgroundColor: status === 'Closed' ? '#16A34A' : '#3B82F6' }]} />
       </View>
 
-      <Text style={styles.progressText}>
-        {progress}% Repaid
-      </Text>
-
-      {/* Bottom */}
-
-      <View style={styles.bottomRow}>
-
-        <View style={styles.infoBox}>
-          <Text style={styles.smallLabel}>
-            {isLent ? 'Recovery Amount' : 'Monthly EMI'}
-          </Text>
-
-          <Text style={styles.value}>
-            ₹{emi.toLocaleString('en-IN')}
-          </Text>
-        </View>
-
-        <View style={styles.infoBox}>
-          <Text style={styles.smallLabel}>
-            Interest
-          </Text>
-
-          <Text style={styles.value}>
-            {loan.interest_rate || '-'}%
-          </Text>
-        </View>
-
-        <View style={styles.infoBox}>
-          <Text style={styles.smallLabel}>
-            {isLent ? 'Next Collection' : 'EMI Day'}
-          </Text>
-
-          <Text style={styles.value}>
-            {loan.emi_day || '--'}
-          </Text>
-        </View>
-
+      {/* Colorful Details Pills */}
+      <View style={styles.pillsContainer}>
+        {details.map((detail) => (
+          <View key={detail.label} style={[styles.pill, { backgroundColor: detail.bg }]}>
+            <Text style={[styles.pillLabel, { color: detail.labelColor }]}>{detail.label}:</Text>
+            <Text style={[styles.pillValue, { color: detail.valColor }]}>{detail.value}</Text>
+          </View>
+        ))}
       </View>
-
     </Card>
   );
 }
@@ -179,92 +111,96 @@ const styles = StyleSheet.create({
   },
 
   iconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     backgroundColor: '#DBEAFE',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
 
   loanName: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '800',
     color: '#111827',
   },
 
   lender: {
-    marginTop: 4,
-    fontSize: 12,
+    marginTop: 2,
+    fontSize: 11,
     color: '#6B7280',
   },
 
   statusChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 20,
   },
 
   statusText: {
-    fontWeight: '700',
-    fontSize: 12,
+    fontWeight: '800',
+    fontSize: 10,
+    textTransform: 'uppercase',
   },
 
   label: {
-    color: '#6B7280',
-    fontSize: 12,
+    color: '#64748B',
+    fontSize: 11,
+    fontWeight: '500',
   },
 
   amount: {
-    marginTop: 5,
-    fontSize: 28,
+    marginTop: 2,
+    fontSize: 20,
     fontWeight: '900',
-    color: '#111827',
+    color: '#0F172A',
   },
 
   progressBg: {
-    marginTop: 14,
-    height: 8,
-    backgroundColor: '#E5E7EB',
+    marginTop: 8,
+    height: 4,
+    backgroundColor: '#E2E8F0',
     borderRadius: 10,
     overflow: 'hidden',
   },
 
   progress: {
-    height: 8,
-    backgroundColor: '#16A34A',
+    height: 4,
     borderRadius: 10,
   },
 
   progressText: {
-    marginTop: 6,
-    fontSize: 11,
-    color: '#16A34A',
+    fontSize: 10,
+    color: '#64748B',
     fontWeight: '700',
   },
 
-  bottomRow: {
-    marginTop: 18,
+  pillsContainer: {
+    marginTop: 14,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
   },
 
-  infoBox: {
+  pill: {
+    flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginRight: 6,
+    marginBottom: 6,
   },
 
-  smallLabel: {
+  pillLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginRight: 4,
+  },
+
+  pillValue: {
     fontSize: 11,
-    color: '#6B7280',
-  },
-
-  value: {
-    marginTop: 4,
     fontWeight: '800',
-    fontSize: 14,
-    color: '#111827',
   },
 
 });

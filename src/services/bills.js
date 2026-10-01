@@ -2452,11 +2452,11 @@ export async function getTransactionsForBillLink(bill) {
     });
 
     // =========================================================
-    // 9. REMOVE ALREADY LINKED TRANSACTIONS
+    // 9. REMOVE ALREADY LINKED TRANSACTIONS (FOR ANY BILL)
     // =========================================================
-    const linked = await getBillLinkedTransactions(bill.id);
-    const linkedIds = new Set(linked.map((l) => Number(l.id)));
-    rows = rows.filter((tx) => !linkedIds.has(Number(tx.id)));
+    const allLinkedRes = await executeSql(`SELECT transaction_id FROM bill_linked_transactions`, []);
+    const allLinkedIds = new Set(rowsToArray(allLinkedRes).map(r => Number(r.transaction_id)));
+    rows = rows.filter((tx) => !allLinkedIds.has(Number(tx.id)));
     // =========================================================
     // 10. PRIORITIZE MATCHES
     //

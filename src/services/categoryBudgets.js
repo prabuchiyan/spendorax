@@ -125,25 +125,8 @@ export async function copyCategoryBudgets({
     }
 
     /*
-     * Source must be the immediately previous calendar month.
+     * We allow copying from any month into the current month.
      */
-    const previousDate = new Date(
-        currentYear,
-        currentMonth - 2,
-        1
-    );
-    const expectedFromMonth =
-        previousDate.getMonth() + 1;
-    const expectedFromYear =
-        previousDate.getFullYear();
-    if (
-        Number(fromMonth) !== expectedFromMonth ||
-        Number(fromYear) !== expectedFromYear
-    ) {
-        throw new Error(
-            'Category budgets can only be copied from the previous month.'
-        );
-    }
     const sourceBudgets = await getCategoryBudgets(
         fromMonth,
         fromYear
@@ -313,6 +296,17 @@ export async function getHomeCategoryBudgets(
     }
 }
 
+export async function getAvailableBudgetMonths() {
+    const res = await executeSql(
+        `SELECT DISTINCT month, year FROM category_budgets ORDER BY year DESC, month DESC`
+    );
+    const rows = [];
+    for (let i = 0; i < res.rows.length; i++) {
+        rows.push(res.rows.item(i));
+    }
+    return rows;
+}
+
 export default {
     getCategoryBudgets,
     saveCategoryBudget,
@@ -320,5 +314,6 @@ export default {
     getCategoryBudgetSummary,
     copyCategoryBudgets,
     getCategoryBudgetsForMonth,
-    getHomeCategoryBudgets
+    getHomeCategoryBudgets,
+    getAvailableBudgetMonths
 };

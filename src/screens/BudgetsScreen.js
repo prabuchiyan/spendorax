@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 
-import { TextInput as PaperInput, Button, Avatar, IconButton } from 'react-native-paper';
+import { TextInput as PaperInput, Button, Avatar, IconButton, Snackbar } from 'react-native-paper';
 import { createBudget, getBudgetsForMonth, updateBudget } from '../services/budgets';
-import { saveCategoryBudget, deleteCategoryBudget, getCategoryBudgetSummary, copyCategoryBudgets } from '../services/categoryBudgets';
+import { saveCategoryBudget, deleteCategoryBudget, getCategoryBudgetSummary, copyCategoryBudgets, getAvailableBudgetMonths } from '../services/categoryBudgets';
 import { getCategories } from '../services/categories';
 import events from '../services/events';
 import Card from '../components/Card';
@@ -11,6 +11,8 @@ import { Spacing } from '../components/Theme';
 import ConfirmDialog from '../components/ConfirmDialog';
 import BudgetCreateModal from '../components/BudgetCreateModal';
 import ContextualFAB from '../components/ContextualFAB';
+import CopyBudgetModal from '../components/CopyBudgetModal';
+import { usePageLoader } from '../context/PageLoaderContext';
 // Redux imports
 import { setCategoryBudgets } from '../redux/slices/budgetSlice';
 import { setCategoriesMap } from '../redux/slices/categorySlice';
@@ -22,6 +24,7 @@ function getMonthLabel(date) {
 
 export default function BudgetsScreen({ route, navigation }) {
   const dispatch = useAppDispatch();
+  const { show, hide } = usePageLoader();
   // Redux state
   const reduxCategoryBudgets = useCategoryBudgets();
   const categoriesMap = useCategoriesMap();
@@ -40,6 +43,9 @@ export default function BudgetsScreen({ route, navigation }) {
   const [confirmMessage, setConfirmMessage] = useState('');
   const [deletingBudgetId, setDeletingBudgetId] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showCopyModal, setShowCopyModal] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
+  const [toastVisible, setToastVisible] = useState(false);
   const [editBudget, setEditBudget] = useState(null);
   const [selectedMonthDate, setSelectedMonthDate] = useState(new Date());
   const [categories, setCategories] = useState([]);
@@ -66,19 +72,36 @@ export default function BudgetsScreen({ route, navigation }) {
   const shouldShowCopyOption =
   isCurrentMonthSelected &&
   reduxCategoryBudgets.length === 0;
+  const [availableMonths, setAvailableMonths] = useState([]);
+
   const monthCarousel = useMemo(() => {
-    const current = new Date(
-      currentYear,
-      currentMonth - 1,
-      1
-    );
-    const previous = new Date(
-      currentYear,
-      currentMonth - 2,
-      1
-    );
-    return [previous, current];
-  }, [currentYear, currentMonth]);
+    const current = new Date(currentYear, currentMonth - 1, 1);
+    const selected = new Date(selectedYear, selectedMonth - 1, 1);
+
+    // Find the most recent available month before current month
+    let previousAvailable = null;
+    const sortedAvailable = [...availableMonths].sort((a, b) => b.getTime() - a.getTime());
+    for (const d of sortedAvailable) {
+      if (d.getTime() < current.getTime()) {
+        previousAvailable = d;
+        break;
+      }
+    }
+
+    // Fallback if no previous budgets exist
+    if (!previousAvailable) {
+      previousAvailable = new Date(currentYear, currentMonth - 2, 1);
+    }
+
+    const list = [previousAvailable, current];
+
+    if (!list.some(d => d.getTime() === selected.getTime())) {
+      list.push(selected);
+    }
+
+    list.sort((a, b) => a.getTime() - b.getTime());
+    return list;
+  }, [availableMonths, currentYear, currentMonth, selectedMonth, selectedYear]);
 
   async function loadCategoryBudgetsForMonth(month = selectedMonth, year = selectedYear) {
     const budgets = await getCategoryBudgetSummary(month, year);
@@ -141,6 +164,21 @@ export default function BudgetsScreen({ route, navigation }) {
         selectedMonth,
         selectedYear
       );
+
+      // Load available months for the carousel
+      const availMonths = await getAvailableBudgetMonths();
+      const dateList = availMonths
+        .map(m => {
+          const y = Number(m.year);
+          const mn = Number(m.month);
+          if (!isNaN(y) && !isNaN(mn) && y > 2000 && mn >= 1 && mn <= 12) {
+            return new Date(y, mn - 1, 1);
+          }
+          return null;
+        })
+        .filter(d => d !== null);
+      setAvailableMonths(dateList);
+
     } catch (error) {
       console.error(
         'BudgetsScreen load error:',
@@ -222,7 +260,7 @@ export default function BudgetsScreen({ route, navigation }) {
     );
     await syncOverallBudget();
     events.emit('budgetsChanged');
-    await loadCategoryBudgetsForMonth(selectedMonth, selectedYear);
+    await load();
     setSelectedCategory(null);
     setCategoryBudgetAmount('');
     return true;
@@ -241,46 +279,35 @@ export default function BudgetsScreen({ route, navigation }) {
 
   async function confirmDeleteCategoryBudget() {
     if (deletingBudgetId) {
-      await deleteCategoryBudget(deletingBudgetId);
-      await syncOverallBudget();
-      events.emit('budgetsChanged', null);
-      await loadCategoryBudgetsForMonth(selectedMonth, selectedYear);
-      setConfirmVisible(false);
-      setDeletingBudgetId(null);
+      show({ message: 'Deleting budget...' });
+      try {
+        await deleteCategoryBudget(deletingBudgetId);
+        await syncOverallBudget();
+        events.emit('budgetsChanged', null);
+        await load();
+        setConfirmVisible(false);
+        setDeletingBudgetId(null);
+      } finally {
+        hide();
+      }
     }
   }
 
-  async function handleCopyPreviousMonth() {
-    /*
-     * Safety check:
-     * Copying is ONLY allowed into the current month.
-     */
+  async function handleCopyPreviousMonth(fromMonth, fromYear) {
     if (!isCurrentMonthSelected) {
-      alert(
-        'Copying category budgets is only available for the current month.'
-      );
+      setToastMsg('Copying category budgets is only available for the current month.');
+      setToastVisible(true);
       return;
     }
-    /*
-     * Extra safety:
-     * Never show/use copy if current month already
-     * has category budgets.
-     */
     if (categoryBudgets.length > 0) {
-      alert(
-        'Category budgets are already set for this month.'
-      );
+      setToastMsg('Category budgets are already set for this month.');
+      setToastVisible(true);
       return;
     }
-    const previousDate = new Date(
-      currentYear,
-      currentMonth - 2,
-      1
-    );
-    const fromMonth =
-    previousDate.getMonth() + 1;
-    const fromYear =
-    previousDate.getFullYear();
+    
+    const sourceDate = new Date(fromYear, fromMonth - 1, 1);
+    const targetDate = new Date(currentYear, currentMonth - 1, 1);
+
     try {
       const copied =
       await copyCategoryBudgets({
@@ -291,33 +318,24 @@ export default function BudgetsScreen({ route, navigation }) {
         overwrite: false
       });
       if (copied.length === 0) {
-        alert(
-          `No category budgets were found in ${getMonthLabel(previousDate)} to copy.`
-        );
+        setToastMsg(`No category budgets were found in ${getMonthLabel(sourceDate)} to copy.`);
+        setToastVisible(true);
         return;
       }
       await syncOverallBudget();
       events.emit('budgetsChanged');
-      await loadCategoryBudgetsForMonth(
-        currentMonth,
-        currentYear
-      );
-      alert(
-        `Copied ${copied.length} category ${copied.length === 1 ?
-        'budget' :
-        'budgets'} from ${
-        getMonthLabel(previousDate)} to ${getMonthLabel(currentMonthDate)}.`
-      );
+      await load();
+      setShowCopyModal(false);
+      
+      setToastMsg(`Copied budgets from ${getMonthLabel(sourceDate)} to ${getMonthLabel(targetDate)}.`);
+      setToastVisible(true);
     } catch (error) {
       console.error(
         'Copy category budgets failed:',
         error
       );
-
-      alert(
-        error?.message ||
-        'Unable to copy category budgets.'
-      );
+      setToastMsg(error?.message || 'Unable to copy category budgets.');
+      setToastVisible(true);
     }
   }
 
@@ -577,7 +595,7 @@ export default function BudgetsScreen({ route, navigation }) {
                       color: '#1F2937'
                     }}>
                     
-                          Start with last month's budgets
+                          Start with previous month's budgets
                         </Text>
 
                         <Text
@@ -589,7 +607,7 @@ export default function BudgetsScreen({ route, navigation }) {
                     }}>
                     
                           Your current month has no category
-                          budgets yet. Copy last month's limits
+                          budgets yet. Copy previous limits
                           to get started quickly.
                         </Text>
                       </View>
@@ -598,7 +616,7 @@ export default function BudgetsScreen({ route, navigation }) {
                     <Button
                 mode="contained"
                 icon="content-copy"
-                onPress={handleCopyPreviousMonth}
+                onPress={() => setShowCopyModal(true)}
                 style={{
                   marginTop: 14,
                   borderRadius: 10
@@ -607,7 +625,7 @@ export default function BudgetsScreen({ route, navigation }) {
                   paddingVertical: 4
                 }}>
                 
-                      Copy Previous Month
+                      Copy from Past Month
                     </Button>
                   </View> :
 
@@ -940,6 +958,7 @@ export default function BudgetsScreen({ route, navigation }) {
                           </View>
 
                           {/* EDIT */}
+                          {isCurrentMonthSelected && (
                           <View
                         style={{
                           width: 34,
@@ -974,8 +993,10 @@ export default function BudgetsScreen({ route, navigation }) {
                           }} />
                         
                           </View>
+                          )}
 
                           {/* DELETE */}
+                          {isCurrentMonthSelected && (
                           <View
                         style={{
                           width: 34,
@@ -1000,6 +1021,7 @@ export default function BudgetsScreen({ route, navigation }) {
                           }} />
                         
                           </View>
+                          )}
                         </View>
 
                         {/* Compact progress */}
@@ -1143,7 +1165,7 @@ export default function BudgetsScreen({ route, navigation }) {
         handleSaveBudget={handleSaveBudget} />
       
 
-      {tab === 'category' &&
+      {tab === 'category' && isCurrentMonthSelected &&
       <ContextualFAB
         onPress={() => {
           setEditBudget(null);
@@ -1166,6 +1188,23 @@ export default function BudgetsScreen({ route, navigation }) {
         }}
         onConfirm={confirmDeleteCategoryBudget} />
       
+      <CopyBudgetModal 
+        visible={showCopyModal} 
+        onClose={() => setShowCopyModal(false)}
+        onCopy={(m, y) => handleCopyPreviousMonth(m, y)}
+      />
+      
+      <Snackbar
+        visible={toastVisible}
+        onDismiss={() => setToastVisible(false)}
+        duration={3000}
+        action={{
+          label: 'OK',
+          onPress: () => setToastVisible(false)
+        }}
+      >
+        {toastMsg}
+      </Snackbar>
     </View>);
 
 }

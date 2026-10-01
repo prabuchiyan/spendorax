@@ -834,6 +834,7 @@ function OccurrenceEditModal({ visible, occurrence, bill, onSave, onClose }) {
             <PaperButton
               mode="contained"
               loading={isSubmitting}
+              disabled={isSubmitting}
               buttonColor={isSubmitting ? "#93C5FD" : "#2563EB"}
               style={{ borderRadius: 12, paddingHorizontal: 8 }}
               onPress={async () => {
@@ -846,7 +847,7 @@ function OccurrenceEditModal({ visible, occurrence, bill, onSave, onClose }) {
                   setIsSubmitting(false);
                 }
               }}>
-              Save Changes
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </PaperButton>
           </View>
         </View>
@@ -1248,8 +1249,8 @@ export default function BillDetailScreen({ route, navigation }) {
           due_date: newDueDate
         });
       }
-      setShowEditOcc(false);
       await load(selectedOcc.id);
+      setShowEditOcc(false);
     } catch (e) {
       console.error("[BillDetail] Save occurrence failed:", e);
     } finally {

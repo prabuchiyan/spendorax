@@ -55,14 +55,27 @@ export default function BackupScreen() {
   async function toggleAutoBackup(newValue) {
     if (newValue && Platform.OS === 'android') {
       try {
-        const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-        if (!permissions.granted) {
-          Alert.alert("Permission Required", "You must select a folder to save automatic backups.");
-          return;
-        }
-        const newConfig = { ...autoConfig, enabled: true, directoryUri: permissions.directoryUri };
-        setAutoConfig(newConfig);
-        await setAutomaticBackupConfig(newConfig);
+        Alert.alert(
+          "Select Backup Folder",
+          "Please create or select a specific folder (e.g., 'SpendoraX Backups') inside your Documents or Downloads.\n\nNote: Android prevents saving directly to the root 'Downloads' folder.",
+          [
+            { text: "Cancel", style: "cancel", onPress: () => setAutoConfig({ ...autoConfig, enabled: false }) },
+            { 
+              text: "Choose Folder", 
+              onPress: async () => {
+                const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+                if (!permissions.granted) {
+                  Alert.alert("Permission Required", "You must select a folder to save automatic backups.");
+                  setAutoConfig({ ...autoConfig, enabled: false });
+                  return;
+                }
+                const newConfig = { ...autoConfig, enabled: true, directoryUri: permissions.directoryUri };
+                setAutoConfig(newConfig);
+                await setAutomaticBackupConfig(newConfig);
+              }
+            }
+          ]
+        );
       } catch (e) {
         Alert.alert("Error", "Could not request folder permissions.");
         console.error(e);
@@ -287,9 +300,16 @@ export default function BackupScreen() {
             </TouchableRipple>
             
             {autoStatus && autoStatus.lastAttemptDate && (
-               <Text style={styles.timestamp}>
-                 Last attempted: {autoStatus.lastAttemptDate} ({autoStatus.lastStatus})
-               </Text>
+               <View style={{ marginTop: 8 }}>
+                 <Text style={[styles.timestamp, { color: autoStatus.lastStatus === 'FAILED' ? '#E46A6A' : Colors.muted }]}>
+                   Last attempted: {autoStatus.lastAttemptDate} ({autoStatus.lastStatus})
+                 </Text>
+                 {autoStatus.lastStatus === 'FAILED' && autoStatus.lastErrorMessage && (
+                   <Text style={[styles.timestamp, { color: '#E46A6A', marginTop: 4 }]}>
+                     Error: {autoStatus.lastErrorMessage}
+                   </Text>
+                 )}
+               </View>
             )}
           </Card.Content>
         </Card>

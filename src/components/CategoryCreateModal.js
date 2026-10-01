@@ -8,6 +8,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import IconPicker from './IconPicker';
 import ColorPickerModal from './ColorPickerModal';
 import FormModalShell from './FormModalShell';
+import { usePageLoader } from '../context/PageLoaderContext';
 
 
 import { createCategory, updateCategory } from '../services/categories';
@@ -31,6 +32,7 @@ export default function CategoryCreateModal({
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [nameError, setNameError] = useState(false);
   const [saving, setSaving] = useState(false);
+  const { show: showPageLoader, hide: hidePageLoader } = usePageLoader();
 
   useEffect(() => {
     if (visible) {
@@ -70,6 +72,10 @@ export default function CategoryCreateModal({
     }
     setNameError(false);
     setSaving(true);
+    showPageLoader({ message: editData ? 'Updating category...' : 'Creating category...' });
+
+    // Give React Native one frame to render the loader
+    await new Promise((resolve) => requestAnimationFrame(resolve));
 
     try {
       if (editData && editData.id) {
@@ -129,6 +135,7 @@ export default function CategoryCreateModal({
       alert('Failed to save category. Please try again.');
     } finally {
       setSaving(false);
+      hidePageLoader();
     }
   };
   const isIncome = type === 'income';
