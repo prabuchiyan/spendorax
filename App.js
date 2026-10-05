@@ -187,6 +187,7 @@ export default function App() {
                       <Stack.Screen name="CreditCardStatementEdit" component={CreditCardStatementEditScreen} options={{ title: 'Edit Statement' }} />
                       <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Financial Reports' }} />
                       <Stack.Screen name="BillDetail" component={BillDetailScreen} options={{ title: 'Bill Details' }} />
+                      <Stack.Screen name="BillOccurrenceEdit" component={require('./src/screens/BillOccurrenceEditScreen').default} options={{ title: 'Edit Occurrence' }} />
                       <Stack.Screen name="Backup" component={BackupScreen} options={{ title: 'Backup & Restore' }} />
                       <Stack.Screen name="LoanDashboard" component={LoanDashboardScreen} />
                       <Stack.Screen name="LoanForm" component={LoanFormScreen} options={{ title: 'Add / Edit Loan' }} />
