@@ -13,6 +13,7 @@ import PageLoader from '../components/PageLoader';
 // Redux imports
 import { setCategoriesMap as setReduxCategoriesMap } from '../redux/slices/categorySlice';
 import { useAppDispatch } from '../redux/hooks';
+import { getTransactionType } from '../utils/transactionUtils';
 
 function CategoryDonut({ data = [], categoriesMap = {} }) {
   const total = data.reduce((sum, d) => sum + Number(d.amount || 0), 0);
@@ -567,6 +568,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
       filterFn = () => true;
     }
     transactions.forEach(t => {
+      if (getTransactionType(t) === 'transfer') return;
       if (t.type !== 'expense') return;
       if (!t.date) return;
       // Uncategorized expenses must NOT be included
@@ -621,6 +623,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
     }
     return transactions
       .filter(transaction => {
+        if (getTransactionType(transaction) === 'transfer') return false;
         if (transaction.type !== 'expense') return false;
         if (!transaction.date) return false;
         const dateStr = String(transaction.date).replace(' ', 'T');
