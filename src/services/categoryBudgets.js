@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { executeSql } from '../database/db';
 import { getTransactions } from './transactions';
 import { getCategories } from './categories';
@@ -47,28 +48,46 @@ export async function deleteCategoryBudget(id) {
 export async function getCategoryBudgetSummary(month, year) {
     const budgets = await getCategoryBudgets(month, year);
     const categories = await getCategories(true);
-    // onlyCounted = true — excluded transactions don't count against category budgets
-    const transactions = await getTransactions(1000000, 'No', null, null, null, new Date(), true);
 
-    // Calculate spent for each category
-    const spentByCategory = {};
     const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+    const spentByCategory = {};
+    
+    if (Platform.OS === 'web') {
+        const txRes = await executeSql(`SELECT * FROM transactions WHERE type = 'expense'`);
+        for (let i = 0; i < txRes.rows.length; i++) {
+            const tx = txRes.rows.item(i);
+            if (tx.transfer_group_id) continue;
+            if (tx.direction === 'transfer') continue;
+            if (tx.is_counted !== null && tx.is_counted !== undefined && Number(tx.is_counted) === 0) continue;
+            const txDateStr = String(tx.date || '').replace(' ', 'T');
+            if (!txDateStr.startsWith(monthStr)) continue;
+            
+            if (tx.category_id !== null && tx.category_id !== undefined) {
+                const catId = String(tx.category_id);
+                spentByCategory[catId] = (spentByCategory[catId] || 0) + (parseFloat(tx.amount) || 0);
+            }
+        }
+    } else {
+        // Optimize: Fetch exactly the aggregated spent amounts for this month directly from SQLite on mobile
+        const txRes = await executeSql(
+            `SELECT category_id, SUM(amount) as spent 
+             FROM transactions 
+             WHERE type = 'expense' 
+               AND transfer_group_id IS NULL 
+               AND (direction IS NULL OR direction != 'transfer')
+               AND (is_counted IS NULL OR is_counted != 0)
+               AND REPLACE(date, ' ', 'T') LIKE ?
+             GROUP BY category_id`,
+            [`${monthStr}%`]
+        );
 
-    transactions.forEach(tx => {
-        // Only expenses, exclude transfers
-        if (tx.type !== 'expense') return;
-        if (!tx.date) return;
-
-        // Check if date matches month
-        const txDateStr = String(tx.date).replace(' ', 'T');
-        if (!txDateStr.startsWith(monthStr)) return;
-
-        // Exclude transfer transactions
-        if (tx.direction === 'transfer' || tx.transfer_group_id) return;
-
-        const catId = String(tx.category_id);
-        spentByCategory[catId] = (spentByCategory[catId] || 0) + (parseFloat(tx.amount) || 0);
-    });
+        for (let i = 0; i < txRes.rows.length; i++) {
+            const row = txRes.rows.item(i);
+            if (row.category_id !== null && row.category_id !== undefined) {
+                spentByCategory[String(row.category_id)] = parseFloat(row.spent) || 0;
+            }
+        }
+    }
 
     // Build summary
     const summary = budgets.map(budget => {
@@ -223,7 +242,7 @@ export async function getHomeCategoryBudgets(
 
         const transactions =
             await getHomeExpenseTransactions(
-                new Date()
+                new Date(year, month - 1, 1)
             );
 
         const spentMap = {};

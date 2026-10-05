@@ -730,6 +730,44 @@ export default function BudgetsScreen({ route, navigation }) {
               }
             </Card>
 
+            {/* TOTAL CATEGORY BUDGET SUMMARY */}
+            {categoryBudgets.length > 0 && (
+              <View style={{
+                marginTop: 4,
+                marginBottom: 8,
+                backgroundColor: '#1E293B',
+                borderRadius: 16,
+                padding: 16,
+                elevation: 3,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.1,
+                shadowRadius: 2
+              }}>
+                <Text style={{ color: '#94A3B8', fontSize: 13, fontWeight: '600', marginBottom: 4 }}>
+                  TOTAL CATEGORY BUDGET
+                </Text>
+                <Text style={{ color: '#F8FAFC', fontSize: 24, fontWeight: '800', marginBottom: 16 }}>
+                  ₹ {categoryBudgets.reduce((sum, b) => sum + (Number(b.budget) || 0), 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                </Text>
+                
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#334155', paddingTop: 12 }}>
+                  <View>
+                    <Text style={{ color: '#94A3B8', fontSize: 11, fontWeight: '600' }}>SPENT</Text>
+                    <Text style={{ color: '#F8FAFC', fontSize: 15, fontWeight: '700', marginTop: 2 }}>
+                      ₹ {categoryBudgets.reduce((sum, b) => sum + (Number(b.spent) || 0), 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ color: '#94A3B8', fontSize: 11, fontWeight: '600' }}>REMAINING</Text>
+                    <Text style={{ color: '#34D399', fontSize: 15, fontWeight: '700', marginTop: 2 }}>
+                      ₹ {Math.max(0, categoryBudgets.reduce((sum, b) => sum + (Number(b.budget) || 0), 0) - categoryBudgets.reduce((sum, b) => sum + (Number(b.spent) || 0), 0)).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
             {/* CATEGORY BUDGETS */}
             {categoryBudgets.length > 0 ?
               <View style={{ marginTop: 4 }}>

@@ -792,32 +792,51 @@ export async function getSourceTransactionBalances() {
 export async function getHomeExpenseTransactions(referenceDate = new Date()) {
   try {
     const year = referenceDate.getFullYear();
-
     const month = String(referenceDate.getMonth() + 1).padStart(2, "0");
-
     const monthKey = `${year}-${month}`;
 
-    const res = await executeSql(
-      `
-      SELECT *
-      FROM transactions
-      WHERE type = 'expense'
-        AND transfer_group_id IS NULL
-      ORDER BY REPLACE(date, ' ', 'T') DESC, id DESC
-      `
-    );
+    let res;
+    if (Platform.OS === 'web') {
+        res = await executeSql(
+          `SELECT * FROM transactions WHERE type = 'expense' AND transfer_group_id IS NULL`
+        );
+    } else {
+        res = await executeSql(
+          `
+          SELECT *
+          FROM transactions
+          WHERE type = 'expense'
+            AND transfer_group_id IS NULL
+            AND (is_counted IS NULL OR is_counted != 0)
+            AND REPLACE(date, ' ', 'T') LIKE ?
+          ORDER BY REPLACE(date, ' ', 'T') DESC, id DESC
+          `,
+          [`${monthKey}%`]
+        );
+    }
 
     const rows = [];
     for (let i = 0; i < res.rows.length; i++) {
-      rows.push(res.rows.item(i));
+        const row = res.rows.item(i);
+        if (Platform.OS === 'web') {
+            if (row.is_counted !== null && row.is_counted !== undefined && Number(row.is_counted) === 0) continue;
+            const txDateStr = String(row.date || "").replace(" ", "T");
+            if (!txDateStr.startsWith(monthKey)) continue;
+        }
+        rows.push(row);
+    }
+    
+    if (Platform.OS === 'web') {
+        rows.sort((a, b) => {
+            const dA = (a.date || "").replace(" ", "T");
+            const dB = (b.date || "").replace(" ", "T");
+            if (dA > dB) return -1;
+            if (dA < dB) return 1;
+            return b.id - a.id;
+        });
     }
 
-    return rows.filter((row) => {
-      if (row.is_counted !== null && row.is_counted !== undefined && Number(row.is_counted) === 0) {
-        return false;
-      }
-      return String(row.date || "").startsWith(monthKey);
-    });
+    return rows;
   } catch (error) {
     console.error("getHomeExpenseTransactions error:", error);
     return [];
