@@ -606,9 +606,18 @@ export default function SourcesDetails({ route, navigation }) {
           onEndReached={loadMoreData}
           onEndReachedThreshold={0.5}
           ListFooterComponent={
-            loadingMore ? (
-              <View style={{ paddingVertical: 20 }}>
-                <ActivityIndicator size="small" color={Colors.text} />
+            (hasMore || loadingMore) ? (
+              <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                {loadingMore ? (
+                  <ActivityIndicator size="small" color={Colors.text} />
+                ) : (
+                  <View style={{ alignItems: 'center', opacity: 0.6 }}>
+                    <MaterialCommunityIcons name="chevron-double-up" size={22} color={Colors.muted} />
+                    <Text style={{ color: Colors.muted, fontSize: 12, marginTop: 4, fontWeight: '600' }}>
+                      Pull up to see more transactions
+                    </Text>
+                  </View>
+                )}
               </View>
             ) : null
           }

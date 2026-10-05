@@ -1345,7 +1345,7 @@ export default function TransactionForm({
         )}
       </View>
 
-      {(type !== "transfer" || isEdit) && (
+      {type !== "transfer" && (
         <View style={{ marginBottom: 18, alignItems: "center" }}>
           <TouchableOpacity
             activeOpacity={0.7}
