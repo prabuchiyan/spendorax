@@ -358,6 +358,7 @@ export default function LendMoreScreen({ route, navigation }) {
     }
     try {
       setLoading(true);
+      await new Promise(resolve => requestAnimationFrame(resolve)); // allow UI to render loading
       await recordAdvance({
         loanId: Number(loanId),
         date: safeDate(transactionDate).toISOString(),
