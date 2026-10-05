@@ -59,7 +59,13 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
             <TouchableOpacity
               key={item.name}
               activeOpacity={0.7}
-              onPress={() => { navigation.navigate(item.name); navigation.closeDrawer(); }}
+              onPress={() => {
+                if (isActive) {
+                  navigation.closeDrawer();
+                } else {
+                  navigation.navigate(item.name);
+                }
+              }}
               style={[styles.drawerItem, isActive && styles.drawerItemActive]}
             >
               <MaterialCommunityIcons
@@ -96,7 +102,10 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
 
         <TouchableOpacity
           style={styles.footerButton}
-          onPress={() => { navigation.navigate('NotificationSettings'); navigation.closeDrawer(); }}
+          onPress={() => {
+            navigation.navigate('NotificationSettings');
+            navigation.closeDrawer();
+          }}
         >
           <MaterialCommunityIcons name="bell-outline" size={18} color="#666" style={{ marginRight: 10 }} />
           <Text style={styles.footerText}>Notifications</Text>
@@ -104,7 +113,10 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
 
         <TouchableOpacity
           style={styles.footerButton}
-          onPress={() => { navigation.navigate('SecuritySettings'); navigation.closeDrawer(); }}
+          onPress={() => {
+            navigation.navigate('SecuritySettings');
+            navigation.closeDrawer();
+          }}
         >
           <MaterialCommunityIcons name="security" size={18} color="#666" style={{ marginRight: 10 }} />
           <Text style={styles.footerText}>Security</Text>
@@ -112,7 +124,10 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
 
         <TouchableOpacity
           style={styles.footerButton}
-          onPress={() => { navigation.navigate('Backup'); navigation.closeDrawer(); }}
+          onPress={() => {
+            navigation.navigate('Backup');
+            navigation.closeDrawer();
+          }}
         >
           <Feather name="settings" size={18} color="#666" style={{ marginRight: 10 }} />
           <Text style={styles.footerText}>Settings & Backup</Text>
