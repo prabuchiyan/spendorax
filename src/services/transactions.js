@@ -368,6 +368,8 @@ export async function getTransactionsPaginated({
     if (sourceId !== null && sourceId !== undefined) {
       conditions.push(`t.source_id = ?`);
       params.push(Number(sourceId));
+    } else if (filterType === "all" || filterType === "transfer") {
+      conditions.push(`(t.transfer_group_id IS NULL OR t.direction = 'debit' OR (t.direction IS NULL AND t.type = 'expense'))`);
     }
 
     if (searchQuery && searchQuery.trim().length > 0) {

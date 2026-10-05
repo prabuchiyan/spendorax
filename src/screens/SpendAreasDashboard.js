@@ -241,6 +241,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
   const [sourcesMap, setSourcesMap] = useState({});
   const [filterMode, setFilterMode] = useState(params.mode || 'monthly');
   const [selectedPeriod, setSelectedPeriod] = useState(params.periodLabel || null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   async function loadInitialData() {
     setIsFetching(true);
@@ -287,6 +288,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
       'focus',
       () => {
         loadInitialData();
+        setRefreshKey(prev => prev + 1);
       }
     );
     return unsubscribe;
@@ -541,7 +543,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
       }
     }
     loadPeriodTransactions();
-  }, [selectedPeriod, filterMode]);
+  }, [selectedPeriod, filterMode, refreshKey]);
 
   // Aggregate category spending on client-side
   const topCategories = useMemo(() => {

@@ -26,6 +26,7 @@ import {
 } from "../services/loans";
 import { getCategories } from "../services/categories";
 import { getSources } from "../services/sources";
+import { getBillsForTransaction } from "../services/bills";
 import {
   TextInput as PaperTextInput,
   Button as PaperButton,
@@ -146,6 +147,7 @@ export default function TransactionForm({
       : true,
   );
   const [loanTab, setLoanTab] = useState("active");
+  const [hasLinkedBill, setHasLinkedBill] = useState(false);
 
   function markDirty() {
     setIsDirty(true);
@@ -207,6 +209,18 @@ export default function TransactionForm({
             if (cancelled) return;
             setLoansList([]);
           });
+          
+        // LINKED BILLS
+        if (isEdit && transaction?.id) {
+          getBillsForTransaction(transaction.id)
+            .then((bills) => {
+              if (cancelled) return;
+              setHasLinkedBill(bills?.length > 0);
+            })
+            .catch((error) => {
+              console.warn("Unable to load linked bills:", error);
+            });
+        }
       } catch (error) {
         if (cancelled) return;
         console.warn("TransactionForm initial load failed:", error);
@@ -697,13 +711,16 @@ export default function TransactionForm({
             marginRight: isEdit ? 12 : 0,
           }}
         >
-          {[
-            { id: "expense", label: "Expense", activeColor: "#E46A6A" },
-            { id: "income", label: "Income", activeColor: "#36B37E" },
-            ...(!isEdit
-              ? [{ id: "transfer", label: "Transfer", activeColor: "#000" }]
-              : []),
-          ].map((tab) => {
+          {(isEdit && type === 'transfer'
+            ? [{ id: "transfer", label: "Transfer", activeColor: "#000" }]
+            : [
+                { id: "expense", label: "Expense", activeColor: "#E46A6A" },
+                { id: "income", label: "Income", activeColor: "#36B37E" },
+                ...(!isEdit
+                  ? [{ id: "transfer", label: "Transfer", activeColor: "#000" }]
+                  : []),
+              ]
+          ).map((tab) => {
             const active = type === tab.id;
             return (
               <TouchableOpacity
@@ -1328,7 +1345,7 @@ export default function TransactionForm({
         )}
       </View>
 
-      {type !== "transfer" && (
+      {(type !== "transfer" || isEdit) && (
         <View style={{ marginBottom: 18, alignItems: "center" }}>
           <TouchableOpacity
             activeOpacity={0.7}
@@ -1353,7 +1370,7 @@ export default function TransactionForm({
             >
               More Options
             </Text>
-            {(!isCounted || selectedLoanId) && (
+            {(!isCounted || selectedLoanId || hasLinkedBill) && (
               <View
                 style={{
                   marginLeft: 8,
@@ -1846,6 +1863,18 @@ export default function TransactionForm({
                       )}
                     </View>
                   )}
+                </View>
+              )}
+
+              {isEdit && transaction?.id && (
+                <View style={{ marginTop: type !== "transfer" ? 16 : 0, marginBottom: 8 }}>
+                  <LinkedBillCard
+                    transactionId={transaction.id}
+                    onPressBill={(bill) => {
+                      setShowMoreOptions(false);
+                      if (onPressBill) onPressBill(bill);
+                    }}
+                  />
                 </View>
               )}
             </ScrollView>
@@ -2471,12 +2500,6 @@ export default function TransactionForm({
         </View>
       )}
 
-      {isEdit && transaction?.id && (
-        <LinkedBillCard
-          transactionId={transaction.id}
-          onPressBill={onPressBill}
-        />
-      )}
 
       <View
         style={{ flexDirection: "row", alignItems: "center", marginTop: 12 }}

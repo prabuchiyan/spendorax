@@ -116,6 +116,16 @@ export async function removeTransactionFromBill(billId, transactionId) {
       "[removeTransactionFromBill] Credit card statement reset to generated:",
       billId,
     );
+  } else {
+    // If there are still linked transactions, update the bill's linked_transaction_id 
+    // to point to one of the remaining ones. Otherwise, it might still point to the 
+    // unlinked transaction, causing it to be re-linked on app restart by init.js.
+    await executeSql(
+      `UPDATE bills
+       SET linked_transaction_id = ?
+       WHERE id = ?`,
+      [remaining[0].transaction_id, billId],
+    );
   }
 
   emitBillsChanged();

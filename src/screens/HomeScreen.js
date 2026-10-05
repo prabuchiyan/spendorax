@@ -2208,14 +2208,41 @@ export default function HomeScreen({ navigation }) {
                             textAlign: "right",
                             fontSize: 15,
                             fontWeight: "900",
-                            color: amountColor,
+                            color: r.is_counted === 0 ? '#9CA3AF' : amountColor,
                             letterSpacing: -0.35,
+                            textDecorationLine:
+                              r.is_counted === 0 ? 'line-through' : 'none',
                           }}
                         >
                           {balanceVisible
                             ? `₹${Number(r.amount || 0).toFixed(2)}`
                             : "••••••"}
                         </Text>
+
+                        {/* NOT COUNTED BADGE */}
+                        {r.is_counted === 0 && (
+                          <View
+                            style={{
+                              backgroundColor: '#F3F4F6',
+                              borderRadius: 4,
+                              paddingHorizontal: 6,
+                              paddingVertical: 2,
+                              marginTop: 3,
+                              alignSelf: 'flex-end',
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 9,
+                                color: '#9CA3AF',
+                                fontWeight: '700',
+                                letterSpacing: 0.3,
+                              }}
+                            >
+                              {r.type === 'expense' ? 'NOT SPEND' : 'NOT INCOME'}
+                            </Text>
+                          </View>
+                        )}
 
                         <View
                           style={{
