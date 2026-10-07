@@ -60,10 +60,11 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
               key={item.name}
               activeOpacity={0.7}
               onPress={() => {
-                if (isActive) {
-                  navigation.closeDrawer();
-                } else {
-                  navigation.navigate(item.name);
+                navigation.closeDrawer();
+                if (!isActive) {
+                  requestAnimationFrame(() => {
+                    navigation.navigate(item.name);
+                  });
                 }
               }}
               style={[styles.drawerItem, isActive && styles.drawerItemActive]}
@@ -150,7 +151,6 @@ export default function DrawerNavigator() {
         },
         drawerType: 'front',
         animationDuration: 180,
-        freezeOnBlur: true,
         overlayColor: 'rgba(0,0,0,0.5)',
         headerTintColor: '#333',
         headerTitleStyle: {
