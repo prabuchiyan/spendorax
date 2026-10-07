@@ -390,11 +390,9 @@ export default function SpendAreasDashboard({ route, navigation }) {
         return;
       }
 
-      const transactionYear =
-        dateObj.getFullYear();
-
-      const transactionMonth =
-        dateObj.getMonth();
+      const transactionYear = dateObj.getFullYear();
+      const transactionMonth = dateObj.getMonth();
+      const transactionDate = dateObj.getDate();
 
       // DAILY
       if (filterMode === 'daily') {
@@ -406,7 +404,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
         }
 
         periods.add(
-          dateStr.split('T')[0]
+          `${transactionYear}-${String(transactionMonth + 1).padStart(2, '0')}-${String(transactionDate).padStart(2, '0')}`
         );
 
         return;
@@ -414,14 +412,14 @@ export default function SpendAreasDashboard({ route, navigation }) {
       // MONTHLY
       if (filterMode === 'monthly') {
         periods.add(
-          dateStr.substring(0, 7)
+          `${transactionYear}-${String(transactionMonth + 1).padStart(2, '0')}`
         );
         return;
       }
       // YEARLY
       if (filterMode === 'yearly') {
         periods.add(
-          dateStr.substring(0, 4)
+          String(transactionYear)
         );
       }
     });
@@ -511,26 +509,37 @@ export default function SpendAreasDashboard({ route, navigation }) {
         let startDate = null;
         let endDate = null;
 
+        let startObj = null;
+        let endObj = null;
+
         if (filterMode === 'daily') {
-          startDate = `${selectedPeriod}T00:00:00`;
-          endDate = `${selectedPeriod}T23:59:59`;
+          const parts = selectedPeriod.split('-');
+          startObj = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
+          endObj = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59, 999);
         } else if (filterMode === 'monthly') {
           const parts = selectedPeriod.split('-');
           const year = parseInt(parts[0], 10);
           const month = parseInt(parts[1], 10);
-          const lastDay = new Date(year, month, 0).getDate();
-          startDate = `${selectedPeriod}-01T00:00:00`;
-          endDate = `${selectedPeriod}-${String(lastDay).padStart(2, '0')}T23:59:59`;
+          startObj = new Date(year, month - 1, 1, 0, 0, 0, 0);
+          endObj = new Date(year, month, 0, 23, 59, 59, 999);
         } else if (filterMode === 'yearly') {
-          startDate = `${selectedPeriod}-01-01T00:00:00`;
-          endDate = `${selectedPeriod}-12-31T23:59:59`;
+          const year = parseInt(selectedPeriod, 10);
+          startObj = new Date(year, 0, 1, 0, 0, 0, 0);
+          endObj = new Date(year, 11, 31, 23, 59, 59, 999);
         } else if (filterMode === 'weekly') {
           const parts = selectedPeriod.split('_');
-          const startDay = parts[0];
-          const endDayStr = parts[1];
-          startDate = `${startDay}T00:00:00`;
-          const yearMonth = startDay.substring(0, 8);
-          endDate = `${yearMonth}${endDayStr}T23:59:59`;
+          const p = parts[0].split('-');
+          const year = parseInt(p[0], 10);
+          const month = parseInt(p[1], 10);
+          const sDay = parseInt(p[2], 10);
+          const eDay = parseInt(parts[1], 10);
+          startObj = new Date(year, month - 1, sDay, 0, 0, 0, 0);
+          endObj = new Date(year, month - 1, eDay, 23, 59, 59, 999);
+        }
+
+        if (startObj && endObj) {
+          startDate = startObj.toISOString();
+          endDate = endObj.toISOString();
         }
 
         const tx = await getTransactionsByDateRange(null, startDate, endDate);
@@ -549,26 +558,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
   const topCategories = useMemo(() => {
     if (transactions.length === 0 || !selectedPeriod) return [];
     const byId = {};
-    let filterFn;
-    if (filterMode === 'daily' || filterMode === 'monthly' || filterMode === 'yearly') {
-      filterFn = (dateStr) => dateStr.startsWith(selectedPeriod);
-    } else if (filterMode === 'weekly') {
-      const parts = selectedPeriod.split('_');
-      if (parts.length !== 2) {
-        filterFn = () => false;
-      } else {
-        const weekStart = new Date(`${parts[0]}T00:00:00`);
-        const weekEnd = new Date(`${parts[0]}T00:00:00`);
-        const endDay = parseInt(parts[1], 10);
-        weekEnd.setDate(endDay + 1);
-        filterFn = (dateStr) => {
-          const d = new Date(dateStr);
-          return d >= weekStart && d < weekEnd;
-        };
-      }
-    } else {
-      filterFn = () => true;
-    }
+    let filterFn = () => true; // DB fetch handles date ranges correctly
     transactions.forEach(t => {
       if (getTransactionType(t) === 'transfer') return;
       if (t.type !== 'expense') return;
@@ -598,31 +588,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
 
   const selectedPeriodTransactions = useMemo(() => {
     if (!transactions.length || !selectedPeriod) return [];
-    let filterFn;
-    if (
-      filterMode === 'daily' ||
-      filterMode === 'monthly' ||
-      filterMode === 'yearly'
-    ) {
-      filterFn = (dateStr) =>
-        dateStr.startsWith(selectedPeriod);
-    } else if (filterMode === 'weekly') {
-      const parts = selectedPeriod.split('_');
-      if (parts.length !== 2) {
-        filterFn = () => false;
-      } else {
-        const weekStart = new Date(`${parts[0]}T00:00:00`);
-        const weekEnd = new Date(`${parts[0]}T00:00:00`);
-        const endDay = parseInt(parts[1], 10);
-        weekEnd.setDate(endDay + 1);
-        filterFn = (dateStr) => {
-          const date = new Date(dateStr);
-          return date >= weekStart && date < weekEnd;
-        };
-      }
-    } else {
-      filterFn = () => true;
-    }
+    let filterFn = () => true; // DB fetch handles date ranges correctly
     return transactions
       .filter(transaction => {
         if (getTransactionType(transaction) === 'transfer') return false;

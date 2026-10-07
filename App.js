@@ -15,6 +15,7 @@ import {
   rescheduleAll,
   registerNotificationListener,
   syncBillNotifications,
+  processPendingNotification,
 } from './src/services/notificationService';
 import SearchScreen from './src/screens/SearchScreen';
 import TransactionAddScreen from './src/screens/TransactionAddScreen';
@@ -166,7 +167,10 @@ export default function App() {
             <BalanceVisibilityProvider>
               <AppLockProvider>
                 <AppLockWrapper>
-                  <NavigationContainer ref={navigationRef}>
+                  <NavigationContainer 
+                    ref={navigationRef} 
+                    onReady={() => processPendingNotification(navigationRef)}
+                  >
                     <Stack.Navigator>
                       <Stack.Screen
                         name="Drawer"

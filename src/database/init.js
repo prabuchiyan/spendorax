@@ -295,6 +295,7 @@ export async function initDB() {
     try {
       const { createNotificationsTable } = require('./notifications');
       await createNotificationsTable();
+      await executeSql(`DELETE FROM notifications WHERE type IN ('CREDIT_CARD_STATEMENT', 'CREDIT_CARD_DUE') AND reference_id IS NULL`);
     } catch (e) {
       console.warn('Notifications table creation failed', e);
     }

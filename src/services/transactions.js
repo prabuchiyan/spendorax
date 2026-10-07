@@ -792,8 +792,15 @@ export async function getSourceTransactionBalances() {
 export async function getHomeExpenseTransactions(referenceDate = new Date()) {
   try {
     const year = referenceDate.getFullYear();
-    const month = String(referenceDate.getMonth() + 1).padStart(2, "0");
-    const monthKey = `${year}-${month}`;
+    const month = referenceDate.getMonth();
+    
+    // Create local bounds for the current month
+    const startObj = new Date(year, month, 1, 0, 0, 0, 0);
+    const endObj = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    
+    // Convert to ISO strings for correct DB matching against stored UTC strings
+    const startDateStr = startObj.toISOString();
+    const endDateStr = endObj.toISOString();
 
     let res;
     if (Platform.OS === 'web') {
@@ -808,10 +815,11 @@ export async function getHomeExpenseTransactions(referenceDate = new Date()) {
           WHERE type = 'expense'
             AND transfer_group_id IS NULL
             AND (is_counted IS NULL OR is_counted != 0)
-            AND REPLACE(date, ' ', 'T') LIKE ?
+            AND REPLACE(date, ' ', 'T') >= ?
+            AND REPLACE(date, ' ', 'T') <= ?
           ORDER BY REPLACE(date, ' ', 'T') DESC, id DESC
           `,
-          [`${monthKey}%`]
+          [startDateStr, endDateStr]
         );
     }
 
@@ -821,7 +829,7 @@ export async function getHomeExpenseTransactions(referenceDate = new Date()) {
         if (Platform.OS === 'web') {
             if (row.is_counted !== null && row.is_counted !== undefined && Number(row.is_counted) === 0) continue;
             const txDateStr = String(row.date || "").replace(" ", "T");
-            if (!txDateStr.startsWith(monthKey)) continue;
+            if (txDateStr < startDateStr || txDateStr > endDateStr) continue;
         }
         rows.push(row);
     }
