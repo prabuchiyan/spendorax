@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, InteractionManager } from 'react-native';
 import { createDrawerNavigator, DrawerContentScrollView } from '@react-navigation/drawer';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -62,7 +62,8 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
               onPress={() => {
                 navigation.closeDrawer();
                 if (!isActive) {
-                  requestAnimationFrame(() => {
+                  // Use InteractionManager so React Native waits for the drawer animation to completely finish
+                  InteractionManager.runAfterInteractions(() => {
                     navigation.navigate(item.name);
                   });
                 }
@@ -104,8 +105,10 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
         <TouchableOpacity
           style={styles.footerButton}
           onPress={() => {
-            navigation.navigate('NotificationSettings');
             navigation.closeDrawer();
+            InteractionManager.runAfterInteractions(() => {
+              navigation.navigate('NotificationSettings');
+            });
           }}
         >
           <MaterialCommunityIcons name="bell-outline" size={18} color="#666" style={{ marginRight: 10 }} />
@@ -115,8 +118,10 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
         <TouchableOpacity
           style={styles.footerButton}
           onPress={() => {
-            navigation.navigate('SecuritySettings');
             navigation.closeDrawer();
+            InteractionManager.runAfterInteractions(() => {
+              navigation.navigate('SecuritySettings');
+            });
           }}
         >
           <MaterialCommunityIcons name="security" size={18} color="#666" style={{ marginRight: 10 }} />
@@ -126,8 +131,10 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
         <TouchableOpacity
           style={styles.footerButton}
           onPress={() => {
-            navigation.navigate('Backup');
             navigation.closeDrawer();
+            InteractionManager.runAfterInteractions(() => {
+              navigation.navigate('Backup');
+            });
           }}
         >
           <Feather name="settings" size={18} color="#666" style={{ marginRight: 10 }} />
