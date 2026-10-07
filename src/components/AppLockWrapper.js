@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAppLock } from '../context/AppLockContext';
 import AppLockScreen from './AppLockScreen';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Colors } from './Theme';
 
 export default function AppLockWrapper({ children }) {
@@ -15,9 +15,29 @@ export default function AppLockWrapper({ children }) {
     );
   }
 
-  if (isLocked) {
-    return <AppLockScreen />;
-  }
-
-  return children;
+  return (
+    <View style={styles.container}>
+      <View style={styles.childrenContainer}>
+        {children}
+      </View>
+      {isLocked && (
+        <View style={styles.lockScreenContainer}>
+          <AppLockScreen />
+        </View>
+      )}
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  childrenContainer: {
+    flex: 1,
+  },
+  lockScreenContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 9999,
+  }
+});
