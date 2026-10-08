@@ -53,18 +53,15 @@ export default function SearchScreen({ navigation }) {
     const years = new Set(availableMonths.map(m => m.substring(0, 4)));
     return Array.from(years).sort().reverse();
   }, [availableMonths]);
-  
   const formatMonth = (yyyyMm) => {
     if (!yyyyMm) return '';
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const [year, month] = yyyyMm.split('-');
     return `${months[parseInt(month, 10) - 1]} ${year}`;
   };
-
   const [groupByOption, setGroupByOption] = useState('day'); // day, month, year
-
   const [datePickerTarget, setDatePickerTarget] = useState(null); // 'exact', 'start', 'end'
-
+  const [refreshKey, setRefreshKey] = useState(0);
   const clearAdvancedSearch = () => {
     setAdvAmount('');
     setAdvNote('');
@@ -96,6 +93,7 @@ export default function SearchScreen({ navigation }) {
             dispatch(setCategories(cats || []));
             dispatch(setReduxSources(srcs || []));
             setAvailableMonths(months || []);
+            setRefreshKey(prev => prev + 1);
           }
         } catch (e) {
           console.warn(e);
@@ -185,16 +183,13 @@ export default function SearchScreen({ navigation }) {
     search();
 
     return () => { isActive = false; };
-  }, [searchQuery, categories, sources]);
+  }, [searchQuery, categories, sources, refreshKey]);
 
   // ---------------------------------------------------------
   // ADVANCED SEARCH
   // ---------------------------------------------------------
 
-  const handleAdvancedSearch = async () => {
-    setAdvancedModalVisible(false);
-    setSearchQuery('Advanced Search Active');
-
+  const fetchAdvanced = useCallback(async () => {
     try {
       const rawTransactions = await getAdvancedSearchTransactions({
         amount: advAmount,
@@ -235,6 +230,18 @@ export default function SearchScreen({ navigation }) {
     } catch (e) {
       console.warn(e);
     }
+  }, [advAmount, advNote, advType, advDateType, advExactDate, advMonth, advYear, advStartDate, advEndDate, dispatch]);
+
+  useEffect(() => {
+    if (searchQuery.trim().toLowerCase() === 'advanced search active') {
+      fetchAdvanced();
+    }
+  }, [refreshKey, fetchAdvanced]);
+
+  const handleAdvancedSearch = async () => {
+    setAdvancedModalVisible(false);
+    setSearchQuery('Advanced Search Active');
+    setRefreshKey(prev => prev + 1);
   };
 
   // ---------------------------------------------------------
@@ -662,38 +669,38 @@ export default function SearchScreen({ navigation }) {
                   { id: 'income', icon: 'arrow-down-circle', color: '#10B981' },
                   { id: 'transfer', icon: 'swap-horizontal', color: '#F59E0B' }
                 ].map(t => {
-                   const isActive = advType === t.id;
-                   return (
-                     <TouchableOpacity key={t.id} onPress={() => setAdvType(t.id)} style={{ 
-                        width: '48%', marginBottom: 12,
-                        flexDirection: 'row', alignItems: 'center', gap: 6,
-                        paddingVertical: 12, paddingHorizontal: 12, borderRadius: 12, 
-                        backgroundColor: isActive ? t.color : `${t.color}15`,
-                        borderWidth: 1, borderColor: isActive ? t.color : `${t.color}30`
-                     }}>
-                       <MaterialCommunityIcons 
-                         name={t.icon} 
-                         size={18} 
-                         color={isActive ? '#fff' : t.color} 
-                       />
-                       <Text style={{ color: isActive ? '#fff' : t.color, textTransform: 'capitalize', fontWeight: '700' }}>{t.id}</Text>
-                     </TouchableOpacity>
-                   )
+                  const isActive = advType === t.id;
+                  return (
+                    <TouchableOpacity key={t.id} onPress={() => setAdvType(t.id)} style={{
+                      width: '48%', marginBottom: 12,
+                      flexDirection: 'row', alignItems: 'center', gap: 6,
+                      paddingVertical: 12, paddingHorizontal: 12, borderRadius: 12,
+                      backgroundColor: isActive ? t.color : `${t.color}15`,
+                      borderWidth: 1, borderColor: isActive ? t.color : `${t.color}30`
+                    }}>
+                      <MaterialCommunityIcons
+                        name={t.icon}
+                        size={18}
+                        color={isActive ? '#fff' : t.color}
+                      />
+                      <Text style={{ color: isActive ? '#fff' : t.color, textTransform: 'capitalize', fontWeight: '700' }}>{t.id}</Text>
+                    </TouchableOpacity>
+                  )
                 })}
               </View>
 
               {/* Amount */}
               <Text style={{ fontSize: 13, fontWeight: '700', textTransform: 'uppercase', color: '#6B7280', letterSpacing: 0.8, marginBottom: 12 }}>Exact Amount</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A', borderRadius: 12, paddingHorizontal: 14, marginBottom: 24 }}>
-                 <MaterialCommunityIcons name="currency-inr" size={22} color="#F59E0B" />
-                 <TextInput value={advAmount} onChangeText={setAdvAmount} keyboardType="numeric" placeholder="0.00" placeholderTextColor="#D97706" style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 8, fontSize: 16, color: '#92400E', fontWeight: '700' }} />
+                <MaterialCommunityIcons name="currency-inr" size={22} color="#F59E0B" />
+                <TextInput value={advAmount} onChangeText={setAdvAmount} keyboardType="numeric" placeholder="0.00" placeholderTextColor="#D97706" style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 8, fontSize: 16, color: '#92400E', fontWeight: '700' }} />
               </View>
 
               {/* Notes */}
               <Text style={{ fontSize: 13, fontWeight: '700', textTransform: 'uppercase', color: '#6B7280', letterSpacing: 0.8, marginBottom: 12 }}>Exact Word in Notes</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#EEF2FF', borderWidth: 1, borderColor: '#C7D2FE', borderRadius: 12, paddingHorizontal: 14, marginBottom: 24 }}>
-                 <MaterialCommunityIcons name="text-search" size={22} color="#6366F1" />
-                 <TextInput value={advNote} onChangeText={setAdvNote} placeholder="e.g. Groceries" placeholderTextColor="#818CF8" style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 8, fontSize: 16, color: '#3730A3', fontWeight: '700' }} />
+                <MaterialCommunityIcons name="text-search" size={22} color="#6366F1" />
+                <TextInput value={advNote} onChangeText={setAdvNote} placeholder="e.g. Groceries" placeholderTextColor="#818CF8" style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 8, fontSize: 16, color: '#3730A3', fontWeight: '700' }} />
               </View>
 
               {/* Date Filter Type */}
@@ -715,9 +722,9 @@ export default function SearchScreen({ navigation }) {
                       setAdvYear('');
                       setAdvStartDate('');
                       setAdvEndDate('');
-                    }} style={{ 
+                    }} style={{
                       flexDirection: 'row', alignItems: 'center', gap: 6,
-                      paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20, 
+                      paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20,
                       backgroundColor: isActive ? d.color : `${d.color}15`,
                       borderWidth: 1, borderColor: isActive ? d.color : `${d.color}30`
                     }}>
@@ -740,11 +747,11 @@ export default function SearchScreen({ navigation }) {
                 <View style={{ marginBottom: 24 }}>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
                     {availableMonths.map(m => (
-                      <TouchableOpacity key={m} onPress={() => setAdvMonth(m)} style={{ 
+                      <TouchableOpacity key={m} onPress={() => setAdvMonth(m)} style={{
                         flexDirection: 'row', alignItems: 'center', gap: 6,
-                        paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, 
-                        backgroundColor: advMonth === m ? '#EC4899' : '#FDF2F8', 
-                        borderWidth: 1, borderColor: advMonth === m ? '#EC4899' : '#FBCFE8' 
+                        paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12,
+                        backgroundColor: advMonth === m ? '#EC4899' : '#FDF2F8',
+                        borderWidth: 1, borderColor: advMonth === m ? '#EC4899' : '#FBCFE8'
                       }}>
                         <MaterialCommunityIcons name="calendar-month" size={18} color={advMonth === m ? '#fff' : '#EC4899'} />
                         <Text style={{ color: advMonth === m ? '#fff' : '#BE185D', fontWeight: '800', fontSize: 14 }}>{formatMonth(m)}</Text>
@@ -758,11 +765,11 @@ export default function SearchScreen({ navigation }) {
                 <View style={{ marginBottom: 24 }}>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
                     {availableYears.map(y => (
-                      <TouchableOpacity key={y} onPress={() => setAdvYear(y)} style={{ 
+                      <TouchableOpacity key={y} onPress={() => setAdvYear(y)} style={{
                         flexDirection: 'row', alignItems: 'center', gap: 6,
-                        paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, 
-                        backgroundColor: advYear === y ? '#8B5CF6' : '#F5F3FF', 
-                        borderWidth: 1, borderColor: advYear === y ? '#8B5CF6' : '#EDE9FE' 
+                        paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12,
+                        backgroundColor: advYear === y ? '#8B5CF6' : '#F5F3FF',
+                        borderWidth: 1, borderColor: advYear === y ? '#8B5CF6' : '#EDE9FE'
                       }}>
                         <MaterialCommunityIcons name="calendar-multiselect" size={18} color={advYear === y ? '#fff' : '#8B5CF6'} />
                         <Text style={{ color: advYear === y ? '#fff' : '#6D28D9', fontWeight: '800', fontSize: 14 }}>{y}</Text>
@@ -789,14 +796,14 @@ export default function SearchScreen({ navigation }) {
               <Text style={{ fontSize: 13, fontWeight: '700', textTransform: 'uppercase', color: '#6B7280', letterSpacing: 0.8, marginBottom: 12 }}>Group Results By</Text>
               <View style={{ flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 14, padding: 4, marginBottom: 32 }}>
                 {['day', 'month', 'year'].map(g => (
-                  <TouchableOpacity key={g} onPress={() => setGroupByOption(g)} style={{ 
-                     flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 10, 
-                     backgroundColor: groupByOption === g ? Colors.primary : 'transparent',
-                     shadowColor: groupByOption === g ? Colors.primary : 'transparent',
-                     shadowOffset: { width: 0, height: 4 },
-                     shadowOpacity: 0.3,
-                     shadowRadius: 4,
-                     elevation: groupByOption === g ? 4 : 0
+                  <TouchableOpacity key={g} onPress={() => setGroupByOption(g)} style={{
+                    flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 10,
+                    backgroundColor: groupByOption === g ? Colors.primary : 'transparent',
+                    shadowColor: groupByOption === g ? Colors.primary : 'transparent',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 4,
+                    elevation: groupByOption === g ? 4 : 0
                   }}>
                     <Text style={{ color: groupByOption === g ? '#fff' : '#64748B', textTransform: 'capitalize', fontWeight: groupByOption === g ? '800' : '600' }}>{g}</Text>
                   </TouchableOpacity>

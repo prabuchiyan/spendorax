@@ -561,6 +561,11 @@ export default function TopUpScreen({ route, navigation }) {
     try {
       setLoading(true);
 
+      // Give React Native one render cycle to display the loader
+      await new Promise((resolve) => {
+        requestAnimationFrame(resolve);
+      });
+
       await recordTopUp({
         loanId: Number(loanId),
 
@@ -598,230 +603,232 @@ export default function TopUpScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.scrollContent}
-      >
-        <Card style={styles.mainCard}>
-          {/* ========================================================= */}
-          {/* Header                                                     */}
-          {/* ========================================================= */}
-          <View style={styles.header}>
-            <View style={styles.headerIcon}>
-              <MaterialCommunityIcons
-                name="cash-plus"
-                size={30}
-                color="#FFFFFF"
-              />
+      <View pointerEvents={loading ? "none" : "auto"} style={{ flex: 1, opacity: loading ? 0.6 : 1 }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
+        >
+          <Card style={styles.mainCard}>
+            {/* ========================================================= */}
+            {/* Header                                                     */}
+            {/* ========================================================= */}
+            <View style={styles.header}>
+              <View style={styles.headerIcon}>
+                <MaterialCommunityIcons
+                  name="cash-plus"
+                  size={30}
+                  color="#FFFFFF"
+                />
+              </View>
+
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.headerTitle}>Top Up Loan</Text>
+
+                <Text style={styles.headerSubtitle}>
+                  Add an additional amount to this loan
+                </Text>
+              </View>
             </View>
-
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>Top Up Loan</Text>
-
-              <Text style={styles.headerSubtitle}>
-                Add an additional amount to this loan
-              </Text>
-            </View>
-          </View>
-          {/* ========================================================= */}
-          {/* Loan Summary                                               */}
-          {/* ========================================================= */}
-          <View style={styles.loanSummary}>
-            <View style={styles.loanSummaryIcon}>
-              <MaterialCommunityIcons name="bank" size={22} color="#2563EB" />
-            </View>
-
-            <View
-              style={{
-                flex: 1,
-              }}
-            >
-              <Text style={styles.loanSummaryLabel}>Selected Loan</Text>
-
-              <Text style={styles.loanSummaryName} numberOfLines={1}>
-                {loanName}
-              </Text>
-
-              <Text style={styles.loanSummarySubtext}>
-                Additional borrowing
-              </Text>
-            </View>
-          </View>
-          {/* ========================================================= */}
-          {/* Payment Source                                             */}
-          {/* ========================================================= */}
-          <FieldCard
-            icon={selectedSource?.icon || "wallet-outline"}
-            color={selectedSource?.color || "#16A34A"}
-            title="Payment Source"
-            value={
-              selectedSource ? selectedSource.name : "Select Bank / Wallet"
-            }
-            error={errors.source}
-            onPress={() => {
-              setShowSourcePicker(true);
-
-              setErrors((prev) => ({
-                ...prev,
-                source: undefined,
-              }));
-            }}
-          />
-          {/* ========================================================= */}
-          {/* Category                                                   */}
-          {/* ========================================================= */}
-          <FieldCard
-            icon={selectedCategory?.icon || "shape-outline"}
-            color={selectedCategory?.color || "#EA580C"}
-            title="Category"
-            value={selectedCategory ? selectedCategory.name : "Select Category"}
-            error={errors.category}
-            onPress={() => {
-              setShowCategoryPicker(true);
-
-              setErrors((prev) => ({
-                ...prev,
-                category: undefined,
-              }));
-            }}
-          />
-          {/* ========================================================= */}
-          {/* Date & Time                                                */}
-          {/* ========================================================= */}
-          <FieldCard
-            icon="calendar-clock"
-            color="#7C3AED"
-            title="Date & Time"
-            value={formatDateTime(transactionDate)}
-            error={errors.date}
-            onPress={() => {
-              setErrors((prev) => ({
-                ...prev,
-                date: undefined,
-              }));
-
-              openDatePicker();
-            }}
-          />
-          {/* ========================================================= */}
-          {/* Amount                                                     */}
-          {/* ========================================================= */}
-
-          <View style={styles.fieldWrapper}>
-            <View
-              style={[
-                styles.amountCard,
-                errors.amount && styles.amountCardError,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.amountLabel,
-                  errors.amount && styles.amountLabelError,
-                ]}
-              >
-                Top Up Amount
-                <Text style={styles.requiredMark}> *</Text>
-              </Text>
+            {/* ========================================================= */}
+            {/* Loan Summary                                               */}
+            {/* ========================================================= */}
+            <View style={styles.loanSummary}>
+              <View style={styles.loanSummaryIcon}>
+                <MaterialCommunityIcons name="bank" size={22} color="#2563EB" />
+              </View>
 
               <View
+                style={{
+                  flex: 1,
+                }}
+              >
+                <Text style={styles.loanSummaryLabel}>Selected Loan</Text>
+
+                <Text style={styles.loanSummaryName} numberOfLines={1}>
+                  {loanName}
+                </Text>
+
+                <Text style={styles.loanSummarySubtext}>
+                  Additional borrowing
+                </Text>
+              </View>
+            </View>
+            {/* ========================================================= */}
+            {/* Payment Source                                             */}
+            {/* ========================================================= */}
+            <FieldCard
+              icon={selectedSource?.icon || "wallet-outline"}
+              color={selectedSource?.color || "#16A34A"}
+              title="Payment Source"
+              value={
+                selectedSource ? selectedSource.name : "Select Bank / Wallet"
+              }
+              error={errors.source}
+              onPress={() => {
+                setShowSourcePicker(true);
+
+                setErrors((prev) => ({
+                  ...prev,
+                  source: undefined,
+                }));
+              }}
+            />
+            {/* ========================================================= */}
+            {/* Category                                                   */}
+            {/* ========================================================= */}
+            <FieldCard
+              icon={selectedCategory?.icon || "shape-outline"}
+              color={selectedCategory?.color || "#EA580C"}
+              title="Category"
+              value={selectedCategory ? selectedCategory.name : "Select Category"}
+              error={errors.category}
+              onPress={() => {
+                setShowCategoryPicker(true);
+
+                setErrors((prev) => ({
+                  ...prev,
+                  category: undefined,
+                }));
+              }}
+            />
+            {/* ========================================================= */}
+            {/* Date & Time                                                */}
+            {/* ========================================================= */}
+            <FieldCard
+              icon="calendar-clock"
+              color="#7C3AED"
+              title="Date & Time"
+              value={formatDateTime(transactionDate)}
+              error={errors.date}
+              onPress={() => {
+                setErrors((prev) => ({
+                  ...prev,
+                  date: undefined,
+                }));
+
+                openDatePicker();
+              }}
+            />
+            {/* ========================================================= */}
+            {/* Amount                                                     */}
+            {/* ========================================================= */}
+
+            <View style={styles.fieldWrapper}>
+              <View
                 style={[
-                  styles.amountInputContainer,
-                  amountFocused && styles.amountInputFocused,
-                  errors.amount && styles.amountInputError,
+                  styles.amountCard,
+                  errors.amount && styles.amountCardError,
                 ]}
               >
                 <Text
                   style={[
-                    styles.currency,
-                    errors.amount && styles.currencyError,
+                    styles.amountLabel,
+                    errors.amount && styles.amountLabelError,
                   ]}
                 >
-                  ₹
+                  Top Up Amount
+                  <Text style={styles.requiredMark}> *</Text>
                 </Text>
 
-                <TextInput
-                  value={amount}
-                  onChangeText={(text) => {
-                    let value = text.replace(/[^0-9.]/g, "");
+                <View
+                  style={[
+                    styles.amountInputContainer,
+                    amountFocused && styles.amountInputFocused,
+                    errors.amount && styles.amountInputError,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.currency,
+                      errors.amount && styles.currencyError,
+                    ]}
+                  >
+                    ₹
+                  </Text>
 
-                    const dotIndex = value.indexOf(".");
+                  <TextInput
+                    value={amount}
+                    onChangeText={(text) => {
+                      let value = text.replace(/[^0-9.]/g, "");
 
-                    if (dotIndex !== -1) {
-                      value =
-                        value.substring(0, dotIndex + 1) +
-                        value.substring(dotIndex + 1).replace(/\./g, "");
-                    }
+                      const dotIndex = value.indexOf(".");
 
-                    setAmount(value);
+                      if (dotIndex !== -1) {
+                        value =
+                          value.substring(0, dotIndex + 1) +
+                          value.substring(dotIndex + 1).replace(/\./g, "");
+                      }
 
-                    // Clear amount error immediately
-                    if (errors.amount) {
-                      setErrors((prev) => ({
-                        ...prev,
-                        amount: undefined,
-                      }));
-                    }
-                  }}
-                  keyboardType="decimal-pad"
-                  placeholder="Enter Amount"
-                  placeholderTextColor="#94A3B8"
-                  selectionColor="#2563EB"
-                  cursorColor="#2563EB"
-                  onFocus={() => setAmountFocused(true)}
-                  onBlur={() => setAmountFocused(false)}
-                  style={styles.amountInput}
-                  editable={!loading}
-                />
+                      setAmount(value);
+
+                      // Clear amount error immediately
+                      if (errors.amount) {
+                        setErrors((prev) => ({
+                          ...prev,
+                          amount: undefined,
+                        }));
+                      }
+                    }}
+                    keyboardType="decimal-pad"
+                    placeholder="Enter Amount"
+                    placeholderTextColor="#94A3B8"
+                    selectionColor="#2563EB"
+                    cursorColor="#2563EB"
+                    onFocus={() => setAmountFocused(true)}
+                    onBlur={() => setAmountFocused(false)}
+                    style={styles.amountInput}
+                    editable={!loading}
+                  />
+                </View>
               </View>
+
+              <FieldError message={errors.amount} />
             </View>
+            {/* ========================================================= */}
+            {/* Notes                                                      */}
+            {/* ========================================================= */}
+            <View style={styles.notesCard}>
+              <Text style={styles.notesLabel}>Notes (Optional)</Text>
 
-            <FieldError message={errors.amount} />
-          </View>
-          {/* ========================================================= */}
-          {/* Notes                                                      */}
-          {/* ========================================================= */}
-          <View style={styles.notesCard}>
-            <Text style={styles.notesLabel}>Notes (Optional)</Text>
-
-            <TextInput
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="Add remarks"
-              placeholderTextColor="#94A3B8"
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              selectionColor="#2563EB"
-              cursorColor="#2563EB"
-              style={styles.notesInput}
-              editable={!loading}
-            />
-          </View>
-          {/* ========================================================= */}
-          {/* Confirm Button                                             */}
-          {/* ========================================================= */}
-          <PaperButton
-            mode="contained"
-            buttonColor="#2563EB"
-            onPress={save}
-            loading={loading}
-            disabled={loading}
-            icon="cash-plus"
-            style={styles.saveButton}
-            contentStyle={{
-              height: 54,
-            }}
-            labelStyle={{
-              fontSize: 16,
-              fontWeight: "800",
-            }}
-          >
-            Confirm Top Up
-          </PaperButton>
-        </Card>
-      </ScrollView>
+              <TextInput
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="Add remarks"
+                placeholderTextColor="#94A3B8"
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                selectionColor="#2563EB"
+                cursorColor="#2563EB"
+                style={styles.notesInput}
+                editable={!loading}
+              />
+            </View>
+            {/* ========================================================= */}
+            {/* Confirm Button                                             */}
+            {/* ========================================================= */}
+            <PaperButton
+              mode="contained"
+              buttonColor="#2563EB"
+              onPress={save}
+              loading={loading}
+              disabled={loading}
+              icon="cash-plus"
+              style={styles.saveButton}
+              contentStyle={{
+                height: 54,
+              }}
+              labelStyle={{
+                fontSize: 16,
+                fontWeight: "800",
+              }}
+            >
+              Confirm Top Up
+            </PaperButton>
+          </Card>
+        </ScrollView>
+      </View>
 
       {/* ================================================================= */}
       {/* DATE & TIME PICKER                                                */}

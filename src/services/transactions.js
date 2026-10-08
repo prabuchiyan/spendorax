@@ -1094,8 +1094,14 @@ export async function getAdvancedSearchTransactions(params) {
 
       let filtered = rows.filter(tx => {
         if (type && type !== 'all') {
-          if (type === 'expense' && tx.type !== 'expense') return false;
-          if (type === 'income' && tx.type !== 'income') return false;
+          if (type === 'expense') {
+            if (tx.type !== 'expense') return false;
+            if (tx.transfer_group_id || tx.is_transfer === 1) return false;
+          }
+          if (type === 'income') {
+            if (tx.type !== 'income') return false;
+            if (tx.transfer_group_id || tx.is_transfer === 1) return false;
+          }
           if (type === 'transfer' && !tx.transfer_group_id && tx.is_transfer !== 1) return false;
         }
         if (amount && Number(tx.amount) !== Number(amount)) return false;
@@ -1137,8 +1143,8 @@ export async function getAdvancedSearchTransactions(params) {
     const queryParams = [];
 
     if (type && type !== 'all') {
-      if (type === 'expense') conditions.push(`type = 'expense'`);
-      if (type === 'income') conditions.push(`type = 'income'`);
+      if (type === 'expense') conditions.push(`type = 'expense' AND transfer_group_id IS NULL AND (is_transfer IS NULL OR is_transfer != 1)`);
+      if (type === 'income') conditions.push(`type = 'income' AND transfer_group_id IS NULL AND (is_transfer IS NULL OR is_transfer != 1)`);
       if (type === 'transfer') conditions.push(`(transfer_group_id IS NOT NULL OR is_transfer = 1)`);
     }
 

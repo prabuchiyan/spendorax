@@ -8,6 +8,7 @@ import {
   TextInput,
   ScrollView,
   Alert,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -463,12 +464,21 @@ export default function BillsScreen({ navigation }) {
       const parentKey = String(
         item.parent_bill_id || item._templateId || item.id,
       );
-      const isExpanded = expandedCreditCards[parentKey] === true;
-      const toggleStatements = () => {
-        setExpandedCreditCards((prev) => ({
-          ...prev,
-          [parentKey]: !prev[parentKey],
-        }));
+      const handleViewStatements = async () => {
+        try {
+          const cards = await getCreditCards(false);
+          const card = cards.find(
+            (c) => Number(c.payment_bill_id) === Number(parentKey)
+          );
+          if (card && card.source_id) {
+            navigation.navigate("CreditCardStatements", { sourceId: card.source_id });
+          } else {
+            navigation.navigate("CreditCardStatements");
+          }
+        } catch (error) {
+          console.error("Failed to route to statements:", error);
+          navigation.navigate("CreditCardStatements");
+        }
       };
       return (
         <View
@@ -496,12 +506,12 @@ export default function BillsScreen({ navigation }) {
             // Allow deleting the credit-card parent bill.
             onDelete={handleDeleteBill}
             showExpandButton={true}
-            expanded={isExpanded}
-            onToggleExpand={toggleStatements}
+            expanded={false}
+            onToggleExpand={handleViewStatements}
           />
 
           {/* STATEMENT CHILDREN */}
-          {isExpanded && item.children && item.children.length > 0 && (
+          {false && item.children && item.children.length > 0 && (
             <View
               style={{
                 marginLeft: 22,
@@ -1039,9 +1049,11 @@ export default function BillsScreen({ navigation }) {
       <Modal visible={showStatusDD} transparent>
         <TouchableOpacity
           style={styles.overlay}
+          activeOpacity={1}
           onPress={() => setShowStatusDD(false)}
         >
-          <View style={styles.modal}>
+          <TouchableWithoutFeedback>
+            <View style={styles.modal}>
             {STATUS_FILTERS.map((f) => (
               <TouchableOpacity
                 key={f.key}
@@ -1061,6 +1073,7 @@ export default function BillsScreen({ navigation }) {
               </TouchableOpacity>
             ))}
           </View>
+          </TouchableWithoutFeedback>
         </TouchableOpacity>
       </Modal>
 
@@ -1068,15 +1081,35 @@ export default function BillsScreen({ navigation }) {
       <Modal visible={showCategoryDD} transparent>
         <TouchableOpacity
           style={styles.overlay}
+          activeOpacity={1}
           onPress={() => setShowCategoryDD(false)}
         >
-          <View style={styles.modalLarge}>
-            <TextInput
-              placeholder="Search category..."
-              value={categorySearch}
-              onChangeText={setCategorySearch}
-              style={styles.searchInput}
-            />
+          <TouchableWithoutFeedback>
+            <View style={styles.modalLarge}>
+              <View style={styles.categorySearchContainer}>
+                <MaterialCommunityIcons
+                  name="magnify"
+                  size={22}
+                  color="#94A3B8"
+                />
+                <TextInput
+                  placeholder="Search category..."
+                  placeholderTextColor="#94A3B8"
+                  value={categorySearch}
+                  onChangeText={setCategorySearch}
+                  style={styles.categorySearchInput}
+                  autoCorrect={false}
+                />
+                {!!categorySearch && (
+                  <TouchableOpacity onPress={() => setCategorySearch("")}>
+                    <MaterialCommunityIcons
+                      name="close-circle"
+                      size={20}
+                      color="#94A3B8"
+                    />
+                  </TouchableOpacity>
+                )}
+              </View>
 
             <FlatList
               data={[
@@ -1113,6 +1146,7 @@ export default function BillsScreen({ navigation }) {
               }}
             />
           </View>
+          </TouchableWithoutFeedback>
         </TouchableOpacity>
       </Modal>
 
@@ -1170,13 +1204,30 @@ export default function BillsScreen({ navigation }) {
               Select Payment Source
             </Text>
 
-            <PaperTextInput
-              placeholder="Search source..."
-              value={paymentSourceSearch}
-              onChangeText={setPaymentSourceSearch}
-              mode="outlined"
-              style={{ marginBottom: 10 }}
-            />
+            <View style={styles.categorySearchContainer}>
+              <MaterialCommunityIcons
+                name="magnify"
+                size={22}
+                color="#94A3B8"
+              />
+              <TextInput
+                placeholder="Search source..."
+                placeholderTextColor="#94A3B8"
+                value={paymentSourceSearch}
+                onChangeText={setPaymentSourceSearch}
+                style={styles.categorySearchInput}
+                autoCorrect={false}
+              />
+              {!!paymentSourceSearch && (
+                <TouchableOpacity onPress={() => setPaymentSourceSearch("")}>
+                  <MaterialCommunityIcons
+                    name="close-circle"
+                    size={20}
+                    color="#94A3B8"
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
 
             <ScrollView>
               {paymentSources
@@ -1323,12 +1374,23 @@ const styles = {
   },
   item: { padding: 12, fontSize: 14 },
   selected: { color: Colors.primary, fontWeight: "700" },
-  searchInput: {
-    borderBottomWidth: 1,
-    borderColor: "#eee",
-    marginBottom: 10,
-    paddingVertical: 6,
-    paddingHorizontal: 4,
+  categorySearchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    minHeight: 48,
+    marginBottom: 14,
+  },
+  categorySearchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 15,
+    color: "#111827",
+    paddingVertical: 10,
   },
   row: {
     flexDirection: "row",
