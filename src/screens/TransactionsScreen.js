@@ -5,9 +5,9 @@ import {
   SectionList,
   TouchableOpacity,
   TextInput,
-  ActivityIndicator } from
-'react-native';
-
+  ActivityIndicator
+} from
+  'react-native';
 import { getTransactionsPaginated } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
@@ -20,16 +20,10 @@ import PageLoader from '../components/PageLoader';
 // Redux imports
 import {
   setTransactions,
-
-  setError as setTransactionError } from
-'../redux/slices/transactionSlice';
+  setError as setTransactionError
+} from
+  '../redux/slices/transactionSlice';
 import { setCategoriesMap } from '../redux/slices/categorySlice';
-
-
-
-
-
-
 import { getDateKey } from '../utils/dateUtils';
 import TransactionListItem from '../components/TransactionListItem';
 import { setSources as setReduxSources } from '../redux/slices/sourceSlice';
@@ -47,7 +41,6 @@ export default function TransactionsScreen({ navigation }) {
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
-
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -56,8 +49,8 @@ export default function TransactionsScreen({ navigation }) {
   const loadCategoriesAndSources = useCallback(async () => {
     try {
       const [categoriesData, sourcesData] = await Promise.all([
-      getCategories(true),
-      getSources(true)]
+        getCategories(true),
+        getSources(true)]
       );
       setCategories(categoriesData || []);
       const cmap = {};
@@ -186,55 +179,55 @@ export default function TransactionsScreen({ navigation }) {
     yesterday.setDate(yesterday.getDate() - 1);
 
     return Object.keys(groups).
-    sort((a, b) => b.localeCompare(a)).
-    map((dateKey) => {
-      const [year, month, day] = dateKey.
-      split('-').
-      map(Number);
+      sort((a, b) => b.localeCompare(a)).
+      map((dateKey) => {
+        const [year, month, day] = dateKey.
+          split('-').
+          map(Number);
 
-      const date = new Date(year, month - 1, day);
-      date.setHours(0, 0, 0, 0);
+        const date = new Date(year, month - 1, day);
+        date.setHours(0, 0, 0, 0);
 
-      let title;
+        let title;
 
-      if (date.getTime() === today.getTime()) {
-        title = 'Today';
-      } else if (date.getTime() === yesterday.getTime()) {
-        title = 'Yesterday';
-      } else {
-        title = date.toLocaleDateString(undefined, {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        });
-      }
+        if (date.getTime() === today.getTime()) {
+          title = 'Today';
+        } else if (date.getTime() === yesterday.getTime()) {
+          title = 'Yesterday';
+        } else {
+          title = date.toLocaleDateString(undefined, {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          });
+        }
 
-      const dailyExpense = groups[dateKey].reduce(
-        (sum, item) => {
-          return String(item.type || '').toLowerCase() === 'expense' && item.is_counted !== 0 ?
-          sum + Number(item.amount || 0) :
-          sum;
-        },
-        0
-      );
+        const dailyExpense = groups[dateKey].reduce(
+          (sum, item) => {
+            return String(item.type || '').toLowerCase() === 'expense' && item.is_counted !== 0 ?
+              sum + Number(item.amount || 0) :
+              sum;
+          },
+          0
+        );
 
-      const dailyIncome = groups[dateKey].reduce(
-        (sum, item) => {
-          return String(item.type || '').toLowerCase() === 'income' && item.is_counted !== 0 ?
-          sum + Number(item.amount || 0) :
-          sum;
-        },
-        0
-      );
+        const dailyIncome = groups[dateKey].reduce(
+          (sum, item) => {
+            return String(item.type || '').toLowerCase() === 'income' && item.is_counted !== 0 ?
+              sum + Number(item.amount || 0) :
+              sum;
+          },
+          0
+        );
 
-      return {
-        title,
-        dateKey,
-        data: groups[dateKey],
-        dailyExpense,
-        dailyIncome
-      };
-    });
+        return {
+          title,
+          dateKey,
+          data: groups[dateKey],
+          dailyExpense,
+          dailyIncome
+        };
+      });
   }, [items]);
 
   // ---------------------------------------------------------
@@ -268,13 +261,13 @@ export default function TransactionsScreen({ navigation }) {
           borderWidth: 1,
           borderColor: active ? Colors.text : '#E5E7EB'
         }}>
-        
+
         {icon &&
-        <MaterialCommunityIcons
-          name={icon}
-          size={15}
-          color={active ? '#fff' : '#6B7280'}
-          style={{ marginRight: 5 }} />
+          <MaterialCommunityIcons
+            name={icon}
+            size={15}
+            color={active ? '#fff' : '#6B7280'}
+            style={{ marginRight: 5 }} />
 
         }
 
@@ -284,7 +277,7 @@ export default function TransactionsScreen({ navigation }) {
             fontWeight: active ? '800' : '600',
             color: active ? '#fff' : '#6B7280'
           }}>
-          
+
           {label}
         </Text>
       </TouchableOpacity>);
@@ -301,47 +294,6 @@ export default function TransactionsScreen({ navigation }) {
         flex: 1,
         backgroundColor: '#F8F9FB'
       }}>
-      
-      {/* HEADER */}
-      <View
-        style={{
-          paddingHorizontal: Spacing.s,
-          paddingTop: 12,
-          paddingBottom: 4
-        }}>
-        
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-          
-          <View>
-            <Text
-              style={{
-                fontSize: 24,
-                fontWeight: '800',
-                color: Colors.text,
-                letterSpacing: -0.5
-              }}>
-              
-              Transactions
-            </Text>
-
-            <Text
-              style={{
-                fontSize: 12,
-                color: Colors.muted,
-                marginTop: 2
-              }}>
-              
-              {items.length} transaction
-              {items.length === 1 ? '' : 's'}
-            </Text>
-          </View>
-        </View>
-      </View>
 
       {/* SEARCH */}
       <View
@@ -349,7 +301,7 @@ export default function TransactionsScreen({ navigation }) {
           paddingHorizontal: Spacing.s,
           paddingTop: 10
         }}>
-        
+
         <View
           style={{
             height: 48,
@@ -367,7 +319,7 @@ export default function TransactionsScreen({ navigation }) {
             shadowRadius: 3,
             elevation: 2
           }}>
-          
+
           <TextInput
             value={searchInput}
             onChangeText={setSearchInput}
@@ -381,22 +333,22 @@ export default function TransactionsScreen({ navigation }) {
               color: Colors.text,
               paddingVertical: 0
             }} />
-          
+
 
           {searchInput.length > 0 &&
-          <TouchableOpacity
-            onPress={() => {
-              setSearchInput('');
-              setSearchQuery('');
-            }}
-            activeOpacity={0.7}
-            style={{ padding: 6 }}>
-            
+            <TouchableOpacity
+              onPress={() => {
+                setSearchInput('');
+                setSearchQuery('');
+              }}
+              activeOpacity={0.7}
+              style={{ padding: 6 }}>
+
               <MaterialCommunityIcons
-              name="close-circle"
-              size={20}
-              color="#9CA3AF" />
-            
+                name="close-circle"
+                size={20}
+                color="#9CA3AF" />
+
             </TouchableOpacity>
           }
 
@@ -412,17 +364,48 @@ export default function TransactionsScreen({ navigation }) {
               alignItems: 'center',
               marginLeft: 4
             }}>
-            
+
             <MaterialCommunityIcons
               name="magnify"
               size={20}
               color="#FFF" />
-            
+
           </TouchableOpacity>
         </View>
         <Text style={{ fontSize: 11, color: Colors.muted, marginTop: 8, marginLeft: 16, fontWeight: '500' }}>
           Press Enter or click the search icon to search
         </Text>
+      </View>
+
+
+      {/* TRANSACTIONS COUNT */}
+      <View
+        style={{
+          paddingHorizontal: Spacing.s,
+          paddingTop: 12,
+          paddingBottom: 4
+        }}>
+
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+
+          <View>
+            <Text
+              style={{
+                fontSize: 12,
+                color: Colors.muted,
+                marginTop: 2
+              }}>
+
+              {items.length} transaction
+              {items.length === 1 ? '' : 's'}
+            </Text>
+          </View>
+        </View>
       </View>
 
       {/* FILTERS */}
@@ -431,51 +414,51 @@ export default function TransactionsScreen({ navigation }) {
           paddingTop: 10,
           paddingBottom: 7
         }}>
-        
+
         <SectionList
           horizontal
           sections={[
-          {
-            title: 'filters',
-            data: ['filters']
-          }]
+            {
+              title: 'filters',
+              data: ['filters']
+            }]
           }
           renderItem={() =>
-          <View
-            style={{
-              flexDirection: 'row',
-              paddingHorizontal: Spacing.s
-            }}>
-            
-              <FilterChip
-              label="All"
-              value="all"
-              icon="format-list-bulleted" />
-            
+            <View
+              style={{
+                flexDirection: 'row',
+                paddingHorizontal: Spacing.s
+              }}>
 
               <FilterChip
-              label="Expense"
-              value="expense"
-              icon="arrow-up" />
-            
+                label="All"
+                value="all"
+                icon="format-list-bulleted" />
+
 
               <FilterChip
-              label="Income"
-              value="income"
-              icon="arrow-down" />
-            
+                label="Expense"
+                value="expense"
+                icon="arrow-up" />
+
 
               <FilterChip
-              label="Transfer"
-              value="transfer"
-              icon="swap-horizontal" />
-            
+                label="Income"
+                value="income"
+                icon="arrow-down" />
+
+
+              <FilterChip
+                label="Transfer"
+                value="transfer"
+                icon="swap-horizontal" />
+
             </View>
           }
           showsHorizontalScrollIndicator={false}
           keyExtractor={() => 'filters'}
           renderSectionHeader={() => null} />
-        
+
       </View>
 
       {/* TRANSACTIONS */}
@@ -485,13 +468,22 @@ export default function TransactionsScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
         stickySectionHeadersEnabled={false}
         onEndReached={loadMore}
-        onEndReachedThreshold={0.5}
+        onEndReachedThreshold={0.1}
         ListFooterComponent={
-        loadingMore ?
-        <View style={{ paddingVertical: 20 }}>
-              <ActivityIndicator size="small" color={Colors.text} />
-            </View> :
-        null
+          (hasMore || loadingMore) ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              {loadingMore ? (
+                <ActivityIndicator size="small" color={Colors.text} />
+              ) : (
+                <View style={{ alignItems: 'center', opacity: 0.6 }}>
+                  <MaterialCommunityIcons name="chevron-double-up" size={22} color={Colors.muted} />
+                  <Text style={{ color: Colors.muted, fontSize: 12, marginTop: 4, fontWeight: '600' }}>
+                    Pull up to see more transactions
+                  </Text>
+                </View>
+              )}
+            </View>
+          ) : null
         }
 
         contentContainerStyle={{
@@ -501,135 +493,135 @@ export default function TransactionsScreen({ navigation }) {
         }}
 
         ListEmptyComponent={
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            paddingTop: 80
-          }}>
-          
-            <View
+          <View
             style={{
-              width: 76,
-              height: 76,
-              borderRadius: 38,
-              backgroundColor: '#EEF0F3',
+              flex: 1,
               justifyContent: 'center',
-              alignItems: 'center'
+              alignItems: 'center',
+              paddingTop: 80
             }}>
-            
+
+            <View
+              style={{
+                width: 76,
+                height: 76,
+                borderRadius: 38,
+                backgroundColor: '#EEF0F3',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
+
               <MaterialCommunityIcons
-              name={
-              searchQuery ?
-              'magnify-close' :
-              'clipboard-text-outline'
-              }
-              size={36}
-              color="#AEB4BC" />
-            
+                name={
+                  searchQuery ?
+                    'magnify-close' :
+                    'clipboard-text-outline'
+                }
+                size={36}
+                color="#AEB4BC" />
+
             </View>
 
             <Text
-            style={{
-              color: Colors.text,
-              fontSize: 15,
-              fontWeight: '700',
-              marginTop: 14
-            }}>
-            
+              style={{
+                color: Colors.text,
+                fontSize: 15,
+                fontWeight: '700',
+                marginTop: 14
+              }}>
+
               {searchQuery ?
-            'No matching transactions' :
-            'No transactions yet'}
+                'No matching transactions' :
+                'No transactions yet'}
             </Text>
 
             <Text
-            style={{
-              color: Colors.muted,
-              fontSize: 12,
-              marginTop: 5,
-              textAlign: 'center'
-            }}>
-            
+              style={{
+                color: Colors.muted,
+                fontSize: 12,
+                marginTop: 5,
+                textAlign: 'center'
+              }}>
+
               {searchQuery ?
-            'Try a different search or filter' :
-            'Your transactions will appear here'}
+                'Try a different search or filter' :
+                'Your transactions will appear here'}
             </Text>
           </View>
         }
 
         renderSectionHeader={({ section }) =>
-        <View
-          style={{
-            paddingTop: 9,
-            paddingBottom: 7,
-            backgroundColor: '#F8F9FB'
-          }}>
-          
-            <View
+          <View
             style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between'
+              paddingTop: 9,
+              paddingBottom: 7,
+              backgroundColor: '#F8F9FB'
             }}>
-            
+
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+
               <View>
                 <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: '900',
-                  color: Colors.text,
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.4
-                }}>
-                
+                  style={{
+                    fontSize: 13,
+                    fontWeight: '900',
+                    color: Colors.text,
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.4
+                  }}>
+
                   {section.title}
                 </Text>
 
                 <Text
-                style={{
-                  fontSize: 11,
-                  color: Colors.muted,
-                  marginTop: 2
-                }}>
-                
+                  style={{
+                    fontSize: 11,
+                    color: Colors.muted,
+                    marginTop: 2
+                  }}>
+
                   {section.data.length}{' '}
                   {section.data.length === 1 ?
-                'transaction' :
-                'transactions'}
+                    'transaction' :
+                    'transactions'}
                 </Text>
               </View>
 
               <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center'
-              }}>
-              
-                {section.dailyIncome > 0 &&
-              <Text
                 style={{
-                  fontSize: 11,
-                  fontWeight: '800',
-                  color: '#20A56A',
-                  marginRight: 8
+                  flexDirection: 'row',
+                  alignItems: 'center'
                 }}>
-                
+
+                {section.dailyIncome > 0 &&
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: '800',
+                      color: '#20A56A',
+                      marginRight: 8
+                    }}>
+
                     +<CurrencyText amount={section.dailyIncome} minimumFractionDigits={0} maximumFractionDigits={0} />
                   </Text>
-              }
+                }
 
                 {section.dailyExpense > 0 &&
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: '800',
-                  color: '#E35D6A'
-                }}>
-                
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: '800',
+                      color: '#E35D6A'
+                    }}>
+
                     -<CurrencyText amount={section.dailyExpense} minimumFractionDigits={0} maximumFractionDigits={0} />
                   </Text>
-              }
+                }
               </View>
             </View>
           </View>
@@ -657,7 +649,7 @@ export default function TransactionsScreen({ navigation }) {
 
 
         }} />
-      
+
 
       {/* FAB */}
       <ContextualFAB
@@ -686,7 +678,7 @@ export default function TransactionsScreen({ navigation }) {
           },
         ]}
       />
-      
+
       <PageLoader visible={loaderVisible} />
     </View>);
 

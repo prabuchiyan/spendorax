@@ -5,9 +5,9 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator } from
-'react-native';
-
+  ActivityIndicator
+} from
+  'react-native';
 import { getSources } from '../services/sources';
 import { getSourceTransactionBalances } from '../services/transactions';
 import { getCreditCards } from '../services/creditCards';
@@ -38,7 +38,7 @@ export default function SourcesDashboard({ navigation }) {
       const availableSources = await getSources(true);
       const availableCreditCards = await getCreditCards(true);
       setCreditCards(availableCreditCards);
-      
+
       const balanceMap = await getSourceTransactionBalances();
 
       // Add initial balance
@@ -49,12 +49,12 @@ export default function SourcesDashboard({ navigation }) {
           );
 
           const txnBalance =
-          balanceMap[source.id] || 0;
+            balanceMap[source.id] || 0;
 
           return {
             ...source,
             balance:
-            initial + txnBalance
+              initial + txnBalance
           };
         }
       );
@@ -75,12 +75,12 @@ export default function SourcesDashboard({ navigation }) {
   useEffect(() => {
     load();
     const unsub =
-    navigation.addListener(
-      'focus',
-      () => {
-        load();
-      }
-    );
+      navigation.addListener(
+        'focus',
+        () => {
+          load();
+        }
+      );
     return unsub;
   }, [navigation]);
 
@@ -89,14 +89,14 @@ export default function SourcesDashboard({ navigation }) {
     if (tab === 'creditCards') {
       return sources.filter(
         (source) =>
-        String(source.type || '').toLowerCase() ===
-        'credit_card'
+          String(source.type || '').toLowerCase() ===
+          'credit_card'
       );
     }
     return sources.filter(
       (source) =>
-      String(source.type || '').toLowerCase() !==
-      'credit_card'
+        String(source.type || '').toLowerCase() !==
+        'credit_card'
     );
   }, [sources, tab]);
 
@@ -107,11 +107,11 @@ export default function SourcesDashboard({ navigation }) {
         (sum, source) => {
 
           const card =
-          creditCards.find(
-            (item) =>
-            Number(item.source_id) ===
-            Number(source.id)
-          );
+            creditCards.find(
+              (item) =>
+                Number(item.source_id) ===
+                Number(source.id)
+            );
           return (
             sum +
             Number(
@@ -125,7 +125,7 @@ export default function SourcesDashboard({ navigation }) {
 
     return filteredSources.reduce(
       (sum, source) =>
-      sum + Number(source.balance || 0),
+        sum + Number(source.balance || 0),
       0
     );
   }, [filteredSources, creditCards, tab]);
@@ -137,7 +137,7 @@ export default function SourcesDashboard({ navigation }) {
         <ActivityIndicator
           size="large"
           color={Colors.primary} />
-        
+
         <Text style={styles.loaderText}>
           Loading your balances...
         </Text>
@@ -158,37 +158,36 @@ export default function SourcesDashboard({ navigation }) {
             activeOpacity={0.85}
             onPress={() => setTab('banks')}
             style={[
-            styles.tab,
-            tab === 'banks' &&
-            styles.activeTab]
+              styles.tab,
+              tab === 'banks' &&
+              styles.activeTab]
             }>
-            
+
             <View
               style={[
-              styles.tabIcon,
-              tab === 'banks' &&
-              styles.activeTabIcon]
+                styles.tabIcon,
+                tab === 'banks' &&
+                styles.activeTabIcon]
               }>
-              
+
               <MaterialCommunityIcons
                 name="bank-outline"
                 size={17}
                 color={
-                tab === 'banks' ?
-                Colors.primary :
-                Colors.muted
+                  tab === 'banks' ?
+                    Colors.primary :
+                    Colors.muted
                 } />
-              
+
             </View>
 
             <Text
               style={[
-              styles.tabText,
-              tab === 'banks' &&
-              styles.activeTabText]
+                styles.tabText,
+                tab === 'banks' &&
+                styles.activeTabText]
               }>
-              
-              Banks & Others
+              Accounts
             </Text>
           </TouchableOpacity>
 
@@ -196,39 +195,39 @@ export default function SourcesDashboard({ navigation }) {
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() =>
-            setTab('creditCards')
+              setTab('creditCards')
             }
             style={[
-            styles.tab,
-            tab === 'creditCards' &&
-            styles.activeTab]
+              styles.tab,
+              tab === 'creditCards' &&
+              styles.activeTab]
             }>
-            
+
             <View
               style={[
-              styles.tabIcon,
-              tab === 'creditCards' &&
-              styles.activeTabIcon]
+                styles.tabIcon,
+                tab === 'creditCards' &&
+                styles.activeTabIcon]
               }>
-              
+
               <MaterialCommunityIcons
                 name="credit-card-outline"
                 size={17}
                 color={
-                tab === 'creditCards' ?
-                Colors.primary :
-                Colors.muted
+                  tab === 'creditCards' ?
+                    Colors.primary :
+                    Colors.muted
                 } />
-              
+
             </View>
 
             <Text
               style={[
-              styles.tabText,
-              tab === 'creditCards' &&
-              styles.activeTabText]
+                styles.tabText,
+                tab === 'creditCards' &&
+                styles.activeTabText]
               }>
-              
+
               Credit Cards
             </Text>
           </TouchableOpacity>
@@ -239,7 +238,7 @@ export default function SourcesDashboard({ navigation }) {
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
-        
+
 
         {/* AVAILABLE BALANCE */}
         <View style={styles.balanceCard}>
@@ -250,26 +249,26 @@ export default function SourcesDashboard({ navigation }) {
               <View style={styles.balanceIcon}>
                 <MaterialCommunityIcons
                   name={
-                  tab === 'creditCards' ?
-                  'credit-card-outline' :
-                  'wallet-outline'
+                    tab === 'creditCards' ?
+                      'credit-card-outline' :
+                      'wallet-outline'
                   }
                   size={19}
                   color="#60A5FA" />
-                
+
               </View>
 
               <View>
                 <Text style={styles.balanceLabel}>
                   {tab === 'creditCards' ?
-                  'Total Outstanding' :
-                  'Available Balance'}
+                    'Total Outstanding' :
+                    'Available Balance'}
                 </Text>
 
                 <Text style={styles.balanceSubLabel}>
                   {sourceCount === 1 ?
-                  '1 account' :
-                  `${sourceCount} accounts`}
+                    '1 account' :
+                    `${sourceCount} accounts`}
                 </Text>
               </View>
             </View>
@@ -279,12 +278,12 @@ export default function SourcesDashboard({ navigation }) {
                 name="chart-line"
                 size={13}
                 color="#60A5FA" />
-              
+
 
               <Text style={styles.balanceBadgeText}>
                 {tab === 'creditCards' ?
-                'Cards' :
-                'Sources'}
+                  'Cards' :
+                  'Sources'}
               </Text>
             </View>
 
@@ -292,13 +291,13 @@ export default function SourcesDashboard({ navigation }) {
 
           <Text style={styles.summaryAmount}>
             {balanceVisible ?
-            `₹ ${tabTotal.toLocaleString(
-              'en-IN',
-              {
-                maximumFractionDigits: 2
-              }
-            )}` :
-            '••••••'}
+              `₹ ${tabTotal.toLocaleString(
+                'en-IN',
+                {
+                  maximumFractionDigits: 2
+                }
+              )}` :
+              '••••••'}
           </Text>
 
           <View style={styles.balanceFooter}>
@@ -306,8 +305,8 @@ export default function SourcesDashboard({ navigation }) {
 
             <Text style={styles.footerText}>
               {tab === 'creditCards' ?
-              'Total amount owed across your cards' :
-              'Total money available across sources'}
+                'Total amount owed across your cards' :
+                'Total money available across sources'}
             </Text>
           </View>
 
@@ -315,13 +314,13 @@ export default function SourcesDashboard({ navigation }) {
 
         {/* SECTION HEADER */}
         {filteredSources.length > 0 &&
-        <View style={styles.sectionHeader}>
+          <View style={styles.sectionHeader}>
 
             <View>
               <Text style={styles.sectionTitle}>
                 {tab === 'creditCards' ?
-              'Your Credit Cards' :
-              'Your Sources'}
+                  'Your Credit Cards' :
+                  'Your Sources'}
               </Text>
 
               <Text style={styles.sectionSubtitle}>
@@ -340,411 +339,411 @@ export default function SourcesDashboard({ navigation }) {
 
         {/* EMPTY STATE */}
         {filteredSources.length === 0 ?
-        <View style={styles.emptyState}>
+          <View style={styles.emptyState}>
 
             <View style={styles.emptyIcon}>
               <MaterialCommunityIcons
-              name={
-              tab === 'creditCards' ?
-              'credit-card-plus-outline' :
-              'wallet-plus-outline'
-              }
-              size={32}
-              color={Colors.primary} />
-            
+                name={
+                  tab === 'creditCards' ?
+                    'credit-card-plus-outline' :
+                    'wallet-plus-outline'
+                }
+                size={32}
+                color={Colors.primary} />
+
             </View>
 
             <Text style={styles.emptyTitle}>
               No{' '}
               {tab === 'creditCards' ?
-            'credit cards' :
-            'sources'}{' '}
+                'credit cards' :
+                'sources'}{' '}
               yet
             </Text>
 
             <Text style={styles.emptyText}>
               Add a{' '}
               {tab === 'creditCards' ?
-            'credit card' :
-            'source'}{' '}
+                'credit card' :
+                'source'}{' '}
               to start tracking your balance.
             </Text>
 
           </View> : (
 
 
-        /* SOURCE LIST */
-        filteredSources.map(
-          (sourceItem) => {
+            /* SOURCE LIST */
+            filteredSources.map(
+              (sourceItem) => {
 
-            const sourceColor =
-            sourceItem.color || Colors.primary;
+                const sourceColor =
+                  sourceItem.color || Colors.primary;
 
-            const sourceBalance =
-            Number(sourceItem.balance || 0);
+                const sourceBalance =
+                  Number(sourceItem.balance || 0);
 
-            const isCreditCard =
-            tab === 'creditCards';
-            // Get the actual credit-card record FIRST
-            const creditCard =
-            isCreditCard ?
-            creditCards.find(
-              (card) =>
-              Number(card.source_id) ===
-              Number(sourceItem.id)
-            ) :
-            null;
-            // Credit-card values come from credit_cards table
-            const creditLimit =
-            Number(
-              creditCard?.credit_limit || 0
-            );
-            const outstanding =
-            Number(
-              creditCard?.outstanding || 0
-            );
-            const availableCredit =
-            Number(
-              creditCard?.available_limit ??
-              Math.max(
-                0,
-                creditLimit - outstanding
-              )
-            );
-            return (
-              <TouchableOpacity
-                key={sourceItem.id}
-                activeOpacity={0.92}
-                onPress={() =>
-                navigation.navigate(
-                  'SourcesDetails',
-                  {
-                    sourceId:
-                    sourceItem.id,
-                    sourceName:
-                    sourceItem.name
-                  }
-                )
-                }
-                style={
-                isCreditCard ?
-                styles.creditCardBoard :
-                styles.sourceCard
-                }>
-                
-
-                  {isCreditCard ? (
-
-                /* CREDIT CARD BOARD */
-                <View
-                  style={[
-                  styles.creditCardGradient,
-                  {
-                    backgroundColor:
-                    sourceColor
-                  }]
-                  }>
-                  
-                      {/* DECORATIVE CIRCLES */}
-                      <View
-                    style={
-                    styles.cardDecorCircleOne
-                    } />
-                  
-
-                      <View
-                    style={
-                    styles.cardDecorCircleTwo
-                    } />
-                  
-                      {/* TOP */}
-                      <View
-                    style={
-                    styles.creditCardTop
-                    }>
-                    
-                        <View
-                      style={
-                      styles.creditCardBrandRow
-                      }>
-                      
-                          {/* CHIP */}
-                          <View
-                        style={
-                        styles.creditCardChip
-                        }>
-                        
-                            <View
-                          style={
-                          styles.chipLineOne
-                          } />
-                        
-                            <View
-                          style={
-                          styles.chipLineTwo
-                          } />
-                        
-                            <View
-                          style={
-                          styles.chipLineThree
-                          } />
-                        
-                          </View>
-                          <Text
-                        numberOfLines={1}
-                        style={
-                        styles.creditCardType
-                        }>
-                        
-                            CREDIT CARD
-                          </Text>
-                        </View>
-
-                        {/* CONTACTLESS */}
-                        <MaterialCommunityIcons
-                      name="contactless-payment"
-                      size={23}
-                      color="rgba(255,255,255,0.86)" />
-                    
-
-                      </View>
-
-                      {/* CARD INFORMATION */}
-                      <View
-                    style={
-                    styles.creditCardMiddle
-                    }>
-                    
-                        <Text
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                      style={
-                      styles.creditCardName
-                      }>
-                      
-                          {sourceItem.name}
-                        </Text>
-
-                        <Text style={styles.creditCardNumber}>
-                          ••••  ••••  ••••  {creditCard?.last4 || '••••'}
-                        </Text>
-                      </View>
-
-                      {/* BOTTOM */}
-                      <View
-                    style={
-                    styles.creditCardBottom
-                    }>
-                    
-                        <View
-                      style={{
-                        flex: 1,
-                        minWidth: 0
-                      }}>
-                      
-                          <Text style={styles.creditCardLabel}>
-                            AVAILABLE CREDIT
-                          </Text>
-                          <Text
-                        numberOfLines={1}
-                        adjustsFontSizeToFit
-                        minimumFontScale={0.72}
-                        style={styles.creditCardAmount}>
-                        
-                            {balanceVisible ?
-                        `₹ ${availableCredit.toLocaleString('en-IN', {
-                          maximumFractionDigits: 2
-                        })}` :
-                        '••••••'}
-                          </Text>
-
-                          <Text style={styles.creditCardUsedText}>
-                            {balanceVisible ?
-                        `₹ ${outstanding.toLocaleString('en-IN', {
-                          maximumFractionDigits: 2
-                        })} used of ₹ ${creditLimit.toLocaleString('en-IN', {
-                          maximumFractionDigits: 2
-                        })}` :
-                        '••••••'}
-                          </Text>
-                        </View>
-
-                        {/* STATUS */}
-                        <View
-                      style={
-                      styles.creditCardStatus
-                      }>
-                      
-                          <View
-                        style={[
-                        styles.creditStatusDot,
+                const isCreditCard =
+                  tab === 'creditCards';
+                // Get the actual credit-card record FIRST
+                const creditCard =
+                  isCreditCard ?
+                    creditCards.find(
+                      (card) =>
+                        Number(card.source_id) ===
+                        Number(sourceItem.id)
+                    ) :
+                    null;
+                // Credit-card values come from credit_cards table
+                const creditLimit =
+                  Number(
+                    creditCard?.credit_limit || 0
+                  );
+                const outstanding =
+                  Number(
+                    creditCard?.outstanding || 0
+                  );
+                const availableCredit =
+                  Number(
+                    creditCard?.available_limit ??
+                    Math.max(
+                      0,
+                      creditLimit - outstanding
+                    )
+                  );
+                return (
+                  <TouchableOpacity
+                    key={sourceItem.id}
+                    activeOpacity={0.92}
+                    onPress={() =>
+                      navigation.navigate(
+                        'SourcesDetails',
                         {
-                          backgroundColor:
-                          sourceBalance < 0 ?
-                          '#FFD1D1' :
-                          '#BFF5D6'
-                        }]
-                        } />
-                      
-                          <Text
-                        style={
-                        styles.creditCardStatusText
-                        }>
-                        
-                            {sourceBalance < 0 ?
-                        'ATTENTION' :
-                        'ACTIVE'}
-                          </Text>
-
-                        </View>
-
-                        <MaterialCommunityIcons
-                      name="chevron-right"
-                      size={22}
-                      color="rgba(255,255,255,0.82)" />
-                    
-
-                      </View>
-
-                    </View>) : (
-
-
-
-                /* EXISTING BANK / OTHER DESIGN */
-                <>
-                      {/* LEFT ACCENT */}
-                      <View
-                    style={[
-                    styles.sourceAccent,
-                    {
-                      backgroundColor:
-                      sourceColor
-                    }]
-                    } />
-                  
-
-                      <View
+                          sourceId:
+                            sourceItem.id,
+                          sourceName:
+                            sourceItem.name
+                        }
+                      )
+                    }
                     style={
-                    styles.sourceCardContent
+                      isCreditCard ?
+                        styles.creditCardBoard :
+                        styles.sourceCard
                     }>
-                    
 
-                        {/* ICON */}
-                        <View
-                      style={[
-                      styles.iconWrap,
-                      {
-                        backgroundColor:
-                        `${sourceColor}18`
-                      }]
-                      }>
-                      
-                          <MaterialCommunityIcons
-                        name={
-                        sourceItem.icon ||
-                        'wallet-outline'
-                        }
-                        size={22}
-                        color={sourceColor} />
-                      
-                        </View>
 
-                        {/* INFO */}
-                        <View
-                      style={
-                      styles.sourceInfo
-                      }>
-                      
+                    {isCreditCard ? (
 
-                          <Text
-                        style={
-                        styles.sourceName
-                        }
-                        numberOfLines={1}>
-                        
-                            {sourceItem.name}
-                          </Text>
-
-                          <View
-                        style={
-                        styles.sourceMeta
-                        }>
-                        
-                            <View
-                          style={[
-                          styles.statusDot,
+                      /* CREDIT CARD BOARD */
+                      <View
+                        style={[
+                          styles.creditCardGradient,
                           {
                             backgroundColor:
-                            sourceBalance < 0 ?
-                            '#DC2626' :
-                            '#22C55E'
+                              sourceColor
                           }]
-                          } />
-                        
+                        }>
 
-                            <Text
+                        {/* DECORATIVE CIRCLES */}
+                        <View
                           style={
-                          styles.sourceStatus
+                            styles.cardDecorCircleOne
+                          } />
+
+
+                        <View
+                          style={
+                            styles.cardDecorCircleTwo
+                          } />
+
+                        {/* TOP */}
+                        <View
+                          style={
+                            styles.creditCardTop
                           }>
-                          
-                              {sourceBalance < 0 ?
-                          'Needs attention' :
-                          'Available'}
+
+                          <View
+                            style={
+                              styles.creditCardBrandRow
+                            }>
+
+                            {/* CHIP */}
+                            <View
+                              style={
+                                styles.creditCardChip
+                              }>
+
+                              <View
+                                style={
+                                  styles.chipLineOne
+                                } />
+
+                              <View
+                                style={
+                                  styles.chipLineTwo
+                                } />
+
+                              <View
+                                style={
+                                  styles.chipLineThree
+                                } />
+
+                            </View>
+                            <Text
+                              numberOfLines={1}
+                              style={
+                                styles.creditCardType
+                              }>
+
+                              CREDIT CARD
                             </Text>
                           </View>
 
+                          {/* CONTACTLESS */}
+                          <MaterialCommunityIcons
+                            name="contactless-payment"
+                            size={23}
+                            color="rgba(255,255,255,0.86)" />
+
+
                         </View>
 
-                        {/* BALANCE + ARROW */}
+                        {/* CARD INFORMATION */}
                         <View
-                      style={
-                      styles.sourceRight
-                      }>
-                      
+                          style={
+                            styles.creditCardMiddle
+                          }>
 
                           <Text
-                        style={[
-                        styles.balanceText,
-                        {
-                          color:
-                          sourceBalance < 0 ?
-                          '#DC2626' :
-                          Colors.text
-                        }]
-                        }>
-                        
-                            {balanceVisible ?
-                        `₹ ${sourceBalance.toLocaleString(
-                          'en-IN',
-                          {
-                            maximumFractionDigits: 2
-                          }
-                        )}` :
-                        '••••••'}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                            style={
+                              styles.creditCardName
+                            }>
+
+                            {sourceItem.name}
                           </Text>
 
+                          <Text style={styles.creditCardNumber}>
+                            ••••  ••••  ••••  {creditCard?.last4 || '••••'}
+                          </Text>
+                        </View>
+
+                        {/* BOTTOM */}
+                        <View
+                          style={
+                            styles.creditCardBottom
+                          }>
+
                           <View
-                        style={
-                        styles.chevronWrap
-                        }>
-                        
+                            style={{
+                              flex: 1,
+                              minWidth: 0
+                            }}>
+
+                            <Text style={styles.creditCardLabel}>
+                              AVAILABLE CREDIT
+                            </Text>
+                            <Text
+                              numberOfLines={1}
+                              adjustsFontSizeToFit
+                              minimumFontScale={0.72}
+                              style={styles.creditCardAmount}>
+
+                              {balanceVisible ?
+                                `₹ ${availableCredit.toLocaleString('en-IN', {
+                                  maximumFractionDigits: 2
+                                })}` :
+                                '••••••'}
+                            </Text>
+
+                            <Text style={styles.creditCardUsedText}>
+                              {balanceVisible ?
+                                `₹ ${outstanding.toLocaleString('en-IN', {
+                                  maximumFractionDigits: 2
+                                })} used of ₹ ${creditLimit.toLocaleString('en-IN', {
+                                  maximumFractionDigits: 2
+                                })}` :
+                                '••••••'}
+                            </Text>
+                          </View>
+
+                          {/* STATUS */}
+                          <View
+                            style={
+                              styles.creditCardStatus
+                            }>
+
+                            <View
+                              style={[
+                                styles.creditStatusDot,
+                                {
+                                  backgroundColor:
+                                    sourceBalance < 0 ?
+                                      '#FFD1D1' :
+                                      '#BFF5D6'
+                                }]
+                              } />
+
+                            <Text
+                              style={
+                                styles.creditCardStatusText
+                              }>
+
+                              {sourceBalance < 0 ?
+                                'ATTENTION' :
+                                'ACTIVE'}
+                            </Text>
+
+                          </View>
+
+                          <MaterialCommunityIcons
+                            name="chevron-right"
+                            size={22}
+                            color="rgba(255,255,255,0.82)" />
+
+
+                        </View>
+
+                      </View>) : (
+
+
+
+                      /* EXISTING BANK / OTHER DESIGN */
+                      <>
+                        {/* LEFT ACCENT */}
+                        <View
+                          style={[
+                            styles.sourceAccent,
+                            {
+                              backgroundColor:
+                                sourceColor
+                            }]
+                          } />
+
+
+                        <View
+                          style={
+                            styles.sourceCardContent
+                          }>
+
+
+                          {/* ICON */}
+                          <View
+                            style={[
+                              styles.iconWrap,
+                              {
+                                backgroundColor:
+                                  `${sourceColor}18`
+                              }]
+                            }>
+
                             <MaterialCommunityIcons
-                          name="chevron-right"
-                          size={18}
-                          color="#A8B0BB" />
-                        
+                              name={
+                                sourceItem.icon ||
+                                'wallet-outline'
+                              }
+                              size={22}
+                              color={sourceColor} />
+
+                          </View>
+
+                          {/* INFO */}
+                          <View
+                            style={
+                              styles.sourceInfo
+                            }>
+
+
+                            <Text
+                              style={
+                                styles.sourceName
+                              }
+                              numberOfLines={1}>
+
+                              {sourceItem.name}
+                            </Text>
+
+                            <View
+                              style={
+                                styles.sourceMeta
+                              }>
+
+                              <View
+                                style={[
+                                  styles.statusDot,
+                                  {
+                                    backgroundColor:
+                                      sourceBalance < 0 ?
+                                        '#DC2626' :
+                                        '#22C55E'
+                                  }]
+                                } />
+
+
+                              <Text
+                                style={
+                                  styles.sourceStatus
+                                }>
+
+                                {sourceBalance < 0 ?
+                                  'Needs attention' :
+                                  'Available'}
+                              </Text>
+                            </View>
+
+                          </View>
+
+                          {/* BALANCE + ARROW */}
+                          <View
+                            style={
+                              styles.sourceRight
+                            }>
+
+
+                            <Text
+                              style={[
+                                styles.balanceText,
+                                {
+                                  color:
+                                    sourceBalance < 0 ?
+                                      '#DC2626' :
+                                      Colors.text
+                                }]
+                              }>
+
+                              {balanceVisible ?
+                                `₹ ${sourceBalance.toLocaleString(
+                                  'en-IN',
+                                  {
+                                    maximumFractionDigits: 2
+                                  }
+                                )}` :
+                                '••••••'}
+                            </Text>
+
+                            <View
+                              style={
+                                styles.chevronWrap
+                              }>
+
+                              <MaterialCommunityIcons
+                                name="chevron-right"
+                                size={18}
+                                color="#A8B0BB" />
+
+                            </View>
+
                           </View>
 
                         </View>
+                      </>)
+                    }
 
-                      </View>
-                    </>)
-                }
+                  </TouchableOpacity>);
 
-                </TouchableOpacity>);
-
-          }
-        ))
+              }
+            ))
         }
       </ScrollView>
       <PageLoader visible={loaderVisible} />
@@ -972,7 +971,7 @@ const styles = StyleSheet.create({
     right: -65,
     top: -75,
     backgroundColor:
-    'rgba(255,255,255,0.10)'
+      'rgba(255,255,255,0.10)'
   },
   cardDecorCircleTwo: {
     position: 'absolute',
@@ -982,7 +981,7 @@ const styles = StyleSheet.create({
     right: -30,
     bottom: -65,
     backgroundColor:
-    'rgba(0,0,0,0.08)'
+      'rgba(0,0,0,0.08)'
   },
   creditCardTop: {
     flexDirection: 'row',
@@ -1011,7 +1010,7 @@ const styles = StyleSheet.create({
     top: 9,
     height: 1,
     backgroundColor:
-    'rgba(90,70,20,0.35)'
+      'rgba(90,70,20,0.35)'
   },
   chipLineTwo: {
     position: 'absolute',
@@ -1020,7 +1019,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 1,
     backgroundColor:
-    'rgba(90,70,20,0.35)'
+      'rgba(90,70,20,0.35)'
   },
   chipLineThree: {
     position: 'absolute',
@@ -1029,14 +1028,14 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 1,
     backgroundColor:
-    'rgba(90,70,20,0.35)'
+      'rgba(90,70,20,0.35)'
   },
   creditCardType: {
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 1.2,
     color:
-    'rgba(255,255,255,0.88)'
+      'rgba(255,255,255,0.88)'
   },
   creditCardMiddle: {
     marginTop: 20
@@ -1052,7 +1051,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     color:
-    'rgba(255,255,255,0.82)',
+      'rgba(255,255,255,0.82)',
     letterSpacing: 2.2
   },
   creditCardBottom: {
@@ -1065,7 +1064,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.8,
     color:
-    'rgba(255,255,255,0.68)',
+      'rgba(255,255,255,0.68)',
     marginBottom: 3
   },
   creditCardAmount: {
@@ -1090,7 +1089,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0.5,
     color:
-    'rgba(255,255,255,0.82)'
+      'rgba(255,255,255,0.82)'
   },
   sourceCard: {
     position: 'relative',

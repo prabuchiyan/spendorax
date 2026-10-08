@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, InteractionManager } from 'react-native';
 import { createDrawerNavigator, DrawerContentScrollView } from '@react-navigation/drawer';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import CreditCardsScreen from '../src/screens/CreditCardsScreen';
 import LoanDashboardScreen from '../src/screens/LoanDashboardScreen';
 import ReportsScreen from '../src/screens/ReportsScreen';
 import CreditCardStatementsScreen from '../src/screens/CreditCardStatementsScreen';
+import BillsScreen from '../src/screens/BillsScreen';
 import { Colors } from '../src/components/Theme';
 import { Switch } from 'react-native';
 import { useBalanceVisibility } from '../src/context/BalanceVisibilityContext';
@@ -22,14 +23,13 @@ const Drawer = createDrawerNavigator();
 
 const menuItems = [
   { name: 'Dashboard', label: 'Dashboard', icon: 'view-dashboard-outline', activeIcon: 'view-dashboard' },
+  { name: 'Sources', label: 'Accounts', icon: 'wallet-outline', activeIcon: 'wallet' },
+  { name: 'CreditCards', label: 'Credit Cards', icon: 'credit-card-outline', activeIcon: 'credit-card' },
+  { name: 'Categories', label: 'Categories', icon: 'tag-multiple-outline', activeIcon: 'tag-multiple' },
   { name: 'Transactions', label: 'Transactions', icon: 'format-list-bulleted', activeIcon: 'format-list-bulleted' },
   { name: 'Bills', label: 'Bills', icon: 'file-document-outline', activeIcon: 'file-document' },
   { name: 'Loans', label: 'Loans', icon: 'bank-outline', activeIcon: 'bank' },
-  { name: 'CreditCards', label: 'Credit Cards', icon: 'credit-card-outline', activeIcon: 'credit-card' },
-  { name: 'CreditCardStatements', label: 'Statements', icon: 'file-document-outline', activeIcon: 'file-document' },
-  { name: 'Sources', label: 'Sources', icon: 'wallet-outline', activeIcon: 'wallet' },
   { name: 'Reports', label: 'Reports', icon: 'chart-bar', activeIcon: 'chart-bar' },
-  { name: 'Categories', label: 'Categories', icon: 'tag-multiple-outline', activeIcon: 'tag-multiple' },
 ];
 
 const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
@@ -46,7 +46,7 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
         </View>
         <View style={styles.headerTextContainer}>
           <Text style={styles.appName}>SpendoraX</Text>
-          <Text style={styles.appVersion}>v4.3.7</Text>
+          <Text style={styles.appVersion}>v4.6.5</Text>
         </View>
       </View>
 
@@ -59,7 +59,15 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
             <TouchableOpacity
               key={item.name}
               activeOpacity={0.7}
-              onPress={() => { navigation.navigate(item.name); navigation.closeDrawer(); }}
+              onPress={() => {
+                navigation.closeDrawer();
+                if (!isActive) {
+                  // Use InteractionManager so React Native waits for the drawer animation to completely finish
+                  InteractionManager.runAfterInteractions(() => {
+                    navigation.navigate(item.name);
+                  });
+                }
+              }}
               style={[styles.drawerItem, isActive && styles.drawerItemActive]}
             >
               <MaterialCommunityIcons
@@ -96,7 +104,12 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
 
         <TouchableOpacity
           style={styles.footerButton}
-          onPress={() => { navigation.navigate('NotificationSettings'); navigation.closeDrawer(); }}
+          onPress={() => {
+            navigation.closeDrawer();
+            InteractionManager.runAfterInteractions(() => {
+              navigation.navigate('NotificationSettings');
+            });
+          }}
         >
           <MaterialCommunityIcons name="bell-outline" size={18} color="#666" style={{ marginRight: 10 }} />
           <Text style={styles.footerText}>Notifications</Text>
@@ -104,7 +117,12 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
 
         <TouchableOpacity
           style={styles.footerButton}
-          onPress={() => { navigation.navigate('SecuritySettings'); navigation.closeDrawer(); }}
+          onPress={() => {
+            navigation.closeDrawer();
+            InteractionManager.runAfterInteractions(() => {
+              navigation.navigate('SecuritySettings');
+            });
+          }}
         >
           <MaterialCommunityIcons name="security" size={18} color="#666" style={{ marginRight: 10 }} />
           <Text style={styles.footerText}>Security</Text>
@@ -112,7 +130,12 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
 
         <TouchableOpacity
           style={styles.footerButton}
-          onPress={() => { navigation.navigate('Backup'); navigation.closeDrawer(); }}
+          onPress={() => {
+            navigation.closeDrawer();
+            InteractionManager.runAfterInteractions(() => {
+              navigation.navigate('Backup');
+            });
+          }}
         >
           <Feather name="settings" size={18} color="#666" style={{ marginRight: 10 }} />
           <Text style={styles.footerText}>Settings & Backup</Text>
@@ -135,7 +158,6 @@ export default function DrawerNavigator() {
         },
         drawerType: 'front',
         animationDuration: 180,
-        freezeOnBlur: true,
         overlayColor: 'rgba(0,0,0,0.5)',
         headerTintColor: '#333',
         headerTitleStyle: {
@@ -178,9 +200,9 @@ export default function DrawerNavigator() {
       <Drawer.Screen name="Transactions" component={TransactionsScreen} />
       <Drawer.Screen name="Loans" component={LoanDashboardScreen} options={{ title: "Loans" }} />
       <Drawer.Screen name="CreditCards" component={CreditCardsScreen} options={{ title: 'Credit Cards' }} />
-      <Drawer.Screen name="CreditCardStatements" component={CreditCardStatementsScreen} options={{ title: 'Credit Card Statements' }} />
+      <Drawer.Screen name="Bills" component={BillsScreen} options={{ title: 'Bills' }} />
       <Drawer.Screen name="Budgets" component={BudgetsScreen} />
-      <Drawer.Screen name="Sources" component={SourcesScreen} />
+      <Drawer.Screen name="Sources" component={SourcesScreen} options={{ title: 'Accounts' }} />
       <Drawer.Screen name="Reports" component={ReportsScreen} />
       <Drawer.Screen name="Categories" component={CategoriesScreen} />
     </Drawer.Navigator>

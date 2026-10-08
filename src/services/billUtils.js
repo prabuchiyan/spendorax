@@ -188,22 +188,36 @@ export function getBillDisplayStatus(bill) {
     0,
   );
   // OVERDUE
-  if (dueDateOnly < todayStart) {
+  const diffTime = dueDateOnly.getTime() - todayStart.getTime();
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    const overdueDays = Math.abs(diffDays);
     return {
-      label: "Overdue",
+      label: overdueDays === 1 ? "Overdue by 1 Day" : `Overdue by ${overdueDays} Days`,
       color: "#E46A6A",
     };
   }
+
   // DUE TODAY
-  if (dueDateOnly.getTime() === todayStart.getTime()) {
+  if (diffDays === 0) {
     return {
       label: "Due Today",
       color: "#D89510",
     };
   }
-  // DUE SOON
+  
+  // DUE TOMORROW
+  if (diffDays === 1) {
+    return {
+      label: "Due Tomorrow",
+      color: "#D89510",
+    };
+  }
+
+  // DUE IN X DAYS
   return {
-    label: "Due Soon",
+    label: `Due in ${diffDays} Days`,
     color: "#FFB020",
   };
 }

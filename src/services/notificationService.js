@@ -244,11 +244,18 @@ export function registerNotificationListener(navigationRef) {
   return () => sub.remove();
 }
 
+let pendingNotificationData = null;
+
 // ─────────────────────────────────────────
 // Handle tap — navigate to correct screen
 // ─────────────────────────────────────────
 export function handleNotificationTap(data, navigationRef) {
-  if (!data || !navigationRef?.isReady?.()) return;
+  if (!data) return;
+  if (!navigationRef?.isReady?.()) {
+    // App is likely locked or navigation is not mounted yet
+    pendingNotificationData = data;
+    return;
+  }
 
   try {
     const { screen, loanId, billId, type } = data;
@@ -280,6 +287,16 @@ export function handleNotificationTap(data, navigationRef) {
     }
   } catch (e) {
     console.warn('Notification tap navigation failed', e);
+  }
+}
+
+// ─────────────────────────────────────────
+// Process pending notification (called after login/ready)
+// ─────────────────────────────────────────
+export function processPendingNotification(navigationRef) {
+  if (pendingNotificationData && navigationRef?.isReady?.()) {
+    handleNotificationTap(pendingNotificationData, navigationRef);
+    pendingNotificationData = null;
   }
 }
 
@@ -328,8 +345,11 @@ export async function syncBillNotifications() {
 
       let reminderDays = isCreditCard ? 5 : (bill.reminder_days_before != null ? bill.reminder_days_before : 2);
       
-      // Schedule one notification for each day from (dueDate - reminderDays) to dueDate
-      for (let d = reminderDays; d >= 0; d--) {
+      // We only want to schedule on exactly (dueDate - reminderDays) and dueDate (0 days before)
+      // We use a Set to handle the case where reminderDays is 0 (so we don't schedule twice for 0)
+      const daysToSchedule = Array.from(new Set([reminderDays, 0]));
+      
+      for (let d of daysToSchedule) {
         const scheduleDate = new Date(dueDate);
         scheduleDate.setDate(scheduleDate.getDate() - d);
         scheduleDate.setHours(9, 0, 0, 0); // 9:00 AM
@@ -382,6 +402,7 @@ export default {
   rescheduleAll,
   registerNotificationListener,
   handleNotificationTap,
+  processPendingNotification,
   checkYesterdaySpend,
   checkBillDue,
   checkLoanEmi,

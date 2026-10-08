@@ -712,162 +712,7 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
 
 }
 
-function OccurrenceEditModal({ visible, occurrence, bill, onSave, onClose }) {
-  const [amount, setAmount] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [showDuePicker, setShowDuePicker] = useState(false);
-  const [constraints, setConstraints] = useState({ minDate: null, maxDate: null });
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (occurrence && bill) {
-      setAmount(String(occurrence.amount || ""));
-      const currentDueDate = occurrence.due_date ? occurrence.due_date.slice(0, 10) : "";
-      setDueDate(currentDueDate);
-      
-      const { minDate, maxDate } = getOccurrenceDateConstraints({
-        recurrenceType: bill.recurrence_type,
-        occurrenceDate: currentDueDate,
-        startDate: bill.due_date,
-        endDate: bill.recurrence_end_date
-      });
-      setConstraints({ minDate, maxDate });
-    }
-  }, [occurrence?.id, bill?.id]);
-
-  const dueParts = dueDate ? dueDate.split("-").map(Number) : [];
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={() => !isSubmitting && onClose()}>
-      
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.5)",
-          justifyContent: "center",
-          padding: 24
-        }}>
-        
-        <View
-          style={{
-            backgroundColor: "#fff",
-            borderRadius: 24,
-            padding: 24,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 10 },
-            shadowOpacity: 0.1,
-            shadowRadius: 20,
-            elevation: 10
-          }}>
-          
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 24 }}>
-            <View style={{ backgroundColor: "#EFF6FF", padding: 10, borderRadius: 12, marginRight: 12 }}>
-              <MaterialCommunityIcons name="calendar-edit" size={24} color="#2563EB" />
-            </View>
-            <View>
-              <Text style={{ fontWeight: "700", fontSize: 20, color: "#0F172A" }}>
-                Edit Occurrence
-              </Text>
-              <Text style={{ fontSize: 13, color: "#64748B", marginTop: 2 }}>
-                Update this specific bill's details
-              </Text>
-            </View>
-          </View>
-
-          <Text style={{ fontSize: 13, fontWeight: "600", color: "#475569", marginBottom: 8, marginLeft: 2 }}>
-            Amount
-          </Text>
-          <PaperTextInput
-            value={amount}
-            onChangeText={setAmount}
-            keyboardType="numeric"
-            mode="outlined"
-            disabled={isSubmitting}
-            outlineColor="#E2E8F0"
-            activeOutlineColor="#2563EB"
-            left={<PaperTextInput.Affix text="₹" textStyle={{ color: "#64748B" }} />}
-            style={{ marginBottom: 20, backgroundColor: "#fff" }} />
-          
-          <Text style={{ fontSize: 13, fontWeight: "600", color: "#475569", marginBottom: 8, marginLeft: 2 }}>
-            Due Date
-          </Text>
-          <TouchableOpacity 
-            activeOpacity={0.8}
-            disabled={isSubmitting}
-            onPress={() => setShowDuePicker(true)}>
-            <PaperTextInput
-              value={dueDate}
-              editable={false}
-              disabled={isSubmitting}
-              mode="outlined"
-              outlineColor="#E2E8F0"
-              activeOutlineColor="#2563EB"
-              style={{ marginBottom: 28, backgroundColor: "#fff" }}
-              right={
-                <PaperTextInput.Icon
-                  icon="calendar"
-                  color="#94A3B8"
-                  onPress={() => !isSubmitting && setShowDuePicker(true)} />
-              } />
-          </TouchableOpacity>
-          
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "flex-end",
-              gap: 12
-            }}>
-            
-            <PaperButton 
-              mode="text" 
-              onPress={onClose} 
-              disabled={isSubmitting}
-              textColor="#64748B"
-              style={{ paddingHorizontal: 4 }}>
-              Cancel
-            </PaperButton>
-            
-            <PaperButton
-              mode="contained"
-              loading={isSubmitting}
-              disabled={isSubmitting}
-              buttonColor={isSubmitting ? "#93C5FD" : "#2563EB"}
-              style={{ borderRadius: 12, paddingHorizontal: 8 }}
-              onPress={async () => {
-                const amt = parseFloat(amount);
-                if (!amount || isNaN(amt) || amt <= 0 || !dueDate) return;
-                setIsSubmitting(true);
-                try {
-                  await onSave(amt, dueDate);
-                } finally {
-                  setIsSubmitting(false);
-                }
-              }}>
-              {isSubmitting ? "Saving..." : "Save Changes"}
-            </PaperButton>
-          </View>
-        </View>
-      </View>
-
-      <MuiDateTimePicker
-        visible={showDuePicker}
-        initialDate={dueDate ? new Date(dueDate) : new Date()}
-        minDate={constraints.minDate}
-        maxDate={constraints.maxDate}
-        hideTime={true}
-        onClose={() => setShowDuePicker(false)}
-        onSelect={(selectedDate) => {
-          if (selectedDate) setDueDate(selectedDate.toISOString().slice(0, 10));
-          setShowDuePicker(false);
-        }} />
-      
-    </Modal>);
-
-}
 
 function isCreditCardBill(bill) {
   return (
@@ -893,7 +738,6 @@ export default function BillDetailScreen({ route, navigation }) {
   const [category, setCategory] = useState(null);
   const [source, setSource] = useState(null);
   const [editing, setEditing] = useState(false);
-  const [showEditOcc, setShowEditOcc] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -1219,44 +1063,7 @@ export default function BillDetailScreen({ route, navigation }) {
     );
   }
 
-  async function handleSaveOccurrence(newAmount, newDueDate) {
-    if (!selectedOcc) return;
-    try {
-      showPageLoader();
-      /*
-       * For CC statement bills (child bills), always
-       * update the existing occurrence.
-       *
-       * For a normal recurring template, create a child
-       * occurrence instead.
-       */
-      if (
-      selectedOcc.id === bill.id &&
-      bill.is_recurring &&
-      !isCreditCardBill(bill))
-      {
-        await createBill({
-          ...bill,
-          amount: newAmount,
-          due_date: newDueDate,
-          is_recurring: 0,
-          recurrence_type: null,
-          parent_bill_id: bill.id
-        });
-      } else {
-        await updateBill(selectedOcc.id, {
-          amount: newAmount,
-          due_date: newDueDate
-        });
-      }
-      await load(selectedOcc.id);
-      setShowEditOcc(false);
-    } catch (e) {
-      console.error("[BillDetail] Save occurrence failed:", e);
-    } finally {
-      hidePageLoader();
-    }
-  }
+
 
   // ── derived values ────────────────────────────────────────────────────────
   const activeBill = selectedOcc || bill;
@@ -1264,8 +1071,22 @@ export default function BillDetailScreen({ route, navigation }) {
   const isPaidOrSkipped =
   activeBill.status === BILL_STATUS.PAID ||
   activeBill.status === BILL_STATUS.SKIPPED;
-  // A generated bill can be paid at any time.
-  // Payment is no longer restricted to the bill's due month.
+  
+  const isPayable = (() => {
+    if (isPaidOrSkipped) return false;
+    if (!activeBill?.due_date) return true;
+    
+    const dueDate = new Date(activeBill.due_date);
+    const now = new Date();
+    
+    if (bill?.recurrence_type === 'YEARLY') {
+      return dueDate.getFullYear() <= now.getFullYear();
+    }
+    
+    if (dueDate.getFullYear() < now.getFullYear()) return true;
+    if (dueDate.getFullYear() > now.getFullYear()) return false;
+    return dueDate.getMonth() <= now.getMonth();
+  })();
 
   // ── render ────────────────────────────────────────────────────────────────
   return (
@@ -1692,18 +1513,13 @@ export default function BillDetailScreen({ route, navigation }) {
           onClose={() => setShowLinkModal(false)} />
         
 
-        <OccurrenceEditModal
-          visible={showEditOcc}
-          occurrence={selectedOcc}
-          bill={bill}
-          onSave={handleSaveOccurrence}
-          onClose={() => setShowEditOcc(false)} />
+
         
       </ScrollView>
 
       {/* Bottom action bar */}
       <View style={styles.bottomBar}>
-        {!isPaidOrSkipped &&
+        {isPayable &&
         <TouchableOpacity
           style={[styles.actionButton, { backgroundColor: "#2DBE60" }]}
           onPress={handleMarkPaid}>
@@ -1754,7 +1570,7 @@ export default function BillDetailScreen({ route, navigation }) {
         {!isCreditCardBill(activeBill) &&
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => setShowEditOcc(true)}>
+          onPress={() => navigation.navigate("BillOccurrenceEdit", { occurrence: selectedOcc, bill })}>
           
             <MaterialCommunityIcons
             name="square-edit-outline"

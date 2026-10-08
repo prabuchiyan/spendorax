@@ -24,7 +24,6 @@ import {
 import { getCategories } from "../services/categories";
 import { getSources } from "../services/sources";
 import { Colors, Spacing } from "../components/Theme";
-
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import TransactionListItem from "../components/TransactionListItem";
 import { useFocusEffect } from "@react-navigation/native";
@@ -520,20 +519,20 @@ export default function SourcesDetails({ route, navigation }) {
         <Text style={styles.heroAmount}>
           {balanceVisible
             ? `₹ ${totalBalance.toLocaleString("en-IN", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}`
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`
             : "••••••"}
         </Text>
 
         {isCreditCard && (
-           <TouchableOpacity 
-             style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#F0F5FF', borderRadius: 20 }}
-             onPress={() => navigation.navigate('CreditCardStatements', { sourceId: source?.id })}
-           >
-             <MaterialCommunityIcons name="file-document-outline" size={15} color="#4B7CF3" style={{ marginRight: 6 }} />
-             <Text style={{ fontSize: 13, fontWeight: '700', color: '#4B7CF3' }}>View Statements</Text>
-           </TouchableOpacity>
+          <TouchableOpacity
+            style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#F0F5FF', borderRadius: 20 }}
+            onPress={() => navigation.navigate('CreditCardStatements', { sourceId: source?.id })}
+          >
+            <MaterialCommunityIcons name="file-document-outline" size={15} color="#4B7CF3" style={{ marginRight: 6 }} />
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#4B7CF3' }}>View Statements</Text>
+          </TouchableOpacity>
         )}
       </View>
 
@@ -607,9 +606,18 @@ export default function SourcesDetails({ route, navigation }) {
           onEndReached={loadMoreData}
           onEndReachedThreshold={0.5}
           ListFooterComponent={
-            loadingMore ? (
-              <View style={{ paddingVertical: 20 }}>
-                <ActivityIndicator size="small" color={Colors.text} />
+            (hasMore || loadingMore) ? (
+              <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                {loadingMore ? (
+                  <ActivityIndicator size="small" color={Colors.text} />
+                ) : (
+                  <View style={{ alignItems: 'center', opacity: 0.6 }}>
+                    <MaterialCommunityIcons name="chevron-double-up" size={22} color={Colors.muted} />
+                    <Text style={{ color: Colors.muted, fontSize: 12, marginTop: 4, fontWeight: '600' }}>
+                      Pull up to see more transactions
+                    </Text>
+                  </View>
+                )}
               </View>
             ) : null
           }

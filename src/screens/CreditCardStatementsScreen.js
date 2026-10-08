@@ -12,12 +12,10 @@ import { useFocusEffect } from "@react-navigation/native";
 import { getAllCreditCardStatements } from "../services/creditCards";
 import { deleteStatement } from "../services/creditCardScheduler";
 import Card from "../components/Card";
-import { Colors, Spacing } from "../components/Theme";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useAppDispatch, useCreditCardStatements } from '../redux/hooks';
 import { setStatements } from '../redux/slices/creditCardSlice';
-import { formatAmount, formatCurrency } from "../utils/numberUtils";
-import CurrencyText from "../components/CurrencyText";
+import { formatCurrency } from "../utils/numberUtils";
 
 function formatDate(value) {
   if (!value) return "-";
@@ -82,7 +80,7 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
     const isStatusPaid = String(statement.bill_status).toLowerCase() === 'paid' || String(statement.status).toLowerCase() === 'paid';
     const closingBal = Number(statement.closing_balance || 0);
     const isBalancePaid = closingBal <= 0;
-    
+
     return isBillPaid || isStatusPaid || isBalancePaid;
   };
 
@@ -116,13 +114,13 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
             <View style={styles.heroTopTextRow}>
               <Text style={styles.heroTitle}>Total Statement Due</Text>
               <Text style={styles.heroAmount}>
-                 ₹{totalDue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ₹{totalDue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </Text>
             </View>
           </View>
-          
+
           <View style={styles.heroDivider} />
-          
+
           <View style={styles.heroBottom}>
             <View style={styles.heroStatItem}>
               <Text style={styles.heroStatLabel}>MINIMUM DUE</Text>
@@ -162,7 +160,7 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
           const paymentsMade = Number(item.payments || 0);
           const remainingBal = Math.max(0, Number(item.closing_balance || 0) - paymentsMade);
           const itemColor = item.card_color || '#4B7CF3';
-          
+
           return (
             <Card style={styles.statementCard}>
               <TouchableOpacity
@@ -187,7 +185,7 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
                       <Text style={styles.cardDate}>Generated on {formatDate(item.statement_date)}</Text>
                     </View>
                   </View>
-                  
+
                   <View style={[styles.statusBadge, { backgroundColor: isPaid ? '#E8FDF0' : '#F0F5FF' }]}>
                     <Text style={[styles.statusText, { color: isPaid ? '#10B981' : '#4B7CF3' }]}>
                       {isPaid ? "PAID" : "DUE"}
@@ -202,7 +200,7 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
                       Period: <Text style={styles.detailValue}>{formatDate(item.statement_start)} – {formatDate(item.statement_end)}</Text>
                     </Text>
                   </View>
-                  
+
                   <View style={styles.detailRow}>
                     <Feather name="clock" size={14} color="#8A96A3" />
                     <Text style={styles.detailText}>

@@ -358,6 +358,7 @@ export default function LendMoreScreen({ route, navigation }) {
     }
     try {
       setLoading(true);
+      await new Promise(resolve => requestAnimationFrame(resolve)); // allow UI to render loading
       await recordAdvance({
         loanId: Number(loanId),
         date: safeDate(transactionDate).toISOString(),
@@ -380,11 +381,12 @@ export default function LendMoreScreen({ route, navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F3F6FB" }}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-      >
+      <View pointerEvents={loading ? "none" : "auto"} style={{ flex: 1, opacity: loading ? 0.6 : 1 }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+        >
           <Card style={{ borderRadius: 24, overflow: "hidden" }}>
             {/* ── HEADER (purple, matching lend direction) ── */}
             <View
@@ -640,6 +642,7 @@ export default function LendMoreScreen({ route, navigation }) {
             </View>
           </Card>
         </ScrollView>
+      </View>
 
       {/* ── SOURCE PICKER MODAL ── */}
       <Modal visible={showSourcePicker} transparent animationType="slide">

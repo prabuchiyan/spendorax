@@ -5,7 +5,6 @@ import { useNavigation } from '@react-navigation/native';
 import { getTransactions } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { groupTransactions } from '../services/reports';
-
 import { getLabelForDate } from '../utils/dateUtils';
 import Card from '../components/Card';
 import { Colors, Spacing } from '../components/Theme';
@@ -63,46 +62,46 @@ const ReportItemCard = React.memo(({ data, categoriesMap, onCategoryPress }) => 
 
       <View style={styles.categoryBreakdown}>
         {Object.entries(data.categories).
-        sort((a, b) => Math.max(b[1].income, b[1].expense) - Math.max(a[1].income, a[1].expense)).
-        map(([cid, totals]) => {
-          const cat = categoriesMap[cid] || { name: 'Uncategorized', icon: 'help-circle', color: '#999' };
-          const isExpense = totals.expense > 0;
-          const amount = isExpense ? totals.expense : totals.income;
-          const totalAmount = Math.max(isExpense ? data.expense : data.income, 1);
-          const percentage = amount / totalAmount * 100;
+          sort((a, b) => Math.max(b[1].income, b[1].expense) - Math.max(a[1].income, a[1].expense)).
+          map(([cid, totals]) => {
+            const cat = categoriesMap[cid] || { name: 'Uncategorized', icon: 'help-circle', color: '#999' };
+            const isExpense = totals.expense > 0;
+            const amount = isExpense ? totals.expense : totals.income;
+            const totalAmount = Math.max(isExpense ? data.expense : data.income, 1);
+            const percentage = amount / totalAmount * 100;
 
-          return (
-            <Pressable
-              key={cid}
-              style={({ pressed }) => [
-              styles.catRow,
-              pressed && { backgroundColor: hexToRgba(cat.color, 0.05), borderColor: hexToRgba(cat.color, 0.2) }]
-              }
-              onPress={() => onCategoryPress(cid, cat.name, data.label)}>
-              
-              <View style={styles.catInfo}>
-                <View style={[styles.catIconContainer, { backgroundColor: hexToRgba(cat.color, 0.12) }]}>
-                  <MaterialCommunityIcons
-                    name={cat.icon || 'tag'}
-                    size={22}
-                    color={cat.color} />
-                  
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 6 }}>
-                    <Text style={styles.catName}>{cat.name}</Text>
-                    <Text style={[styles.catAmount, { color: isExpense ? '#E46A6A' : '#36B37E' }]}>
-                      {isExpense ? '-' : '+'}<CurrencyText amount={amount} minimumFractionDigits={0} maximumFractionDigits={0} />
-                    </Text>
-                  </View>
-                  <View style={styles.progressBarBackground}>
-                    <View style={[styles.progressBarFill, { width: `${Math.min(100, percentage)}%`, backgroundColor: cat.color }]} />
-                  </View>
-                </View>
-              </View>
-            </Pressable>);
+            return (
+              <Pressable
+                key={cid}
+                style={({ pressed }) => [
+                  styles.catRow,
+                  pressed && { backgroundColor: hexToRgba(cat.color, 0.05), borderColor: hexToRgba(cat.color, 0.2) }]
+                }
+                onPress={() => onCategoryPress(cid, cat.name, data.label)}>
 
-        })}
+                <View style={styles.catInfo}>
+                  <View style={[styles.catIconContainer, { backgroundColor: hexToRgba(cat.color, 0.12) }]}>
+                    <MaterialCommunityIcons
+                      name={cat.icon || 'tag'}
+                      size={22}
+                      color={cat.color} />
+
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 6 }}>
+                      <Text style={styles.catName}>{cat.name}</Text>
+                      <Text style={[styles.catAmount, { color: isExpense ? '#E46A6A' : '#36B37E' }]}>
+                        {isExpense ? '-' : '+'}<CurrencyText amount={amount} minimumFractionDigits={0} maximumFractionDigits={0} />
+                      </Text>
+                    </View>
+                    <View style={styles.progressBarBackground}>
+                      <View style={[styles.progressBarFill, { width: `${Math.min(100, percentage)}%`, backgroundColor: cat.color }]} />
+                    </View>
+                  </View>
+                </View>
+              </Pressable>);
+
+          })}
       </View>
     </Card>);
 
@@ -121,8 +120,8 @@ export default function ReportsScreen() {
     try {
       setLoading(true);
       const [tx, cats] = await Promise.all([
-      getTransactions(1000000),
-      getCategories(true)]
+        getTransactions(1000000),
+        getCategories(true)]
       );
       const cmap = {};
       cats.forEach((c) => {
@@ -202,98 +201,98 @@ export default function ReportsScreen() {
         <Card style={styles.chartCard}>
           <Text style={styles.chartTitle}>Income vs Expense Chart</Text>
           {loading ?
-          <View style={styles.loaderContainer}>
+            <View style={styles.loaderContainer}>
               <ActivityIndicator size="large" color={Colors.primary} />
               <Text style={styles.loadingText}>Loading report...</Text>
             </View> :
-          reportData.length === 0 ?
-          <Text style={styles.emptyText}>No data available for the selected period</Text> :
+            reportData.length === 0 ?
+              <Text style={styles.emptyText}>No data available for the selected period</Text> :
 
-          <View style={{ width: '100%', alignItems: 'center', justifyContent: 'center' }}>
-              
-              <TouchableOpacity
-              onPress={() => setChartOffset((prev) => Math.max(0, prev - 1))}
-              style={{
-                position: 'absolute', left: 0, zIndex: 10,
-                width: 34, height: 34, borderRadius: 17,
-                backgroundColor: 'rgba(255,255,255,0.85)',
-                alignItems: 'center', justifyContent: 'center',
-                shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
-                opacity: chartOffset === 0 ? 0.3 : 1
-              }}
-              disabled={chartOffset === 0}>
-              
-                <MaterialCommunityIcons name="chevron-left" size={20} color={Colors.text} />
-              </TouchableOpacity>
+              <View style={{ width: '100%', alignItems: 'center', justifyContent: 'center' }}>
 
-              <View style={[styles.chartOuterRow, { width: '100%', justifyContent: 'space-evenly', paddingHorizontal: 36 }]}>
-                {displayReportData.map((data, idx) => {
-                const isSelected = selectedPeriod === data.label;
-                return (
-                  <Pressable
-                    key={idx}
-                    onPress={() => setSelectedPeriod((prev) => prev === data.label ? null : data.label)}
-                    style={[
-                    styles.chartColumn,
-                    { marginHorizontal: 0, width: '18%' },
-                    selectedPeriod && !isSelected && { opacity: 0.4 }]
-                    }>
-                    
+                <TouchableOpacity
+                  onPress={() => setChartOffset((prev) => Math.max(0, prev - 1))}
+                  style={{
+                    position: 'absolute', left: 0, zIndex: 10,
+                    width: 34, height: 34, borderRadius: 17,
+                    backgroundColor: 'rgba(255,255,255,0.85)',
+                    alignItems: 'center', justifyContent: 'center',
+                    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+                    opacity: chartOffset === 0 ? 0.3 : 1
+                  }}
+                  disabled={chartOffset === 0}>
+
+                  <MaterialCommunityIcons name="chevron-left" size={20} color={Colors.text} />
+                </TouchableOpacity>
+
+                <View style={[styles.chartOuterRow, { width: '100%', justifyContent: 'space-evenly', paddingHorizontal: 36 }]}>
+                  {displayReportData.map((data, idx) => {
+                    const isSelected = selectedPeriod === data.label;
+                    return (
+                      <Pressable
+                        key={idx}
+                        onPress={() => setSelectedPeriod((prev) => prev === data.label ? null : data.label)}
+                        style={[
+                          styles.chartColumn,
+                          { marginHorizontal: 0, width: '18%' },
+                          selectedPeriod && !isSelected && { opacity: 0.4 }]
+                        }>
+
                         <View style={[
-                    styles.barContainer,
-                    isSelected && styles.selectedBarContainer]
-                    }>
+                          styles.barContainer,
+                          isSelected && styles.selectedBarContainer]
+                        }>
                           <View
-                        style={[
-                        styles.bar,
-                        styles.incomeBar,
-                        { height: `${Math.max(data.income / maxAmount * 100, 2)}%` }]
-                        } />
-                      
+                            style={[
+                              styles.bar,
+                              styles.incomeBar,
+                              { height: `${Math.max(data.income / maxAmount * 100, 2)}%` }]
+                            } />
+
                           <View
-                        style={[
-                        styles.bar,
-                        styles.expenseBar,
-                        { height: `${Math.max(data.expense / maxAmount * 100, 2)}%` }]
-                        } />
-                      
+                            style={[
+                              styles.bar,
+                              styles.expenseBar,
+                              { height: `${Math.max(data.expense / maxAmount * 100, 2)}%` }]
+                            } />
+
                         </View>
                         <Text style={[styles.axisLabel, isSelected && styles.selectedAxisLabel]} numberOfLines={1}>
                           {formatLabel(data.label)}
                         </Text>
                       </Pressable>);
 
-              })}
+                  })}
                 </View>
 
-              <TouchableOpacity
-              onPress={() => setChartOffset((prev) => prev + 1)}
-              style={{
-                position: 'absolute', right: 0, zIndex: 10,
-                width: 34, height: 34, borderRadius: 17,
-                backgroundColor: 'rgba(255,255,255,0.85)',
-                alignItems: 'center', justifyContent: 'center',
-                shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
-                opacity: chartOffset >= reportData.length - 5 ? 0.3 : 1
-              }}
-              disabled={chartOffset >= reportData.length - 5}>
-              
-                <MaterialCommunityIcons name="chevron-right" size={20} color={Colors.text} />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setChartOffset((prev) => prev + 1)}
+                  style={{
+                    position: 'absolute', right: 0, zIndex: 10,
+                    width: 34, height: 34, borderRadius: 17,
+                    backgroundColor: 'rgba(255,255,255,0.85)',
+                    alignItems: 'center', justifyContent: 'center',
+                    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+                    opacity: chartOffset >= reportData.length - 5 ? 0.3 : 1
+                  }}
+                  disabled={chartOffset >= reportData.length - 5}>
 
-              {selectedPeriod &&
-            <View style={styles.filterBanner}>
-                  <Text style={styles.filterText}>Filtering: {formatLabel(selectedPeriod)}</Text>
-                  <Pressable onPress={() => setSelectedPeriod(null)}>
-                    <Text style={styles.clearFilterText}>Clear Filter</Text>
-                  </Pressable>
-                </View>
-            }
-            </View>
+                  <MaterialCommunityIcons name="chevron-right" size={20} color={Colors.text} />
+                </TouchableOpacity>
+
+                {selectedPeriod &&
+                  <View style={styles.filterBanner}>
+                    <Text style={styles.filterText}>Filtering: {formatLabel(selectedPeriod)}</Text>
+                    <Pressable onPress={() => setSelectedPeriod(null)}>
+                      <Text style={styles.clearFilterText}>Clear Filter</Text>
+                    </Pressable>
+                  </View>
+                }
+              </View>
           }
 
           {!loading && reportData.length > 0 &&
-          <View style={styles.legendRow}>
+            <View style={styles.legendRow}>
               <View style={styles.legendItem}>
                 <View style={[styles.dot, { backgroundColor: '#36B37E' }]} />
                 <Text style={styles.legendText}>Income</Text>
@@ -317,36 +316,36 @@ export default function ReportsScreen() {
     <View style={styles.container}>
       <View style={styles.tabContainer}>
         {['daily', 'weekly', 'monthly', 'yearly'].map((m) =>
-        <Chip
-          key={m}
-          mode="outlined"
-          selected={mode === m}
-          onPress={() => handleModeChange(m)}
-          style={[styles.chip, mode === m && { borderColor: Colors.primary, backgroundColor: '#e6f7ff' }]}
-          selectedColor={Colors.primary}
-          showSelectedCheck={false}>
-          
+          <Chip
+            key={m}
+            mode="outlined"
+            selected={mode === m}
+            onPress={() => handleModeChange(m)}
+            style={[styles.chip, mode === m && { borderColor: Colors.primary, backgroundColor: '#e6f7ff' }]}
+            selectedColor={Colors.primary}
+            showSelectedCheck={false}>
+
             {m.charAt(0).toUpperCase() + m.slice(1)}
           </Chip>
         )}
       </View>
 
       {loading && reportData.length === 0 ?
-      <View style={styles.loaderContainer}>
+        <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loadingText}>Loading report...</Text>
         </View> :
 
-      <FlatList
-        data={filteredReportData}
-        keyExtractor={(item) => item.label}
-        renderItem={renderItem}
-        ListHeaderComponent={renderHeader}
-        contentContainerStyle={{ paddingBottom: 40 }}
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={5}
-        removeClippedSubviews={Platform.OS !== 'web'} />
+        <FlatList
+          data={filteredReportData}
+          keyExtractor={(item) => item.label}
+          renderItem={renderItem}
+          ListHeaderComponent={renderHeader}
+          contentContainerStyle={{ paddingBottom: 40 }}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS !== 'web'} />
 
       }
     </View>);

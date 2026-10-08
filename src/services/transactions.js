@@ -368,6 +368,8 @@ export async function getTransactionsPaginated({
     if (sourceId !== null && sourceId !== undefined) {
       conditions.push(`t.source_id = ?`);
       params.push(Number(sourceId));
+    } else if (filterType === "all" || filterType === "transfer") {
+      conditions.push(`(t.transfer_group_id IS NULL OR t.direction = 'debit' OR (t.direction IS NULL AND t.type = 'expense'))`);
     }
 
     if (searchQuery && searchQuery.trim().length > 0) {
@@ -790,32 +792,59 @@ export async function getSourceTransactionBalances() {
 export async function getHomeExpenseTransactions(referenceDate = new Date()) {
   try {
     const year = referenceDate.getFullYear();
+    const month = referenceDate.getMonth();
+    
+    // Create local bounds for the current month
+    const startObj = new Date(year, month, 1, 0, 0, 0, 0);
+    const endObj = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    
+    // Convert to ISO strings for correct DB matching against stored UTC strings
+    const startDateStr = startObj.toISOString();
+    const endDateStr = endObj.toISOString();
 
-    const month = String(referenceDate.getMonth() + 1).padStart(2, "0");
-
-    const monthKey = `${year}-${month}`;
-
-    const res = await executeSql(
-      `
-      SELECT *
-      FROM transactions
-      WHERE type = 'expense'
-        AND transfer_group_id IS NULL
-      ORDER BY REPLACE(date, ' ', 'T') DESC, id DESC
-      `
-    );
+    let res;
+    if (Platform.OS === 'web') {
+        res = await executeSql(
+          `SELECT * FROM transactions WHERE type = 'expense' AND transfer_group_id IS NULL`
+        );
+    } else {
+        res = await executeSql(
+          `
+          SELECT *
+          FROM transactions
+          WHERE type = 'expense'
+            AND transfer_group_id IS NULL
+            AND (is_counted IS NULL OR is_counted != 0)
+            AND REPLACE(date, ' ', 'T') >= ?
+            AND REPLACE(date, ' ', 'T') <= ?
+          ORDER BY REPLACE(date, ' ', 'T') DESC, id DESC
+          `,
+          [startDateStr, endDateStr]
+        );
+    }
 
     const rows = [];
     for (let i = 0; i < res.rows.length; i++) {
-      rows.push(res.rows.item(i));
+        const row = res.rows.item(i);
+        if (Platform.OS === 'web') {
+            if (row.is_counted !== null && row.is_counted !== undefined && Number(row.is_counted) === 0) continue;
+            const txDateStr = String(row.date || "").replace(" ", "T");
+            if (txDateStr < startDateStr || txDateStr > endDateStr) continue;
+        }
+        rows.push(row);
+    }
+    
+    if (Platform.OS === 'web') {
+        rows.sort((a, b) => {
+            const dA = (a.date || "").replace(" ", "T");
+            const dB = (b.date || "").replace(" ", "T");
+            if (dA > dB) return -1;
+            if (dA < dB) return 1;
+            return b.id - a.id;
+        });
     }
 
-    return rows.filter((row) => {
-      if (row.is_counted !== null && row.is_counted !== undefined && Number(row.is_counted) === 0) {
-        return false;
-      }
-      return String(row.date || "").startsWith(monthKey);
-    });
+    return rows;
   } catch (error) {
     console.error("getHomeExpenseTransactions error:", error);
     return [];
@@ -1020,3 +1049,154 @@ export async function getTransactionDates() {
   }
 }
 
+export async function getAvailableMonths() {
+  try {
+    if (Platform.OS === "web") {
+        const res = await executeSql("SELECT date FROM transactions WHERE date IS NOT NULL");
+        const months = new Set();
+        for(let i=0; i<res.rows.length; i++) {
+            const d = res.rows.item(i).date;
+            if(d) {
+                months.add(d.substring(0,7));
+            }
+        }
+        return Array.from(months).sort().reverse();
+    }
+    const query = `
+      SELECT DISTINCT SUBSTR(date, 1, 7) as monthYear 
+      FROM transactions 
+      WHERE date IS NOT NULL 
+      ORDER BY monthYear DESC
+    `;
+    const res = await executeSql(query);
+    const months = [];
+    for(let i = 0; i < res.rows.length; i++) {
+      if(res.rows.item(i).monthYear) {
+         months.push(res.rows.item(i).monthYear);
+      }
+    }
+    return months;
+  } catch(e) {
+    return [];
+  }
+}
+
+export async function getAdvancedSearchTransactions(params) {
+  const { amount, note, type, exactDate, month, year, startDate, endDate } = params;
+  
+  try {
+    if (Platform.OS === 'web') {
+      const res = await executeSql("SELECT * FROM transactions");
+      const rows = [];
+      for (let i = 0; i < res.rows.length; i++) {
+        rows.push(res.rows.item(i));
+      }
+
+      let filtered = rows.filter(tx => {
+        if (type && type !== 'all') {
+          if (type === 'expense') {
+            if (tx.type !== 'expense') return false;
+            if (tx.transfer_group_id || tx.is_transfer === 1) return false;
+          }
+          if (type === 'income') {
+            if (tx.type !== 'income') return false;
+            if (tx.transfer_group_id || tx.is_transfer === 1) return false;
+          }
+          if (type === 'transfer' && !tx.transfer_group_id && tx.is_transfer !== 1) return false;
+        }
+        if (amount && Number(tx.amount) !== Number(amount)) return false;
+        if (note) {
+          if (!tx.notes) return false;
+          if (tx.notes.toLowerCase() !== note.trim().toLowerCase()) return false;
+        }
+
+        if (!tx.date) {
+           if (exactDate || month || startDate || endDate) return false;
+        } else {
+          const dStr = String(tx.date).replace(" ", "T");
+          if (exactDate) {
+            if (dStr < `${exactDate}T00:00:00` || dStr > `${exactDate}T23:59:59`) return false;
+          } else if (month) {
+            if (dStr < `${month}-01T00:00:00` || dStr > `${month}-31T23:59:59`) return false;
+          } else if (year) {
+            if (dStr < `${year}-01-01T00:00:00` || dStr > `${year}-12-31T23:59:59`) return false;
+          } else if (startDate || endDate) {
+            if (startDate && dStr < `${startDate}T00:00:00`) return false;
+            if (endDate && dStr > `${endDate}T23:59:59`) return false;
+          }
+        }
+        return true;
+      });
+
+      filtered.sort((a, b) => {
+        const dA = String(a.date || '').replace(" ", "T");
+        const dB = String(b.date || '').replace(" ", "T");
+        if (dA > dB) return -1;
+        if (dA < dB) return 1;
+        return b.id - a.id;
+      });
+
+      return filtered;
+    }
+
+    const conditions = [];
+    const queryParams = [];
+
+    if (type && type !== 'all') {
+      if (type === 'expense') conditions.push(`type = 'expense' AND transfer_group_id IS NULL AND (is_transfer IS NULL OR is_transfer != 1)`);
+      if (type === 'income') conditions.push(`type = 'income' AND transfer_group_id IS NULL AND (is_transfer IS NULL OR is_transfer != 1)`);
+      if (type === 'transfer') conditions.push(`(transfer_group_id IS NOT NULL OR is_transfer = 1)`);
+    }
+
+    if (amount) {
+      conditions.push(`amount = ?`);
+      queryParams.push(amount);
+    }
+    
+    if (note) {
+      // Use exact word match if requested, or just substring. The user requested 'Exact Word Search'.
+      // If they mean exact match (case insensitive):
+      conditions.push(`LOWER(notes) = LOWER(?)`);
+      queryParams.push(note.trim());
+    }
+
+    if (exactDate) {
+      conditions.push(`REPLACE(date, ' ', 'T') >= ? AND REPLACE(date, ' ', 'T') <= ?`);
+      queryParams.push(`${exactDate}T00:00:00`, `${exactDate}T23:59:59`);
+    } else if (month) {
+      conditions.push(`REPLACE(date, ' ', 'T') >= ? AND REPLACE(date, ' ', 'T') <= ?`);
+      queryParams.push(`${month}-01T00:00:00`, `${month}-31T23:59:59`);
+    } else if (year) {
+      conditions.push(`REPLACE(date, ' ', 'T') >= ? AND REPLACE(date, ' ', 'T') <= ?`);
+      queryParams.push(`${year}-01-01T00:00:00`, `${year}-12-31T23:59:59`);
+    } else if (startDate || endDate) {
+      if (startDate) {
+        conditions.push(`REPLACE(date, ' ', 'T') >= ?`);
+        queryParams.push(`${startDate}T00:00:00`);
+      }
+      if (endDate) {
+        conditions.push(`REPLACE(date, ' ', 'T') <= ?`);
+        queryParams.push(`${endDate}T23:59:59`);
+      }
+    }
+
+    let query = `SELECT * FROM transactions`;
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(" AND ")}`;
+    }
+    query += ` ORDER BY REPLACE(date, ' ', 'T') DESC, id DESC LIMIT 5000`;
+
+    const res = await executeSql(query, queryParams);
+    
+    const rawTransactions = [];
+    for (let i = 0; i < res.rows.length; i++) {
+      rawTransactions.push(res.rows.item(i));
+    }
+    
+    return rawTransactions;
+
+  } catch (error) {
+    console.error("getAdvancedSearchTransactions error:", error);
+    return [];
+  }
+}

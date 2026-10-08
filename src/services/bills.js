@@ -116,6 +116,16 @@ export async function removeTransactionFromBill(billId, transactionId) {
       "[removeTransactionFromBill] Credit card statement reset to generated:",
       billId,
     );
+  } else {
+    // If there are still linked transactions, update the bill's linked_transaction_id 
+    // to point to one of the remaining ones. Otherwise, it might still point to the 
+    // unlinked transaction, causing it to be re-linked on app restart by init.js.
+    await executeSql(
+      `UPDATE bills
+       SET linked_transaction_id = ?
+       WHERE id = ?`,
+      [remaining[0].transaction_id, billId],
+    );
   }
 
   emitBillsChanged();
@@ -978,14 +988,10 @@ export async function getBillSeriesMultiple(templateIds) {
   const allBillsRaw = await fetchAllBillsRaw();
   const normalizedAllBills = allBillsRaw.map(normalizeBill).filter(Boolean);
 
-  const links = rowsToArray(
-    await executeSql(`SELECT * FROM bill_linked_transactions`, []),
-  );
-  const transactions = rowsToArray(
-    await executeSql(`SELECT * FROM transactions`, []),
-  );
-
   const result = {};
+
+  let links = null;
+  let transactions = null;
 
   for (const templateId of templateIds) {
     const template = normalizedAllBills.find(
@@ -1006,12 +1012,24 @@ export async function getBillSeriesMultiple(templateIds) {
       continue;
     }
 
+    if (links === null) {
+      links = rowsToArray(
+        await executeSql(`SELECT * FROM bill_linked_transactions`, []),
+      );
+    }
+    if (transactions === null) {
+      transactions = rowsToArray(
+        await executeSql(`SELECT * FROM transactions`, []),
+      );
+    }
+
     const allChildren = normalizedAllBills.filter(
       (r) => Number(r.parent_bill_id) === Number(templateId),
     );
 
     let enriched = [];
     if (isCCTemplate || !template.recurrence_type) {
+
       enriched = allChildren.map((bill) => {
         const billLinks = links.filter(
           (l) => Number(l.bill_id) === Number(bill.id),
@@ -1350,7 +1368,7 @@ export async function getBillsForCurrentMonth(options = {}) {
     // LOAD LATEST BILLS
     // ----------------------------------------------------------
 
-    const allBills = await fetchAllBillsRaw();
+    const allBills = allRaw;
 
     // ----------------------------------------------------------
     // OCCURRENCE KEY

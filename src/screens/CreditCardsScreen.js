@@ -8,17 +8,11 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { getCreditCards, deleteCreditCard } from "../services/creditCards";
-import Card from "../components/Card";
 import ConfirmDialog from "../components/ConfirmDialog";
-import CreditCardCreateModal from "../components/CreditCardCreateModal";
 import ContextualFAB from "../components/ContextualFAB";
 import { Colors, Spacing } from "../components/Theme";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
-import {
-  createCreditCard,
-  updateCreditCard,
-  getCreditCardById,
-} from "../services/creditCards";
+import { getCreditCardById } from "../services/creditCards";
 import { useAppDispatch, useCreditCards } from "../redux/hooks";
 import { setCreditCards } from "../redux/slices/creditCardSlice";
 import { useBalanceVisibility } from "../context/BalanceVisibilityContext";
@@ -26,8 +20,6 @@ import { useBalanceVisibility } from "../context/BalanceVisibilityContext";
 export default function CreditCardsScreen({ navigation }) {
   const dispatch = useAppDispatch();
   const cards = useCreditCards() || [];
-  const [showModal, setShowModal] = useState(false);
-  const [editCard, setEditCard] = useState(null);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmTargetId, setConfirmTargetId] = useState(null);
   const { balanceVisible } = useBalanceVisibility();
@@ -280,8 +272,7 @@ export default function CreditCardsScreen({ navigation }) {
                     <TouchableOpacity
                       onPress={async () => {
                         const card = await getCreditCardById(item.id);
-                        setEditCard({ ...card });
-                        setShowModal(true);
+                        navigation.navigate('CreditCardCreate', { editData: { ...card } });
                       }}
                       style={styles.cardIconButton}
                     >
@@ -312,28 +303,11 @@ export default function CreditCardsScreen({ navigation }) {
         onConfirm={handleDelete}
       />
 
-      <CreditCardCreateModal
-        key={editCard ? `edit-${editCard.id}` : "new"}
-        visible={showModal}
-        onClose={() => {
-          setShowModal(false);
-          setEditCard(null);
-        }}
-        editData={editCard}
-        onSave={async (payload) => {
-          if (editCard) {
-            await updateCreditCard(editCard.id, payload);
-          } else {
-            await createCreditCard(payload);
-          }
-          load();
-        }}
-      />
+
 
       <ContextualFAB
         onPress={() => {
-          setEditCard(null);
-          setShowModal(true);
+          navigation.navigate('CreditCardCreate');
         }}
       />
     </View>

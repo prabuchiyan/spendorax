@@ -57,11 +57,11 @@ export default function BackupScreen() {
       try {
         Alert.alert(
           "Select Backup Folder",
-          "Please create or select a specific folder (e.g., 'SpendoraX Backups') inside your Documents or Downloads.\n\nNote: Android prevents saving directly to the root 'Downloads' folder.",
+          "Please create or select a specific folder (e.g., 'Spendorax') inside your Documents.\n\nNote: Android prevents saving directly to the root 'Downloads' folder.",
           [
             { text: "Cancel", style: "cancel", onPress: () => setAutoConfig({ ...autoConfig, enabled: false }) },
-            { 
-              text: "Choose Folder", 
+            {
+              text: "Choose Folder",
               onPress: async () => {
                 const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
                 if (!permissions.granted) {
@@ -298,18 +298,18 @@ export default function BackupScreen() {
                 </View>
               </View>
             </TouchableRipple>
-            
+
             {autoStatus && autoStatus.lastAttemptDate && (
-               <View style={{ marginTop: 8 }}>
-                 <Text style={[styles.timestamp, { color: autoStatus.lastStatus === 'FAILED' ? '#E46A6A' : Colors.muted }]}>
-                   Last attempted: {autoStatus.lastAttemptDate} ({autoStatus.lastStatus})
-                 </Text>
-                 {autoStatus.lastStatus === 'FAILED' && autoStatus.lastErrorMessage && (
-                   <Text style={[styles.timestamp, { color: '#E46A6A', marginTop: 4 }]}>
-                     Error: {autoStatus.lastErrorMessage}
-                   </Text>
-                 )}
-               </View>
+              <View style={{ marginTop: 8 }}>
+                <Text style={[styles.timestamp, { color: autoStatus.lastStatus === 'FAILED' ? '#E46A6A' : Colors.muted }]}>
+                  Last attempted: {autoStatus.lastAttemptDate} ({autoStatus.lastStatus})
+                </Text>
+                {autoStatus.lastStatus === 'FAILED' && autoStatus.lastErrorMessage && (
+                  <Text style={[styles.timestamp, { color: '#E46A6A', marginTop: 4 }]}>
+                    Error: {autoStatus.lastErrorMessage}
+                  </Text>
+                )}
+              </View>
             )}
           </Card.Content>
         </Card>
@@ -318,10 +318,10 @@ export default function BackupScreen() {
       <MuiDateTimePicker
         visible={showTimePicker}
         initialDate={(() => {
-           const d = new Date();
-           const [h, m] = autoConfig.backupTime.split(':');
-           d.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
-           return d;
+          const d = new Date();
+          const [h, m] = autoConfig.backupTime.split(':');
+          d.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
+          return d;
         })()}
         onClose={() => setShowTimePicker(false)}
         onSelect={handleTimeChange}

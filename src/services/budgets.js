@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { executeSql } from '../database/db';
 import {
   getTransactions,
@@ -34,9 +35,10 @@ export async function getHomeBudgets(month = null) {
       return [];
     }
 
+    const [yearStr, monthStr] = monthKey.split('-');
     const transactions =
       await getHomeExpenseTransactions(
-        new Date()
+        new Date(Number(yearStr), Number(monthStr) - 1, 1)
       );
 
     const spendingMap = {};
@@ -105,19 +107,44 @@ export async function getBudgetRemaining(budgetId) {
   const b = res.rows.item(0);
   const month = b.month || new Date().toISOString().slice(0, 7);
 
-  // onlyCounted = true — excluded transactions don't count against budget
-  const all = await getTransactions(1000000, 'No', null, null, null, new Date(), true);
-  const spent = all.filter(t => {
-    if (t.type !== 'expense') return false;
-    if (!t.date || !t.date.startsWith(month)) return false;
-    // If budget has a category_id, match only that category.
-    // If budget.category_id is null, include all expense transactions (general budget).
-    if (b.category_id) {
-      return String(t.category_id) === String(b.category_id);
-    }
-    return true;
-  }).reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+  let spent = 0;
 
+  if (Platform.OS === 'web') {
+    const sumRes = await executeSql(`SELECT * FROM transactions WHERE type = 'expense'`);
+    for (let i = 0; i < sumRes.rows.length; i++) {
+        const tx = sumRes.rows.item(i);
+        if (tx.transfer_group_id) continue;
+        if (tx.direction === 'transfer') continue;
+        if (tx.is_counted !== null && tx.is_counted !== undefined && Number(tx.is_counted) === 0) continue;
+        const txDateStr = String(tx.date || '').replace(' ', 'T');
+        if (!txDateStr.startsWith(month)) continue;
+        if (b.category_id !== null && b.category_id !== undefined && String(tx.category_id) !== String(b.category_id)) continue;
+        
+        spent += parseFloat(tx.amount) || 0;
+    }
+  } else {
+    // Prepare SQL query for sum
+    const params = [`${month}%`];
+    let categoryCondition = "";
+    if (b.category_id !== null && b.category_id !== undefined) {
+        categoryCondition = " AND category_id = ?";
+        params.push(b.category_id);
+    }
+
+    // Optimize: directly sum the spent amount using SQLite
+    const sumRes = await executeSql(`
+        SELECT SUM(amount) as spent 
+        FROM transactions 
+        WHERE type = 'expense' 
+        AND transfer_group_id IS NULL
+        AND (direction IS NULL OR direction != 'transfer')
+        AND (is_counted IS NULL OR is_counted != 0)
+        AND REPLACE(date, ' ', 'T') LIKE ?
+        ${categoryCondition}
+    `, params);
+
+    spent = sumRes.rows.length ? (parseFloat(sumRes.rows.item(0).spent) || 0) : 0;
+  }
   return { budget: b, spent, remaining: (parseFloat(b.monthly_limit) || 0) - spent };
 }
 

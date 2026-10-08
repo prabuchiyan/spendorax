@@ -853,9 +853,15 @@ export async function updateCreditCardStatement(statementId, fields) {
   
   // Also update the linked bill amount if not paid
   if (statement.bill_id) {
-    await executeSql(
-      `UPDATE bills SET amount = ? WHERE id = ? AND (status != 'paid' AND is_paid = 0)`,
-      [closingBalance, statement.bill_id]
-    );
+    const billRes = await executeSql(`SELECT status, is_paid FROM bills WHERE id = ?`, [statement.bill_id]);
+    if (billRes.rows.length > 0) {
+      const bill = billRes.rows.item(0);
+      if (bill.status !== 'paid' && bill.is_paid === 0) {
+        await executeSql(
+          `UPDATE bills SET amount = ? WHERE id = ?`,
+          [closingBalance, statement.bill_id]
+        );
+      }
+    }
   }
 }
