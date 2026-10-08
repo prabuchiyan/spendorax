@@ -1699,9 +1699,7 @@ export async function getBillsSummary() {
   const rows = (await fetchAllBillsRaw()).map(normalizeBill).filter(Boolean);
 
   const active = rows.filter((b) => {
-    if (b.status === BILL_STATUS.SKIPPED) {
-      return false;
-    }
+    // We now include SKIPPED bills in active so they can be counted as "paid" in the progress bar.
 
     const isCreditCardTemplate =
       !b.parent_bill_id &&
@@ -1723,8 +1721,9 @@ export async function getBillsSummary() {
     0,
   );
   const totalPaid = thisMonth
-    .filter((b) => b.status === BILL_STATUS.PAID)
+    .filter((b) => b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED)
     .reduce((s, b) => s + Number(b.amount || 0), 0);
+  const paidCount = thisMonth.filter((b) => b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED).length;
   const overdueAmount = active
     .filter((b) => b.status === BILL_STATUS.OVERDUE)
     .reduce((s, b) => s + Number(b.amount || 0), 0);
@@ -1775,7 +1774,7 @@ export async function getBillsSummary() {
     .reduce((s, b) => s + Number(b.amount || 0), 0);
 
   const upcomingAndPendingDueAmt = active
-    .filter((b) => !b.is_paid && inThisCalMonth(b))
+    .filter((b) => !b.is_paid && b.status !== BILL_STATUS.SKIPPED && inThisCalMonth(b))
     .reduce(
       (acc, b) => {
         acc.totalAmount += Number(b.amount || 0);
@@ -1789,6 +1788,7 @@ export async function getBillsSummary() {
     month: mk,
     totalThisMonth,
     totalPaid,
+    paidCount,
     overdueAmount,
     overdueCount,
     upcoming7,

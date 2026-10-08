@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,7 +13,6 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
-  TextInput as PaperTextInput,
   Button as PaperButton,
 } from "react-native-paper";
 import {
@@ -28,11 +27,10 @@ import {
 import { getCategories } from "../services/categories";
 import { getPreferredBillOccurrence } from "../services/billUtils";
 import BillSummaryBar from "../components/BillSummaryBar";
-import SwipeableBillCard from "../components/SwipeableBillCard";
+import BillCard from "../components/BillCard";
 import BillCalendarView from "../components/BillCalendarView";
 import BillForm from "../components/BillForm";
 import ConfirmDialog from "../components/ConfirmDialog";
-import ContextualFAB from "../components/ContextualFAB";
 import { Colors, Spacing } from "../components/Theme";
 import { BILL_STATUS } from "../services/billUtils";
 import CurrencyText from "../components/CurrencyText";
@@ -67,6 +65,35 @@ function isCreditCardBill(bill) {
 export default function BillsScreen({ navigation }) {
   const dispatch = useAppDispatch();
 
+  // Theme state
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const theme = {
+    bg: isDarkMode ? "#0B0F17" : "#F8F9FF",
+    headerBg: isDarkMode ? "#0B0F17" : "#F8F9FF",
+    cardBg: isDarkMode ? "#182234" : "#FFFFFF",
+    cardBorder: isDarkMode ? "#334155" : "#c6c6cd",
+    textPrimary: isDarkMode ? "#F3F4F6" : "#0B1C30",
+    textSecondary: isDarkMode ? "#9CA3AF" : "#45464D",
+    activeBg: isDarkMode ? "#1E293B" : "#eff4ff",
+    activeBorder: isDarkMode ? "#334155" : "#c6c6cd",
+    activeText: isDarkMode ? "#FFFFFF" : "#000000",
+    inactiveText: isDarkMode ? "#9CA3AF" : "#76777D",
+    searchBg: isDarkMode ? "#182234" : "#FFFFFF",
+    searchBorder: isDarkMode ? "#334155" : "#c6c6cd",
+    alertBg: isDarkMode ? "rgba(159, 18, 57, 0.4)" : "#ffdad6", // rose-950/40 vs error-container
+    alertBorder: isDarkMode ? "rgba(244, 63, 94, 0.3)" : "rgba(186, 26, 26, 0.2)",
+    alertIconBg: isDarkMode ? "rgba(244, 63, 94, 0.1)" : "#ffb4ab",
+    alertTextPrimary: isDarkMode ? "#FDA4AF" : "#93000a", // rose-300 vs on-error-container
+    alertTextSecondary: isDarkMode ? "#FBCFE8" : "#ba1a1a",
+    modalBg: isDarkMode ? "#182234" : "#FFFFFF",
+    modalText: isDarkMode ? "#F3F4F6" : "#0B1C30",
+    statementBg: isDarkMode ? "#111827" : "#f8f9ff",
+    iconBg: isDarkMode ? "#1E293B" : "#eff4ff",
+    iconColor: isDarkMode ? "#FFFFFF" : "#000000",
+    successBg: isDarkMode ? "#134E4A" : "#e5eeff", // teal-900 vs surface-container
+    successText: isDarkMode ? "#5EEAD4" : "#006a61", // teal-300 vs secondary
+  };
+
   // Redux state
   const reduxBills = useBills();
   const reduxSummary = useBillsSummary();
@@ -98,7 +125,6 @@ export default function BillsScreen({ navigation }) {
   const [paymentSourceSearch, setPaymentSourceSearch] = useState("");
   const [selectedPaymentBill, setSelectedPaymentBill] = useState(null);
   const [selectedCreditCard, setSelectedCreditCard] = useState(null);
-  const [expandedCreditCards, setExpandedCreditCards] = useState({});
 
   // ── data load ──────────────────────────────────────────────────────────────
   async function load() {
@@ -350,18 +376,20 @@ export default function BillsScreen({ navigation }) {
 
   const handleMarkPaid = async (bill) => {
     try {
+      const actualBill = bill._displayOccurrence?.id ? bill._displayOccurrence : bill;
+
       // FIND CREDIT CARD
       const cards = await getCreditCards(false);
       const parentBillId = Number(
-        bill.parent_bill_id || bill._templateId || bill.id,
+        actualBill.parent_bill_id || actualBill._templateId || actualBill.id,
       );
       const card = cards.find(
         (c) => Number(c.payment_bill_id) === parentBillId,
       );
       // NORMAL BILL
       if (!card) {
-        await markBillPaid(bill.id, {
-          source_id: bill.source_id,
+        await markBillPaid(actualBill.id, {
+          source_id: actualBill.source_id,
         });
         await load();
         return;
@@ -376,7 +404,7 @@ export default function BillsScreen({ navigation }) {
       );
       setPaymentSources(availableSources);
       // Keep the actual bill that initiated  the payment action.
-      setSelectedPaymentBill(bill);
+      setSelectedPaymentBill(actualBill);
       setSelectedCreditCard(card);
       setPaymentSourceSearch("");
       setShowPaymentSourcePicker(true);
@@ -387,9 +415,10 @@ export default function BillsScreen({ navigation }) {
   };
 
   function handleSkip(bill) {
-    setConfirmTarget(bill);
+    const actualBill = bill._displayOccurrence?.id ? bill._displayOccurrence : bill;
+    setConfirmTarget(actualBill);
     setConfirmAction("skip");
-    setConfirmMessage(`Skip "${bill.name}" for this period?`);
+    setConfirmMessage(`Skip "${actualBill.name}" for this period?`);
     setConfirmVisible(true);
   }
 
@@ -487,7 +516,8 @@ export default function BillsScreen({ navigation }) {
           }}
         >
           {/* PARENT CREDIT CARD BILL */}
-          <SwipeableBillCard
+          <BillCard
+            isDarkMode={isDarkMode}
             bill={item}
             category={categoriesMap[item.category_id]}
             onPress={() => {
@@ -518,7 +548,7 @@ export default function BillsScreen({ navigation }) {
                 marginTop: -2,
                 marginBottom: 4,
                 borderLeftWidth: 2,
-                borderLeftColor: "#DCEBE2",
+                borderLeftColor: isDarkMode ? "#333" : "#DCEBE2",
                 paddingLeft: 12,
                 paddingTop: 4,
               }}
@@ -527,12 +557,12 @@ export default function BillsScreen({ navigation }) {
                 <View
                   key={String(statement.id)}
                   style={{
-                    backgroundColor: "#F8FBF9",
+                    backgroundColor: theme.statementBg,
                     borderRadius: 12,
                     padding: 10,
                     marginBottom: index === item.children.length - 1 ? 0 : 7,
                     borderWidth: 1,
-                    borderColor: "#E5F1EB",
+                    borderColor: theme.cardBorder,
                   }}
                 >
                   {/* STATEMENT HEADER */}
@@ -547,7 +577,7 @@ export default function BillsScreen({ navigation }) {
                         width: 30,
                         height: 30,
                         borderRadius: 10,
-                        backgroundColor: "#EAF5EF",
+                        backgroundColor: theme.iconBg,
                         alignItems: "center",
                         justifyContent: "center",
                       }}
@@ -555,7 +585,7 @@ export default function BillsScreen({ navigation }) {
                       <MaterialCommunityIcons
                         name="credit-card-outline"
                         size={17}
-                        color="#3F8F6B"
+                        color={theme.iconColor}
                       />
                     </View>
                     <View
@@ -568,7 +598,7 @@ export default function BillsScreen({ navigation }) {
                         style={{
                           fontSize: 11,
                           fontWeight: "800",
-                          color: "#25352D",
+                          color: theme.textPrimary,
                         }}
                       >
                         Statement
@@ -576,7 +606,7 @@ export default function BillsScreen({ navigation }) {
                       <Text
                         style={{
                           fontSize: 10,
-                          color: "#718078",
+                          color: theme.textSecondary,
                           marginTop: 2,
                         }}
                       >
@@ -588,7 +618,7 @@ export default function BillsScreen({ navigation }) {
                       style={{
                         fontSize: 12,
                         fontWeight: "800",
-                        color: "#25352D",
+                        color: theme.textPrimary,
                       }}
                     >
                       <CurrencyText amount={Number(statement.amount || 0)} />
@@ -604,7 +634,7 @@ export default function BillsScreen({ navigation }) {
                       marginTop: 8,
                       paddingTop: 7,
                       borderTopWidth: 1,
-                      borderTopColor: "#E5F1EB",
+                      borderTopColor: theme.cardBorder,
                     }}
                   >
                     <View
@@ -616,13 +646,13 @@ export default function BillsScreen({ navigation }) {
                       <MaterialCommunityIcons
                         name="calendar-clock-outline"
                         size={14}
-                        color="#8A958F"
+                        color={theme.textSecondary}
                       />
 
                       <Text
                         style={{
                           fontSize: 9,
-                          color: "#8A958F",
+                          color: theme.textSecondary,
                           marginLeft: 4,
                         }}
                       >
@@ -637,14 +667,14 @@ export default function BillsScreen({ navigation }) {
                         paddingHorizontal: 8,
                         paddingVertical: 4,
                         borderRadius: 7,
-                        backgroundColor: "#EAF5EF",
+                        backgroundColor: theme.iconBg,
                       }}
                     >
                       <Text
                         style={{
                           fontSize: 9,
                           fontWeight: "800",
-                          color: "#3F8F6B",
+                          color: theme.iconColor,
                         }}
                       >
                         View
@@ -661,7 +691,8 @@ export default function BillsScreen({ navigation }) {
 
     // NORMAL BILL
     return (
-      <SwipeableBillCard
+      <BillCard
+        isDarkMode={isDarkMode}
         bill={item}
         category={categoriesMap[item.category_id]}
         onPress={openDetail}
@@ -682,71 +713,44 @@ export default function BillsScreen({ navigation }) {
     );
   };
   const listHeader = (
-    <View>
-      {/* SUMMARY */}
-      <View style={{ marginBottom: 12 }}>
-        <BillSummaryBar summary={summary} />
+    <View style={{ paddingTop: 10 }}>
+      {/* HEADER WITH TOGGLE */}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: isDarkMode ? "#182234" : "#eff4ff", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: isDarkMode ? "#334155" : "rgba(198, 198, 205, 0.4)" }}>
+          <MaterialCommunityIcons name="calendar-month" size={20} color={isDarkMode ? "#22d3ee" : "#000000"} />
+          <Text style={{ marginLeft: 6, fontSize: 18, fontWeight: "600", color: theme.textPrimary }}>{monthLabel}</Text>
+          <MaterialCommunityIcons name="chevron-down" size={20} color={theme.textSecondary} style={{ marginLeft: 4 }} />
+        </View>
+
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <TouchableOpacity
+            onPress={() => setIsDarkMode(!isDarkMode)}
+            style={{
+              width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center",
+              backgroundColor: isDarkMode ? "#182234" : "#eff4ff",
+              borderWidth: 1, borderColor: isDarkMode ? "#334155" : "rgba(198, 198, 205, 0.4)", marginRight: 8
+            }}
+          >
+            <MaterialCommunityIcons name={isDarkMode ? "white-balance-sunny" : "moon-waning-crescent"} size={18} color={isDarkMode ? "#fbbf24" : "#0b1c30"} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setShowForm(true)}
+            style={{
+              flexDirection: "row", alignItems: "center",
+              backgroundColor: isDarkMode ? "#ffffff" : "#000000",
+              paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 2, shadowOffset: { width: 0, height: 1 },
+            }}
+          >
+            <MaterialCommunityIcons name="plus" size={18} color={isDarkMode ? "#0b1c30" : "#ffffff"} />
+            <Text style={{ marginLeft: 4, fontSize: 13, fontWeight: "600", color: isDarkMode ? "#0b1c30" : "#ffffff" }}>Add Bill</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      {/* STATUS FILTERS */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingRight: 8,
-          marginBottom: 12,
-        }}
-      >
-        {STATUS_FILTERS.map((filter) => {
-          const active = statusFilter === filter.key;
-          const statusColor =
-            filter.key === BILL_STATUS.OVERDUE
-              ? "#E46A6A"
-              : filter.key === BILL_STATUS.PAID
-                ? "#3F8F6B"
-                : filter.key === BILL_STATUS.PENDING
-                  ? "#FFB020"
-                  : "#2F7355";
-          return (
-            <TouchableOpacity
-              key={filter.key}
-              activeOpacity={0.8}
-              onPress={() => setStatusFilter(filter.key)}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                paddingHorizontal: 13,
-                paddingVertical: 8,
-                borderRadius: 20,
-                marginRight: 7,
-                backgroundColor: active ? "#EAF5EF" : "#FFFFFF",
-                borderWidth: 1,
-                borderColor: active ? "#CFE6D9" : "#E6EEE9",
-              }}
-            >
-              {filter.key !== "all" && (
-                <View
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: 3,
-                    backgroundColor: statusColor,
-                    marginRight: 6,
-                  }}
-                />
-              )}
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: active ? "800" : "600",
-                  color: active ? "#2F7355" : "#718078",
-                }}
-              >
-                {filter.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+
+      {/* SUMMARY */}
+      <View style={{ marginBottom: 16 }}>
+        <BillSummaryBar summary={summary} isDarkMode={isDarkMode} />
+      </View>
 
       {/* SEARCH + FILTER */}
       <View
@@ -759,28 +763,28 @@ export default function BillsScreen({ navigation }) {
         <View
           style={{
             flex: 1,
-            backgroundColor: "#FFFFFF",
-            borderRadius: 14,
+            backgroundColor: theme.cardBg,
+            borderRadius: 12,
             borderWidth: 1,
-            borderColor: "#E5F1EB",
-            height: 46,
+            borderColor: theme.cardBorder,
+            height: 44,
             flexDirection: "row",
             alignItems: "center",
             paddingHorizontal: 12,
           }}
         >
-          <MaterialCommunityIcons name="magnify" size={20} color="#8A958F" />
+          <MaterialCommunityIcons name="magnify" size={20} color={theme.textSecondary} />
 
           <TextInput
-            placeholder="Search bills"
-            placeholderTextColor="#A0AAA4"
+            placeholder="Search bill name (e.g. Netflix, Rent)..."
+            placeholderTextColor={theme.inactiveText}
             value={search}
             onChangeText={setSearch}
             style={{
               flex: 1,
               marginLeft: 8,
-              fontSize: 13,
-              color: "#25352D",
+              fontSize: 14,
+              color: theme.textPrimary,
             }}
           />
 
@@ -789,154 +793,155 @@ export default function BillsScreen({ navigation }) {
               <MaterialCommunityIcons
                 name="close-circle"
                 size={18}
-                color="#A0AAA4"
+                color={theme.textSecondary}
               />
             </TouchableOpacity>
           )}
         </View>
+      </View>
 
+      {/* STATUS FILTERS AND CATEGORY TOGGLE */}
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => setShowCategoryDD(true)}
           style={{
-            width: 46,
-            height: 46,
-            marginLeft: 8,
-            borderRadius: 14,
-            backgroundColor: categoryFilter ? "#EAF5EF" : "#FFFFFF",
+            height: 32,
+            paddingHorizontal: 10,
+            borderRadius: 16,
+            backgroundColor: theme.cardBg,
             borderWidth: 1,
-            borderColor: categoryFilter ? "#CFE6D9" : "#E5F1EB",
+            borderColor: theme.cardBorder,
+            flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
+            marginRight: 10,
           }}
         >
           <MaterialCommunityIcons
             name="tune-variant"
-            size={20}
-            color={categoryFilter ? "#3F8F6B" : "#718078"}
+            size={16}
+            color={theme.textPrimary}
+          />
+          <Text style={{ marginLeft: 4, fontSize: 13, fontWeight: "500", color: theme.textPrimary }}>
+            {categoryFilter ? (categoriesMap[categoryFilter]?.name || "Category") : "All Categories"}
+          </Text>
+          <MaterialCommunityIcons
+            name="menu-down"
+            size={16}
+            color={theme.textPrimary}
           />
         </TouchableOpacity>
+
+        <View style={{ width: 1, height: 16, backgroundColor: theme.cardBorder, marginRight: 10 }} />
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingRight: 8,
+          }}
+        >
+          {STATUS_FILTERS.map((filter) => {
+            const active = statusFilter === filter.key;
+            return (
+              <TouchableOpacity
+                key={filter.key}
+                activeOpacity={0.8}
+                onPress={() => setStatusFilter(filter.key)}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 16,
+                  marginRight: 6,
+                  backgroundColor: active ? (isDarkMode ? "#ffffff" : "#000000") : theme.cardBg,
+                  borderWidth: 1,
+                  borderColor: active ? (isDarkMode ? "#ffffff" : "#000000") : theme.cardBorder,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: active ? "600" : "500",
+                    color: active ? (isDarkMode ? "#0b1c30" : "#ffffff") : theme.textSecondary,
+                  }}
+                >
+                  {filter.label === "All" ? `All Bills (${items.length})` : filter.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
-      {/* SORT + MONTH */}
+      {/* SORT + VIEW MODE TOGGLE */}
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          marginBottom: 10,
-        }}
-      >
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-          }}
-        >
-          <MaterialCommunityIcons
-            name="calendar-month-outline"
-            size={15}
-            color="#718078"
-          />
-
-          <Text
-            style={{
-              marginLeft: 5,
-              color: "#718078",
-              fontSize: 11,
-              fontWeight: "700",
-            }}
-          >
-            {monthLabel}
-          </Text>
-        </View>
-
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-          }}
-        >
-          <MaterialCommunityIcons name="sort" size={15} color="#718078" />
-
-          {[
-            ["due_date", "Due"],
-            ["amount", "Amount"],
-          ].map(([key, label]) => (
-            <TouchableOpacity
-              key={key}
-              onPress={() => setSortBy(key)}
-              style={{
-                marginLeft: 10,
-                paddingHorizontal: 8,
-                paddingVertical: 5,
-                borderRadius: 8,
-                backgroundColor: sortBy === key ? "#EAF5EF" : "transparent",
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 10,
-                  fontWeight: "800",
-                  color: sortBy === key ? "#3F8F6B" : "#718078",
-                }}
-              >
-                {label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* LIST / CALENDAR */}
-      <View
-        style={{
-          flexDirection: "row",
-          backgroundColor: "#EAF5EF",
-          borderRadius: 12,
-          padding: 3,
           marginBottom: 12,
         }}
       >
-        {[
-          ["list", "format-list-bulleted", "List"],
-          ["calendar", "calendar-month-outline", "Calendar"],
-        ].map(([mode, icon, label]) => {
-          const active = viewMode === mode;
+        <Text style={{ fontSize: 16, fontWeight: "700", color: theme.textPrimary }}>
+          Payment Schedule
+        </Text>
 
-          return (
-            <TouchableOpacity
-              key={mode}
-              onPress={() => setViewMode(mode)}
-              style={{
-                flex: 1,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                paddingVertical: 8,
-                borderRadius: 9,
-                backgroundColor: active ? "#FFFFFF" : "transparent",
-              }}
-            >
-              <MaterialCommunityIcons
-                name={icon}
-                size={15}
-                color={active ? "#3F8F6B" : "#718078"}
-              />
-
-              <Text
+        <View
+          style={{
+            flexDirection: "row",
+            backgroundColor: isDarkMode ? "#182234" : "rgba(211, 228, 254, 0.6)",
+            borderRadius: 20,
+            padding: 2,
+            borderWidth: 1,
+            borderColor: theme.cardBorder,
+          }}
+        >
+          {[
+            ["list", "format-list-bulleted", "List"],
+            ["calendar", "calendar-month", "Calendar"],
+          ].map(([mode, icon, label]) => {
+            const active = viewMode === mode;
+            return (
+              <TouchableOpacity
+                key={mode}
+                onPress={() => setViewMode(mode)}
                 style={{
-                  marginLeft: 5,
-                  fontSize: 11,
-                  fontWeight: "800",
-                  color: active ? "#3F8F6B" : "#718078",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 16,
+                  backgroundColor: active ? (isDarkMode ? "#334155" : "#ffffff") : "transparent",
+                  shadowColor: active && !isDarkMode ? "#000" : "transparent",
+                  shadowOpacity: 0.1,
+                  shadowRadius: 2,
+                  shadowOffset: { width: 0, height: 1 },
+                  elevation: active && !isDarkMode ? 2 : 0,
                 }}
               >
-                {label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+                <MaterialCommunityIcons
+                  name={icon}
+                  size={16}
+                  color={active ? theme.textPrimary : theme.textSecondary}
+                />
+                <Text
+                  style={{
+                    marginLeft: 4,
+                    fontSize: 13,
+                    fontWeight: active ? "600" : "400",
+                    color: active ? theme.textPrimary : theme.textSecondary,
+                  }}
+                >
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
 
       {summary?.overdueCount > 0 && (
@@ -945,10 +950,10 @@ export default function BillsScreen({ navigation }) {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            backgroundColor: "#FFF5F5",
+            backgroundColor: theme.alertBg,
             borderRadius: 13,
             borderWidth: 1,
-            borderColor: "#F5DCDC",
+            borderColor: theme.alertBorder,
             paddingHorizontal: 11,
             paddingVertical: 9,
             marginBottom: 10,
@@ -959,7 +964,7 @@ export default function BillsScreen({ navigation }) {
               width: 28,
               height: 28,
               borderRadius: 10,
-              backgroundColor: "#FFE5E5",
+              backgroundColor: theme.alertIconBg,
               alignItems: "center",
               justifyContent: "center",
             }}
@@ -980,7 +985,7 @@ export default function BillsScreen({ navigation }) {
               style={{
                 fontSize: 11,
                 fontWeight: "800",
-                color: "#A85E5E",
+                color: theme.alertTextPrimary,
               }}
             >
               Payment attention needed
@@ -990,7 +995,7 @@ export default function BillsScreen({ navigation }) {
               style={{
                 fontSize: 10,
                 fontWeight: "600",
-                color: "#9A7777",
+                color: theme.alertTextSecondary,
                 marginTop: 2,
               }}
             >
@@ -1001,7 +1006,7 @@ export default function BillsScreen({ navigation }) {
           <MaterialCommunityIcons
             name="chevron-right"
             size={18}
-            color="#D98A8A"
+            color={theme.alertTextPrimary}
           />
         </TouchableOpacity>
       )}
@@ -1011,6 +1016,7 @@ export default function BillsScreen({ navigation }) {
           bills={filteredItems}
           month={calMonth}
           year={calYear}
+          isDarkMode={isDarkMode}
           onSelectBill={openDetail}
           onMonthChange={(y, m) => {
             setCalYear(y);
@@ -1021,16 +1027,59 @@ export default function BillsScreen({ navigation }) {
     </View>
   );
 
+  const groupedSections = useMemo(() => {
+    if (viewMode !== "list") return [];
+
+    const groups = { urgent: [], upcoming: [], later: [], settled: [], inactive: [] };
+    const now = new Date();
+    // Use local YYYY-MM-DD string for comparison to avoid timezone issues
+    const nowStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split("T")[0];
+
+    filteredItems.forEach(bill => {
+      const status = bill.status || 'pending';
+      const isInactive = bill.recurrence_end_date && bill.recurrence_end_date < nowStr;
+
+      if (isInactive) {
+        groups.inactive.push(bill);
+      } else if (status === 'overdue') {
+        groups.urgent.push(bill);
+      } else if (status === 'paid' || status === 'skipped') {
+        groups.settled.push(bill);
+      } else {
+        const dueDate = new Date(bill.due_date || now);
+        const diffTime = dueDate - now;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays > 7) {
+          groups.later.push(bill);
+        } else {
+          groups.upcoming.push(bill);
+        }
+      }
+    });
+
+    const result = [];
+    if (groups.urgent.length > 0) result.push({ title: "Urgent & Overdue", data: groups.urgent });
+    if (groups.upcoming.length > 0) result.push({ title: "Upcoming", data: groups.upcoming });
+    if (groups.later.length > 0) result.push({ title: "Later This Month", data: groups.later });
+    if (groups.settled.length > 0) result.push({ title: "Settled & Paid", data: groups.settled });
+    if (groups.inactive.length > 0) result.push({ title: "Inactive", data: groups.inactive });
+
+    return result;
+  }, [filteredItems, viewMode]);
+
+  const scrollRef = useRef(null);
+
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <FlatList
-        data={viewMode === "list" ? filteredItems : []}
-        keyExtractor={(i) => String(i.id)}
-        renderItem={renderBill}
-        ListHeaderComponent={listHeader}
-        contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 100 }}
-        ListEmptyComponent={
-          viewMode === "list" ? (
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 80 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {listHeader}
+
+        {viewMode === "list" && groupedSections.length === 0 && (
             <View style={{ alignItems: "center", paddingTop: 32 }}>
               <MaterialCommunityIcons
                 name="clipboard-check-outline"
@@ -1041,9 +1090,23 @@ export default function BillsScreen({ navigation }) {
                 No bills this month
               </Text>
             </View>
-          ) : null
-        }
-      />
+          )}
+
+          {viewMode === "list" && groupedSections.map((section, idx) => (
+            <View key={section.title || idx}>
+              <View style={{ paddingTop: 8, paddingBottom: 8, paddingHorizontal: 4 }}>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: theme.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  {section.title}
+                </Text>
+              </View>
+              {section.data.map((item, i) => (
+                <View key={item._displayOccurrenceId ? String(item._displayOccurrenceId) : (String(item.id) + "-" + i)}>
+                  {renderBill({ item })}
+                </View>
+              ))}
+            </View>
+          ))}
+        </ScrollView>
 
       {/* Status modal */}
       <Modal visible={showStatusDD} transparent>
@@ -1053,26 +1116,27 @@ export default function BillsScreen({ navigation }) {
           onPress={() => setShowStatusDD(false)}
         >
           <TouchableWithoutFeedback>
-            <View style={styles.modal}>
-            {STATUS_FILTERS.map((f) => (
-              <TouchableOpacity
-                key={f.key}
-                onPress={() => {
-                  setStatusFilter(f.key);
-                  setShowStatusDD(false);
-                }}
-              >
-                <Text
-                  style={[
-                    styles.item,
-                    statusFilter === f.key && styles.selected,
-                  ]}
+            <View style={[styles.modal, { backgroundColor: theme.modalBg }]}>
+              {STATUS_FILTERS.map((f) => (
+                <TouchableOpacity
+                  key={f.key}
+                  onPress={() => {
+                    setStatusFilter(f.key);
+                    setShowStatusDD(false);
+                  }}
                 >
-                  {f.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+                  <Text
+                    style={[
+                      styles.item,
+                      { color: theme.modalText },
+                      statusFilter === f.key && styles.selected,
+                    ]}
+                  >
+                    {f.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </TouchableWithoutFeedback>
         </TouchableOpacity>
       </Modal>
@@ -1085,19 +1149,19 @@ export default function BillsScreen({ navigation }) {
           onPress={() => setShowCategoryDD(false)}
         >
           <TouchableWithoutFeedback>
-            <View style={styles.modalLarge}>
-              <View style={styles.categorySearchContainer}>
+            <View style={[styles.modalLarge, { backgroundColor: theme.modalBg }]}>
+              <View style={[styles.categorySearchContainer, { backgroundColor: theme.searchBg, borderColor: theme.searchBorder }]}>
                 <MaterialCommunityIcons
                   name="magnify"
                   size={22}
-                  color="#94A3B8"
+                  color={theme.textSecondary}
                 />
                 <TextInput
                   placeholder="Search category..."
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={theme.inactiveText}
                   value={categorySearch}
                   onChangeText={setCategorySearch}
-                  style={styles.categorySearchInput}
+                  style={[styles.categorySearchInput, { color: theme.textPrimary }]}
                   autoCorrect={false}
                 />
                 {!!categorySearch && (
@@ -1105,57 +1169,52 @@ export default function BillsScreen({ navigation }) {
                     <MaterialCommunityIcons
                       name="close-circle"
                       size={20}
-                      color="#94A3B8"
+                      color={theme.textSecondary}
                     />
                   </TouchableOpacity>
                 )}
               </View>
 
-            <FlatList
-              data={[
-                { id: "all", name: "All categories" },
-                ...filteredCategories,
-              ]}
-              keyExtractor={(i) => String(i.id)}
-              renderItem={({ item }) => {
-                const sel =
-                  item.id === "all"
-                    ? !categoryFilter
-                    : categoryFilter === item.id;
-                return (
-                  <TouchableOpacity
-                    style={styles.row}
-                    onPress={() => {
-                      setCategoryFilter(item.id === "all" ? null : item.id);
-                      setShowCategoryDD(false);
-                      setCategorySearch("");
-                    }}
-                  >
-                    <Text style={[styles.item, sel && styles.selected]}>
-                      {item.name}
-                    </Text>
-                    {sel && (
-                      <MaterialCommunityIcons
-                        name="check"
-                        size={18}
-                        color={Colors.primary}
-                      />
-                    )}
-                  </TouchableOpacity>
-                );
-              }}
-            />
-          </View>
+              <FlatList
+                data={[
+                  { id: "all", name: "All categories" },
+                  ...filteredCategories,
+                ]}
+                keyExtractor={(i) => String(i.id)}
+                renderItem={({ item }) => {
+                  const sel =
+                    item.id === "all"
+                      ? !categoryFilter
+                      : categoryFilter === item.id;
+                  return (
+                    <TouchableOpacity
+                      style={styles.row}
+                      onPress={() => {
+                        setCategoryFilter(item.id === "all" ? null : item.id);
+                        setShowCategoryDD(false);
+                        setCategorySearch("");
+                      }}
+                    >
+                      <Text style={[styles.item, { color: theme.modalText }, sel && styles.selected]}>
+                        {item.name}
+                      </Text>
+                      {sel && (
+                        <MaterialCommunityIcons
+                          name="check"
+                          size={18}
+                          color={Colors.primary}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            </View>
           </TouchableWithoutFeedback>
         </TouchableOpacity>
       </Modal>
 
-      <ContextualFAB
-        onPress={() => {
-          setEditingBill(null);
-          setShowForm(true);
-        }}
-      />
+      {/* ContextualFAB removed as it was replaced by Add Bill button in header */}
 
       {/* Add / edit form */}
       <Modal visible={showForm}>
@@ -1187,7 +1246,7 @@ export default function BillsScreen({ navigation }) {
         >
           <View
             style={{
-              backgroundColor: "#fff",
+              backgroundColor: theme.modalBg,
               maxHeight: "55%",
               borderTopLeftRadius: 16,
               borderTopRightRadius: 16,
@@ -1199,23 +1258,24 @@ export default function BillsScreen({ navigation }) {
                 fontWeight: "700",
                 fontSize: 16,
                 marginBottom: 12,
+                color: theme.modalText,
               }}
             >
               Select Payment Source
             </Text>
 
-            <View style={styles.categorySearchContainer}>
+            <View style={[styles.categorySearchContainer, { backgroundColor: theme.searchBg, borderColor: theme.searchBorder }]}>
               <MaterialCommunityIcons
                 name="magnify"
                 size={22}
-                color="#94A3B8"
+                color={theme.textSecondary}
               />
               <TextInput
                 placeholder="Search source..."
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={theme.inactiveText}
                 value={paymentSourceSearch}
                 onChangeText={setPaymentSourceSearch}
-                style={styles.categorySearchInput}
+                style={[styles.categorySearchInput, { color: theme.textPrimary }]}
                 autoCorrect={false}
               />
               {!!paymentSourceSearch && (
@@ -1223,7 +1283,7 @@ export default function BillsScreen({ navigation }) {
                   <MaterialCommunityIcons
                     name="close-circle"
                     size={20}
-                    color="#94A3B8"
+                    color={theme.textSecondary}
                   />
                 </TouchableOpacity>
               )}
@@ -1275,6 +1335,7 @@ export default function BillsScreen({ navigation }) {
                       style={{
                         marginLeft: 10,
                         flex: 1,
+                        color: theme.modalText,
                       }}
                     >
                       {source.name}
