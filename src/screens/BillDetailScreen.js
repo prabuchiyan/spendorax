@@ -8,16 +8,18 @@ import {
   TouchableOpacity,
   Modal,
   ActivityIndicator,
-  Alert } from
-"react-native";
+  Alert
+} from
+  "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   Button as PaperButton,
 
 
-  TextInput as PaperTextInput } from
-"react-native-paper";
+  TextInput as PaperTextInput
+} from
+  "react-native-paper";
 import { Dimensions } from "react-native";
 import MuiDateTimePicker from "../components/MuiDateTimePicker";
 import PremiumRoundedBarChart from "../components/PremiumRoundedBarChart";
@@ -34,8 +36,9 @@ import {
   linkAdditionalTransaction,
   removeTransactionFromBill,
   updateBill,
-  createBill } from
-"../services/bills";
+  createBill
+} from
+  "../services/bills";
 import { getCategories } from "../services/categories";
 import { getSources } from "../services/sources";
 import Card from "../components/Card";
@@ -48,8 +51,9 @@ import {
   formatDueDate,
   getBillDisplayStatus,
   BILL_STATUS,
-  getOccurrenceDateConstraints } from
-"../services/billUtils";
+  getOccurrenceDateConstraints
+} from
+  "../services/billUtils";
 import { getCreditCards, payCreditCardBill } from "../services/creditCards";
 import { usePageLoader } from "../context/PageLoaderContext";
 import PageLoader from "../components/PageLoader";
@@ -59,8 +63,9 @@ import {
   useAppDispatch,
   useBills,
   useBillsSummary,
-  useCategoriesMap } from
-"../redux/hooks";
+  useCategoriesMap
+} from
+  "../redux/hooks";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -74,18 +79,18 @@ function DetailRow({ label, value }) {
         justifyContent: "space-between",
         paddingVertical: 10,
         borderBottomWidth: 1,
-        borderBottomColor: "#EEF1F6"
+        borderBottomColor: "#eff4ff"
       }}>
-      
-      <Text style={{ color: Colors.muted, flex: 1 }}>{label}</Text>
+
+      <Text style={{ color: "#7c839b", fontFamily: "Inter", flex: 1 }}>{label}</Text>
       <Text
         style={{
-          color: Colors.text,
+          color: "#0b1c30",
           fontWeight: "600",
           flex: 1.5,
           textAlign: "right"
         }}>
-        
+
         {value}
       </Text>
     </View>);
@@ -97,23 +102,24 @@ function StatusBadge({ display }) {
     <View
       style={{
         alignSelf: "center",
-        paddingHorizontal: 14,
+        paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 20,
         backgroundColor: `${display.color}20`,
-        marginTop: 6
+        flexDirection: 'row',
+        alignItems: 'center'
       }}>
-      
-      <Text style={{ color: display.color, fontWeight: "700", fontSize: 13 }}>
+      <MaterialCommunityIcons name="check-circle" size={12} color={display.color} style={{ marginRight: 4 }} />
+      <Text style={{ color: display.color, fontWeight: "700", fontSize: 12, fontFamily: "Inter" }}>
         {display.label}
       </Text>
     </View>);
-
 }
+
 
 function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
   return (
-    <Card style={{ borderRadius: 20, overflow: "hidden" }}>
+    <Card style={{ borderRadius: 16, overflow: "hidden", backgroundColor: '#ffffff', borderColor: '#dce9ff', borderWidth: 1, elevation: 1, shadowColor: '#0b1c30', shadowOpacity: 0.04, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } }}>
       <View
         style={{
           flexDirection: "row",
@@ -121,270 +127,217 @@ function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
           alignItems: "center",
           marginBottom: 14
         }}>
-        
+
         <View>
-          <Text style={{ fontSize: 17, fontWeight: "800", color: Colors.text }}>
+          <Text style={{ fontSize: 18, fontWeight: "600", color: "#0b1c30", fontFamily: "Plus Jakarta Sans" }}>
             Linked Transactions
           </Text>
-          <Text style={{ fontSize: 12, color: Colors.muted, marginTop: 2 }}>
+          <Text style={{ fontSize: 13, color: "#7c839b", marginTop: 2, fontFamily: "Inter" }}>
             {linkedTxs.length} transaction{linkedTxs.length !== 1 ? "s" : ""}
           </Text>
         </View>
         {onAddMore &&
-        <TouchableOpacity
-          onPress={onAddMore}
-          style={{
-            backgroundColor: Colors.primary,
-            width: 42,
-            height: 42,
-            borderRadius: 21,
-            justifyContent: "center",
-            alignItems: "center"
-          }}>
-          
-            <MaterialCommunityIcons name="plus" size={24} color="#fff" />
+          <TouchableOpacity
+            onPress={onAddMore}
+            style={{
+              backgroundColor: "#131b2e",
+              width: 40,
+              height: 40,
+              borderRadius: 8,
+              justifyContent: "center",
+              alignItems: "center"
+            }}>
+
+            <MaterialCommunityIcons name="plus" size={24} color="#ffffff" />
           </TouchableOpacity>
         }
       </View>
 
       {linkedTxs.length === 0 ?
-      <View style={{ paddingVertical: 40, alignItems: "center" }}>
-          <MaterialCommunityIcons name="link-off" size={46} color="#CFCFCF" />
+        <View style={{ paddingVertical: 40, alignItems: "center" }}>
+          <MaterialCommunityIcons name="link-off" size={46} color="#c6c6cd" />
           <Text
-          style={{ marginTop: 8, fontWeight: "700", color: Colors.muted }}>
-          
+            style={{ marginTop: 8, fontWeight: "600", color: "#45464d", fontFamily: "Plus Jakarta Sans" }}>
+
             No linked transactions
           </Text>
           <Text
-          style={{
-            marginTop: 4,
-            fontSize: 12,
-            color: Colors.muted,
-            textAlign: "center"
-          }}>
-          
+            style={{
+              marginTop: 4,
+              fontSize: 13,
+              color: "#7c839b",
+              textAlign: "center",
+              fontFamily: "Inter"
+            }}>
+
             Link a payment to automatically mark this bill as paid.
           </Text>
         </View> :
 
-      linkedTxs.map((tx) =>
-      <View
-        key={tx.id}
-        style={{
-          marginBottom: 10,
-          borderRadius: 16,
-          backgroundColor: "#FAFAFA",
-          padding: 14
-        }}>
-        
+        linkedTxs.map((tx) =>
+          <View
+            key={tx.id}
+            style={{
+              marginBottom: 10,
+              borderRadius: 8,
+              backgroundColor: "#f8f9ff",
+              borderWidth: 1,
+              borderColor: "#eff4ff",
+              padding: 14
+            }}>
+
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <View
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              justifyContent: "center",
-              alignItems: "center",
-              backgroundColor: `${tx.category_color || Colors.primary}20`
-            }}>
-            
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 8,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  backgroundColor: `${tx.category_color || '#131b2e'}15`
+                }}>
+
                 <MaterialCommunityIcons
-              name={tx.category_icon || "cash"}
-              color={tx.category_color || Colors.primary}
-              size={24} />
-            
+                  name={tx.category_icon || "cash"}
+                  color={tx.category_color || '#131b2e'}
+                  size={24} />
+
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text
-              numberOfLines={1}
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: Colors.text
-              }}>
-              
+                  numberOfLines={1}
+                  style={{
+                    fontSize: 14,
+                    fontWeight: "600",
+                    color: "#0b1c30",
+                    fontFamily: "Inter"
+                  }}>
+
                   {tx.notes || "No Notes"}
                 </Text>
                 <Text
-              style={{ marginTop: 3, fontSize: 12, color: Colors.muted }}>
-              
+                  style={{ marginTop: 3, fontSize: 12, color: "#7c839b", fontFamily: "Inter" }}>
+
                   {tx.date ?
-              new Date(tx.date).toLocaleDateString("en-IN", {
-                day: "numeric",
-                month: "short",
-                year: "numeric"
-              }) :
-              "—"}
+                    new Date(tx.date).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric"
+                    }) :
+                    "—"}
                   {tx.source_name ? ` • ${tx.source_name}` : ""}
                 </Text>
                 <Text
-              style={{
-                marginTop: 6,
-                fontSize: 17,
-                fontWeight: "800",
-                color: Colors.text
-              }}>
-              
+                  style={{
+                    marginTop: 6,
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: "#0b1c30",
+                    fontFamily: "Plus Jakarta Sans"
+                  }}>
+
                   {formatCurrency(tx.amount)}
                 </Text>
               </View>
               {onUnlink &&
-          <TouchableOpacity
-            onPress={() => onUnlink(tx)}
-            style={{
-              width: 42,
-              height: 42,
-              borderRadius: 21,
-              backgroundColor: "#FFECEC",
-              justifyContent: "center",
-              alignItems: "center"
-            }}>
-            
+                <TouchableOpacity
+                  onPress={() => onUnlink(tx)}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 8,
+                    backgroundColor: "#ffdad6",
+                    justifyContent: "center",
+                    alignItems: "center"
+                  }}>
+
                   <MaterialCommunityIcons
-              name="link-variant-remove"
-              size={22}
-              color="#F44336" />
-            
+                    name="link-variant-remove"
+                    size={22}
+                    color="#ba1a1a" />
+
                 </TouchableOpacity>
-          }
+              }
             </View>
           </View>
-      )
+        )
       }
     </Card>);
-
 }
 
 function OccurrenceList({ series, selectedId, onSelect }) {
   if (!series.length) return null;
   return (
-    <Card style={{ borderRadius: 20 }}>
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 15
-        }}>
-        
-        <View>
-          <Text style={{ fontWeight: "800", fontSize: 17, color: Colors.text }}>
-            Timeline
-          </Text>
-          <Text style={{ fontSize: 12, color: Colors.muted, marginTop: 2 }}>
-            {series.length} Bill Occurrences
-          </Text>
-        </View>
-        <MaterialCommunityIcons
-          name="calendar-month"
-          size={24}
-          color={Colors.primary} />
-        
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {series.map((occ) => {
-          const display = getBillDisplayStatus(occ);
-          const selected = occ.id === selectedId;
-          const d = new Date(occ.due_date);
-          const month = d.toLocaleDateString("en-IN", { month: "short" });
-          const day = d.getDate();
-          return (
-            <TouchableOpacity
-              key={occ.id}
-              onPress={() => onSelect(occ)}
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+      {series.map((occ) => {
+        const display = getBillDisplayStatus(occ);
+        const selected = occ.id === selectedId;
+        const d = new Date(occ.due_date);
+        const month = d.toLocaleDateString("en-IN", { month: "short" });
+        const day = d.getDate();
+
+        let statusColor = "#0b1c30";
+        if (display.label === "Paid") statusColor = "#006a61";
+        if (display.label === "Overdue") statusColor = "#ba1a1a";
+        if (display.label === "Pending" || display.label === "Upcoming") statusColor = "#c76c00";
+        if (display.label === "Skipped") statusColor = "#45464d";
+
+        return (
+          <TouchableOpacity
+            key={occ.id}
+            onPress={() => onSelect(occ)}
+            style={{
+              width: 104,
+              marginRight: 12,
+              borderRadius: 12,
+              paddingVertical: 14,
+              paddingHorizontal: 12,
+              backgroundColor: "#f4f8fb",
+              alignItems: "center"
+            }}>
+
+            <Text
               style={{
-                width: 90,
-                marginRight: 10,
-                borderRadius: 18,
-                paddingVertical: 14,
-                paddingHorizontal: 10,
-                backgroundColor: selected ? display.color : "#F6F7FB",
-                alignItems: "center"
+                color: "#7c839b",
+                fontSize: 12,
+                fontWeight: "500",
+                fontFamily: "Inter"
               }}>
-              
-              <Text
-                style={{
-                  color: selected ? "#fff" : Colors.muted,
-                  fontSize: 11,
-                  fontWeight: "700"
-                }}>
-                
-                {month}
+              {month}
+            </Text>
+            <Text
+              style={{
+                fontSize: 28,
+                fontWeight: "700",
+                color: "#0b1c30",
+                fontFamily: "Plus Jakarta Sans"
+              }}>
+              {day}
+            </Text>
+            <View style={{ marginTop: 8, alignItems: "center" }}>
+              <Text style={{ fontSize: 11, color: "#45464d", fontFamily: "Inter" }}>
+                Due {formatCurrency(occ.amount)}
               </Text>
-              <Text
-                style={{
-                  fontSize: 24,
-                  fontWeight: "900",
-                  color: selected ? "#fff" : Colors.text
-                }}>
-                
-                {day}
+              <Text style={{ fontSize: 11, color: "#006a61", fontFamily: "Inter", marginTop: 2, fontWeight: "500" }}>
+                Paid <CurrencyText amount={occ.paid_amount || 0} />
               </Text>
-              <View
-                style={{
-                  marginTop: 8,
-                  alignItems: "center"
-                }}>
-                
-                <Text
-                  style={{
-                    fontSize: 10,
-                    color: selected ? "#fff" : Colors.muted
-                  }}>
-                  
-                  Due
-                </Text>
-
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: "700",
-                    color: selected ? "#fff" : Colors.text
-                  }}>
-                  
-                  {formatCurrency(occ.amount)}
-                </Text>
-
-                <Text
-                  style={{
-                    marginTop: 4,
-                    fontSize: 10,
-                    color: selected ? "#fff" : Colors.muted
-                  }}>
-                  
-                  Paid
-                </Text>
-
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: "700",
-                    color: selected ? "#fff" : "#2DBE60"
-                  }}>
-                  
-                  <CurrencyText amount={occ.paid_amount || 0} />
-                </Text>
-              </View>
+            </View>
+            <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: display.label === "Paid" ? "#006a61" : "#e5eeff", justifyContent: 'center', alignItems: 'center', marginTop: 10 }}>
               <MaterialCommunityIcons
                 name={
-                display.label === "Paid" ?
-                "check-circle" :
-                display.label === "Skipped" ?
-                "skip-next-circle" :
-                display.label === "Overdue" ?
-                "alert-circle" :
-                "clock-outline"
+                  display.label === "Paid" ? "check" :
+                    display.label === "Skipped" ? "skip-next" :
+                      display.label === "Overdue" ? "alert" :
+                        "clock-outline"
                 }
-                size={18}
-                color={selected ? "#fff" : display.color}
-                style={{ marginTop: 6 }} />
-              
-            </TouchableOpacity>);
-
-        })}
-      </ScrollView>
-    </Card>);
-
+                size={20}
+                color={display.label === "Paid" ? "#fff" : display.color} />
+            </View>
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
+  );
 }
 
 function LinkTransactionModal({ visible, bill, onLink, onClose }) {
@@ -398,9 +351,9 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
     setSearch("");
     setLoading(true);
     Promise.all([getTransactionsForBillLink(bill), getSources(true)]).
-    then(([txs]) => setCandidates(txs)).
-    catch(() => setCandidates([])).
-    finally(() => setLoading(false));
+      then(([txs]) => setCandidates(txs)).
+      catch(() => setCandidates([])).
+      finally(() => setLoading(false));
   }, [visible, bill?.id]);
 
   const filteredCandidates = React.useMemo(() => {
@@ -412,14 +365,14 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
       const category = String(tx.category_name || "").toLowerCase();
       const amount = String(tx.amount || "").toLowerCase();
       const date = tx.date ?
-      new Date(tx.date).
-      toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric"
-      }).
-      toLowerCase() :
-      "";
+        new Date(tx.date).
+          toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric"
+          }).
+          toLowerCase() :
+        "";
       return (
         notes.includes(query) ||
         source.includes(query) ||
@@ -436,14 +389,14 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
       transparent
       animationType="slide"
       onRequestClose={onClose}>
-      
+
       <View
         style={{
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.45)",
           justifyContent: "flex-end"
         }}>
-        
+
         <View
           style={{
             backgroundColor: "#fff",
@@ -452,7 +405,7 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
             maxHeight: "78%",
             padding: 16
           }}>
-          
+
           {/* Header */}
           <View
             style={{
@@ -461,24 +414,24 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
               alignItems: "center",
               marginBottom: 4
             }}>
-            
+
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontWeight: "800",
-                  fontSize: 17,
-                  color: Colors.text
+                  fontWeight: "600",
+                  fontSize: 18,
+                  color: "#0b1c30"
                 }}>
-                
+
                 Link Transaction
               </Text>
               <Text
                 style={{
-                  color: Colors.muted,
+                  color: "#7c839b", fontFamily: "Inter",
                   fontSize: 12,
                   marginTop: 2
                 }}>
-                
+
                 {filteredCandidates.length} transaction
                 {filteredCandidates.length !== 1 ? "s" : ""} available
               </Text>
@@ -489,28 +442,28 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
                 width: 38,
                 height: 38,
                 borderRadius: 19,
-                backgroundColor: "#F4F5F8",
+                backgroundColor: "#eff4ff",
                 justifyContent: "center",
                 alignItems: "center"
               }}>
-              
+
               <MaterialCommunityIcons
                 name="close"
                 size={22}
-                color={Colors.muted} />
-              
+                color={'#7c839b'} />
+
             </TouchableOpacity>
           </View>
 
           {/* Info */}
           <Text
             style={{
-              color: Colors.muted,
+              color: "#7c839b", fontFamily: "Inter",
               fontSize: 13,
               marginTop: 8,
               marginBottom: 12
             }}>
-            
+
             Select an expense transaction to link with "{bill?.name}"
           </Text>
 
@@ -522,179 +475,178 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
             onChangeText={setSearch}
             left={<PaperTextInput.Icon icon="magnify" />}
             right={
-            search ?
-            <PaperTextInput.Icon
-              icon="close-circle"
-              onPress={() => setSearch("")} /> :
+              search ?
+                <PaperTextInput.Icon
+                  icon="close-circle"
+                  onPress={() => setSearch("")} /> :
 
-            null
+                null
             }
             style={{
               backgroundColor: "#fff",
               marginBottom: 12
             }}
-            outlineColor="#E4E7EC"
-            activeOutlineColor={Colors.primary} />
-          
+            outlineColor="#dce9ff"
+            activeOutlineColor={'#131b2e'} />
+
 
           {/* Transaction list */}
           {loading ?
-          <ActivityIndicator
-            size="large"
-            color={Colors.primary}
-            style={{ marginVertical: 30 }} /> :
+            <ActivityIndicator
+              size="large"
+              color={'#131b2e'}
+              style={{ marginVertical: 30 }} /> :
 
-          filteredCandidates.length === 0 ?
-          <View
-            style={{
-              alignItems: "center",
-              justifyContent: "center",
-              paddingVertical: 35
-            }}>
-            
-              <MaterialCommunityIcons
-              name={search ? "magnify-close" : "receipt-text-remove-outline"}
-              size={46}
-              color="#CFCFCF" />
-            
-
-              <Text
-              style={{
-                color: Colors.muted,
-                textAlign: "center",
-                marginTop: 10,
-                fontWeight: "600"
-              }}>
-              
-                {search ?
-              "No transactions match your search." :
-              "No matching transactions found."}
-              </Text>
-
-              {search &&
-            <TouchableOpacity
-              onPress={() => setSearch("")}
-              style={{
-                marginTop: 12,
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                borderRadius: 18,
-                backgroundColor: `${Colors.primary}12`
-              }}>
-              
-                  <Text
+            filteredCandidates.length === 0 ?
+              <View
                 style={{
-                  color: Colors.primary,
-                  fontWeight: "700",
-                  fontSize: 13
-                }}>
-                
-                    Clear Search
-                  </Text>
-                </TouchableOpacity>
-            }
-            </View> :
-
-          <FlatList
-            data={filteredCandidates}
-            keyExtractor={(t) => String(t.id)}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            renderItem={({ item: tx }) =>
-            <TouchableOpacity
-              onPress={() => {
-                setLinkingId(tx.id);
-                setTimeout(async () => {
-                  try {
-                    await onLink(tx);
-                  } finally {
-                    setLinkingId(null);
-                  }
-                }, 0);
-              }}
-              disabled={linkingId !== null}
-              activeOpacity={0.7}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                paddingVertical: 12,
-                borderBottomWidth: 1,
-                borderBottomColor: "#EEF1F6"
-              }}>
-              
-                  {/* Icon */}
-                  <View
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 21,
-                  backgroundColor: `${
-                  tx.category_color || Colors.primary}20`,
-
                   alignItems: "center",
                   justifyContent: "center",
-                  marginRight: 10
+                  paddingVertical: 35
                 }}>
-                
-                    <MaterialCommunityIcons
-                  name={tx.category_icon || "cash"}
-                  size={19}
-                  color={tx.category_color || Colors.primary} />
-                
-                  </View>
 
-                  {/* Details */}
-                  <View style={{ flex: 1 }}>
-                    <Text
+                <MaterialCommunityIcons
+                  name={search ? "magnify-close" : "receipt-text-remove-outline"}
+                  size={46}
+                  color="#CFCFCF" />
+
+
+                <Text
                   style={{
-                    fontWeight: "700",
-                    color: Colors.text,
-                    fontSize: 14
-                  }}
-                  numberOfLines={1}>
-                  
-                      {tx.notes || "(no notes)"}
-                    </Text>
-
-                    <Text
-                  style={{
-                    color: Colors.muted,
-                    fontSize: 12,
-                    marginTop: 3
-                  }}
-                  numberOfLines={1}>
-                  
-                      {tx.date ?
-                  new Date(tx.date).toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric"
-                  }) :
-                  "—"}
-
-                      {tx.source_name ? ` · ${tx.source_name}` : ""}
-
-                      {tx.category_name ? ` · ${tx.category_name}` : ""}
-                    </Text>
-                  </View>
-                  {/* Amount */}
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <Text
-                  style={{
-                    fontWeight: "800",
-                    color: "#E46A6A",
-                    marginLeft: 8,
-                    fontSize: 15
+                    color: "#7c839b", fontFamily: "Inter",
+                    textAlign: "center",
+                    marginTop: 10,
+                    fontWeight: "600"
                   }}>
-                  
-                      <CurrencyText amount={tx.amount} />
+
+                  {search ?
+                    "No transactions match your search." :
+                    "No matching transactions found."}
+                </Text>
+
+                {search &&
+                  <TouchableOpacity
+                    onPress={() => setSearch("")}
+                    style={{
+                      marginTop: 12,
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                      borderRadius: 18,
+                      backgroundColor: `${'#131b2e'}12`
+                    }}>
+
+                    <Text
+                      style={{
+                        color: '#131b2e',
+                        fontWeight: "700",
+                        fontSize: 13
+                      }}>
+
+                      Clear Search
                     </Text>
-                    {linkingId === tx.id && (
-                      <ActivityIndicator size="small" color={Colors.primary} style={{ marginLeft: 8 }} />
-                    )}
-                  </View>
-                </TouchableOpacity>
-            } />
+                  </TouchableOpacity>
+                }
+              </View> :
+
+              <FlatList
+                data={filteredCandidates}
+                keyExtractor={(t) => String(t.id)}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item: tx }) =>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setLinkingId(tx.id);
+                      setTimeout(async () => {
+                        try {
+                          await onLink(tx);
+                        } finally {
+                          setLinkingId(null);
+                        }
+                      }, 0);
+                    }}
+                    disabled={linkingId !== null}
+                    activeOpacity={0.7}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      paddingVertical: 12,
+                      borderBottomWidth: 1,
+                      borderBottomColor: "#eff4ff"
+                    }}>
+
+                    {/* Icon */}
+                    <View
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 21,
+                        backgroundColor: `${tx.category_color || '#131b2e'}20`,
+
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginRight: 10
+                      }}>
+
+                      <MaterialCommunityIcons
+                        name={tx.category_icon || "cash"}
+                        size={19}
+                        color={tx.category_color || '#131b2e'} />
+
+                    </View>
+
+                    {/* Details */}
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontWeight: "700",
+                          color: "#0b1c30",
+                          fontSize: 14
+                        }}
+                        numberOfLines={1}>
+
+                        {tx.notes || "(no notes)"}
+                      </Text>
+
+                      <Text
+                        style={{
+                          color: "#7c839b", fontFamily: "Inter",
+                          fontSize: 12,
+                          marginTop: 3
+                        }}
+                        numberOfLines={1}>
+
+                        {tx.date ?
+                          new Date(tx.date).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric"
+                          }) :
+                          "—"}
+
+                        {tx.source_name ? ` · ${tx.source_name}` : ""}
+
+                        {tx.category_name ? ` · ${tx.category_name}` : ""}
+                      </Text>
+                    </View>
+                    {/* Amount */}
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                      <Text
+                        style={{
+                          fontWeight: "800",
+                          color: "#E46A6A",
+                          marginLeft: 8,
+                          fontSize: 15
+                        }}>
+
+                        <CurrencyText amount={tx.amount} />
+                      </Text>
+                      {linkingId === tx.id && (
+                        <ActivityIndicator size="small" color={'#131b2e'} style={{ marginLeft: 8 }} />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                } />
 
           }
           {/* Cancel */}
@@ -703,7 +655,7 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
             disabled={linkingId !== null}
             onPress={onClose}
             style={{ marginTop: 10 }}>
-            
+
             Cancel
           </PaperButton>
         </View>
@@ -717,8 +669,8 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
 function isCreditCardBill(bill) {
   return (
     typeof bill?.notes === "string" && (
-    bill.notes.startsWith("Recurring payment template for") ||
-    bill.notes.startsWith("Statement ")));
+      bill.notes.startsWith("Recurring payment template for") ||
+      bill.notes.startsWith("Statement ")));
 
 }
 
@@ -831,7 +783,7 @@ export default function BillDetailScreen({ route, navigation }) {
   if (!bill && !editing) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <ActivityIndicator size="large" color={'#131b2e'} />
       </View>);
 
   }
@@ -875,10 +827,10 @@ export default function BillDetailScreen({ route, navigation }) {
       setResolvedTemplateId(templateId);
 
       const [b, s, cats, srcs] = await Promise.all([
-      getBillById(templateId),
-      getBillSeries(templateId),
-      getCategories(true),
-      getSources(true)]
+        getBillById(templateId),
+        getBillSeries(templateId),
+        getCategories(true),
+        getSources(true)]
       );
 
       setBill(b);
@@ -891,9 +843,9 @@ export default function BillDetailScreen({ route, navigation }) {
       dispatch(setCategoriesMap(categoryMap));
 
       if (b?.category_id)
-      setCategory(cats.find((c) => c.id === b.category_id) || null);
+        setCategory(cats.find((c) => c.id === b.category_id) || null);
       if (b?.source_id)
-      setSource(srcs.find((ss) => ss.id === b.source_id) || null);
+        setSource(srcs.find((ss) => ss.id === b.source_id) || null);
 
       // Select the right occurrence
       let occ = null;
@@ -910,18 +862,18 @@ export default function BillDetailScreen({ route, navigation }) {
       if (!occ) {
         const now = new Date();
         occ =
-        s.find((o) => {
-          if (!o.due_date) return false;
-          const d = new Date(o.due_date);
-          return (
-            d.getFullYear() === now.getFullYear() &&
-            d.getMonth() === now.getMonth() &&
-            o.status !== BILL_STATUS.PAID &&
-            o.status !== BILL_STATUS.SKIPPED);
+          s.find((o) => {
+            if (!o.due_date) return false;
+            const d = new Date(o.due_date);
+            return (
+              d.getFullYear() === now.getFullYear() &&
+              d.getMonth() === now.getMonth() &&
+              o.status !== BILL_STATUS.PAID &&
+              o.status !== BILL_STATUS.SKIPPED);
 
-        }) ||
-        s[s.length - 1] ||
-        null;
+          }) ||
+          s[s.length - 1] ||
+          null;
       }
       setSelectedOcc(occ);
 
@@ -962,8 +914,8 @@ export default function BillDetailScreen({ route, navigation }) {
     const updatedSeries = await getBillSeries(billId);
     setSeries(updatedSeries);
     const occ =
-    updatedSeries.find((o) => Number(o.id) === Number(selectedOcc?.id)) ||
-    null;
+      updatedSeries.find((o) => Number(o.id) === Number(selectedOcc?.id)) ||
+      null;
     setSelectedOcc(occ);
     setLinkedTxs(occ ? await getBillLinkedTransactions(occ.id) : []);
   }
@@ -976,8 +928,8 @@ export default function BillDetailScreen({ route, navigation }) {
       const cards = await getCreditCards(false);
       const card = cards.find(
         (c) =>
-        Number(c.payment_bill_id) === Number(targetBill.id) ||
-        Number(c.payment_bill_id) === Number(targetBill.parent_bill_id)
+          Number(c.payment_bill_id) === Number(targetBill.id) ||
+          Number(c.payment_bill_id) === Number(targetBill.parent_bill_id)
       );
 
       // Normal bill
@@ -1069,20 +1021,20 @@ export default function BillDetailScreen({ route, navigation }) {
   const activeBill = selectedOcc || bill;
   const display = getBillDisplayStatus(activeBill);
   const isPaidOrSkipped =
-  activeBill.status === BILL_STATUS.PAID ||
-  activeBill.status === BILL_STATUS.SKIPPED;
-  
+    activeBill.status === BILL_STATUS.PAID ||
+    activeBill.status === BILL_STATUS.SKIPPED;
+
   const isPayable = (() => {
     if (isPaidOrSkipped) return false;
     if (!activeBill?.due_date) return true;
-    
+
     const dueDate = new Date(activeBill.due_date);
     const now = new Date();
-    
+
     if (bill?.recurrence_type === 'YEARLY') {
       return dueDate.getFullYear() <= now.getFullYear();
     }
-    
+
     if (dueDate.getFullYear() < now.getFullYear()) return true;
     if (dueDate.getFullYear() > now.getFullYear()) return false;
     return dueDate.getMonth() <= now.getMonth();
@@ -1090,42 +1042,194 @@ export default function BillDetailScreen({ route, navigation }) {
 
   // ── render ────────────────────────────────────────────────────────────────
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
+    <View style={{ flex: 1, backgroundColor: '#f8f9ff' }}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 120 }}>
-        
-        {/* Bill Summary */}
-        <Card style={{ marginBottom: 12, borderRadius: 20 }}>
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: "800",
-              color: Colors.text,
-              marginBottom: 18
-            }}>
-            
-            Bill Summary
-          </Text>
+        contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 140 }}>
+        {/* 1. Hero Card */}
+        <Card style={{ marginBottom: 16, borderRadius: 16, padding: 0, overflow: "hidden", backgroundColor: '#ffffff', borderColor: '#dce9ff', borderWidth: 1, elevation: 1, shadowColor: '#0b1c30', shadowOpacity: 0.04, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } }}>
+          <View style={{ padding: 18, flexDirection: "row", alignItems: "center" }}>
+            <View style={{ width: 56, height: 72, borderRadius: 14, backgroundColor: '#e6f7f5', justifyContent: "center", alignItems: "center" }}>
+              <MaterialCommunityIcons name={reduxCategory?.icon || "cellphone"} size={32} color="#006a61" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 16 }}>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text style={{ fontSize: 20, fontWeight: "700", color: "#0b1c30", fontFamily: "Plus Jakarta Sans" }}>
+                  {selectedLabel || "Current Bill"}
+                </Text>
+                <View style={{ marginLeft: 10 }}>
+                  <StatusBadge display={display} />
+                </View>
+              </View>
+              <Text style={{ marginTop: 4, fontSize: 13, color: "#7c839b", fontFamily: "Inter" }}>
+                {reduxCategory?.name || "Category"} • {bill.is_recurring ? bill.recurrence_type : "One-time"}
+              </Text>
+            </View>
+          </View>
 
-          <View style={{ alignItems: "center", marginBottom: 20 }}>
+          <View style={{ flexDirection: "row", backgroundColor: "#f8faff", paddingVertical: 18, borderTopWidth: 1, borderBottomWidth: 1, borderColor: "#eff4ff" }}>
+            <View style={{ flex: 1, paddingLeft: 18 }}>
+              <Text style={{ fontSize: 11, fontWeight: "600", color: "#7c839b", fontFamily: "Inter", letterSpacing: 0.5 }}>DUE AMOUNT</Text>
+              <Text style={{ fontSize: 26, fontWeight: "700", color: "#0b1c30", fontFamily: "Plus Jakarta Sans", marginTop: 4 }}>
+                <CurrencyText amount={activeBill.amount} />
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6 }}>
+                <MaterialCommunityIcons name="calendar-check" size={20} color="#006a61" />
+                <Text style={{ marginLeft: 4, fontSize: 12, color: "#45464d", fontFamily: "Inter" }}>
+                  Due {formatDueDate(activeBill.due_date)}
+                </Text>
+              </View>
+            </View>
+            <View style={{ flex: 1, paddingRight: 18 }}>
+              <Text style={{ fontSize: 11, fontWeight: "600", color: "#7c839b", fontFamily: "Inter", letterSpacing: 0.5 }}>PAID AMOUNT</Text>
+              <Text style={{ fontSize: 26, fontWeight: "700", color: "#006a61", fontFamily: "Plus Jakarta Sans", marginTop: 4 }}>
+                <CurrencyText amount={activeBill.paid_amount || 0} />
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6 }}>
+                <MaterialCommunityIcons name="check-circle-outline" size={20} color="#006a61" />
+                <Text style={{ marginLeft: 4, fontSize: 12, color: "#006a61", fontFamily: "Inter", fontWeight: "500" }}>
+                  {isPaidOrSkipped ? "Fully Settled" : "Pending"}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={{ flexDirection: "row", flexWrap: "wrap", padding: 14 }}>
+            {[
+              { icon: "calendar-outline", label: "Bill Date", value: formatDueDate(activeBill.due_date) },
+              { icon: "shape-outline", label: "Category", value: reduxCategory?.name || "-" },
+              { icon: "bank-outline", label: "Source", value: source?.name || "-" },
+              { icon: "repeat", label: "Repeat", value: bill.is_recurring ? bill.recurrence_type : "No" }
+            ].map(({ icon, label, value }) => (
+              <View key={label} style={styles.infoTile}>
+                <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+                  <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: "#f4f8fb", justifyContent: "center", alignItems: "center", marginRight: 10 }}>
+                    <MaterialCommunityIcons name={icon} color={'#7c839b'} size={18} />
+                  </View>
+                  <View>
+                    <Text style={{ fontSize: 12, color: "#7c839b", fontFamily: "Inter" }}>{label}</Text>
+                    <Text numberOfLines={1} style={{ marginTop: 2, fontWeight: "600", color: "#0b1c30", fontSize: 13, fontFamily: "Inter" }}>
+                      {value}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        </Card>
+
+        {/* 3. Chart & History */}
+        <Card
+          style={{ marginBottom: 16, borderRadius: 16, padding: 0, overflow: 'hidden', backgroundColor: '#ffffff', borderColor: '#dce9ff', borderWidth: 1, elevation: 1, shadowColor: '#0b1c30', shadowOpacity: 0.04, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } }}>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingBottom: 10 }}>
+            <View>
+              <Text
+                style={{
+                  fontWeight: "600",
+                  fontSize: 18,
+                  color: "#0b1c30",
+                  fontFamily: "Plus Jakarta Sans"
+                }}>
+                Billing History
+              </Text>
+              <Text style={{ fontSize: 13, color: "#7c839b", marginTop: 2, fontFamily: "Inter" }}>
+                {series.length} Bill Occurrences
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row' }}>
+              <TouchableOpacity
+                onPress={() => setChartOffset((prev) => Math.min(Math.max(0, chartData.length - 5), prev + 1))}
+                style={{
+                  width: 32, height: 32, borderRadius: 8, borderWidth: 1, borderColor: '#eff4ff', backgroundColor: "#fff",
+                  alignItems: "center", justifyContent: "center", marginRight: 8,
+                  opacity: chartData.length <= 5 || chartOffset >= chartData.length - 5 ? 0.3 : 1
+                }}
+                disabled={chartData.length <= 5 || chartOffset >= chartData.length - 5}>
+                <MaterialCommunityIcons name="chevron-left" size={20} color={'#0b1c30'} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setChartOffset((prev) => Math.max(0, prev - 1))}
+                style={{
+                  width: 32, height: 32, borderRadius: 8, borderWidth: 1, borderColor: '#eff4ff', backgroundColor: "#fff",
+                  alignItems: "center", justifyContent: "center",
+                  opacity: chartOffset === 0 ? 0.3 : 1
+                }}
+                disabled={chartOffset === 0}>
+                <MaterialCommunityIcons name="chevron-right" size={20} color={'#0b1c30'} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View
+            style={{
+              width: "100%",
+              alignItems: "center",
+              justifyContent: "center",
+              marginTop: 10
+            }}>
+            <PremiumRoundedBarChart
+              labels={displayChartData.map((x) => x.label)}
+              ids={displayChartData.map((x) => x.id)}
+              dueValues={displayChartData.map((x) => x.due)}
+              paidValues={displayChartData.map((x) => x.paid)}
+              width={screenWidth - 32}
+              height={150}
+              baseColor={'#dce9ff'}
+              selectedColor={'#6bd8cb'}
+              selectedLabel={selectedLabel}
+              isEmpty={displayChartData.length === 0}
+              onBarPress={(data) => {
+                const match = series.find((x) => x.id === data.id);
+                if (match) {
+                  handleSelectOccurrence(match);
+                }
+              }} />
+          </View>
+
+
+        </Card>
+
+        {/* 2. Linked transactions */}
+        <LinkedTransactionsCard
+          linkedTxs={linkedTxs}
+          onAddMore={() => setShowLinkModal(true)}
+          onUnlink={handleUnlinkTransaction} />
+
+        {/* 4. Bill Summary */}
+        <Card style={{ marginBottom: 16, borderRadius: 16, backgroundColor: '#ffffff', borderColor: '#dce9ff', borderWidth: 1, elevation: 1, shadowColor: '#0b1c30', shadowOpacity: 0.04, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <Text
               style={{
-                fontSize: 34,
-                fontWeight: "900",
-                color: "#2DBE60"
+                fontSize: 18,
+                fontWeight: "600",
+                color: "#0b1c30",
+                fontFamily: "Plus Jakarta Sans"
               }}>
-              
+              Bill Summary
+            </Text>
+            <Text style={{ fontSize: 12, fontWeight: "600", color: "#7c839b", fontFamily: "Inter" }}>Lifetime Record</Text>
+          </View>
+
+          <View style={{ alignItems: "center", marginBottom: 24 }}>
+            <Text
+              style={{
+                fontSize: 36,
+                fontWeight: "700",
+                color: "#006a61",
+                fontFamily: "Plus Jakarta Sans"
+              }}>
               <CurrencyText amount={totalPaidAmount} />
             </Text>
-
             <Text
               style={{
-                color: Colors.muted,
-                fontWeight: "600",
-                marginTop: 4
+                color: "#7c839b",
+                fontWeight: "500",
+                fontSize: 13,
+                marginTop: 4,
+                fontFamily: "Inter"
               }}>
-              
               Total Amount Paid
             </Text>
           </View>
@@ -1135,479 +1239,170 @@ export default function BillDetailScreen({ route, navigation }) {
               flexDirection: "row",
               justifyContent: "space-between"
             }}>
-            
-            <View style={styles.summaryTile}>
-              <MaterialCommunityIcons
-                name="check-circle"
-                size={26}
-                color="#2DBE60" />
-              
 
+            <View style={[styles.summaryTile, { backgroundColor: '#f4f8fb', paddingVertical: 14, borderRadius: 12, marginHorizontal: 4 }]}>
+              <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#006a61', justifyContent: 'center', alignItems: 'center' }}>
+                <MaterialCommunityIcons name="check" size={14} color="#fff" />
+              </View>
               <Text style={styles.summaryValue}>{paidCount}</Text>
-
               <Text style={styles.summaryLabel}>Paid Bills</Text>
             </View>
 
-            <View style={styles.summaryTile}>
-              <MaterialCommunityIcons
-                name="clock-outline"
-                size={26}
-                color="#FF9800" />
-              
-
+            <View style={[styles.summaryTile, { backgroundColor: '#f4f8fb', paddingVertical: 14, borderRadius: 12, marginHorizontal: 4 }]}>
+              <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#2f1500', justifyContent: 'center', alignItems: 'center' }}>
+                <MaterialCommunityIcons name="clock-time-four" size={14} color="#ffdcc3" />
+              </View>
               <Text style={styles.summaryValue}>
                 <CurrencyText amount={pendingAmount} />
               </Text>
-
               <Text style={styles.summaryLabel}>Pending</Text>
             </View>
 
-            <View style={styles.summaryTile}>
-              <MaterialCommunityIcons
-                name="receipt"
-                size={26}
-                color={Colors.primary} />
-              
-
+            <View style={[styles.summaryTile, { backgroundColor: '#f4f8fb', paddingVertical: 14, borderRadius: 12, marginHorizontal: 4 }]}>
+              <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#eff4ff', justifyContent: 'center', alignItems: 'center', }}>
+                <MaterialCommunityIcons name="text-box-outline" size={14} color={'#131b2e'} />
+              </View>
               <Text style={styles.summaryValue}>{series.length}</Text>
-
               <Text style={styles.summaryLabel}>Total Bills</Text>
             </View>
           </View>
 
-          <View
-            style={{
-              marginTop: 20
-            }}>
-            
+          <View style={{ marginTop: 24 }}>
             <View
               style={{
-                height: 10,
-                borderRadius: 6,
-                backgroundColor: "#ECECEC",
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: "#eaf1ff",
                 overflow: "hidden"
               }}>
-              
               <View
                 style={{
                   width: `${paymentPercentage}%`,
                   height: "100%",
-                  backgroundColor: "#2DBE60"
+                  backgroundColor: "#006a61"
                 }} />
-              
             </View>
-
             <Text
               style={{
-                marginTop: 8,
+                marginTop: 10,
                 textAlign: "center",
-                color: Colors.muted,
-                fontWeight: "600"
+                color: "#45464d", fontFamily: "Inter",
+                fontWeight: "600",
+                fontSize: 12
               }}>
-              
-              <CurrencyText amount={totalPaidAmount} /> of{" "}
-              <CurrencyText amount={totalDueAmount} /> Paid
+              <CurrencyText amount={totalPaidAmount} /> of <CurrencyText amount={totalDueAmount} /> Paid
             </Text>
           </View>
         </Card>
 
-        {/* Chart */}
-        <Card
-          style={{ marginBottom: 12, borderRadius: 20, overflow: "hidden" }}>
-          
-          <Text
-            style={{
-              fontWeight: "800",
-              fontSize: 17,
-              color: Colors.text,
-              marginBottom: 10
-            }}>
-            
-            Bill History
-          </Text>
-          <View
-            style={{
-              width: "100%",
-              alignItems: "center",
-              justifyContent: "center"
-            }}>
-            
-            <TouchableOpacity
-              onPress={() =>
-              setChartOffset((prev) =>
-              Math.min(Math.max(0, chartData.length - 5), prev + 1)
-              )
-              }
-              style={{
-                position: "absolute",
-                left: 0,
-                zIndex: 10,
-                width: 34,
-                height: 34,
-                borderRadius: 17,
-                backgroundColor: "rgba(255,255,255,0.85)",
-                alignItems: "center",
-                justifyContent: "center",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 4,
-                elevation: 3,
-                opacity:
-                chartData.length <= 5 || chartOffset >= chartData.length - 5 ?
-                0.3 :
-                1
-              }}
-              disabled={
-              chartData.length <= 5 || chartOffset >= chartData.length - 5
-              }>
-              
-              <MaterialCommunityIcons
-                name="chevron-left"
-                size={20}
-                color={Colors.text} />
-              
-            </TouchableOpacity>
-
-            <PremiumRoundedBarChart
-              labels={displayChartData.map((x) => x.label)}
-              ids={displayChartData.map((x) => x.id)}
-              dueValues={displayChartData.map((x) => x.due)}
-              paidValues={displayChartData.map((x) => x.paid)}
-              width={screenWidth - 56}
-              height={250}
-              baseColor={reduxCategory?.color || Colors.primary}
-              selectedLabel={selectedLabel}
-              isEmpty={displayChartData.length === 0}
-              onBarPress={(data) => {
-                const match = series.find((x) => x.id === data.id);
-
-                if (match) {
-                  handleSelectOccurrence(match);
-                }
-              }} />
-            
-
-            <TouchableOpacity
-              onPress={() => setChartOffset((prev) => Math.max(0, prev - 1))}
-              style={{
-                position: "absolute",
-                right: 0,
-                zIndex: 10,
-                width: 34,
-                height: 34,
-                borderRadius: 17,
-                backgroundColor: "rgba(255,255,255,0.85)",
-                alignItems: "center",
-                justifyContent: "center",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 4,
-                elevation: 3,
-                opacity: chartOffset === 0 ? 0.3 : 1
-              }}
-              disabled={chartOffset === 0}>
-              
-              <MaterialCommunityIcons
-                name="chevron-right"
-                size={20}
-                color={Colors.text} />
-              
-            </TouchableOpacity>
-          </View>
-        </Card>
-
-        {/* Hero card */}
-        <Card
-          style={{
-            marginBottom: 12,
-            borderRadius: 22,
-            overflow: "hidden",
-            padding: 0
-          }}>
-          
-          <View
-            style={{
-              backgroundColor: `${display.color}12`,
-              padding: 18,
-              flexDirection: "row",
-              alignItems: "center"
-            }}>
-            
-            <View
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: 32,
-                backgroundColor: `${display.color}25`,
-                justifyContent: "center",
-                alignItems: "center"
-              }}>
-              
-              <MaterialCommunityIcons
-                name={reduxCategory?.icon || "receipt"}
-                size={30}
-                color={display.color} />
-              
-            </View>
-            <View style={{ flex: 1, marginLeft: 15 }}>
-              <Text
-                numberOfLines={1}
-                style={{ fontSize: 19, fontWeight: "800", color: Colors.text }}>
-                
-                {bill.name}
-              </Text>
-              <View style={{ marginTop: 8 }}>
-                <Text
-                  style={{
-                    fontSize: 13,
-                    color: Colors.muted
-                  }}>
-                  
-                  Due Amount
-                </Text>
-
-                <Text
-                  style={{
-                    fontSize: 30,
-                    fontWeight: "900",
-                    color: display.color
-                  }}>
-                  
-                  <CurrencyText amount={activeBill.amount} />
-                </Text>
-
-                <Text
-                  style={{
-                    marginTop: 8,
-                    fontSize: 13,
-                    color: Colors.muted
-                  }}>
-                  
-                  Paid Amount
-                </Text>
-
-                <Text
-                  style={{
-                    fontSize: 24,
-                    fontWeight: "800",
-                    color: "#2DBE60"
-                  }}>
-                  
-                  <CurrencyText amount={activeBill.paid_amount || 0} />
-                </Text>
-              </View>
-              <View
-                style={{
-                  alignSelf: "flex-start",
-                  marginTop: 8,
-                  backgroundColor: display.color,
-                  paddingHorizontal: 12,
-                  paddingVertical: 5,
-                  borderRadius: 20
-                }}>
-                
-                <Text
-                  style={{ color: "#fff", fontWeight: "700", fontSize: 12 }}>
-                  
-                  {display.label}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={{ flexDirection: "row", flexWrap: "wrap", padding: 14 }}>
-            {[
-            {
-              icon: "calendar",
-              label: "Due",
-              value: formatDueDate(activeBill.due_date)
-            },
-            {
-              icon: reduxCategory?.icon || "shape",
-              label: "Category",
-              value: reduxCategory?.name || "-"
-            },
-            { icon: "bank", label: "Source", value: source?.name || "-" },
-            {
-              icon: "repeat",
-              label: "Repeat",
-              value: bill.is_recurring ?
-              `${bill.recurrence_type}` :
-              "No"
-            }].
-            map(({ icon, label, value }) =>
-            <View key={label} style={styles.infoTile}>
-                <MaterialCommunityIcons
-                name={icon}
-                color={Colors.primary}
-                size={18} />
-              
-                <Text style={styles.infoTitle}>{label}</Text>
-                <Text numberOfLines={1} style={styles.infoValue}>
-                  {value}
-                </Text>
-              </View>
-            )}
-          </View>
-        </Card>
-
-        {/* Linked transactions */}
-        <LinkedTransactionsCard
-          linkedTxs={linkedTxs}
-          onAddMore={() => setShowLinkModal(true)}
-          onUnlink={handleUnlinkTransaction} />
-        
-
-        {/* Occurrence timeline */}
-        <OccurrenceList
-          series={series}
-          selectedId={selectedOcc?.id}
-          onSelect={handleSelectOccurrence} />
-        
-
         {/* Dialogs */}
         <ConfirmDialog
           visible={confirmVisible}
-          title={
-          confirmAction === "delete_occ" ? "Delete Occurrence" : "Skip Bill"
-          }
-          message={
-          confirmAction === "delete_occ" ?
-          `Delete the occurrence for ${formatDueDate(activeBill.due_date)}? It won't be recreated.` :
-          `Skip "${activeBill.name}" for ${formatDueDate(activeBill.due_date)}?`
-          }
+          title={confirmAction === "delete_occ" ? "Delete Occurrence" : "Skip Bill"}
+          message={confirmAction === "delete_occ" ? `Delete the occurrence for ${formatDueDate(activeBill.due_date)}? It won't be recreated.` : `Skip "${activeBill.name}" for ${formatDueDate(activeBill.due_date)}?`}
           confirmLabel={confirmAction === "skip" ? "Skip" : "Delete"}
-          onCancel={() => {
-            setConfirmVisible(false);
-            setConfirmAction(null);
-          }}
+          onCancel={() => { setConfirmVisible(false); setConfirmAction(null); }}
           onConfirm={async () => {
             try {
               showPageLoader();
               if (confirmAction === "delete_occ") {
                 const isTemplate = activeBill.id === bill?.id && bill?.is_recurring;
                 await softDeleteBillOccurrence(activeBill.id, isTemplate, activeBill.due_date);
-                // Wait for everything to finish.
                 await load();
               } else if (confirmAction === "skip") {
                 await skipBill(activeBill.id);
                 await refreshSelectedOccurrence();
                 await load(activeBill.id);
               }
-            } catch (e) {
-              console.error("[BillDetail] Action failed:", e);
-            } finally {
-              setConfirmVisible(false);
-              setConfirmAction(null);
-              hidePageLoader();
-            }
+            } catch (e) { console.error("[BillDetail] Action failed:", e); } finally { setConfirmVisible(false); setConfirmAction(null); hidePageLoader(); }
           }} />
-        
 
         <LinkTransactionModal
           visible={showLinkModal}
           bill={activeBill}
           onLink={handleLinkTransaction}
           onClose={() => setShowLinkModal(false)} />
-        
-
-
-        
       </ScrollView>
 
       {/* Bottom action bar */}
       <View style={styles.bottomBar}>
         {isPayable &&
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: "#2DBE60" }]}
-          onPress={handleMarkPaid}>
-          
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: "#006a61" }]}
+            onPress={handleMarkPaid}>
+
             <MaterialCommunityIcons
-            name="check-circle"
-            color="#fff"
-            size={22} />
-          
+              name="check-circle"
+              color="#fff"
+              size={22} />
+
             <Text style={styles.actionTextWhite}>Paid</Text>
           </TouchableOpacity>
         }
 
         {activeBill.status === BILL_STATUS.SKIPPED ?
-        <TouchableOpacity style={styles.actionButton} onPress={handleUnskip}>
-            <MaterialCommunityIcons name="undo" color="#1976D2" size={22} />
+          <TouchableOpacity style={styles.actionButton} onPress={handleUnskip}>
+            <MaterialCommunityIcons name="undo" color="#0b57d0" size={22} />
             <Text style={styles.actionText}>Unskip</Text>
           </TouchableOpacity> :
-        !isPaidOrSkipped ?
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => {
-            setConfirmAction("skip");
-            setConfirmVisible(true);
-          }}>
-          
-            <MaterialCommunityIcons
-            name="skip-next-circle"
-            color="#F57C00"
-            size={22} />
-          
-            <Text style={styles.actionText}>Skip</Text>
-          </TouchableOpacity> :
-        null}
+          !isPaidOrSkipped ?
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => {
+                setConfirmAction("skip");
+                setConfirmVisible(true);
+              }}>
+
+              <MaterialCommunityIcons
+                name="skip-next-circle"
+                color="#c76c00"
+                size={22} />
+
+              <Text style={styles.actionText}>Skip</Text>
+            </TouchableOpacity> :
+            null}
 
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => setShowLinkModal(true)}>
-          
-          <MaterialCommunityIcons
-            name="link-variant"
-            color={Colors.primary}
-            size={22} />
-          
-          <Text style={styles.actionText}>Link</Text>
+
+          <MaterialCommunityIcons name="link-variant" color="#003a70" size={22} />
+          <Text style={[styles.actionText, { color: "#003a70" }]}>Link</Text>
         </TouchableOpacity>
 
         {!isCreditCardBill(activeBill) &&
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => navigation.navigate("BillOccurrenceEdit", { occurrence: selectedOcc, bill })}>
-          
-            <MaterialCommunityIcons
-            name="square-edit-outline"
-            color="#FF9800"
-            size={22} />
-          
-            <Text style={styles.actionText}>Edit</Text>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => navigation.navigate("BillOccurrenceEdit", { occurrence: selectedOcc, bill })}>
+
+            <MaterialCommunityIcons name="square-edit-outline" color="#b75500" size={22} />
+            <Text style={[styles.actionText, { color: "#b75500" }]}>Edit</Text>
           </TouchableOpacity>
         }
 
         <TouchableOpacity
-           style={styles.actionButton}
-           onPress={() => {
-             setConfirmAction("delete_occ");
-             setConfirmVisible(true);
-           }}
-          >
-           <MaterialCommunityIcons
-             name="delete-outline"
-             color="#F44336"
-             size={22}
-           />
-           <Text style={styles.actionText}>Delete</Text>
-          </TouchableOpacity>
+          style={styles.actionButton}
+          onPress={() => {
+            setConfirmAction("delete_occ");
+            setConfirmVisible(true);
+          }}
+        >
+          <MaterialCommunityIcons name="delete-outline" color="#ba1a1a" size={22} />
+          <Text style={[styles.actionText, { color: "#ba1a1a" }]}>Delete</Text>
+        </TouchableOpacity>
       </View>
       <Modal
         visible={showPaymentSourcePicker}
         transparent
         animationType="slide">
-        
+
         <View
           style={{
             flex: 1,
             backgroundColor: "rgba(0,0,0,0.4)",
             justifyContent: "flex-end"
           }}>
-          
+
           <View
             style={{
               backgroundColor: "#fff",
@@ -1616,14 +1411,14 @@ export default function BillDetailScreen({ route, navigation }) {
               borderTopRightRadius: 16,
               padding: 16
             }}>
-            
+
             <Text
               style={{
                 fontWeight: "700",
                 fontSize: 16,
                 marginBottom: 12
               }}>
-              
+
               Select Payment Source
             </Text>
 
@@ -1633,70 +1428,70 @@ export default function BillDetailScreen({ route, navigation }) {
               onChangeText={setPaymentSourceSearch}
               mode="outlined"
               style={{ marginBottom: 10 }} />
-            
+
 
             <ScrollView>
               {paymentSources.
-              filter((s) =>
-              s.name.
-              toLowerCase().
-              includes(paymentSourceSearch.toLowerCase())
-              ).
-              map((source) =>
-              <TouchableOpacity
-                key={source.id}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  paddingVertical: 12
-                }}
-                onPress={async () => {
-                  try {
-                    showPageLoader();
-                    const paymentId = await payCreditCardBill({
-                      bill: activeBill,
-                      card: selectedCreditCard,
-                      paymentSourceId: source.id
-                    });
-                    await markBillPaid(activeBill.id, null, paymentId);
-                    try {
-                      await onStatementPaid(selectedCreditCard.id);
-                    } catch (e) {
-                      console.warn(
-                        "[BillDetailScreen] onStatementPaid failed:",
-                        e
-                      );
-                    }
-                    setShowPaymentSourcePicker(false);
-                    setSelectedCreditCard(null);
-                    setPaymentSourceSearch("");
-                    await load();
-                  } catch (e) {
-                    console.error(
-                      "[BillDetail] Credit card payment failed:",
-                      e
-                    );
-                    Alert.alert("Error", "Unable to complete payment.");
-                  } finally {
-                    hidePageLoader();
-                  }
-                }}>
-                
+                filter((s) =>
+                  s.name.
+                    toLowerCase().
+                    includes(paymentSourceSearch.toLowerCase())
+                ).
+                map((source) =>
+                  <TouchableOpacity
+                    key={source.id}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      paddingVertical: 12
+                    }}
+                    onPress={async () => {
+                      try {
+                        showPageLoader();
+                        const paymentId = await payCreditCardBill({
+                          bill: activeBill,
+                          card: selectedCreditCard,
+                          paymentSourceId: source.id
+                        });
+                        await markBillPaid(activeBill.id, null, paymentId);
+                        try {
+                          await onStatementPaid(selectedCreditCard.id);
+                        } catch (e) {
+                          console.warn(
+                            "[BillDetailScreen] onStatementPaid failed:",
+                            e
+                          );
+                        }
+                        setShowPaymentSourcePicker(false);
+                        setSelectedCreditCard(null);
+                        setPaymentSourceSearch("");
+                        await load();
+                      } catch (e) {
+                        console.error(
+                          "[BillDetail] Credit card payment failed:",
+                          e
+                        );
+                        Alert.alert("Error", "Unable to complete payment.");
+                      } finally {
+                        hidePageLoader();
+                      }
+                    }}>
+
                     <MaterialCommunityIcons
-                  name={source.icon || "wallet"}
-                  size={22}
-                  color={Colors.primary} />
-                
+                      name={source.icon || "wallet"}
+                      size={22}
+                      color={'#131b2e'} />
+
                     <Text
-                  style={{
-                    marginLeft: 10,
-                    flex: 1
-                  }}>
-                  
+                      style={{
+                        marginLeft: 10,
+                        flex: 1
+                      }}>
+
                       {source.name}
                     </Text>
                   </TouchableOpacity>
-              )}
+                )}
             </ScrollView>
 
             <PaperButton
@@ -1706,7 +1501,7 @@ export default function BillDetailScreen({ route, navigation }) {
                 setPaymentSourceSearch("");
                 hidePageLoader();
               }}>
-              
+
               Cancel
             </PaperButton>
           </View>
@@ -1719,49 +1514,48 @@ export default function BillDetailScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   infoTile: { width: "50%", paddingVertical: 12, flexDirection: "column" },
-  infoTitle: { marginTop: 4, fontSize: 11, color: Colors.muted },
+  infoTitle: { marginTop: 4, fontSize: 12, color: "#7c839b", fontFamily: "Inter" },
   infoValue: {
     marginTop: 2,
-    fontWeight: "700",
-    color: Colors.text,
-    fontSize: 14
+    fontWeight: "600",
+    color: "#0b1c30",
+    fontSize: 14,
+    fontFamily: "Inter"
   },
   bottomBar: {
     position: "absolute",
-    left: 12,
-    right: 12,
-    bottom: 12,
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#ffffff",
+    borderTopWidth: 1,
+    borderTopColor: "#eff4ff",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 8
+    alignItems: "center"
   },
   actionButton: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 8,
-    borderRadius: 14
+    borderRadius: 9999,
   },
   actionText: {
     marginTop: 3,
     fontSize: 11,
-    fontWeight: "700",
-    color: Colors.text
+    fontWeight: "600",
+    color: "#0b1c30",
+    fontFamily: "Inter"
   },
   actionTextWhite: {
     marginTop: 3,
     fontSize: 11,
-    fontWeight: "700",
-    color: "#fff"
+    fontWeight: "600",
+    color: "#ffffff",
+    fontFamily: "Inter"
   },
   summaryTile: {
     flex: 1,
@@ -1770,12 +1564,14 @@ const styles = StyleSheet.create({
   summaryValue: {
     marginTop: 8,
     fontSize: 18,
-    fontWeight: "800",
-    color: Colors.text
+    fontWeight: "700",
+    color: "#0b1c30",
+    fontFamily: "Plus Jakarta Sans"
   },
   summaryLabel: {
     marginTop: 3,
-    color: Colors.muted,
-    fontSize: 12
+    color: "#7c839b",
+    fontSize: 12,
+    fontFamily: "Inter"
   }
 });

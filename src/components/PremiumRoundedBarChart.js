@@ -9,7 +9,7 @@ import {
 import { formatCompactAmount } from '../utils/numberUtils';
 import { Colors } from './Theme';
 
-const BAR_TRACK_HEIGHT = 170;
+const BAR_TRACK_HEIGHT = 100;
 
 const hexToRgb = (hex) => {
   if (!hex || typeof hex !== 'string') return null;
@@ -21,15 +21,7 @@ const hexToRgb = (hex) => {
 };
 
 const getPremiumBarColor = (baseColor, index, total, opacity = 1) => {
-  const safeColor = baseColor || Colors.primary;
-  const rgb = hexToRgb(safeColor);
-  if (!rgb) return `rgba(76,110,245,${Math.max(0.84, opacity)})`;
-  const spread = total > 1 ? index / (total - 1) : 0;
-  const lightenAmount = 0.04 + spread * 0.16;
-  const r = Math.round(rgb.r + (255 - rgb.r) * lightenAmount);
-  const g = Math.round(rgb.g + (255 - rgb.g) * lightenAmount);
-  const b = Math.round(rgb.b + (255 - rgb.b) * lightenAmount);
-  return `rgba(${r},${g},${b},${Math.min(1, Math.max(0.84, opacity))})`;
+  return baseColor || '#dce9ff';
 };
 
 
@@ -41,7 +33,7 @@ export default function PremiumRoundedBarChart({
   dueValues = [],
   paidValues = [],
   width,
-  height = 165,
+  height = 150,
   baseColor,
   onBarPress,
   selectedLabel,
@@ -145,9 +137,9 @@ export default function PremiumRoundedBarChart({
                       style={[
                         styles.customBar,
                         {
-                          height: barHeight,
+                          height: BAR_TRACK_HEIGHT,
                           width: selected ? 32 : 26,
-                          backgroundColor: "#ECECEC",
+                          backgroundColor: "#f4f8fb",
                           borderRadius: selected ? 20 : 16,
                           overflow: "hidden",
                         },

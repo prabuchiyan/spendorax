@@ -51,6 +51,9 @@ import { initializeAutomaticBackup } from './src/services/automaticBackupService
 import { Provider as PaperProvider, DefaultTheme as PaperDefaultTheme } from 'react-native-paper';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { Colors } from './src/components/Theme';
+import * as Font from 'expo-font';
+import { PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans/700Bold';
+import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 
@@ -81,9 +84,14 @@ export default function App() {
         if (MaterialCommunityIcons?.loadFont) {
           await MaterialCommunityIcons.loadFont();
         }
-        if (Feather?.loadFont) {
-          await Feather.loadFont();
-        }
+        if (Feather?.loadFont) { await Feather.loadFont(); }
+
+        try {
+          await Font.loadAsync({
+            'Plus Jakarta Sans': PlusJakartaSans_700Bold,
+            'Inter': Inter_500Medium
+          });
+        } catch (e) { console.warn('Font load error', e); }
 
         await initDB();
 
@@ -167,8 +175,8 @@ export default function App() {
             <BalanceVisibilityProvider>
               <AppLockProvider>
                 <AppLockWrapper>
-                  <NavigationContainer 
-                    ref={navigationRef} 
+                  <NavigationContainer
+                    ref={navigationRef}
                     onReady={() => processPendingNotification(navigationRef)}
                   >
                     <Stack.Navigator>
