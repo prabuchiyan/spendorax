@@ -3388,11 +3388,10 @@ function getStatementPeriod(statementDay, referenceDate) {
     previousStatementDay,
   );
 
-  // Billing cycle starts the day AFTER previous statement
+  // Billing cycle starts on previous statement date
   const statementStart = new Date(previousStatementDate);
-  statementStart.setDate(statementStart.getDate() + 1);
 
-  // Billing cycle ends the DAY BEFORE current statement
+  // Billing cycle ends the day before current statement date
   const statementEnd = new Date(statementDate);
   statementEnd.setDate(statementEnd.getDate() - 1);
 

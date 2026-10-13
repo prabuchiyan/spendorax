@@ -1094,35 +1094,83 @@ export async function getAdvancedSearchTransactions(params) {
 
       let filtered = rows.filter(tx => {
         if (type && type !== 'all') {
-          if (type === 'expense') {
-            if (tx.type !== 'expense') return false;
-            if (tx.transfer_group_id || tx.is_transfer === 1) return false;
+          const isTransfer = Boolean(
+            (tx.transfer_group_id && String(tx.transfer_group_id).trim() !== '') ||
+            tx.is_transfer === 1 ||
+            String(tx.type || '').toLowerCase() === 'transfer'
+          );
+          const txType = String(tx.type || '').toLowerCase();
+
+          if (type === 'transfer') {
+            if (!isTransfer) return false;
+          } else if (type === 'expense') {
+            if (isTransfer || txType !== 'expense') return false;
+          } else if (type === 'income') {
+            if (isTransfer || txType !== 'income') return false;
           }
-          if (type === 'income') {
-            if (tx.type !== 'income') return false;
-            if (tx.transfer_group_id || tx.is_transfer === 1) return false;
-          }
-          if (type === 'transfer' && !tx.transfer_group_id && tx.is_transfer !== 1) return false;
         }
-        if (amount && Number(tx.amount) !== Number(amount)) return false;
-        if (note) {
+
+        if (amount !== undefined && amount !== null && String(amount).trim() !== '') {
+          if (Number(tx.amount) !== Number(amount)) return false;
+        }
+
+        if (note && note.trim() !== '') {
           if (!tx.notes) return false;
           if (tx.notes.toLowerCase() !== note.trim().toLowerCase()) return false;
         }
 
         if (!tx.date) {
-           if (exactDate || month || startDate || endDate) return false;
+          if (exactDate || month || year || startDate || endDate) return false;
         } else {
           const dStr = String(tx.date).replace(" ", "T");
+          const txDateOnly = String(tx.date).substring(0, 10);
+          let localDateKey = '';
+          const parsedD = new Date(dStr);
+          if (!isNaN(parsedD.getTime())) {
+            localDateKey = `${parsedD.getFullYear()}-${String(parsedD.getMonth() + 1).padStart(2, '0')}-${String(parsedD.getDate()).padStart(2, '0')}`;
+          }
+
           if (exactDate) {
-            if (dStr < `${exactDate}T00:00:00` || dStr > `${exactDate}T23:59:59`) return false;
+            const matches = (
+              txDateOnly === exactDate ||
+              localDateKey === exactDate ||
+              (dStr >= `${exactDate}T00:00:00` && dStr <= `${exactDate}T23:59:59`)
+            );
+            if (!matches) return false;
           } else if (month) {
-            if (dStr < `${month}-01T00:00:00` || dStr > `${month}-31T23:59:59`) return false;
+            const txMonth = String(tx.date).substring(0, 7);
+            let localMonth = '';
+            if (!isNaN(parsedD.getTime())) {
+              localMonth = `${parsedD.getFullYear()}-${String(parsedD.getMonth() + 1).padStart(2, '0')}`;
+            }
+            const matches = (
+              txMonth === month ||
+              localMonth === month ||
+              (dStr >= `${month}-01T00:00:00` && dStr <= `${month}-31T23:59:59`)
+            );
+            if (!matches) return false;
           } else if (year) {
-            if (dStr < `${year}-01-01T00:00:00` || dStr > `${year}-12-31T23:59:59`) return false;
+            const txYear = String(tx.date).substring(0, 4);
+            let localYear = '';
+            if (!isNaN(parsedD.getTime())) {
+              localYear = String(parsedD.getFullYear());
+            }
+            const matches = (
+              txYear === year ||
+              localYear === year ||
+              (dStr >= `${year}-01-01T00:00:00` && dStr <= `${year}-12-31T23:59:59`)
+            );
+            if (!matches) return false;
           } else if (startDate || endDate) {
-            if (startDate && dStr < `${startDate}T00:00:00`) return false;
-            if (endDate && dStr > `${endDate}T23:59:59`) return false;
+            const txKey = localDateKey || txDateOnly;
+            if (startDate) {
+              const startIso = `${startDate}T00:00:00`;
+              if (txKey < startDate && dStr < startIso) return false;
+            }
+            if (endDate) {
+              const endIso = `${endDate}T23:59:59`;
+              if (txKey > endDate && dStr > endIso) return false;
+            }
           }
         }
         return true;
@@ -1143,40 +1191,42 @@ export async function getAdvancedSearchTransactions(params) {
     const queryParams = [];
 
     if (type && type !== 'all') {
-      if (type === 'expense') conditions.push(`type = 'expense' AND transfer_group_id IS NULL AND (is_transfer IS NULL OR is_transfer != 1)`);
-      if (type === 'income') conditions.push(`type = 'income' AND transfer_group_id IS NULL AND (is_transfer IS NULL OR is_transfer != 1)`);
-      if (type === 'transfer') conditions.push(`(transfer_group_id IS NOT NULL OR is_transfer = 1)`);
+      if (type === 'expense') {
+        conditions.push(`LOWER(type) = 'expense' AND (transfer_group_id IS NULL OR transfer_group_id = '')`);
+      } else if (type === 'income') {
+        conditions.push(`LOWER(type) = 'income' AND (transfer_group_id IS NULL OR transfer_group_id = '')`);
+      } else if (type === 'transfer') {
+        conditions.push(`((transfer_group_id IS NOT NULL AND transfer_group_id != '') OR LOWER(type) = 'transfer')`);
+      }
     }
 
-    if (amount) {
+    if (amount !== undefined && amount !== null && String(amount).trim() !== '') {
       conditions.push(`amount = ?`);
-      queryParams.push(amount);
+      queryParams.push(Number(amount));
     }
     
-    if (note) {
-      // Use exact word match if requested, or just substring. The user requested 'Exact Word Search'.
-      // If they mean exact match (case insensitive):
+    if (note && note.trim() !== '') {
       conditions.push(`LOWER(notes) = LOWER(?)`);
       queryParams.push(note.trim());
     }
 
     if (exactDate) {
-      conditions.push(`REPLACE(date, ' ', 'T') >= ? AND REPLACE(date, ' ', 'T') <= ?`);
-      queryParams.push(`${exactDate}T00:00:00`, `${exactDate}T23:59:59`);
+      conditions.push(`(SUBSTR(date, 1, 10) = ? OR (REPLACE(date, ' ', 'T') >= ? AND REPLACE(date, ' ', 'T') <= ?))`);
+      queryParams.push(exactDate, `${exactDate}T00:00:00`, `${exactDate}T23:59:59`);
     } else if (month) {
-      conditions.push(`REPLACE(date, ' ', 'T') >= ? AND REPLACE(date, ' ', 'T') <= ?`);
-      queryParams.push(`${month}-01T00:00:00`, `${month}-31T23:59:59`);
+      conditions.push(`(SUBSTR(date, 1, 7) = ? OR (REPLACE(date, ' ', 'T') >= ? AND REPLACE(date, ' ', 'T') <= ?))`);
+      queryParams.push(month, `${month}-01T00:00:00`, `${month}-31T23:59:59`);
     } else if (year) {
-      conditions.push(`REPLACE(date, ' ', 'T') >= ? AND REPLACE(date, ' ', 'T') <= ?`);
-      queryParams.push(`${year}-01-01T00:00:00`, `${year}-12-31T23:59:59`);
+      conditions.push(`(SUBSTR(date, 1, 4) = ? OR (REPLACE(date, ' ', 'T') >= ? AND REPLACE(date, ' ', 'T') <= ?))`);
+      queryParams.push(year, `${year}-01-01T00:00:00`, `${year}-12-31T23:59:59`);
     } else if (startDate || endDate) {
       if (startDate) {
-        conditions.push(`REPLACE(date, ' ', 'T') >= ?`);
-        queryParams.push(`${startDate}T00:00:00`);
+        conditions.push(`(SUBSTR(date, 1, 10) >= ? OR REPLACE(date, ' ', 'T') >= ?)`);
+        queryParams.push(startDate, `${startDate}T00:00:00`);
       }
       if (endDate) {
-        conditions.push(`REPLACE(date, ' ', 'T') <= ?`);
-        queryParams.push(`${endDate}T23:59:59`);
+        conditions.push(`(SUBSTR(date, 1, 10) <= ? OR REPLACE(date, ' ', 'T') <= ?)`);
+        queryParams.push(endDate, `${endDate}T23:59:59`);
       }
     }
 

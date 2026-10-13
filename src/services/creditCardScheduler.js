@@ -43,6 +43,18 @@ function formatDate(date) {
   return `${date.getFullYear()}-${padTwo(date.getMonth() + 1)}-${padTwo(date.getDate())}`;
 }
 
+export function getTxDateString(dateVal) {
+  if (!dateVal) return "";
+  const str = String(dateVal).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const d = new Date(str.includes(" ") ? str.replace(" ", "T") : str);
+  if (isNaN(d.getTime())) return str.slice(0, 10);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 /**
  * Clamps the day to the last valid day of the given month.
  * e.g. statement_day=31 in February → 28/29
@@ -126,13 +138,13 @@ async function getRawBillById(id) {
 /**
  * For a given statement date, compute the billing cycle:
  *
- *   cycleStart = previous statement date + 1 day
- *   cycleEnd   = this statement date - 1 day
+ *   cycleStart = previous statement date (e.g. 2026-09-13)
+ *   cycleEnd   = day before this statement date (e.g. 2026-10-12)
  *
- * Example (statement_day = 25):
- *   Statement date : 2026-08-25
- *   cycleStart     : 2026-07-26
- *   cycleEnd       : 2026-08-24
+ * Example (statement_day = 13):
+ *   Statement date : 2026-10-13
+ *   cycleStart     : 2026-09-13 (starts on September 13th)
+ *   cycleEnd       : 2026-10-12 (ends on October 12th)
  */
 function getCyclePeriod(statementDay, statementDate) {
   // Previous statement date: same day last month (clamped)
@@ -145,9 +157,10 @@ function getCyclePeriod(statementDay, statementDate) {
   const prevDay = clampDay(statementDay, prevYear, prevMonth);
   const prevStatementDate = new Date(prevYear, prevMonth - 1, prevDay);
 
+  // Billing cycle STARTS on previous statement date (e.g. Sep 13)
   const cycleStart = new Date(prevStatementDate);
-  cycleStart.setDate(cycleStart.getDate() + 1);
 
+  // Billing cycle ENDS day before current statement date (e.g. Oct 12)
   const cycleEnd = new Date(statementDate);
   cycleEnd.setDate(cycleEnd.getDate() - 1);
 
@@ -183,7 +196,7 @@ function getAllCycles(statementDay, fromDate, todayDate) {
     // Statement date: 2026-09-13
     //
     // The Sep 13 statement must NOT exist yet.
-    if (statementDate > todayDate) {
+    if (formatDate(statementDate) > formatDate(todayDate)) {
       break;
     }
 
@@ -358,7 +371,26 @@ template)
     linkedBill?.status === BILL_STATUS.PAID || linkedBill?.is_paid === 1);
 
     if (isLinkedBillPaid) {
-      // Paid statement → never modify it
+      // Paid statement → never modify financial amounts
+      // But ensure statement cycle dates and purchases match the cycle
+      const { purchases: paidPurchases } = calcCycleAmounts(
+        cardTxs,
+        cycleStart,
+        cycleEnd
+      );
+      if (
+        existingStatement.statement_start !== cycleStart ||
+        existingStatement.statement_end !== cycleEnd ||
+        Number(existingStatement.purchases || 0) !== paidPurchases
+      ) {
+        await executeSql(
+          `UPDATE credit_card_statements SET statement_start = ?, statement_end = ?, purchases = ? WHERE id = ?`,
+          [cycleStart, cycleEnd, paidPurchases, existingStatement.id]
+        );
+        existingStatement.statement_start = cycleStart;
+        existingStatement.statement_end = cycleEnd;
+        existingStatement.purchases = paidPurchases;
+      }
       return;
     }
 
@@ -440,8 +472,9 @@ template)
     );
 
     const txsInCycle = cardTxs.filter((t) => {
-      const d = String(t.date || "").slice(0, 10);
-      return d >= cycleStart && d <= cycleEnd;
+      const d = getTxDateString(t.date);
+      const rawD = String(t.date || "").slice(0, 10);
+      return (d >= cycleStart && d <= cycleEnd) || (rawD >= cycleStart && rawD <= cycleEnd);
     });
 
     console.log(
@@ -465,8 +498,16 @@ template)
       purchases,
       payments,
       openingBalance,
-      card
+      card,
+      cycleStart,
+      cycleEnd
     );
+
+    existingStatement.statement_start = cycleStart;
+    existingStatement.statement_end = cycleEnd;
+    existingStatement.opening_balance = openingBalance;
+    existingStatement.purchases = purchases;
+    existingStatement.closing_balance = closingBalance;
 
     return;
   }
@@ -482,8 +523,9 @@ template)
   const effectiveCycleEnd = cycle.isCurrent ? todayStr : cycleEnd;
 
   const cycleHasTxs = cardTxs.some((t) => {
-    const d = String(t.date || "").slice(0, 10);
-    return d >= cycleStart && d <= cycleEnd;
+    const d = getTxDateString(t.date);
+    const rawD = String(t.date || "").slice(0, 10);
+    return (d >= cycleStart && d <= cycleEnd) || (rawD >= cycleStart && rawD <= cycleEnd);
   });
 
   if (!cycleHasTxs) return;
@@ -555,8 +597,7 @@ template)
 
   const billId = billRes.insertId;
 
-  // Create statement record
-  await executeSql(
+  const stmtRes = await executeSql(
     `INSERT INTO credit_card_statements (
       card_id, bill_id,
       statement_start, statement_end, statement_date, due_date,
@@ -583,6 +624,25 @@ template)
     ts,
     "generated"]
   );
+
+  allStatements.push({
+    id: stmtRes.insertId,
+    card_id: card.id,
+    bill_id: billId,
+    statement_start: cycleStart,
+    statement_end: cycleEnd,
+    statement_date: statementDateStr,
+    due_date: dueDateStr,
+    opening_balance: openingBalance,
+    purchases,
+    refunds: 0,
+    fees: 0,
+    interest: autoInterest,
+    payments: 0,
+    closing_balance: closingBalance,
+    minimum_due: minimumDue,
+    status: "generated",
+  });
 
   try {
     const Notifications = require('expo-notifications');
@@ -616,18 +676,19 @@ function calcCycleAmounts(cardTxs, cycleStart, cycleEnd) {
   let payments = 0;
 
   for (const tx of cardTxs) {
-    const d = String(tx.date || "").slice(0, 10);
+    const d = getTxDateString(tx.date);
+    const rawD = String(tx.date || "").slice(0, 10);
     const amount = Number(tx.amount || 0);
 
-    if (d >= cycleStart && d <= cycleEnd) {
+    const inRange =
+      (d >= cycleStart && d <= cycleEnd) ||
+      (rawD >= cycleStart && rawD <= cycleEnd);
+
+    if (inRange) {
       // Within cycle — these are this statement's purchases/payments
       if (tx.type === "expense") purchases += amount;else
       if (tx.type === "income") payments += amount;
     }
-    // Transactions outside this cycle window are NOT included.
-    // Each statement only shows what happened in its own cycle period.
-    // Opening balance carry-over is handled by the payment flow,
-    // not by re-summing all historical transactions.
   }
 
   return { purchases, payments };
@@ -639,15 +700,21 @@ closingBalance,
 purchases,
 payments,
 openingBalance,
-card)
+card,
+cycleStart,
+cycleEnd)
 {
   const minimumDue =
   closingBalance * (Number(card.minimum_due_percent || 0) / 100);
   const ts = nowIso();
+  const finalStart = cycleStart || statement.statement_start;
+  const finalEnd = cycleEnd || statement.statement_end;
 
   // Update statement row
   await executeSql(
     `UPDATE credit_card_statements SET
+       statement_start = ?,
+       statement_end   = ?,
        opening_balance = ?,
        purchases       = ?,
        closing_balance = ?,
@@ -655,6 +722,8 @@ card)
        generated_at    = ?
      WHERE id = ?`,
     [
+    finalStart,
+    finalEnd,
     openingBalance,
     purchases,
     closingBalance,

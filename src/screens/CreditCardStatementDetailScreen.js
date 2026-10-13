@@ -10,6 +10,7 @@ import {
   "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { getCreditCardStatementById, getStatementTransactions } from "../services/creditCards";
+import { runCreditCardStatementScheduler } from "../services/creditCardScheduler";
 import { Colors, Spacing } from "../components/Theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ContextualFAB from "../components/ContextualFAB";
@@ -35,6 +36,11 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
+      try {
+        await runCreditCardStatementScheduler();
+      } catch (e) {
+        console.warn("[CreditCardStatementDetail] Scheduler sync error:", e);
+      }
       const st = await getCreditCardStatementById(statementId);
       if (st) {
         setStatement(st);

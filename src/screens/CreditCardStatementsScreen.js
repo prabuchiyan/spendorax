@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { getAllCreditCardStatements } from "../services/creditCards";
-import { deleteStatement } from "../services/creditCardScheduler";
+import { deleteStatement, runCreditCardStatementScheduler } from "../services/creditCardScheduler";
 import Card from "../components/Card";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useAppDispatch, useCreditCardStatements } from '../redux/hooks';
@@ -33,6 +33,11 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
   const [regenerating, setRegenerating] = useState(false);
 
   const load = async () => {
+    try {
+      await runCreditCardStatementScheduler();
+    } catch (e) {
+      console.warn("[CreditCardStatements] Scheduler sync error:", e);
+    }
     const items = await getAllCreditCardStatements();
     if (sourceId) {
       dispatch(setStatements(items.filter(item => Number(item.source_id) === Number(sourceId))));

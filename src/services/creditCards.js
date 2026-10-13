@@ -563,21 +563,24 @@ export async function getStatementTransactions(sourceId, startDate, endDate) {
     [sourceId]
   );
   const rows = [];
+  const startStr = String(startDate || "").slice(0, 10);
+  const endStr = String(endDate || "").slice(0, 10);
   const start = new Date(startDate).getTime();
   // To cover the whole end date, we can set the time to end of day if it's just a date string.
   // Assuming endDate is like YYYY-MM-DD. We want to include transactions on that day.
-  const endStr = String(endDate).includes("T") ? endDate : `${endDate}T23:59:59.999Z`;
-  const end = new Date(endStr).getTime();
+  const endStrWithTime = String(endDate).includes("T") ? endDate : `${endDate}T23:59:59.999Z`;
+  const end = new Date(endStrWithTime).getTime();
 
   for (let i = 0; i < res.rows.length; i++) {
     const item = res.rows.item(i);
     if (!item.date) continue;
     
     // Some dates might be stored as YYYY-MM-DD, others as ISO string.
+    const d = String(item.date).slice(0, 10);
     const itemTime = new Date(item.date).getTime();
     
-    // Filter between start and end (inclusive)
-    if (itemTime >= start && itemTime <= end) {
+    // Filter between start and end (inclusive) - support both string comparison (scheduler style) and timestamp range
+    if ((d >= startStr && d <= endStr) || (itemTime >= start && itemTime <= end)) {
       rows.push(item);
     }
   }
