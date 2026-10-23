@@ -15,13 +15,10 @@ import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   Button as PaperButton,
-
-
-  TextInput as PaperTextInput
-} from
-  "react-native-paper";
+  TextInput as PaperTextInput,
+  Snackbar
+} from "react-native-paper";
 import { Dimensions } from "react-native";
-import MuiDateTimePicker from "../components/MuiDateTimePicker";
 import PremiumRoundedBarChart from "../components/PremiumRoundedBarChart";
 import {
   getBillById,
@@ -29,14 +26,11 @@ import {
   markBillPaid,
   skipBill,
   unskipBill,
-  deleteBill,
   softDeleteBillOccurrence,
   getTransactionsForBillLink,
   getBillLinkedTransactions,
   linkAdditionalTransaction,
   removeTransactionFromBill,
-  updateBill,
-  createBill
 } from
   "../services/bills";
 import { getCategories } from "../services/categories";
@@ -45,13 +39,12 @@ import Card from "../components/Card";
 import ConfirmDialog from "../components/ConfirmDialog";
 import BillForm from "../components/BillForm";
 import CurrencyText from "../components/CurrencyText";
-import { Colors, Spacing } from "../components/Theme";
+import { Spacing } from "../components/Theme";
 import {
   formatCurrency,
   formatDueDate,
   getBillDisplayStatus,
   BILL_STATUS,
-  getOccurrenceDateConstraints
 } from
   "../services/billUtils";
 import { getCreditCards, payCreditCardBill } from "../services/creditCards";
@@ -69,32 +62,22 @@ import {
 
 const screenWidth = Dimensions.get("window").width;
 
-// ─── sub-components ──────────────────────────────────────────────────────────
-
-function DetailRow({ label, value }) {
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        justifyContent: "space-between",
-        paddingVertical: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: "#eff4ff"
-      }}>
-
-      <Text style={{ color: "#7c839b", fontFamily: "Inter", flex: 1 }}>{label}</Text>
-      <Text
-        style={{
-          color: "#0b1c30",
-          fontWeight: "600",
-          flex: 1.5,
-          textAlign: "right"
-        }}>
-
-        {value}
-      </Text>
-    </View>);
-
+function getBillMonthYear(billObj) {
+  const dateStr = billObj?.due_date || billObj?.occurrence_date;
+  if (dateStr) {
+    const parts = String(dateStr).slice(0, 10).split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const monthIndex = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const d = new Date(year, monthIndex, day);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+      }
+    }
+  }
+  const now = new Date();
+  return now.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 }
 
 function StatusBadge({ display }) {
@@ -115,7 +98,6 @@ function StatusBadge({ display }) {
       </Text>
     </View>);
 }
-
 
 function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
   return (
@@ -263,81 +245,6 @@ function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
         )
       }
     </Card>);
-}
-
-function OccurrenceList({ series, selectedId, onSelect }) {
-  if (!series.length) return null;
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
-      {series.map((occ) => {
-        const display = getBillDisplayStatus(occ);
-        const selected = occ.id === selectedId;
-        const d = new Date(occ.due_date);
-        const month = d.toLocaleDateString("en-IN", { month: "short" });
-        const day = d.getDate();
-
-        let statusColor = "#0b1c30";
-        if (display.label === "Paid") statusColor = "#006a61";
-        if (display.label === "Overdue") statusColor = "#ba1a1a";
-        if (display.label === "Pending" || display.label === "Upcoming") statusColor = "#c76c00";
-        if (display.label === "Skipped") statusColor = "#45464d";
-
-        return (
-          <TouchableOpacity
-            key={occ.id}
-            onPress={() => onSelect(occ)}
-            style={{
-              width: 104,
-              marginRight: 12,
-              borderRadius: 12,
-              paddingVertical: 14,
-              paddingHorizontal: 12,
-              backgroundColor: "#f4f8fb",
-              alignItems: "center"
-            }}>
-
-            <Text
-              style={{
-                color: "#7c839b",
-                fontSize: 12,
-                fontWeight: "500",
-                fontFamily: "Inter"
-              }}>
-              {month}
-            </Text>
-            <Text
-              style={{
-                fontSize: 28,
-                fontWeight: "700",
-                color: "#0b1c30",
-                fontFamily: "Plus Jakarta Sans"
-              }}>
-              {day}
-            </Text>
-            <View style={{ marginTop: 8, alignItems: "center" }}>
-              <Text style={{ fontSize: 11, color: "#45464d", fontFamily: "Inter" }}>
-                Due {formatCurrency(occ.amount)}
-              </Text>
-              <Text style={{ fontSize: 11, color: "#006a61", fontFamily: "Inter", marginTop: 2, fontWeight: "500" }}>
-                Paid <CurrencyText amount={occ.paid_amount || 0} />
-              </Text>
-            </View>
-            <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: display.label === "Paid" ? "#006a61" : "#e5eeff", justifyContent: 'center', alignItems: 'center', marginTop: 10 }}>
-              <MaterialCommunityIcons
-                name={
-                  display.label === "Paid" ? "check" :
-                    display.label === "Skipped" ? "skip-next" :
-                      display.label === "Overdue" ? "alert" :
-                        "clock-outline"
-                }
-                size={20}
-                color={display.label === "Paid" ? "#fff" : display.color} />
-            </View>
-          </TouchableOpacity>
-        );
-      })}
-    </ScrollView>
-  );
 }
 
 function LinkTransactionModal({ visible, bill, onLink, onClose }) {
@@ -661,10 +568,7 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
         </View>
       </View>
     </Modal>);
-
 }
-
-
 
 function isCreditCardBill(bill) {
   return (
@@ -694,14 +598,15 @@ export default function BillDetailScreen({ route, navigation }) {
   const [confirmAction, setConfirmAction] = useState(null);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [showPaymentSourcePicker, setShowPaymentSourcePicker] = useState(false);
   const [paymentSources, setPaymentSources] = useState([]);
   const [paymentSourceSearch, setPaymentSourceSearch] = useState("");
   const [selectedCreditCard, setSelectedCreditCard] = useState(null);
+  const [isMarkingPaid, setIsMarkingPaid] = useState(false);
+  const [toastMsg, setToastMsg] = useState("");
+  const [toastVisible, setToastVisible] = useState(false);
   const { visible: loaderVisible, show: showPageLoader, hide: hidePageLoader } = usePageLoader();
   const dispatch = useAppDispatch();
-  const reduxBills = useBills();
   const reduxSummary = useBillsSummary();
   const categoriesMap = useCategoriesMap();
 
@@ -716,12 +621,6 @@ export default function BillDetailScreen({ route, navigation }) {
   useEffect(() => {
     if (bill) navigation.setOptions({ title: bill.name });
   }, [bill]);
-
-  const filteredSeries = React.useMemo(() => {
-    if (!selectedOcc) return series;
-
-    return series.filter((occ) => occ.id === selectedOcc.id);
-  }, [series, selectedOcc]);
 
   // ── hooks 17 & 18 — MUST be before any early return ──────────────────────
   // FIX: these were previously placed AFTER the early returns, causing
@@ -777,7 +676,6 @@ export default function BillDetailScreen({ route, navigation }) {
   }, [totalDueAmount, totalPaidAmount]);
 
   const reduxCategory = categoriesMap?.[bill?.category_id] || category;
-  const summary = reduxSummary || {};
 
   // ── Early returns AFTER every hook ───────────────────────────────────────
   if (!bill && !editing) {
@@ -924,7 +822,7 @@ export default function BillDetailScreen({ route, navigation }) {
     if (!selectedOcc && !bill) return;
     const targetBill = selectedOcc || bill;
     try {
-      showPageLoader();
+      setIsMarkingPaid(true);
       const cards = await getCreditCards(false);
       const card = cards.find(
         (c) =>
@@ -938,7 +836,10 @@ export default function BillDetailScreen({ route, navigation }) {
           source_id: targetBill.source_id
         });
         await load(targetBill.id);
-        hidePageLoader();
+        const monthYear = getBillMonthYear(targetBill);
+        setToastMsg(`Bill paid for ${monthYear}`);
+        setToastVisible(true);
+        setIsMarkingPaid(false);
         return;
       }
 
@@ -949,15 +850,12 @@ export default function BillDetailScreen({ route, navigation }) {
       );
       setSelectedCreditCard(card);
       setPaymentSourceSearch("");
+      setIsMarkingPaid(false);
       setShowPaymentSourcePicker(true);
-      /*
-       * Keep loader ON while the payment-source picker
-       * is displayed. It will be hidden after the actual
-       * payment is completed or cancelled.
-       */
     } catch (e) {
       console.error("[BillDetail] Mark paid failed:", e);
-      hidePageLoader();
+      setIsMarkingPaid(false);
+      Alert.alert("Error", "Unable to mark bill as paid.");
     }
   };
 
@@ -983,6 +881,9 @@ export default function BillDetailScreen({ route, navigation }) {
       setShowLinkModal(false);
       await refreshSelectedOccurrence();
       await load(selectedOcc.id);
+      const monthYear = getBillMonthYear(selectedOcc);
+      setToastMsg(`Bill paid for ${monthYear}`);
+      setToastVisible(true);
     } catch (e) {
       console.error("[BillDetail] Link transaction failed:", e);
     } finally {
@@ -1014,8 +915,6 @@ export default function BillDetailScreen({ route, navigation }) {
       })
     );
   }
-
-
 
   // ── derived values ────────────────────────────────────────────────────────
   const activeBill = selectedOcc || bill;
@@ -1328,20 +1227,28 @@ export default function BillDetailScreen({ route, navigation }) {
       <View style={styles.bottomBar}>
         {isPayable &&
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: "#006a61" }]}
-            onPress={handleMarkPaid}>
+            style={[styles.actionButton, { backgroundColor: "#006a61" }, isMarkingPaid && { opacity: 0.85 }]}
+            onPress={handleMarkPaid}
+            disabled={isMarkingPaid}>
 
-            <MaterialCommunityIcons
-              name="check-circle"
-              color="#fff"
-              size={22} />
+            {isMarkingPaid ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <MaterialCommunityIcons
+                name="check-circle"
+                color="#fff"
+                size={22} />
+            )}
 
             <Text style={styles.actionTextWhite}>Paid</Text>
           </TouchableOpacity>
         }
 
         {activeBill.status === BILL_STATUS.SKIPPED ?
-          <TouchableOpacity style={styles.actionButton} onPress={handleUnskip}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleUnskip}
+            disabled={isMarkingPaid}>
             <MaterialCommunityIcons name="undo" color="#0b57d0" size={22} />
             <Text style={styles.actionText}>Unskip</Text>
           </TouchableOpacity> :
@@ -1351,7 +1258,8 @@ export default function BillDetailScreen({ route, navigation }) {
               onPress={() => {
                 setConfirmAction("skip");
                 setConfirmVisible(true);
-              }}>
+              }}
+              disabled={isMarkingPaid}>
 
               <MaterialCommunityIcons
                 name="skip-next-circle"
@@ -1447,7 +1355,7 @@ export default function BillDetailScreen({ route, navigation }) {
                     }}
                     onPress={async () => {
                       try {
-                        showPageLoader();
+                        setIsMarkingPaid(true);
                         const paymentId = await payCreditCardBill({
                           bill: activeBill,
                           card: selectedCreditCard,
@@ -1466,6 +1374,9 @@ export default function BillDetailScreen({ route, navigation }) {
                         setSelectedCreditCard(null);
                         setPaymentSourceSearch("");
                         await load();
+                        const monthYear = getBillMonthYear(activeBill);
+                        setToastMsg(`Bill paid for ${monthYear}`);
+                        setToastVisible(true);
                       } catch (e) {
                         console.error(
                           "[BillDetail] Credit card payment failed:",
@@ -1473,7 +1384,7 @@ export default function BillDetailScreen({ route, navigation }) {
                         );
                         Alert.alert("Error", "Unable to complete payment.");
                       } finally {
-                        hidePageLoader();
+                        setIsMarkingPaid(false);
                       }
                     }}>
 
@@ -1499,7 +1410,7 @@ export default function BillDetailScreen({ route, navigation }) {
                 setShowPaymentSourcePicker(false);
                 setSelectedCreditCard(null);
                 setPaymentSourceSearch("");
-                hidePageLoader();
+                setIsMarkingPaid(false);
               }}>
 
               Cancel
@@ -1507,6 +1418,32 @@ export default function BillDetailScreen({ route, navigation }) {
           </View>
         </View>
       </Modal>
+
+      {/* Full-screen ActivityIndicator Loader when marking paid */}
+      {isMarkingPaid && (
+        <View style={styles.loadingOverlay} pointerEvents="auto">
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color="#006a61" />
+            <Text style={styles.loadingText}>Processing payment...</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Toast message upon payment completion */}
+      <Snackbar
+        visible={toastVisible}
+        onDismiss={() => setToastVisible(false)}
+        duration={3000}
+        style={styles.snackbar}
+        action={{
+          label: "OK",
+          textColor: "#ffffff",
+          onPress: () => setToastVisible(false),
+        }}
+      >
+        <Text style={styles.snackbarText}>{toastMsg}</Text>
+      </Snackbar>
+
       <PageLoader visible={loaderVisible} />
     </View>);
 
@@ -1573,5 +1510,47 @@ const styles = StyleSheet.create({
     color: "#7c839b",
     fontSize: 12,
     fontFamily: "Inter"
-  }
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(19, 27, 46, 0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 99999,
+    elevation: 99999,
+  },
+  loadingCard: {
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 28,
+    paddingVertical: 22,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#0b1c30",
+    fontFamily: "Inter",
+  },
+  snackbar: {
+    position: "absolute",
+    bottom: 75,
+    left: 16,
+    right: 16,
+    backgroundColor: "#006a61",
+    borderRadius: 8,
+  },
+  snackbarText: {
+    color: "#ffffff",
+    fontWeight: "600",
+    fontSize: 13,
+    fontFamily: "Inter",
+  },
 });

@@ -2,24 +2,24 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Card from './Card';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import CurrencyText from './CurrencyText';
 
 export default function LoanCard({ loan }) {
 
   const outstanding = Number(loan.outstanding_amount || 0);
-  const principal = Number(
-    loan.loan_amount ||
-    loan.principal_amount ||
-    outstanding
-  );
-
+  const originalPrincipal = Number(loan.principal_amount || 0);
+  const paidSoFar = Number(loan.total_paid || 0);
   const emi = Number(loan.emi_amount || 0);
 
   const progress =
-    principal > 0
-      ? Math.min(
-          100,
-          Math.round(
-            ((principal - outstanding) / principal) * 100
+    originalPrincipal > 0
+      ? Math.max(
+          0,
+          Math.min(
+            100,
+            Math.round(
+              ((originalPrincipal - outstanding) / originalPrincipal) * 100
+            )
           )
         )
       : 0;
@@ -34,12 +34,69 @@ export default function LoanCard({ loan }) {
   const isLent = (loan.loan_direction || 'BORROWED') === 'LENT';
 
   const details = [
-    { label: 'Principal', value: `₹${principal.toLocaleString('en-IN')}`, show: true, bg: '#F3E8FF', labelColor: '#9333EA', valColor: '#7E22CE' },
-    { label: 'Paid', value: `₹${(principal - outstanding).toLocaleString('en-IN')}`, show: true, bg: '#DCFCE7', labelColor: '#16A34A', valColor: '#15803D' },
-    { label: 'Tenure', value: `${loan.tenure_months} mo`, show: !!loan.tenure_months, bg: '#FFEDD5', labelColor: '#EA580C', valColor: '#C2410C' },
-    { label: isLent ? 'Recovery' : 'EMI', value: `₹${emi.toLocaleString('en-IN')}`, show: emi > 0, bg: '#FCE7F3', labelColor: '#DB2777', valColor: '#BE185D' },
-    { label: 'Interest', value: `${loan.interest_rate}%`, show: !!loan.interest_rate, bg: '#DBEAFE', labelColor: '#2563EB', valColor: '#1D4ED8' },
-    { label: isLent ? 'Next Date' : 'EMI Date', value: `Day ${loan.emi_day}`, show: !!loan.emi_day, bg: '#FEF9C3', labelColor: '#CA8A04', valColor: '#A16207' },
+    {
+      label: 'Original',
+      value: (
+        <CurrencyText
+          amount={originalPrincipal}
+          style={{ color: '#7E22CE', fontSize: 11, fontWeight: '800' }}
+        />
+      ),
+      show: true,
+      bg: '#F3E8FF',
+      labelColor: '#9333EA',
+      valColor: '#7E22CE',
+    },
+    {
+      label: 'Paid',
+      value: (
+        <CurrencyText
+          amount={paidSoFar}
+          style={{ color: '#15803D', fontSize: 11, fontWeight: '800' }}
+        />
+      ),
+      show: true,
+      bg: '#DCFCE7',
+      labelColor: '#16A34A',
+      valColor: '#15803D',
+    },
+    {
+      label: 'Tenure',
+      value: `${loan.tenure_months} mo`,
+      show: !!loan.tenure_months,
+      bg: '#FFEDD5',
+      labelColor: '#EA580C',
+      valColor: '#C2410C',
+    },
+    {
+      label: isLent ? 'Recovery' : 'EMI',
+      value: (
+        <CurrencyText
+          amount={emi}
+          style={{ color: '#BE185D', fontSize: 11, fontWeight: '800' }}
+        />
+      ),
+      show: emi > 0,
+      bg: '#FCE7F3',
+      labelColor: '#DB2777',
+      valColor: '#BE185D',
+    },
+    {
+      label: 'Interest',
+      value: `${loan.interest_rate}%`,
+      show: !!loan.interest_rate,
+      bg: '#DBEAFE',
+      labelColor: '#2563EB',
+      valColor: '#1D4ED8',
+    },
+    {
+      label: isLent ? 'Next Date' : 'EMI Date',
+      value: `Day ${loan.emi_day}`,
+      show: !!loan.emi_day,
+      bg: '#FEF9C3',
+      labelColor: '#CA8A04',
+      valColor: '#A16207',
+    },
   ].filter((d) => d.show);
 
   return (
@@ -68,7 +125,9 @@ export default function LoanCard({ loan }) {
       <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
         <View>
           <Text style={styles.label}>Outstanding Balance</Text>
-          <Text style={styles.amount}>₹{outstanding.toLocaleString('en-IN')}</Text>
+          <Text style={styles.amount}>
+            <CurrencyText amount={outstanding} style={styles.amount} />
+          </Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={styles.progressText}>{progress}% Repaid</Text>
@@ -84,7 +143,11 @@ export default function LoanCard({ loan }) {
         {details.map((detail) => (
           <View key={detail.label} style={[styles.pill, { backgroundColor: detail.bg }]}>
             <Text style={[styles.pillLabel, { color: detail.labelColor }]}>{detail.label}:</Text>
-            <Text style={[styles.pillValue, { color: detail.valColor }]}>{detail.value}</Text>
+            {typeof detail.value === 'string' || typeof detail.value === 'number' ? (
+              <Text style={[styles.pillValue, { color: detail.valColor }]}>{detail.value}</Text>
+            ) : (
+              detail.value
+            )}
           </View>
         ))}
       </View>
