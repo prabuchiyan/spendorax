@@ -4,6 +4,8 @@ import Svg, { Circle } from 'react-native-svg';
 import { getCategories } from '../services/categories';
 import { getTransactionDates, getTransactionsByDateRange } from '../services/transactions';
 import { getSources } from '../services/sources';
+import events from '../services/events';
+import CurrencyText from '../components/CurrencyText';
 import { Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Card from '../components/Card';
@@ -44,6 +46,7 @@ function CategoryDonut({ data = [], categoriesMap = {} }) {
     : null;
   const highestCategoryName = highestCategory
     ? categoriesMap[highestCategory.category_id]?.name ||
+    categoriesMap[Number(highestCategory.category_id)]?.name ||
     highestCategory.category_name ||
     'Category'
     : '';
@@ -80,7 +83,7 @@ function CategoryDonut({ data = [], categoriesMap = {} }) {
           {data.map((d, i) => {
             const value = Number(d.amount || 0);
             const percent = total > 0 ? value / total : 0;
-            const cat = categoriesMap[d.category_id] || {};
+            const cat = categoriesMap[d.category_id] || categoriesMap[Number(d.category_id)] || {};
             const color = cat.color || '#DCEDE4';
             const strokeDasharray = `${circumference * percent} ${circumference}`;
             const rotation = total > 0 ? (cumulative / total) * 360 : -90;
@@ -127,7 +130,8 @@ function CategoryDonut({ data = [], categoriesMap = {} }) {
           </Text>
 
           {/* TOTAL AMOUNT */}
-          <Text
+          <CurrencyText
+            amount={total}
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.5}
@@ -139,9 +143,7 @@ function CategoryDonut({ data = [], categoriesMap = {} }) {
               color: '#2F7355',
               letterSpacing: -0.7,
             }}
-          >
-            {totalText}
-          </Text>
+          />
 
           {/* DIVIDER */}
           <View
@@ -240,7 +242,19 @@ export default function SpendAreasDashboard({ route, navigation }) {
   const [categoriesMap, setLocalCategoriesMap] = useState({});
   const [sourcesMap, setSourcesMap] = useState({});
   const [filterMode, setFilterMode] = useState(params.mode || 'monthly');
-  const [selectedPeriod, setSelectedPeriod] = useState(params.periodLabel || null);
+  const [selectedPeriod, setSelectedPeriod] = useState(() => {
+    if (params.periodLabel) return params.periodLabel;
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    if (params.mode === 'daily') {
+      return `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+    if (params.mode === 'yearly') {
+      return String(currentYear);
+    }
+    return `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+  });
   const [refreshKey, setRefreshKey] = useState(0);
 
   async function loadInitialData() {
@@ -291,7 +305,22 @@ export default function SpendAreasDashboard({ route, navigation }) {
         setRefreshKey(prev => prev + 1);
       }
     );
-    return unsubscribe;
+
+    const offTx = events.on('transactionsChanged', () => {
+      loadInitialData();
+      setRefreshKey(prev => prev + 1);
+    });
+
+    const offCat = events.on('categoriesChanged', () => {
+      loadInitialData();
+      setRefreshKey(prev => prev + 1);
+    });
+
+    return () => {
+      unsubscribe();
+      if (typeof offTx === 'function') offTx();
+      if (typeof offCat === 'function') offCat();
+    };
   }, [navigation]);
 
   // Sync state if parameters change
@@ -378,10 +407,20 @@ export default function SpendAreasDashboard({ route, navigation }) {
       return periods.reverse();
     }
     // OTHER MODES
-    if (transactionDates.length === 0) {
-      return [];
-    }
     const periods = new Set();
+    const currentMonthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+    const currentDayKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const currentYearKey = String(currentYear);
+
+    // Always ensure the current calendar period is included
+    if (filterMode === 'monthly') {
+      periods.add(currentMonthKey);
+    } else if (filterMode === 'daily') {
+      periods.add(currentDayKey);
+    } else if (filterMode === 'yearly') {
+      periods.add(currentYearKey);
+    }
+
     transactionDates.forEach(t => {
       if (!t.date) return;
       const dateStr = String(t.date).replace(' ', 'T');
@@ -439,7 +478,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
     );
   }, [transactionDates, filterMode]);
 
-  // Fallback selectedPeriod to the latest period if none is selected or matches the mode
+  // Fallback selectedPeriod to the current or latest period if none is selected or matches the mode
   useEffect(() => {
     if (allPeriods.length === 0) return;
     // Keep the selected period if it is still valid.
@@ -449,10 +488,24 @@ export default function SpendAreasDashboard({ route, navigation }) {
     ) {
       return;
     }
-    setSelectedPeriod(
-      allPeriods[0]
-    );
-  }, [allPeriods, selectedPeriod]);
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const currentMonthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+    const currentDayKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const currentYearKey = String(currentYear);
+
+    if (filterMode === 'monthly' && allPeriods.includes(currentMonthKey)) {
+      setSelectedPeriod(currentMonthKey);
+    } else if (filterMode === 'daily' && allPeriods.includes(currentDayKey)) {
+      setSelectedPeriod(currentDayKey);
+    } else if (filterMode === 'yearly' && allPeriods.includes(currentYearKey)) {
+      setSelectedPeriod(currentYearKey);
+    } else {
+      setSelectedPeriod(allPeriods[0]);
+    }
+  }, [allPeriods, selectedPeriod, filterMode]);
 
   // Format period label for presentation
   const formatPeriodLabel = useCallback((label) => {
@@ -558,10 +611,13 @@ export default function SpendAreasDashboard({ route, navigation }) {
   const topCategories = useMemo(() => {
     if (transactions.length === 0 || !selectedPeriod) return [];
     const byId = {};
-    let filterFn = () => true; // DB fetch handles date ranges correctly
     transactions.forEach(t => {
-      if (getTransactionType(t) === 'transfer') return;
-      if (t.type !== 'expense') return;
+      // Must be expense
+      if (String(t.type || '').toLowerCase() !== 'expense') return;
+      // Must not be a transfer
+      if (t.transfer_group_id || t.is_transfer || getTransactionType(t) === 'transfer') return;
+      // Must be counted in spend/budget (is_counted !== 0)
+      if (t.is_counted !== null && t.is_counted !== undefined && Number(t.is_counted) === 0) return;
       if (!t.date) return;
       // Uncategorized expenses must NOT be included
       // in Spend Areas or Total Spend calculations.
@@ -569,33 +625,32 @@ export default function SpendAreasDashboard({ route, navigation }) {
         t.category_id === null ||
         t.category_id === undefined ||
         String(t.category_id).trim() === '' ||
-        String(t.category_id).toLowerCase() === 'uncategorized'
+        String(t.category_id).toLowerCase() === 'uncategorized' ||
+        String(t.category_id).toLowerCase() === 'null'
       ) {
         return;
       }
-      const dateStr = String(t.date).replace(' ', 'T');
-      if (!filterFn(dateStr)) return;
+      const amount = Number(t.amount || 0);
+      if (amount <= 0) return;
+
       const cid = String(t.category_id);
-      byId[cid] =
-        (byId[cid] || 0) +
-        (parseFloat(t.amount) || 0);
+      byId[cid] = (byId[cid] || 0) + amount;
     });
+
     return Object.keys(byId).map(k => {
-      const cat = categoriesMap[k] || { name: 'Uncategorized' };
-      return { category_id: k, category_name: cat.name, amount: byId[k] };
-    }).sort((a, b) => b.amount - a.amount);
-  }, [transactions, selectedPeriod, filterMode, categoriesMap]);
+      const cat = categoriesMap[k] || categoriesMap[Number(k)] || { name: 'Uncategorized' };
+      return { category_id: k, category_name: cat.name || 'Uncategorized', amount: byId[k] };
+    }).sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0));
+  }, [transactions, selectedPeriod, categoriesMap]);
 
   const selectedPeriodTransactions = useMemo(() => {
     if (!transactions.length || !selectedPeriod) return [];
-    let filterFn = () => true; // DB fetch handles date ranges correctly
     return transactions
       .filter(transaction => {
-        if (getTransactionType(transaction) === 'transfer') return false;
-        if (transaction.type !== 'expense') return false;
+        if (transaction.transfer_group_id || transaction.is_transfer || getTransactionType(transaction) === 'transfer') return false;
+        if (String(transaction.type || '').toLowerCase() !== 'expense') return false;
         if (!transaction.date) return false;
-        const dateStr = String(transaction.date).replace(' ', 'T');
-        return filterFn(dateStr);
+        return true;
       })
       .sort(
         (a, b) =>
@@ -605,7 +660,6 @@ export default function SpendAreasDashboard({ route, navigation }) {
   }, [
     transactions,
     selectedPeriod,
-    filterMode,
   ]);
 
   const totalSpend = useMemo(() => {
@@ -795,7 +849,18 @@ export default function SpendAreasDashboard({ route, navigation }) {
                   setTransactions([]);
                   setTimeout(() => {
                     setFilterMode(m);
-                    setSelectedPeriod(null);
+                    const now = new Date();
+                    const currentYear = now.getFullYear();
+                    const currentMonth = now.getMonth();
+                    if (m === 'monthly') {
+                      setSelectedPeriod(`${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`);
+                    } else if (m === 'daily') {
+                      setSelectedPeriod(`${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`);
+                    } else if (m === 'yearly') {
+                      setSelectedPeriod(String(currentYear));
+                    } else {
+                      setSelectedPeriod(null);
+                    }
                   }, 0);
                 }}
                 style={[
@@ -932,7 +997,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
               )}
 
               {topCategories.map(c => {
-                const cat = categoriesMap[c.category_id] || {};
+                const cat = categoriesMap[c.category_id] || categoriesMap[Number(c.category_id)] || {};
                 const color = cat.color || '#4B7CF3';
                 const icon = cat.icon || 'tag';
                 const amount = Number(c.amount || 0);

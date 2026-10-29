@@ -524,6 +524,9 @@ export default function HomeScreen({ navigation }) {
 
   const budgetDonutSize = Math.min(240, Math.max(190, screenWidth - 80));
 
+  const { year: currentYear, monthNumber: currentMonthNumber } = getCurrentMonthBounds();
+  const currentMonthPeriodLabel = `${currentYear}-${String(currentMonthNumber).padStart(2, "0")}`;
+
   const { visible: pageLoaderVisible, show: showPageLoader, hide: hidePageLoader } = usePageLoader();
 
   const dispatch = useAppDispatch();
@@ -2378,7 +2381,12 @@ export default function HomeScreen({ navigation }) {
             {topCategories.length > 2 && (
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={() => navigation.navigate("SpendAreasDashboard")}
+                onPress={() =>
+                  navigation.navigate("SpendAreasDashboard", {
+                    mode: "monthly",
+                    periodLabel: currentMonthPeriodLabel,
+                  })
+                }
                 style={{
                   paddingHorizontal: 10,
                   paddingVertical: 6,
@@ -2401,7 +2409,12 @@ export default function HomeScreen({ navigation }) {
 
           {topCategories.length ? (
             <TouchableOpacity
-              onPress={() => navigation.navigate("SpendAreasDashboard")}
+              onPress={() =>
+                navigation.navigate("SpendAreasDashboard", {
+                  mode: "monthly",
+                  periodLabel: currentMonthPeriodLabel,
+                })
+              }
             >
               <View
                 style={{
