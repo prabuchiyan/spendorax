@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -8,17 +8,19 @@ import {
   TouchableOpacity,
   Modal,
   ActivityIndicator,
-  Alert
-} from
-  "react-native";
+  Alert,
+  Platform,
+  Dimensions,
+  Share,
+} from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 import {
-  Button as PaperButton,
   TextInput as PaperTextInput,
   Snackbar
 } from "react-native-paper";
-import { Dimensions } from "react-native";
 import PremiumRoundedBarChart from "../components/PremiumRoundedBarChart";
 import {
   getBillById,
@@ -31,22 +33,18 @@ import {
   getBillLinkedTransactions,
   linkAdditionalTransaction,
   removeTransactionFromBill,
-} from
-  "../services/bills";
+} from "../services/bills";
 import { getCategories } from "../services/categories";
 import { getSources } from "../services/sources";
-import Card from "../components/Card";
 import ConfirmDialog from "../components/ConfirmDialog";
 import BillForm from "../components/BillForm";
 import CurrencyText from "../components/CurrencyText";
-import { Spacing } from "../components/Theme";
 import {
   formatCurrency,
   formatDueDate,
   getBillDisplayStatus,
   BILL_STATUS,
-} from
-  "../services/billUtils";
+} from "../services/billUtils";
 import { getCreditCards, payCreditCardBill } from "../services/creditCards";
 import { usePageLoader } from "../context/PageLoaderContext";
 import PageLoader from "../components/PageLoader";
@@ -54,11 +52,9 @@ import { onStatementPaid } from "../services/creditCardScheduler";
 import { setCategoriesMap } from "../redux/slices/categorySlice";
 import {
   useAppDispatch,
-  useBills,
   useBillsSummary,
   useCategoriesMap
-} from
-  "../redux/hooks";
+} from "../redux/hooks";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -80,171 +76,133 @@ function getBillMonthYear(billObj) {
   return now.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 }
 
-function StatusBadge({ display }) {
-  return (
-    <View
-      style={{
-        alignSelf: "center",
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 20,
-        backgroundColor: `${display.color}20`,
-        flexDirection: 'row',
-        alignItems: 'center'
-      }}>
-      <MaterialCommunityIcons name="check-circle" size={12} color={display.color} style={{ marginRight: 4 }} />
-      <Text style={{ color: display.color, fontWeight: "700", fontSize: 12, fontFamily: "Inter" }}>
-        {display.label}
-      </Text>
-    </View>);
+function formatRecurrenceType(type, isRecurring = true) {
+  if (!isRecurring) return "One-Time";
+  if (!type) return "Monthly";
+  const upper = String(type).trim().toUpperCase();
+  switch (upper) {
+    case "MONTHLY":
+      return "Monthly";
+    case "YEARLY":
+      return "Yearly";
+    case "BI_MONTHLY":
+      return "Bi-Monthly";
+    case "QUARTERLY":
+      return "Quarterly";
+    case "HALF_YEARLY":
+      return "Half-Yearly";
+    case "WEEKLY":
+      return "Weekly";
+    case "DAILY":
+      return "Daily";
+    case "ONE_TIME":
+    case "ONETIME":
+      return "One-Time";
+    default:
+      return upper.charAt(0) + upper.slice(1).toLowerCase();
+  }
 }
 
 function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
   return (
-    <Card style={{ borderRadius: 16, overflow: "hidden", backgroundColor: '#ffffff', borderColor: '#dce9ff', borderWidth: 1, elevation: 1, shadowColor: '#0b1c30', shadowOpacity: 0.04, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } }}>
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 14
-        }}>
-
-        <View>
-          <Text style={{ fontSize: 18, fontWeight: "600", color: "#0b1c30", fontFamily: "Plus Jakarta Sans" }}>
-            Linked Transactions
-          </Text>
-          <Text style={{ fontSize: 13, color: "#7c839b", marginTop: 2, fontFamily: "Inter" }}>
-            {linkedTxs.length} transaction{linkedTxs.length !== 1 ? "s" : ""}
-          </Text>
+    <View style={styles.sectionCard}>
+      <View style={styles.sectionHeaderRow}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Text style={styles.sectionTitle}>Linked Transactions</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{linkedTxs.length}</Text>
+          </View>
         </View>
-        {onAddMore &&
+
+        {onAddMore && (
           <TouchableOpacity
             onPress={onAddMore}
-            style={{
-              backgroundColor: "#131b2e",
-              width: 40,
-              height: 40,
-              borderRadius: 8,
-              justifyContent: "center",
-              alignItems: "center"
-            }}>
-
-            <MaterialCommunityIcons name="plus" size={24} color="#ffffff" />
+            activeOpacity={0.7}
+            style={styles.linkNewBtn}>
+            <MaterialCommunityIcons name="plus" size={14} color="#ffffff" style={{ marginRight: 3 }} />
+            <Text style={styles.linkNewBtnText}>Link New</Text>
           </TouchableOpacity>
-        }
+        )}
       </View>
 
-      {linkedTxs.length === 0 ?
-        <View style={{ paddingVertical: 40, alignItems: "center" }}>
-          <MaterialCommunityIcons name="link-off" size={46} color="#c6c6cd" />
-          <Text
-            style={{ marginTop: 8, fontWeight: "600", color: "#45464d", fontFamily: "Plus Jakarta Sans" }}>
-
-            No linked transactions
+      {linkedTxs.length === 0 ? (
+        <View style={styles.emptyLinkedCard}>
+          <View style={styles.emptyLinkedIconWrap}>
+            <MaterialCommunityIcons name="link-variant-off" size={24} color="#94a3b8" />
+          </View>
+          <Text style={styles.emptyLinkedTitle}>No linked transactions</Text>
+          <Text style={styles.emptyLinkedSub}>
+            Link a payment to automatically record and mark this bill as paid.
           </Text>
-          <Text
-            style={{
-              marginTop: 4,
-              fontSize: 13,
-              color: "#7c839b",
-              textAlign: "center",
-              fontFamily: "Inter"
-            }}>
+        </View>
+      ) : (
+        linkedTxs.map((tx) => {
+          const sourceWords = (tx.source_name || "BANK").trim().split(" ");
+          const line1 = sourceWords[0]?.slice(0, 5)?.toUpperCase() || "BANK";
+          const line2 = sourceWords[1]?.slice(0, 5)?.toUpperCase() || "";
 
-            Link a payment to automatically mark this bill as paid.
-          </Text>
-        </View> :
-
-        linkedTxs.map((tx) =>
-          <View
-            key={tx.id}
-            style={{
-              marginBottom: 10,
-              borderRadius: 8,
-              backgroundColor: "#f8f9ff",
-              borderWidth: 1,
-              borderColor: "#eff4ff",
-              padding: 14
-            }}>
-
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <View
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 8,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  backgroundColor: `${tx.category_color || '#131b2e'}15`
-                }}>
-
-                <MaterialCommunityIcons
-                  name={tx.category_icon || "cash"}
-                  color={tx.category_color || '#131b2e'}
-                  size={24} />
-
+          return (
+            <View key={tx.id} style={styles.linkedTxItem}>
+              {/* Bank Chip / Avatar */}
+              <View style={styles.bankChip}>
+                <Text style={styles.bankChipTop}>{line1}</Text>
+                {line2 ? <Text style={styles.bankChipBottom}>{line2}</Text> : null}
               </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text
-                  numberOfLines={1}
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "600",
-                    color: "#0b1c30",
-                    fontFamily: "Inter"
-                  }}>
 
-                  {tx.notes || "No Notes"}
-                </Text>
-                <Text
-                  style={{ marginTop: 3, fontSize: 12, color: "#7c839b", fontFamily: "Inter" }}>
+              {/* Details */}
+              <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
+                  <Text numberOfLines={1} style={styles.txTitle}>
+                    {tx.notes || "Payment Transaction"}
+                  </Text>
+                  <View style={styles.verifiedTag}>
+                    <Text style={styles.verifiedTagText}>Verified</Text>
+                  </View>
+                </View>
 
-                  {tx.date ?
-                    new Date(tx.date).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric"
-                    }) :
-                    "—"}
-                  {tx.source_name ? ` • ${tx.source_name}` : ""}
-                </Text>
-                <Text
-                  style={{
-                    marginTop: 6,
-                    fontSize: 16,
-                    fontWeight: "700",
-                    color: "#0b1c30",
-                    fontFamily: "Plus Jakarta Sans"
-                  }}>
+                <View style={styles.txMetaRow}>
+                  <Text style={styles.txDateText}>
+                    {tx.date
+                      ? new Date(tx.date).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric"
+                      })
+                      : "—"}
+                  </Text>
+                  <Text style={styles.txBullet}>•</Text>
+                  <View style={styles.txIdBadge}>
+                    <Text style={styles.txIdBadgeText}>
+                      TXN-{tx.id ? String(tx.id).padStart(4, "0") : "AUTO"}
+                    </Text>
+                  </View>
+                </View>
 
+                <Text style={styles.txAmountText}>
                   {formatCurrency(tx.amount)}
                 </Text>
               </View>
-              {onUnlink &&
+
+              {/* Unlink Action */}
+              {onUnlink && (
                 <TouchableOpacity
+                  aria-label="Unlink transaction"
                   onPress={() => onUnlink(tx)}
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 8,
-                    backgroundColor: "#ffdad6",
-                    justifyContent: "center",
-                    alignItems: "center"
-                  }}>
-
+                  activeOpacity={0.7}
+                  style={styles.unlinkBtn}>
                   <MaterialCommunityIcons
-                    name="link-variant-remove"
-                    size={22}
-                    color="#ba1a1a" />
-
+                    name="link-variant-off"
+                    size={17}
+                    color="#f43f5e"
+                  />
                 </TouchableOpacity>
-              }
+              )}
             </View>
-          </View>
-        )
-      }
-    </Card>);
+          );
+        })
+      )}
+    </View>
+  );
 }
 
 function LinkTransactionModal({ visible, bill, onLink, onClose }) {
@@ -257,13 +215,13 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
     if (!visible || !bill) return;
     setSearch("");
     setLoading(true);
-    Promise.all([getTransactionsForBillLink(bill), getSources(true)]).
-      then(([txs]) => setCandidates(txs)).
-      catch(() => setCandidates([])).
-      finally(() => setLoading(false));
+    Promise.all([getTransactionsForBillLink(bill), getSources(true)])
+      .then(([txs]) => setCandidates(txs))
+      .catch(() => setCandidates([]))
+      .finally(() => setLoading(false));
   }, [visible, bill?.id]);
 
-  const filteredCandidates = React.useMemo(() => {
+  const filteredCandidates = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return candidates;
     return candidates.filter((tx) => {
@@ -271,22 +229,22 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
       const source = String(tx.source_name || "").toLowerCase();
       const category = String(tx.category_name || "").toLowerCase();
       const amount = String(tx.amount || "").toLowerCase();
-      const date = tx.date ?
-        new Date(tx.date).
-          toLocaleDateString("en-IN", {
+      const date = tx.date
+        ? new Date(tx.date)
+          .toLocaleDateString("en-IN", {
             day: "numeric",
             month: "short",
             year: "numeric"
-          }).
-          toLowerCase() :
-        "";
+          })
+          .toLowerCase()
+        : "";
       return (
         notes.includes(query) ||
         source.includes(query) ||
         category.includes(query) ||
         amount.includes(query) ||
-        date.includes(query));
-
+        date.includes(query)
+      );
     });
   }, [candidates, search]);
 
@@ -296,297 +254,169 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
       transparent
       animationType="slide"
       onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalSheet}>
+          <View style={styles.sheetHandle} />
 
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.45)",
-          justifyContent: "flex-end"
-        }}>
-
-        <View
-          style={{
-            backgroundColor: "#fff",
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            maxHeight: "78%",
-            padding: 16
-          }}>
-
-          {/* Header */}
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 4
-            }}>
-
+          <View style={styles.modalHeaderRow}>
             <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontWeight: "600",
-                  fontSize: 18,
-                  color: "#0b1c30"
-                }}>
-
+              <Text style={styles.modalHeaderTitle}>
                 Link Transaction
               </Text>
-              <Text
-                style={{
-                  color: "#7c839b", fontFamily: "Inter",
-                  fontSize: 12,
-                  marginTop: 2
-                }}>
-
-                {filteredCandidates.length} transaction
-                {filteredCandidates.length !== 1 ? "s" : ""} available
+              <Text style={styles.modalHeaderSubtitle}>
+                Select an expense for "{bill?.name}" • {filteredCandidates.length} available
               </Text>
             </View>
             <TouchableOpacity
               onPress={onClose}
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 19,
-                backgroundColor: "#eff4ff",
-                justifyContent: "center",
-                alignItems: "center"
-              }}>
-
-              <MaterialCommunityIcons
-                name="close"
-                size={22}
-                color={'#7c839b'} />
-
+              activeOpacity={0.7}
+              style={styles.modalCloseBtn}>
+              <MaterialCommunityIcons name="close" size={18} color="#64748b" />
             </TouchableOpacity>
           </View>
 
-          {/* Info */}
-          <Text
-            style={{
-              color: "#7c839b", fontFamily: "Inter",
-              fontSize: 13,
-              marginTop: 8,
-              marginBottom: 12
-            }}>
-
-            Select an expense transaction to link with "{bill?.name}"
-          </Text>
-
-          {/* Search */}
           <PaperTextInput
-            mode="outlined"
-            placeholder="Search transactions..."
+            placeholder="Search by note, amount, account..."
             value={search}
             onChangeText={setSearch}
-            left={<PaperTextInput.Icon icon="magnify" />}
+            mode="outlined"
+            left={<PaperTextInput.Icon icon="magnify" color="#7c839b" />}
             right={
-              search ?
+              search ? (
                 <PaperTextInput.Icon
                   icon="close-circle"
-                  onPress={() => setSearch("")} /> :
-
-                null
+                  color="#7c839b"
+                  onPress={() => setSearch("")}
+                />
+              ) : null
             }
-            style={{
-              backgroundColor: "#fff",
-              marginBottom: 12
-            }}
-            outlineColor="#dce9ff"
-            activeOutlineColor={'#131b2e'} />
+            style={styles.searchInput}
+            outlineStyle={{ borderRadius: 14 }}
+            outlineColor="#e2ebf8"
+            activeOutlineColor="#006a61"
+          />
 
+          {loading ? (
+            <View style={{ paddingVertical: 40, alignItems: "center" }}>
+              <ActivityIndicator size="small" color="#006a61" />
+              <Text style={{ marginTop: 8, color: "#64748b", fontSize: 13, fontFamily: "Inter" }}>
+                Finding unlinked transactions...
+              </Text>
+            </View>
+          ) : filteredCandidates.length === 0 ? (
+            <View style={styles.emptyCandidatesBox}>
+              <MaterialCommunityIcons name="text-box-search-outline" size={36} color="#94a3b8" />
+              <Text style={styles.emptyCandidatesTitle}>No matching transactions</Text>
+              <Text style={styles.emptyCandidatesSub}>
+                {search ? "Try a different search term" : "Only expense transactions within 45 days can be linked."}
+              </Text>
+              {search ? (
+                <TouchableOpacity onPress={() => setSearch("")} style={{ marginTop: 10 }}>
+                  <Text style={{ color: "#006a61", fontWeight: "700", fontSize: 12, fontFamily: "Inter" }}>
+                    Clear Search
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : (
+            <FlatList
+              data={filteredCandidates}
+              keyExtractor={(t) => String(t.id)}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              style={{ maxHeight: 320 }}
+              renderItem={({ item: tx }) => (
+                <TouchableOpacity
+                  onPress={() => {
+                    setLinkingId(tx.id);
+                    setTimeout(async () => {
+                      try {
+                        await onLink(tx);
+                      } finally {
+                        setLinkingId(null);
+                      }
+                    }, 0);
+                  }}
+                  disabled={linkingId !== null}
+                  activeOpacity={0.7}
+                  style={[
+                    styles.candidateRow,
+                    linkingId !== null && linkingId !== tx.id && { opacity: 0.5 }
+                  ]}>
+                  <View style={[styles.candidateIconWrap, { backgroundColor: `${tx.category_color || '#006a61'}18` }]}>
+                    <MaterialCommunityIcons
+                      name={tx.category_icon || "cash"}
+                      size={20}
+                      color={tx.category_color || '#006a61'}
+                    />
+                  </View>
 
-          {/* Transaction list */}
-          {loading ?
-            <ActivityIndicator
-              size="large"
-              color={'#131b2e'}
-              style={{ marginVertical: 30 }} /> :
-
-            filteredCandidates.length === 0 ?
-              <View
-                style={{
-                  alignItems: "center",
-                  justifyContent: "center",
-                  paddingVertical: 35
-                }}>
-
-                <MaterialCommunityIcons
-                  name={search ? "magnify-close" : "receipt-text-remove-outline"}
-                  size={46}
-                  color="#CFCFCF" />
-
-
-                <Text
-                  style={{
-                    color: "#7c839b", fontFamily: "Inter",
-                    textAlign: "center",
-                    marginTop: 10,
-                    fontWeight: "600"
-                  }}>
-
-                  {search ?
-                    "No transactions match your search." :
-                    "No matching transactions found."}
-                </Text>
-
-                {search &&
-                  <TouchableOpacity
-                    onPress={() => setSearch("")}
-                    style={{
-                      marginTop: 12,
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 18,
-                      backgroundColor: `${'#131b2e'}12`
-                    }}>
-
-                    <Text
-                      style={{
-                        color: '#131b2e',
-                        fontWeight: "700",
-                        fontSize: 13
-                      }}>
-
-                      Clear Search
+                  <View style={{ flex: 1 }}>
+                    <Text numberOfLines={1} style={styles.candidateNotes}>
+                      {tx.notes || "Payment Transaction"}
                     </Text>
-                  </TouchableOpacity>
-                }
-              </View> :
-
-              <FlatList
-                data={filteredCandidates}
-                keyExtractor={(t) => String(t.id)}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-                renderItem={({ item: tx }) =>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setLinkingId(tx.id);
-                      setTimeout(async () => {
-                        try {
-                          await onLink(tx);
-                        } finally {
-                          setLinkingId(null);
-                        }
-                      }, 0);
-                    }}
-                    disabled={linkingId !== null}
-                    activeOpacity={0.7}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      paddingVertical: 12,
-                      borderBottomWidth: 1,
-                      borderBottomColor: "#eff4ff"
-                    }}>
-
-                    {/* Icon */}
-                    <View
-                      style={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: 21,
-                        backgroundColor: `${tx.category_color || '#131b2e'}20`,
-
-                        alignItems: "center",
-                        justifyContent: "center",
-                        marginRight: 10
-                      }}>
-
-                      <MaterialCommunityIcons
-                        name={tx.category_icon || "cash"}
-                        size={19}
-                        color={tx.category_color || '#131b2e'} />
-
-                    </View>
-
-                    {/* Details */}
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          fontWeight: "700",
-                          color: "#0b1c30",
-                          fontSize: 14
-                        }}
-                        numberOfLines={1}>
-
-                        {tx.notes || "(no notes)"}
-                      </Text>
-
-                      <Text
-                        style={{
-                          color: "#7c839b", fontFamily: "Inter",
-                          fontSize: 12,
-                          marginTop: 3
-                        }}
-                        numberOfLines={1}>
-
-                        {tx.date ?
-                          new Date(tx.date).toLocaleDateString("en-IN", {
+                    <View style={{ flexDirection: "row", alignItems: "center", marginTop: 3 }}>
+                      <Text style={styles.candidateDate}>
+                        {tx.date
+                          ? new Date(tx.date).toLocaleDateString("en-IN", {
                             day: "numeric",
                             month: "short",
                             year: "numeric"
-                          }) :
-                          "—"}
-
-                        {tx.source_name ? ` · ${tx.source_name}` : ""}
-
-                        {tx.category_name ? ` · ${tx.category_name}` : ""}
+                          })
+                          : "—"}
                       </Text>
+                      {tx.source_name ? (
+                        <View style={styles.candidateSourceTag}>
+                          <Text style={styles.candidateSourceText}>{tx.source_name}</Text>
+                        </View>
+                      ) : null}
                     </View>
-                    {/* Amount */}
-                    <View style={{ flexDirection: "row", alignItems: "center" }}>
-                      <Text
-                        style={{
-                          fontWeight: "800",
-                          color: "#E46A6A",
-                          marginLeft: 8,
-                          fontSize: 15
-                        }}>
+                  </View>
 
-                        <CurrencyText amount={tx.amount} />
-                      </Text>
-                      {linkingId === tx.id && (
-                        <ActivityIndicator size="small" color={'#131b2e'} style={{ marginLeft: 8 }} />
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                } />
+                  <View style={{ flexDirection: "row", alignItems: "center", marginLeft: 8 }}>
+                    <Text style={styles.candidateAmount}>
+                      <CurrencyText amount={tx.amount} />
+                    </Text>
+                    {linkingId === tx.id ? (
+                      <ActivityIndicator size="small" color="#006a61" style={{ marginLeft: 8 }} />
+                    ) : (
+                      <MaterialCommunityIcons name="chevron-right" size={18} color="#94a3b8" style={{ marginLeft: 4 }} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+          )}
 
-          }
-          {/* Cancel */}
-          <PaperButton
-            mode="outlined"
-            disabled={linkingId !== null}
+          <TouchableOpacity
             onPress={onClose}
-            style={{ marginTop: 10 }}>
-
-            Cancel
-          </PaperButton>
+            disabled={linkingId !== null}
+            activeOpacity={0.7}
+            style={styles.modalCancelBtn}>
+            <Text style={styles.modalCancelBtnText}>Cancel</Text>
+          </TouchableOpacity>
         </View>
       </View>
-    </Modal>);
+    </Modal>
+  );
 }
 
 function isCreditCardBill(bill) {
   return (
     typeof bill?.notes === "string" && (
       bill.notes.startsWith("Recurring payment template for") ||
-      bill.notes.startsWith("Statement ")));
-
+      bill.notes.startsWith("Statement "))
+  );
 }
 
-// ─── main screen ─────────────────────────────────────────────────────────────
-
 export default function BillDetailScreen({ route, navigation }) {
+  const insets = useSafeAreaInsets();
   const rawId = route.params?.billId ?? route.params?.id;
   const occurrenceId = route.params?.occurrenceId;
   const [resolvedTemplateId, setResolvedTemplateId] = useState(null);
   const billId = resolvedTemplateId ?? rawId;
 
-  // ── All useState hooks first (hooks 1-14) ─────────────────────────────────
+  // ── All useState hooks (hooks 1-14) ───────────────────────────────────────
   const [bill, setBill] = useState(null);
   const [series, setSeries] = useState([]);
   const [selectedOcc, setSelectedOcc] = useState(null);
@@ -610,32 +440,31 @@ export default function BillDetailScreen({ route, navigation }) {
   const reduxSummary = useBillsSummary();
   const categoriesMap = useCategoriesMap();
 
-  // ── hook 15 ───────────────────────────────────────────────────────────────
   useFocusEffect(
     useCallback(() => {
       load();
     }, [rawId])
   );
 
-  // ── hook 16 ───────────────────────────────────────────────────────────────
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerShown: false,
+    });
+  }, [navigation]);
+
   useEffect(() => {
     if (bill) navigation.setOptions({ title: bill.name });
   }, [bill]);
 
-  // ── hooks 17 & 18 — MUST be before any early return ──────────────────────
-  // FIX: these were previously placed AFTER the early returns, causing
-  // "Rendered more hooks than during the previous render" on mobile because
-  // bill=null on first render triggered an early return, skipping these hooks.
-  const chartData = React.useMemo(() => {
+  const chartData = useMemo(() => {
     return series.map((occ) => {
       const date = new Date(occ.due_date);
-
       return {
         id: occ.id,
         label: date.toLocaleDateString("en", {
           month: "short",
           year: "2-digit"
-        }), // Jan 26, Feb 26, Jan 27...
+        }),
         due: Number(occ.amount || 0),
         paid: Number(occ.paid_amount || 0)
       };
@@ -644,7 +473,7 @@ export default function BillDetailScreen({ route, navigation }) {
 
   const [chartOffset, setChartOffset] = useState(0);
 
-  const displayChartData = React.useMemo(() => {
+  const displayChartData = useMemo(() => {
     if (!chartData || chartData.length === 0) return [];
     const itemsToShow = 5;
     if (chartData.length <= itemsToShow) return chartData;
@@ -652,38 +481,37 @@ export default function BillDetailScreen({ route, navigation }) {
     return chartData.slice(start, start + itemsToShow);
   }, [chartData, chartOffset]);
 
-  const totalDueAmount = React.useMemo(() => {
-    return series.reduce((sum, bill) => {
-      if (bill.status === BILL_STATUS.SKIPPED) return sum;
-      return sum + Number(bill.amount || 0);
+  const totalDueAmount = useMemo(() => {
+    return series.reduce((sum, b) => {
+      if (b.status === BILL_STATUS.SKIPPED) return sum;
+      return sum + Number(b.amount || 0);
     }, 0);
   }, [series]);
 
-  const totalPaidAmount = React.useMemo(() => {
-    return series.reduce((sum, bill) => sum + Number(bill.paid_amount || 0), 0);
+  const totalPaidAmount = useMemo(() => {
+    return series.reduce((sum, b) => sum + Number(b.paid_amount || 0), 0);
   }, [series]);
 
   const pendingAmount = totalDueAmount - totalPaidAmount;
 
-  const paidCount = React.useMemo(() => {
+  const paidCount = useMemo(() => {
     return series.filter((b) => Number(b.paid_amount || 0) > 0).length;
   }, [series]);
 
-  const paymentPercentage = React.useMemo(() => {
+  const paymentPercentage = useMemo(() => {
     if (totalDueAmount === 0) return 0;
-
-    return Math.min(100, totalPaidAmount / totalDueAmount * 100);
+    return Math.min(100, (totalPaidAmount / totalDueAmount) * 100);
   }, [totalDueAmount, totalPaidAmount]);
 
   const reduxCategory = categoriesMap?.[bill?.category_id] || category;
 
-  // ── Early returns AFTER every hook ───────────────────────────────────────
+  // ── Early returns AFTER all hooks ─────────────────────────────────────────
   if (!bill && !editing) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color={'#131b2e'} />
-      </View>);
-
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f8faff" }}>
+        <ActivityIndicator size="large" color={'#006a61'} />
+      </View>
+    );
   }
 
   if (editing) {
@@ -693,9 +521,7 @@ export default function BillDetailScreen({ route, navigation }) {
         onSaved={async () => {
           try {
             showPageLoader();
-
             setEditing(false);
-
             await load(selectedOcc?.id);
           } catch (e) {
             console.error("[BillDetail] Bill save refresh failed:", e);
@@ -703,12 +529,12 @@ export default function BillDetailScreen({ route, navigation }) {
             hidePageLoader();
           }
         }}
-        onCancel={() => setEditing(false)} />);
-
-
+        onCancel={() => setEditing(false)}
+      />
+    );
   }
 
-  // ── helpers / actions ─────────────────────────────────────────────────────
+  // ── handlers & actions ───────────────────────────────────────────────────
 
   async function load(preserveOccId = null) {
     if (!rawId) {
@@ -719,7 +545,6 @@ export default function BillDetailScreen({ route, navigation }) {
     showPageLoader();
 
     try {
-      // Resolve: if rawId is a child bill, walk up to the template
       const rawBill = await getBillById(rawId);
       const templateId = rawBill?.parent_bill_id || rawId;
       setResolvedTemplateId(templateId);
@@ -728,8 +553,8 @@ export default function BillDetailScreen({ route, navigation }) {
         getBillById(templateId),
         getBillSeries(templateId),
         getCategories(true),
-        getSources(true)]
-      );
+        getSources(true)
+      ]);
 
       setBill(b);
       setSeries(s);
@@ -745,7 +570,6 @@ export default function BillDetailScreen({ route, navigation }) {
       if (b?.source_id)
         setSource(srcs.find((ss) => ss.id === b.source_id) || null);
 
-      // Select the right occurrence
       let occ = null;
       if (preserveOccId) {
         occ = s.find((o) => o.id === preserveOccId) || null;
@@ -754,7 +578,6 @@ export default function BillDetailScreen({ route, navigation }) {
         occ = s.find((o) => o.id === occurrenceId) || null;
       }
       if (!occ && rawBill?.parent_bill_id) {
-        // came from statements screen with child bill id directly
         occ = s.find((o) => o.id === rawId) || null;
       }
       if (!occ) {
@@ -767,8 +590,8 @@ export default function BillDetailScreen({ route, navigation }) {
               d.getFullYear() === now.getFullYear() &&
               d.getMonth() === now.getMonth() &&
               o.status !== BILL_STATUS.PAID &&
-              o.status !== BILL_STATUS.SKIPPED);
-
+              o.status !== BILL_STATUS.SKIPPED
+            );
           }) ||
           s[s.length - 1] ||
           null;
@@ -778,9 +601,7 @@ export default function BillDetailScreen({ route, navigation }) {
       if (occ && s.length > 5) {
         const idx = s.findIndex((o) => o.id === occ.id);
         if (idx !== -1) {
-          setChartOffset(
-            Math.max(0, Math.min(s.length - 5, s.length - 3 - idx))
-          );
+          setChartOffset(Math.max(0, Math.min(s.length - 5, s.length - 3 - idx)));
         }
       } else {
         setChartOffset(0);
@@ -811,9 +632,7 @@ export default function BillDetailScreen({ route, navigation }) {
   async function refreshSelectedOccurrence() {
     const updatedSeries = await getBillSeries(billId);
     setSeries(updatedSeries);
-    const occ =
-      updatedSeries.find((o) => Number(o.id) === Number(selectedOcc?.id)) ||
-      null;
+    const occ = updatedSeries.find((o) => Number(o.id) === Number(selectedOcc?.id)) || null;
     setSelectedOcc(occ);
     setLinkedTxs(occ ? await getBillLinkedTransactions(occ.id) : []);
   }
@@ -916,6 +735,49 @@ export default function BillDetailScreen({ route, navigation }) {
     );
   }
 
+  const handleShareBill = async () => {
+    try {
+      const formattedDue = formatDueDate(activeBill.due_date);
+      const amountStr = formatCurrency(activeBill.amount);
+      const message = `Spendorax Bill Record:\n${bill.name}\nAmount: ${amountStr}\nDue Date: ${formattedDue}\nStatus: ${display?.label || 'Active'}`;
+      await Share.share({ message });
+    } catch (e) {
+      console.error("[BillDetail] Share error:", e);
+    }
+  };
+
+  const handleMoreOptions = () => {
+    Alert.alert(
+      bill.name,
+      "Choose an action",
+      [
+        {
+          text: "Edit Bill",
+          onPress: () => {
+            if (isCreditCardBill(activeBill)) {
+              setEditing(true);
+            } else {
+              navigation.navigate("BillOccurrenceEdit", { occurrence: selectedOcc, bill });
+            }
+          }
+        },
+        {
+          text: "Link Transaction",
+          onPress: () => setShowLinkModal(true)
+        },
+        {
+          text: "Delete Occurrence",
+          style: "destructive",
+          onPress: () => {
+            setConfirmAction("delete_occ");
+            setConfirmVisible(true);
+          }
+        },
+        { text: "Cancel", style: "cancel" }
+      ]
+    );
+  };
+
   // ── derived values ────────────────────────────────────────────────────────
   const activeBill = selectedOcc || bill;
   const display = getBillDisplayStatus(activeBill);
@@ -939,144 +801,389 @@ export default function BillDetailScreen({ route, navigation }) {
     return dueDate.getMonth() <= now.getMonth();
   })();
 
-  // ── render ────────────────────────────────────────────────────────────────
   return (
-    <View style={{ flex: 1, backgroundColor: '#f8f9ff' }}>
+    <View style={styles.container}>
+      {/* ── Stitch Custom Sticky TopBar ───────────────────────────────────── */}
+      <View style={[styles.topBar, { paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 44 : 14) }]}>
+        <View style={styles.topBarLeft}>
+          <TouchableOpacity
+            aria-label="Go Back"
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+            style={styles.headerBackButton}>
+            <MaterialCommunityIcons name="arrow-left" size={20} color="#1e293b" />
+          </TouchableOpacity>
+          <View style={styles.headerTitleWrap}>
+            <View style={styles.headerTitleRow}>
+              <Text numberOfLines={1} style={styles.headerTitle}>
+                {bill.name}
+              </Text>
+              <View style={[
+                styles.headerStatusBadge,
+                isPaidOrSkipped
+                  ? { backgroundColor: "#ecfdf5", borderColor: "#a7f3d0" }
+                  : { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" }
+              ]}>
+                <View style={[
+                  styles.headerStatusDot,
+                  { backgroundColor: isPaidOrSkipped ? "#10b981" : "#059669" }
+                ]} />
+                <Text style={[
+                  styles.headerStatusText,
+                  { color: isPaidOrSkipped ? "#047857" : "#065f46" }
+                ]}>
+                  {isPaidOrSkipped ? (display?.label || "Paid") : "Active"}
+                </Text>
+              </View>
+            </View>
+            <Text numberOfLines={1} style={styles.headerSubtitle}>
+              {bill.notes || (reduxCategory?.name ? `${reduxCategory.name} • ${formatRecurrenceType(bill.recurrence_type, bill.is_recurring)}` : "Govt. Guaranteed Savings Scheme")}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.topBarRight}>
+          <TouchableOpacity
+            aria-label="Share bill record"
+            onPress={handleShareBill}
+            activeOpacity={0.7}
+            style={styles.headerActionBtn}>
+            <MaterialCommunityIcons name="share-variant-outline" size={18} color="#64748b" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            aria-label="More options"
+            onPress={handleMoreOptions}
+            activeOpacity={0.7}
+            style={styles.headerActionBtn}>
+            <MaterialCommunityIcons name="dots-vertical" size={20} color="#64748b" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 140 }}>
-        {/* 1. Hero Card */}
-        <Card style={{ marginBottom: 16, borderRadius: 16, padding: 0, overflow: "hidden", backgroundColor: '#ffffff', borderColor: '#dce9ff', borderWidth: 1, elevation: 1, shadowColor: '#0b1c30', shadowOpacity: 0.04, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } }}>
-          <View style={{ padding: 18, flexDirection: "row", alignItems: "center" }}>
-            <View style={{ width: 56, height: 72, borderRadius: 14, backgroundColor: '#e6f7f5', justifyContent: "center", alignItems: "center" }}>
-              <MaterialCommunityIcons name={reduxCategory?.icon || "cellphone"} size={32} color="#006a61" />
-            </View>
-            <View style={{ flex: 1, marginLeft: 16 }}>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Text style={{ fontSize: 20, fontWeight: "700", color: "#0b1c30", fontFamily: "Plus Jakarta Sans" }}>
-                  {selectedLabel || "Current Bill"}
-                </Text>
-                <View style={{ marginLeft: 10 }}>
-                  <StatusBadge display={display} />
-                </View>
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: isPayable ? 140 : 120 }
+        ]}
+        showsVerticalScrollIndicator={false}>
+
+        {/* ── 1. Executive Dark Hero Card ───────────────────────────────────── */}
+        <View style={styles.heroCard}>
+          <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+            <Defs>
+              <LinearGradient id="heroGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="#0c1626" />
+                <Stop offset="50%" stopColor="#101e34" />
+                <Stop offset="100%" stopColor="#0c1424" />
+              </LinearGradient>
+            </Defs>
+            <Rect width="100%" height="100%" rx={26} fill="url(#heroGradient)" />
+          </Svg>
+          {/* Ambient Glow accents */}
+          <View style={styles.heroGlowTeal} pointerEvents="none" />
+          <View style={styles.heroGlowBlue} pointerEvents="none" />
+
+          {/* Top Row: Category Avatar + Recurrence + Occurrence & Status Badge */}
+          <View style={styles.heroTopRow}>
+            <View style={styles.heroCategoryChipWrap}>
+              <View style={styles.heroCategoryAvatar}>
+                <MaterialCommunityIcons
+                  name={reduxCategory?.icon || "cellphone"}
+                  size={24}
+                  color="#34d399"
+                />
               </View>
-              <Text style={{ marginTop: 4, fontSize: 13, color: "#7c839b", fontFamily: "Inter" }}>
-                {reduxCategory?.name || "Category"} • {bill.is_recurring ? bill.recurrence_type : "One-time"}
+              <View style={{ marginLeft: 11, flexShrink: 1 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
+                  <Text style={styles.heroCategoryName}>
+                    {reduxCategory?.name || "General"}
+                  </Text>
+                  <View style={styles.heroBullet} />
+                  <Text style={styles.heroRecurrenceText}>
+                    {formatRecurrenceType(bill.recurrence_type, bill.is_recurring)}
+                  </Text>
+                </View>
+                <Text style={styles.heroOccurrenceSub}>
+                  Occurrence: <Text style={styles.heroOccurrenceHighlight}>{selectedLabel || formatDueDate(activeBill.due_date)}</Text>
+                </Text>
+              </View>
+            </View>
+
+            {/* Paid / Status Pill */}
+            <View style={[
+              styles.heroStatusPill,
+              isPaidOrSkipped
+                ? styles.heroStatusPillPaid
+                : (display?.label?.toLowerCase().includes("overdue") ? styles.heroStatusPillOverdue : styles.heroStatusPillActive)
+            ]}>
+              <MaterialCommunityIcons
+                name={isPaidOrSkipped ? "check" : (display?.label?.toLowerCase().includes("overdue") ? "alert-circle-outline" : "clock-outline")}
+                size={12}
+                color={isPaidOrSkipped ? "#34d399" : (display?.label?.toLowerCase().includes("overdue") ? "#fb7185" : "#38bdf8")}
+                style={{ marginRight: 4 }}
+              />
+              <Text style={[
+                styles.heroStatusPillText,
+                { color: isPaidOrSkipped ? "#6ee7b7" : (display?.label?.toLowerCase().includes("overdue") ? "#fda4af" : "#bae6fd") }
+              ]}>
+                {display?.label || "Active"}
               </Text>
             </View>
           </View>
 
-          <View style={{ flexDirection: "row", backgroundColor: "#f8faff", paddingVertical: 18, borderTopWidth: 1, borderBottomWidth: 1, borderColor: "#eff4ff" }}>
-            <View style={{ flex: 1, paddingLeft: 18 }}>
-              <Text style={{ fontSize: 11, fontWeight: "600", color: "#7c839b", fontFamily: "Inter", letterSpacing: 0.5 }}>DUE AMOUNT</Text>
-              <Text style={{ fontSize: 26, fontWeight: "700", color: "#0b1c30", fontFamily: "Plus Jakarta Sans", marginTop: 4 }}>
+          {/* Prominent Bill Title */}
+          <Text numberOfLines={2} style={styles.heroMainTitle}>
+            {bill.name}
+          </Text>
+
+          {/* Amount Dual Panel Container */}
+          <View style={styles.heroAmountBox}>
+            {/* Due Amount Panel */}
+            <View style={styles.heroAmountCol}>
+              <Text style={styles.heroAmountLabel}>DUE AMOUNT</Text>
+              <Text numberOfLines={1} style={styles.heroAmountValueDue}>
                 <CurrencyText amount={activeBill.amount} />
               </Text>
-              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6 }}>
-                <MaterialCommunityIcons name="calendar-check" size={20} color="#006a61" />
-                <Text style={{ marginLeft: 4, fontSize: 12, color: "#45464d", fontFamily: "Inter" }}>
+              <View style={styles.heroAmountSubRow}>
+                <MaterialCommunityIcons name="calendar-outline" size={13} color="#94a3b8" />
+                <Text numberOfLines={1} style={styles.heroAmountSubText}>
                   Due {formatDueDate(activeBill.due_date)}
                 </Text>
               </View>
             </View>
-            <View style={{ flex: 1, paddingRight: 18 }}>
-              <Text style={{ fontSize: 11, fontWeight: "600", color: "#7c839b", fontFamily: "Inter", letterSpacing: 0.5 }}>PAID AMOUNT</Text>
-              <Text style={{ fontSize: 26, fontWeight: "700", color: "#006a61", fontFamily: "Plus Jakarta Sans", marginTop: 4 }}>
+
+            {/* Inset Divider */}
+            <View style={styles.heroAmountDivider} />
+
+            {/* Paid Amount Panel */}
+            <View style={styles.heroAmountCol}>
+              <Text style={[styles.heroAmountLabel, { color: "#34d399" }]}>PAID AMOUNT</Text>
+              <Text numberOfLines={1} style={styles.heroAmountValuePaid}>
                 <CurrencyText amount={activeBill.paid_amount || 0} />
               </Text>
-              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6 }}>
-                <MaterialCommunityIcons name="check-circle-outline" size={20} color="#006a61" />
-                <Text style={{ marginLeft: 4, fontSize: 12, color: "#006a61", fontFamily: "Inter", fontWeight: "500" }}>
-                  {isPaidOrSkipped ? "Fully Settled" : "Pending"}
+              <View style={[
+                styles.heroSettledBadge,
+                isPaidOrSkipped
+                  ? { backgroundColor: "rgba(16, 185, 129, 0.2)", borderColor: "rgba(52, 211, 153, 0.3)" }
+                  : (Number(activeBill.paid_amount || 0) > 0
+                    ? { backgroundColor: "rgba(59, 130, 246, 0.2)", borderColor: "rgba(96, 165, 250, 0.3)" }
+                    : { backgroundColor: "rgba(245, 158, 11, 0.2)", borderColor: "rgba(251, 191, 36, 0.3)" })
+              ]}>
+                <MaterialCommunityIcons
+                  name={isPaidOrSkipped ? "check-circle" : (Number(activeBill.paid_amount || 0) > 0 ? "progress-check" : "clock-outline")}
+                  size={11}
+                  color={isPaidOrSkipped ? "#34d399" : (Number(activeBill.paid_amount || 0) > 0 ? "#60a5fa" : "#fbbf24")}
+                  style={{ marginRight: 3 }}
+                />
+                <Text style={[
+                  styles.heroSettledBadgeText,
+                  { color: isPaidOrSkipped ? "#6ee7b7" : (Number(activeBill.paid_amount || 0) > 0 ? "#93c5fd" : "#fde68a") }
+                ]}>
+                  {isPaidOrSkipped ? "Fully Settled" : (Number(activeBill.paid_amount || 0) > 0 ? "Partially Paid" : "Pending")}
                 </Text>
               </View>
             </View>
           </View>
 
-          <View style={{ flexDirection: "row", flexWrap: "wrap", padding: 14 }}>
-            {[
-              { icon: "calendar-outline", label: "Bill Date", value: formatDueDate(activeBill.due_date) },
-              { icon: "shape-outline", label: "Category", value: reduxCategory?.name || "-" },
-              { icon: "bank-outline", label: "Source", value: source?.name || "-" },
-              { icon: "repeat", label: "Repeat", value: bill.is_recurring ? bill.recurrence_type : "No" }
-            ].map(({ icon, label, value }) => (
-              <View key={label} style={styles.infoTile}>
-                <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
-                  <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: "#f4f8fb", justifyContent: "center", alignItems: "center", marginRight: 10 }}>
-                    <MaterialCommunityIcons name={icon} color={'#7c839b'} size={18} />
-                  </View>
-                  <View>
-                    <Text style={{ fontSize: 12, color: "#7c839b", fontFamily: "Inter" }}>{label}</Text>
-                    <Text numberOfLines={1} style={{ marginTop: 2, fontWeight: "600", color: "#0b1c30", fontSize: 13, fontFamily: "Inter" }}>
-                      {value}
-                    </Text>
-                  </View>
-                </View>
+          {/* 4-Grid Key Metadata (Inside Hero Card) */}
+          <View style={styles.heroMetaGrid}>
+            {/* Tile 1: Bill Due Date */}
+            <View style={styles.heroMetaItem}>
+              <View style={[styles.heroMetaIconWrap, { backgroundColor: "rgba(59, 130, 246, 0.18)", borderColor: "rgba(96, 165, 250, 0.3)" }]}>
+                <MaterialCommunityIcons name="calendar-month-outline" size={16} color="#60a5fa" />
               </View>
-            ))}
-          </View>
-        </Card>
-
-        {/* 3. Chart & History */}
-        <Card
-          style={{ marginBottom: 16, borderRadius: 16, padding: 0, overflow: 'hidden', backgroundColor: '#ffffff', borderColor: '#dce9ff', borderWidth: 1, elevation: 1, shadowColor: '#0b1c30', shadowOpacity: 0.04, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } }}>
-
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingBottom: 10 }}>
-            <View>
-              <Text
-                style={{
-                  fontWeight: "600",
-                  fontSize: 18,
-                  color: "#0b1c30",
-                  fontFamily: "Plus Jakarta Sans"
-                }}>
-                Billing History
-              </Text>
-              <Text style={{ fontSize: 13, color: "#7c839b", marginTop: 2, fontFamily: "Inter" }}>
-                {series.length} Bill Occurrences
-              </Text>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.heroMetaLabel}>Bill Due Date</Text>
+                <Text numberOfLines={1} style={styles.heroMetaValue}>
+                  {formatDueDate(activeBill.due_date)}
+                </Text>
+              </View>
             </View>
 
-            <View style={{ flexDirection: 'row' }}>
+            {/* Tile 2: Category */}
+            <View style={styles.heroMetaItem}>
+              <View style={[styles.heroMetaIconWrap, { backgroundColor: "rgba(16, 185, 129, 0.18)", borderColor: "rgba(52, 211, 153, 0.3)" }]}>
+                <MaterialCommunityIcons name="shape-outline" size={16} color="#34d399" />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.heroMetaLabel}>Category</Text>
+                <Text numberOfLines={1} style={styles.heroMetaValue}>
+                  {reduxCategory?.name || "General"}
+                </Text>
+              </View>
+            </View>
+
+            {/* Tile 3: Source */}
+            <View style={styles.heroMetaItem}>
+              <View style={[styles.heroMetaIconWrap, { backgroundColor: "rgba(99, 102, 241, 0.18)", borderColor: "rgba(129, 140, 248, 0.3)" }]}>
+                <MaterialCommunityIcons name="bank-outline" size={16} color="#818cf8" />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.heroMetaLabel}>Source</Text>
+                <Text numberOfLines={1} style={styles.heroMetaValue}>
+                  {source?.name || "Not specified"}
+                </Text>
+              </View>
+            </View>
+
+            {/* Tile 4: Repeat */}
+            <View style={styles.heroMetaItem}>
+              <View style={[styles.heroMetaIconWrap, { backgroundColor: "rgba(20, 184, 166, 0.18)", borderColor: "rgba(45, 212, 191, 0.3)" }]}>
+                <MaterialCommunityIcons name="calendar-sync-outline" size={16} color="#2dd4bf" />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.heroMetaLabel}>Repeat</Text>
+                <Text numberOfLines={1} style={styles.heroMetaValue}>
+                  {formatRecurrenceType(bill.recurrence_type, bill.is_recurring)}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* ── 2. Linked Transactions Section ─────────────────────────────────── */}
+        <LinkedTransactionsCard
+          linkedTxs={linkedTxs}
+          onAddMore={() => setShowLinkModal(true)}
+          onUnlink={handleUnlinkTransaction}
+        />
+
+        {/* ── 3. Series Overview Section ────────────────────────────────────── */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeaderRow}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Text style={styles.sectionTitle}>Series Overview</Text>
+              <View style={styles.seriesGreenDot} />
+            </View>
+            <View style={styles.lifetimeBadge}>
+              <MaterialCommunityIcons name="star-outline" size={13} color="#059669" style={{ marginRight: 4 }} />
+              <Text style={styles.lifetimeBadgeText}>Lifetime Record</Text>
+            </View>
+          </View>
+
+          {/* Settled Total */}
+          <View style={styles.seriesCenterDisplay}>
+            <Text style={styles.seriesBigAmount}>
+              <CurrencyText amount={totalPaidAmount} />
+            </Text>
+            <View style={styles.seriesSubRow}>
+              <Text style={styles.seriesSubText}>Total Amount Settled</Text>
+              <View style={styles.seriesCyclesBadge}>
+                <Text style={styles.seriesCyclesBadgeText}>
+                  {paymentPercentage.toFixed(0)}% Settled • {series.length} Cycles
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* 3-Metrics Grid */}
+          <View style={styles.seriesMetricsGrid}>
+            {/* Metric 1: Paid Bills */}
+            <View style={[styles.seriesMetricCard, { backgroundColor: "#f0fdf4", borderColor: "#dcfce7" }]}>
+              <View style={[styles.seriesMetricIconWrap, { backgroundColor: "#dcfce7" }]}>
+                <MaterialCommunityIcons name="check" size={14} color="#059669" />
+              </View>
+              <Text style={styles.seriesMetricVal}>{paidCount}</Text>
+              <Text style={styles.seriesMetricLbl}>Paid Bills</Text>
+            </View>
+
+            {/* Metric 2: Pending */}
+            <View style={[styles.seriesMetricCard, { backgroundColor: "#fffbeb", borderColor: "#fef3c7" }]}>
+              <View style={[styles.seriesMetricIconWrap, { backgroundColor: "#fef3c7" }]}>
+                <MaterialCommunityIcons name="clock-outline" size={14} color="#d97706" />
+              </View>
+              <Text numberOfLines={1} style={styles.seriesMetricVal}>
+                <CurrencyText amount={pendingAmount} />
+              </Text>
+              <Text style={styles.seriesMetricLbl}>Pending</Text>
+            </View>
+
+            {/* Metric 3: Total Occurrences */}
+            <View style={[styles.seriesMetricCard, { backgroundColor: "#eff6ff", borderColor: "#dbeafe" }]}>
+              <View style={[styles.seriesMetricIconWrap, { backgroundColor: "#dbeafe" }]}>
+                <MaterialCommunityIcons name="text-box-outline" size={14} color="#2563eb" />
+              </View>
+              <Text style={styles.seriesMetricVal}>{series.length}</Text>
+              <Text style={styles.seriesMetricLbl}>Occurrences</Text>
+            </View>
+          </View>
+
+          {/* Progress Bar */}
+          <View style={styles.seriesProgressWrap}>
+            <View style={styles.seriesProgressTrack}>
+              <View style={[styles.seriesProgressFill, { width: `${paymentPercentage}%` }]} />
+            </View>
+            <View style={styles.seriesProgressStats}>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <View style={styles.settledSmallDot} />
+                <Text style={styles.settledSmallText}>
+                  {paymentPercentage.toFixed(0)}% Settled
+                </Text>
+              </View>
+              <Text style={styles.settledDetailAmounts}>
+                <CurrencyText amount={totalPaidAmount} /> of <CurrencyText amount={totalDueAmount} />
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── 4. Billing History Section ────────────────────────────────────── */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeaderRow}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Text style={styles.sectionTitle}>Billing History</Text>
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeText}>{series.length} Occurrences</Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: "row" }}>
               <TouchableOpacity
                 onPress={() => setChartOffset((prev) => Math.min(Math.max(0, chartData.length - 5), prev + 1))}
-                style={{
-                  width: 32, height: 32, borderRadius: 8, borderWidth: 1, borderColor: '#eff4ff', backgroundColor: "#fff",
-                  alignItems: "center", justifyContent: "center", marginRight: 8,
-                  opacity: chartData.length <= 5 || chartOffset >= chartData.length - 5 ? 0.3 : 1
-                }}
+                style={[
+                  styles.paginationBtn,
+                  (chartData.length <= 5 || chartOffset >= chartData.length - 5) && { opacity: 0.35 }
+                ]}
                 disabled={chartData.length <= 5 || chartOffset >= chartData.length - 5}>
-                <MaterialCommunityIcons name="chevron-left" size={20} color={'#0b1c30'} />
+                <MaterialCommunityIcons name="chevron-left" size={18} color="#0f172a" />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setChartOffset((prev) => Math.max(0, prev - 1))}
-                style={{
-                  width: 32, height: 32, borderRadius: 8, borderWidth: 1, borderColor: '#eff4ff', backgroundColor: "#fff",
-                  alignItems: "center", justifyContent: "center",
-                  opacity: chartOffset === 0 ? 0.3 : 1
-                }}
+                style={[
+                  styles.paginationBtn,
+                  chartOffset === 0 && { opacity: 0.35 }
+                ]}
                 disabled={chartOffset === 0}>
-                <MaterialCommunityIcons name="chevron-right" size={20} color={'#0b1c30'} />
+                <MaterialCommunityIcons name="chevron-right" size={18} color="#0f172a" />
               </TouchableOpacity>
             </View>
           </View>
 
-          <View
-            style={{
-              width: "100%",
-              alignItems: "center",
-              justifyContent: "center",
-              marginTop: 10
-            }}>
+          {/* Interactive Hint Banner */}
+          <View style={styles.chartHintBanner}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <MaterialCommunityIcons name="gesture-tap" size={14} color="#006a61" style={{ marginRight: 6 }} />
+              <Text style={styles.chartHintText}>Tap bar to view cycle</Text>
+            </View>
+            {selectedLabel ? (
+              <View style={styles.chartActivePill}>
+                <View style={styles.chartActiveDot} />
+                <Text style={styles.chartActiveText}>Active: {selectedLabel}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          {/* Bar Chart */}
+          <View style={styles.chartContainer}>
             <PremiumRoundedBarChart
               labels={displayChartData.map((x) => x.label)}
               ids={displayChartData.map((x) => x.id)}
               dueValues={displayChartData.map((x) => x.due)}
               paidValues={displayChartData.map((x) => x.paid)}
-              width={screenWidth - 32}
-              height={150}
-              baseColor={'#dce9ff'}
-              selectedColor={'#6bd8cb'}
+              width={screenWidth - 48}
+              height={155}
+              baseColor={'#006a61'}
               selectedLabel={selectedLabel}
               isEmpty={displayChartData.length === 0}
               onBarPress={(data) => {
@@ -1084,123 +1191,40 @@ export default function BillDetailScreen({ route, navigation }) {
                 if (match) {
                   handleSelectOccurrence(match);
                 }
-              }} />
+              }}
+            />
           </View>
 
-
-        </Card>
-
-        {/* 2. Linked transactions */}
-        <LinkedTransactionsCard
-          linkedTxs={linkedTxs}
-          onAddMore={() => setShowLinkModal(true)}
-          onUnlink={handleUnlinkTransaction} />
-
-        {/* 4. Bill Summary */}
-        <Card style={{ marginBottom: 16, borderRadius: 16, backgroundColor: '#ffffff', borderColor: '#dce9ff', borderWidth: 1, elevation: 1, shadowColor: '#0b1c30', shadowOpacity: 0.04, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "600",
-                color: "#0b1c30",
-                fontFamily: "Plus Jakarta Sans"
-              }}>
-              Bill Summary
-            </Text>
-            <Text style={{ fontSize: 12, fontWeight: "600", color: "#7c839b", fontFamily: "Inter" }}>Lifetime Record</Text>
-          </View>
-
-          <View style={{ alignItems: "center", marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 36,
-                fontWeight: "700",
-                color: "#006a61",
-                fontFamily: "Plus Jakarta Sans"
-              }}>
-              <CurrencyText amount={totalPaidAmount} />
-            </Text>
-            <Text
-              style={{
-                color: "#7c839b",
-                fontWeight: "500",
-                fontSize: 13,
-                marginTop: 4,
-                fontFamily: "Inter"
-              }}>
-              Total Amount Paid
-            </Text>
-          </View>
-
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between"
-            }}>
-
-            <View style={[styles.summaryTile, { backgroundColor: '#f4f8fb', paddingVertical: 14, borderRadius: 12, marginHorizontal: 4 }]}>
-              <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#006a61', justifyContent: 'center', alignItems: 'center' }}>
-                <MaterialCommunityIcons name="check" size={14} color="#fff" />
-              </View>
-              <Text style={styles.summaryValue}>{paidCount}</Text>
-              <Text style={styles.summaryLabel}>Paid Bills</Text>
-            </View>
-
-            <View style={[styles.summaryTile, { backgroundColor: '#f4f8fb', paddingVertical: 14, borderRadius: 12, marginHorizontal: 4 }]}>
-              <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#2f1500', justifyContent: 'center', alignItems: 'center' }}>
-                <MaterialCommunityIcons name="clock-time-four" size={14} color="#ffdcc3" />
-              </View>
-              <Text style={styles.summaryValue}>
-                <CurrencyText amount={pendingAmount} />
+          {/* Reconciled Timeline Footer */}
+          <View style={styles.reconciliationFooter}>
+            <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 8 }}>
+              <View style={styles.reconciledDot} />
+              <Text numberOfLines={1} style={styles.reconciledText}>
+                Last cycle reconciled on <Text style={styles.reconciledBold}>{formatDueDate(activeBill.due_date)}</Text>
               </Text>
-              <Text style={styles.summaryLabel}>Pending</Text>
             </View>
-
-            <View style={[styles.summaryTile, { backgroundColor: '#f4f8fb', paddingVertical: 14, borderRadius: 12, marginHorizontal: 4 }]}>
-              <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#eff4ff', justifyContent: 'center', alignItems: 'center', }}>
-                <MaterialCommunityIcons name="text-box-outline" size={14} color={'#131b2e'} />
-              </View>
-              <Text style={styles.summaryValue}>{series.length}</Text>
-              <Text style={styles.summaryLabel}>Total Bills</Text>
-            </View>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setChartOffset(0)}>
+              <Text style={styles.viewAllCyclesText}>View Latest →</Text>
+            </TouchableOpacity>
           </View>
-
-          <View style={{ marginTop: 24 }}>
-            <View
-              style={{
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: "#eaf1ff",
-                overflow: "hidden"
-              }}>
-              <View
-                style={{
-                  width: `${paymentPercentage}%`,
-                  height: "100%",
-                  backgroundColor: "#006a61"
-                }} />
-            </View>
-            <Text
-              style={{
-                marginTop: 10,
-                textAlign: "center",
-                color: "#45464d", fontFamily: "Inter",
-                fontWeight: "600",
-                fontSize: 12
-              }}>
-              <CurrencyText amount={totalPaidAmount} /> of <CurrencyText amount={totalDueAmount} /> Paid
-            </Text>
-          </View>
-        </Card>
+        </View>
 
         {/* Dialogs */}
         <ConfirmDialog
           visible={confirmVisible}
           title={confirmAction === "delete_occ" ? "Delete Occurrence" : "Skip Bill"}
-          message={confirmAction === "delete_occ" ? `Delete the occurrence for ${formatDueDate(activeBill.due_date)}? It won't be recreated.` : `Skip "${activeBill.name}" for ${formatDueDate(activeBill.due_date)}?`}
+          message={
+            confirmAction === "delete_occ"
+              ? `Delete the occurrence for ${formatDueDate(activeBill.due_date)}? It won't be recreated.`
+              : `Skip "${activeBill.name}" for ${formatDueDate(activeBill.due_date)}?`
+          }
           confirmLabel={confirmAction === "skip" ? "Skip" : "Delete"}
-          onCancel={() => { setConfirmVisible(false); setConfirmAction(null); }}
+          onCancel={() => {
+            setConfirmVisible(false);
+            setConfirmAction(null);
+          }}
           onConfirm={async () => {
             try {
               showPageLoader();
@@ -1213,121 +1237,134 @@ export default function BillDetailScreen({ route, navigation }) {
                 await refreshSelectedOccurrence();
                 await load(activeBill.id);
               }
-            } catch (e) { console.error("[BillDetail] Action failed:", e); } finally { setConfirmVisible(false); setConfirmAction(null); hidePageLoader(); }
-          }} />
+            } catch (e) {
+              console.error("[BillDetail] Action failed:", e);
+            } finally {
+              setConfirmVisible(false);
+              setConfirmAction(null);
+              hidePageLoader();
+            }
+          }}
+        />
 
         <LinkTransactionModal
           visible={showLinkModal}
           bill={activeBill}
           onLink={handleLinkTransaction}
-          onClose={() => setShowLinkModal(false)} />
+          onClose={() => setShowLinkModal(false)}
+        />
       </ScrollView>
 
-      {/* Bottom action bar */}
-      <View style={styles.bottomBar}>
-        {isPayable &&
+      {/* ── 5. Stitch Bottom Action Dock ──────────────────────────────────── */}
+      <View style={[styles.bottomDock, { paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 24 : 12) }]}>
+        {isPayable && (
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: "#006a61" }, isMarkingPaid && { opacity: 0.85 }]}
+            style={[
+              styles.primaryPayButton,
+              isMarkingPaid && { opacity: 0.85 }
+            ]}
             onPress={handleMarkPaid}
-            disabled={isMarkingPaid}>
-
+            disabled={isMarkingPaid}
+            activeOpacity={0.8}>
             {isMarkingPaid ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 8 }} />
             ) : (
               <MaterialCommunityIcons
                 name="check-circle"
-                color="#fff"
-                size={22} />
+                color="#ffffff"
+                size={18}
+                style={{ marginRight: 6 }}
+              />
             )}
-
-            <Text style={styles.actionTextWhite}>Paid</Text>
+            <Text style={styles.primaryPayText}>Mark as Paid</Text>
           </TouchableOpacity>
-        }
+        )}
 
-        {activeBill.status === BILL_STATUS.SKIPPED ?
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={handleUnskip}
-            disabled={isMarkingPaid}>
-            <MaterialCommunityIcons name="undo" color="#0b57d0" size={22} />
-            <Text style={styles.actionText}>Unskip</Text>
-          </TouchableOpacity> :
-          !isPaidOrSkipped ?
+        <View style={[
+          styles.dockIconActionsRow,
+          !isPayable && { justifyContent: "space-around", flex: 1 }
+        ]}>
+          {activeBill.status === BILL_STATUS.SKIPPED ? (
             <TouchableOpacity
-              style={styles.actionButton}
+              style={styles.dockActionButton}
+              onPress={handleUnskip}
+              disabled={isMarkingPaid}
+              activeOpacity={0.7}>
+              <View style={[styles.dockIconCircle, { backgroundColor: "#eff6ff", borderColor: "#bfdbfe" }]}>
+                <MaterialCommunityIcons name="undo" color="#2563eb" size={18} />
+              </View>
+              <Text style={styles.dockActionLabel}>Unskip</Text>
+            </TouchableOpacity>
+          ) : !isPaidOrSkipped ? (
+            <TouchableOpacity
+              style={styles.dockActionButton}
               onPress={() => {
                 setConfirmAction("skip");
                 setConfirmVisible(true);
               }}
-              disabled={isMarkingPaid}>
+              disabled={isMarkingPaid}
+              activeOpacity={0.7}>
+              <View style={[styles.dockIconCircle, { backgroundColor: "#fef3c7", borderColor: "#fde68a" }]}>
+                <MaterialCommunityIcons name="skip-next" color="#d97706" size={18} />
+              </View>
+              <Text style={styles.dockActionLabel}>Skip</Text>
+            </TouchableOpacity>
+          ) : null}
 
-              <MaterialCommunityIcons
-                name="skip-next-circle"
-                color="#c76c00"
-                size={22} />
-
-              <Text style={styles.actionText}>Skip</Text>
-            </TouchableOpacity> :
-            null}
-
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => setShowLinkModal(true)}>
-
-          <MaterialCommunityIcons name="link-variant" color="#003a70" size={22} />
-          <Text style={[styles.actionText, { color: "#003a70" }]}>Link</Text>
-        </TouchableOpacity>
-
-        {!isCreditCardBill(activeBill) &&
+          {/* Link Option */}
           <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => navigation.navigate("BillOccurrenceEdit", { occurrence: selectedOcc, bill })}>
-
-            <MaterialCommunityIcons name="square-edit-outline" color="#b75500" size={22} />
-            <Text style={[styles.actionText, { color: "#b75500" }]}>Edit</Text>
+            style={styles.dockActionButton}
+            onPress={() => setShowLinkModal(true)}
+            activeOpacity={0.7}>
+            <View style={[styles.dockIconCircle, { backgroundColor: "#f0fdfa", borderColor: "#ccfbf1" }]}>
+              <MaterialCommunityIcons name="link-variant" color="#006a61" size={19} />
+            </View>
+            <Text style={[styles.dockActionLabel, { color: "#006a61" }]}>Link</Text>
           </TouchableOpacity>
-        }
 
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => {
-            setConfirmAction("delete_occ");
-            setConfirmVisible(true);
-          }}
-        >
-          <MaterialCommunityIcons name="delete-outline" color="#ba1a1a" size={22} />
-          <Text style={[styles.actionText, { color: "#ba1a1a" }]}>Delete</Text>
-        </TouchableOpacity>
+          {/* Edit Option */}
+          {!isCreditCardBill(activeBill) && (
+            <TouchableOpacity
+              style={styles.dockActionButton}
+              onPress={() => navigation.navigate("BillOccurrenceEdit", { occurrence: selectedOcc, bill })}
+              activeOpacity={0.7}>
+              <View style={[styles.dockIconCircle, { backgroundColor: "#f1f5f9", borderColor: "#e2e8f0" }]}>
+                <MaterialCommunityIcons name="pencil-outline" color="#475569" size={18} />
+              </View>
+              <Text style={styles.dockActionLabel}>Edit</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Delete Option */}
+          <TouchableOpacity
+            style={styles.dockActionButton}
+            onPress={() => {
+              setConfirmAction("delete_occ");
+              setConfirmVisible(true);
+            }}
+            activeOpacity={0.7}>
+            <View style={[styles.dockIconCircle, { backgroundColor: "#fff1f2", borderColor: "#fecdd3" }]}>
+              <MaterialCommunityIcons name="trash-can-outline" color="#e11d48" size={18} />
+            </View>
+            <Text style={[styles.dockActionLabel, { color: "#e11d48" }]}>Delete</Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Payment Source Picker Modal for Credit Card Bills */}
       <Modal
         visible={showPaymentSourcePicker}
         transparent
         animationType="slide">
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <View style={styles.sheetHandle} />
 
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.4)",
-            justifyContent: "flex-end"
-          }}>
-
-          <View
-            style={{
-              backgroundColor: "#fff",
-              maxHeight: "55%",
-              borderTopLeftRadius: 16,
-              borderTopRightRadius: 16,
-              padding: 16
-            }}>
-
-            <Text
-              style={{
-                fontWeight: "700",
-                fontSize: 16,
-                marginBottom: 12
-              }}>
-
+            <Text style={styles.modalHeaderTitle}>
               Select Payment Source
+            </Text>
+            <Text style={styles.modalHeaderSubtitle}>
+              Choose the account to record this credit card payment
             </Text>
 
             <PaperTextInput
@@ -1335,40 +1372,44 @@ export default function BillDetailScreen({ route, navigation }) {
               value={paymentSourceSearch}
               onChangeText={setPaymentSourceSearch}
               mode="outlined"
-              style={{ marginBottom: 10 }} />
+              left={<PaperTextInput.Icon icon="magnify" color="#7c839b" />}
+              right={
+                paymentSourceSearch ? (
+                  <PaperTextInput.Icon
+                    icon="close-circle"
+                    color="#7c839b"
+                    onPress={() => setPaymentSourceSearch("")}
+                  />
+                ) : null
+              }
+              style={styles.searchInput}
+              outlineStyle={{ borderRadius: 14 }}
+              outlineColor="#e2ebf8"
+              activeOutlineColor="#006a61"
+            />
 
-
-            <ScrollView>
-              {paymentSources.
-                filter((s) =>
-                  s.name.
-                    toLowerCase().
-                    includes(paymentSourceSearch.toLowerCase())
-                ).
-                map((source) =>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 240 }}>
+              {paymentSources
+                .filter((s) =>
+                  s.name.toLowerCase().includes(paymentSourceSearch.toLowerCase())
+                )
+                .map((sItem) => (
                   <TouchableOpacity
-                    key={source.id}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      paddingVertical: 12
-                    }}
+                    key={sItem.id}
+                    style={styles.paymentSourceRow}
                     onPress={async () => {
                       try {
                         setIsMarkingPaid(true);
                         const paymentId = await payCreditCardBill({
                           bill: activeBill,
                           card: selectedCreditCard,
-                          paymentSourceId: source.id
+                          paymentSourceId: sItem.id
                         });
                         await markBillPaid(activeBill.id, null, paymentId);
                         try {
                           await onStatementPaid(selectedCreditCard.id);
                         } catch (e) {
-                          console.warn(
-                            "[BillDetailScreen] onStatementPaid failed:",
-                            e
-                          );
+                          console.warn("[BillDetailScreen] onStatementPaid failed:", e);
                         }
                         setShowPaymentSourcePicker(false);
                         setSelectedCreditCard(null);
@@ -1378,43 +1419,38 @@ export default function BillDetailScreen({ route, navigation }) {
                         setToastMsg(`Bill paid for ${monthYear}`);
                         setToastVisible(true);
                       } catch (e) {
-                        console.error(
-                          "[BillDetail] Credit card payment failed:",
-                          e
-                        );
+                        console.error("[BillDetail] Credit card payment failed:", e);
                         Alert.alert("Error", "Unable to complete payment.");
                       } finally {
                         setIsMarkingPaid(false);
                       }
                     }}>
-
-                    <MaterialCommunityIcons
-                      name={source.icon || "wallet"}
-                      size={22}
-                      color={'#131b2e'} />
-
-                    <Text
-                      style={{
-                        marginLeft: 10,
-                        flex: 1
-                      }}>
-
-                      {source.name}
+                    <View style={styles.paymentSourceIconWrap}>
+                      <MaterialCommunityIcons
+                        name={sItem.icon || "wallet"}
+                        size={20}
+                        color="#006a61"
+                      />
+                    </View>
+                    <Text style={styles.paymentSourceName}>
+                      {sItem.name}
                     </Text>
+                    <MaterialCommunityIcons name="chevron-right" size={18} color="#94a3b8" />
                   </TouchableOpacity>
-                )}
+                ))}
             </ScrollView>
 
-            <PaperButton
+            <TouchableOpacity
               onPress={() => {
                 setShowPaymentSourcePicker(false);
                 setSelectedCreditCard(null);
                 setPaymentSourceSearch("");
                 setIsMarkingPaid(false);
-              }}>
-
-              Cancel
-            </PaperButton>
+              }}
+              activeOpacity={0.7}
+              style={styles.modalCancelBtn}>
+              <Text style={styles.modalCancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1445,75 +1481,999 @@ export default function BillDetailScreen({ route, navigation }) {
       </Snackbar>
 
       <PageLoader visible={loaderVisible} />
-    </View>);
-
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  infoTile: { width: "50%", paddingVertical: 12, flexDirection: "column" },
-  infoTitle: { marginTop: 4, fontSize: 12, color: "#7c839b", fontFamily: "Inter" },
-  infoValue: {
-    marginTop: 2,
-    fontWeight: "600",
-    color: "#0b1c30",
-    fontSize: 14,
-    fontFamily: "Inter"
+  container: {
+    flex: 1,
+    backgroundColor: "#f8faff",
   },
-  bottomBar: {
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+
+  /* ── Stitch TopBar Header ─────────────────────────────────────────── */
+  topBar: {
+    backgroundColor: "rgba(255, 255, 255, 0.96)",
+    borderBottomWidth: 1,
+    borderBottomColor: "#edf2fa",
+    paddingHorizontal: 16,
+    paddingBottom: 11,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    shadowColor: "#0b1c30",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+    zIndex: 50,
+  },
+  topBarLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    marginRight: 8,
+  },
+  headerBackButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#0b1c30",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  headerTitleWrap: {
+    marginLeft: 10,
+    flex: 1,
+  },
+  headerTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0f172a",
+    fontFamily: "Plus Jakarta Sans",
+    letterSpacing: -0.3,
+    maxWidth: screenWidth - 190,
+  },
+  headerStatusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginLeft: 7,
+  },
+  headerStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 4,
+  },
+  headerStatusText: {
+    fontSize: 10,
+    fontWeight: "700",
+    fontFamily: "Inter",
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: "#94a3b8",
+    fontFamily: "Inter",
+    marginTop: 1,
+  },
+  topBarRight: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  headerActionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 2,
+  },
+
+  /* ── 1. Executive Dark Hero Card ───────────────────────────────────── */
+  heroCard: {
+    borderRadius: 26,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(51, 65, 85, 0.6)",
+    overflow: "hidden",
+    position: "relative",
+    shadowColor: "#0c1424",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    elevation: 6,
+  },
+  heroGlowTeal: {
+    position: "absolute",
+    top: -50,
+    right: -50,
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: "rgba(0, 163, 150, 0.2)",
+  },
+  heroGlowBlue: {
+    position: "absolute",
+    bottom: -50,
+    left: -50,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: "rgba(59, 130, 246, 0.12)",
+  },
+  heroTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  heroCategoryChipWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    marginRight: 8,
+  },
+  heroCategoryAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "rgba(16, 185, 129, 0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(52, 211, 153, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  heroCategoryName: {
+    fontSize: 12.5,
+    fontWeight: "800",
+    color: "#ffffff",
+    fontFamily: "Inter",
+  },
+  heroBullet: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: "#64748b",
+    marginHorizontal: 5,
+  },
+  heroRecurrenceText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#5eead4",
+    fontFamily: "Inter",
+  },
+  heroOccurrenceSub: {
+    fontSize: 11,
+    color: "#94a3b8",
+    fontFamily: "Inter",
+    marginTop: 2,
+  },
+  heroOccurrenceHighlight: {
+    color: "#e2e8f0",
+    fontWeight: "700",
+  },
+  heroStatusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 3.5,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  heroStatusPillPaid: {
+    backgroundColor: "rgba(16, 185, 129, 0.15)",
+    borderColor: "rgba(52, 211, 153, 0.3)",
+  },
+  heroStatusPillActive: {
+    backgroundColor: "rgba(59, 130, 246, 0.15)",
+    borderColor: "rgba(96, 165, 250, 0.3)",
+  },
+  heroStatusPillOverdue: {
+    backgroundColor: "rgba(244, 63, 94, 0.15)",
+    borderColor: "rgba(251, 113, 133, 0.3)",
+  },
+  heroStatusPillText: {
+    fontSize: 11,
+    fontWeight: "700",
+    fontFamily: "Inter",
+  },
+  heroMainTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#ffffff",
+    fontFamily: "Plus Jakarta Sans",
+    letterSpacing: -0.4,
+    marginBottom: 14,
+    lineHeight: 26,
+  },
+  heroAmountBox: {
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "stretch",
+    marginBottom: 12,
+  },
+  heroAmountCol: {
+    flex: 1,
+    justifyContent: "space-between",
+  },
+  heroAmountDivider: {
+    width: 1,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    marginHorizontal: 12,
+  },
+  heroAmountLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    color: "#94a3b8",
+    fontFamily: "Inter",
+  },
+  heroAmountValueDue: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#ffffff",
+    fontFamily: "Plus Jakarta Sans",
+    marginTop: 2,
+    letterSpacing: -0.3,
+  },
+  heroAmountSubRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  heroAmountSubText: {
+    marginLeft: 4,
+    fontSize: 11,
+    color: "#94a3b8",
+    fontFamily: "Inter",
+    fontWeight: "500",
+  },
+  heroAmountValuePaid: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#6ee7b7",
+    fontFamily: "Plus Jakarta Sans",
+    marginTop: 2,
+    letterSpacing: -0.3,
+  },
+  heroSettledBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignSelf: "flex-start",
+    marginTop: 4,
+  },
+  heroSettledBadgeText: {
+    fontSize: 10.5,
+    fontWeight: "700",
+    fontFamily: "Inter",
+  },
+  heroMetaGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  heroMetaItem: {
+    width: "48.5%",
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 9,
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 7,
+  },
+  heroMetaIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 9,
+  },
+  heroMetaLabel: {
+    fontSize: 10,
+    color: "#94a3b8",
+    fontFamily: "Inter",
+    fontWeight: "500",
+  },
+  heroMetaValue: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#ffffff",
+    fontFamily: "Inter",
+    marginTop: 1,
+  },
+
+  /* ── Reusable Section Card Styling ────────────────────────────────── */
+  sectionCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#e2ebf8",
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#0b1c30",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 15.5,
+    fontWeight: "800",
+    color: "#0f172a",
+    fontFamily: "Plus Jakarta Sans",
+    letterSpacing: -0.2,
+  },
+  countBadge: {
+    backgroundColor: "#f1f5f9",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 1.5,
+    marginLeft: 7,
+  },
+  countBadgeText: {
+    fontSize: 10.5,
+    fontWeight: "800",
+    color: "#475569",
+    fontFamily: "Inter",
+  },
+
+  /* ── 2. Linked Transactions ────────────────────────────────────────── */
+  linkNewBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#006a61",
+    paddingHorizontal: 12,
+    paddingVertical: 5.5,
+    borderRadius: 20,
+    shadowColor: "#006a61",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  linkNewBtnText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: "#ffffff",
+    fontFamily: "Inter",
+  },
+  linkedTxItem: {
+    backgroundColor: "#f8faff",
+    borderColor: "#edf3fc",
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 11,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  bankChip: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "rgba(151, 20, 77, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(151, 20, 77, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 2,
+  },
+  bankChipTop: {
+    fontSize: 9.5,
+    fontWeight: "900",
+    color: "#97144d",
+    letterSpacing: -0.2,
+    fontFamily: "Plus Jakarta Sans",
+  },
+  bankChipBottom: {
+    fontSize: 7.5,
+    fontWeight: "800",
+    color: "rgba(151, 20, 77, 0.8)",
+    fontFamily: "Inter",
+    marginTop: 1,
+  },
+  txTitle: {
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: "#0f172a",
+    fontFamily: "Inter",
+    maxWidth: screenWidth - 210,
+  },
+  verifiedTag: {
+    backgroundColor: "#d1fae5",
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    marginLeft: 6,
+  },
+  verifiedTagText: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    color: "#065f46",
+    fontFamily: "Inter",
+  },
+  txMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 3,
+  },
+  txDateText: {
+    fontSize: 11,
+    color: "#94a3b8",
+    fontFamily: "Inter",
+    fontWeight: "500",
+  },
+  txBullet: {
+    color: "#cbd5e1",
+    marginHorizontal: 5,
+    fontSize: 10,
+  },
+  txIdBadge: {
+    backgroundColor: "#e2e8f0",
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  txIdBadgeText: {
+    fontSize: 9.5,
+    color: "#475569",
+    fontWeight: "700",
+    fontFamily: "Inter",
+  },
+  txAmountText: {
+    fontSize: 14.5,
+    fontWeight: "800",
+    color: "#0f172a",
+    fontFamily: "Plus Jakarta Sans",
+    marginTop: 3,
+  },
+  unlinkBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#fecdd3",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyLinkedCard: {
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    backgroundColor: "#fbfcfe",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#e2ebf8",
+    borderStyle: "dashed",
+  },
+  emptyLinkedIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#f1f5f9",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  emptyLinkedTitle: {
+    fontWeight: "800",
+    fontSize: 13.5,
+    color: "#0f172a",
+    fontFamily: "Plus Jakarta Sans",
+  },
+  emptyLinkedSub: {
+    marginTop: 3,
+    fontSize: 11.5,
+    color: "#94a3b8",
+    textAlign: "center",
+    fontFamily: "Inter",
+    lineHeight: 16,
+    maxWidth: 240,
+  },
+
+  /* ── 3. Series Overview ────────────────────────────────────────────── */
+  seriesGreenDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#10b981",
+    marginLeft: 6,
+  },
+  lifetimeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ecfdf5",
+    borderColor: "#a7f3d0",
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 9,
+    paddingVertical: 2.5,
+  },
+  lifetimeBadgeText: {
+    fontSize: 10.5,
+    fontWeight: "700",
+    color: "#047857",
+    fontFamily: "Inter",
+  },
+  seriesCenterDisplay: {
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  seriesBigAmount: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: "#006a61",
+    fontFamily: "Plus Jakarta Sans",
+    letterSpacing: -0.5,
+  },
+  seriesSubRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  seriesSubText: {
+    fontSize: 11.5,
+    color: "#94a3b8",
+    fontFamily: "Inter",
+    fontWeight: "500",
+    marginRight: 6,
+  },
+  seriesCyclesBadge: {
+    backgroundColor: "#f0fdfa",
+    borderColor: "#ccfbf1",
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 7,
+    paddingVertical: 1.5,
+  },
+  seriesCyclesBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#0f766e",
+    fontFamily: "Inter",
+  },
+  seriesMetricsGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  seriesMetricCard: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    alignItems: "center",
+    marginHorizontal: 3,
+  },
+  seriesMetricIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  seriesMetricVal: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0f172a",
+    fontFamily: "Plus Jakarta Sans",
+  },
+  seriesMetricLbl: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#64748b",
+    fontFamily: "Inter",
+    marginTop: 2,
+  },
+  seriesProgressWrap: {
+    marginTop: 14,
+  },
+  seriesProgressTrack: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#f1f5f9",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    overflow: "hidden",
+  },
+  seriesProgressFill: {
+    height: "100%",
+    backgroundColor: "#006a61",
+    borderRadius: 4,
+  },
+  seriesProgressStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 6,
+  },
+  settledSmallDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#10b981",
+    marginRight: 4,
+  },
+  settledSmallText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#006a61",
+    fontFamily: "Inter",
+  },
+  settledDetailAmounts: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#64748b",
+    fontFamily: "Inter",
+  },
+
+  /* ── 4. Billing History ────────────────────────────────────────────── */
+  paginationBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: "#e2ebf8",
+    backgroundColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 6,
+  },
+  chartHintBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#f0fdf4",
+    borderWidth: 1,
+    borderColor: "#bbf7d0",
+    borderRadius: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    marginBottom: 10,
+  },
+  chartHintText: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: "#475569",
+    fontFamily: "Inter",
+  },
+  chartActivePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#bbf7d0",
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  chartActiveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "#10b981",
+    marginRight: 4,
+  },
+  chartActiveText: {
+    fontSize: 10.5,
+    fontWeight: "800",
+    color: "#006a61",
+    fontFamily: "Inter",
+  },
+  chartContainer: {
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingBottom: 4,
+  },
+  reconciliationFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopWidth: 1,
+    borderTopColor: "#f1f5f9",
+    paddingTop: 10,
+    marginTop: 6,
+  },
+  reconciledDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#10b981",
+    marginRight: 5,
+  },
+  reconciledText: {
+    fontSize: 11,
+    color: "#64748b",
+    fontFamily: "Inter",
+    flex: 1,
+  },
+  reconciledBold: {
+    fontWeight: "700",
+    color: "#0f172a",
+  },
+  viewAllCyclesText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#006a61",
+    fontFamily: "Inter",
+  },
+
+  /* ── 5. Stitch Bottom Action Dock ──────────────────────────────────── */
+  bottomDock: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "#ffffff",
+    backgroundColor: "rgba(255, 255, 255, 0.96)",
     borderTopWidth: 1,
-    borderTopColor: "#eff4ff",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    borderTopColor: "#e2e8f0",
+    paddingHorizontal: 16,
+    paddingTop: 10,
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "center"
+    shadowColor: "#0b1c30",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 8,
+    zIndex: 50,
   },
-  actionButton: {
-    flex: 1,
+  primaryPayButton: {
+    flex: 1.5,
+    height: 46,
+    backgroundColor: "#006a61",
+    borderRadius: 14,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 8,
-    borderRadius: 9999,
+    marginRight: 10,
+    shadowColor: "#006a61",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  actionText: {
-    marginTop: 3,
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#0b1c30",
-    fontFamily: "Inter"
-  },
-  actionTextWhite: {
-    marginTop: 3,
-    fontSize: 11,
-    fontWeight: "600",
+  primaryPayText: {
     color: "#ffffff",
-    fontFamily: "Inter"
+    fontWeight: "800",
+    fontSize: 14,
+    fontFamily: "Inter",
   },
-  summaryTile: {
-    flex: 1,
-    alignItems: "center"
+  dockIconActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
-  summaryValue: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#0b1c30",
-    fontFamily: "Plus Jakarta Sans"
+  dockActionButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 5,
   },
-  summaryLabel: {
+  dockIconCircle: {
+    width: 44,
+    height: 38,
+    borderRadius: 13,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dockActionLabel: {
     marginTop: 3,
+    fontSize: 10.5,
+    fontWeight: "700",
+    color: "#475569",
+    fontFamily: "Inter",
+  },
+
+  /* ── Modals & Overlays ─────────────────────────────────────────────── */
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(11, 28, 48, 0.45)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: "#ffffff",
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 32 : 18,
+    maxHeight: "80%",
+    shadowColor: "#0b1c30",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#d1d9e6",
+    alignSelf: "center",
+    marginBottom: 14,
+  },
+  modalHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  modalHeaderTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#0f172a",
+    fontFamily: "Plus Jakarta Sans",
+  },
+  modalHeaderSubtitle: {
     color: "#7c839b",
+    fontFamily: "Inter",
     fontSize: 12,
-    fontFamily: "Inter"
+    marginTop: 2,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#f1f5fa",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  searchInput: {
+    backgroundColor: "#fbfcfe",
+    marginVertical: 10,
+    fontSize: 13,
+  },
+  emptyCandidatesBox: {
+    paddingVertical: 32,
+    alignItems: "center",
+  },
+  emptyCandidatesTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0f172a",
+    fontFamily: "Plus Jakarta Sans",
+    marginTop: 8,
+  },
+  emptyCandidatesSub: {
+    fontSize: 12,
+    color: "#94a3b8",
+    textAlign: "center",
+    marginTop: 4,
+    paddingHorizontal: 20,
+    fontFamily: "Inter",
+  },
+  candidateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5fa",
+  },
+  candidateIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 11,
+  },
+  candidateNotes: {
+    fontWeight: "700",
+    color: "#0f172a",
+    fontSize: 13.5,
+    fontFamily: "Inter",
+  },
+  candidateDate: {
+    color: "#94a3b8",
+    fontFamily: "Inter",
+    fontSize: 11,
+  },
+  candidateSourceTag: {
+    backgroundColor: "#f1f5fa",
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 5,
+    marginLeft: 6,
+  },
+  candidateSourceText: {
+    fontSize: 10,
+    color: "#475569",
+    fontWeight: "600",
+  },
+  candidateAmount: {
+    fontWeight: "800",
+    color: "#0f172a",
+    fontSize: 14.5,
+    fontFamily: "Plus Jakarta Sans",
+  },
+  modalCancelBtn: {
+    marginTop: 12,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: "#f1f5fa",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalCancelBtnText: {
+    color: "#475569",
+    fontWeight: "700",
+    fontSize: 13.5,
+    fontFamily: "Inter",
+  },
+  paymentSourceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5fa",
+  },
+  paymentSourceIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "#f0fdfa",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  paymentSourceName: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0f172a",
+    fontFamily: "Inter",
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(19, 27, 46, 0.45)",
+    backgroundColor: "rgba(11, 28, 48, 0.5)",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 99999,
@@ -1521,31 +2481,31 @@ const styles = StyleSheet.create({
   },
   loadingCard: {
     backgroundColor: "#ffffff",
-    paddingHorizontal: 28,
-    paddingVertical: 22,
-    borderRadius: 16,
+    paddingHorizontal: 32,
+    paddingVertical: 24,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
+    shadowColor: "#0b1c30",
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowRadius: 14,
+    elevation: 8,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    fontWeight: "600",
-    color: "#0b1c30",
-    fontFamily: "Inter",
+    fontWeight: "700",
+    color: "#0f172a",
+    fontFamily: "Plus Jakarta Sans",
   },
   snackbar: {
     position: "absolute",
-    bottom: 75,
+    bottom: 80,
     left: 16,
     right: 16,
     backgroundColor: "#006a61",
-    borderRadius: 8,
+    borderRadius: 12,
   },
   snackbarText: {
     color: "#ffffff",
