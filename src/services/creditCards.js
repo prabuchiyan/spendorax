@@ -1,7 +1,8 @@
 import { executeSql } from "../database/db";
 import { createSource, updateSource } from "./sources";
 import { createTransfer } from "./transactions";
-import { createBill, updateBill, deleteBill } from "./bills";
+import { createBill, updateBill, deleteBill, syncBillPaymentStatus, emitBillsChanged } from "./bills";
+import events from "./events";
 import { BILL_STATUS } from "./billUtils";
 
 export async function createCreditCard({
@@ -223,8 +224,10 @@ export async function getCreditCards(activeOnly = true) {
   const totalsBySource = {};
   if (sourceIds.length > 0) {
     const placeholders = sourceIds.map(() => "?").join(",");
+    // Include all transactions (including is_counted = 0, i.e. "Not a Spend" and "Not a Income")
+    // because all charges and credits affect credit card outstanding balance.
     const txRes = await executeSql(
-      `SELECT source_id, type, amount FROM transactions WHERE source_id IN (${placeholders})`, // AND IFNULL(is_counted, 1) = 1
+      `SELECT source_id, type, amount FROM transactions WHERE source_id IN (${placeholders})`,
       sourceIds,
     );
 
@@ -294,9 +297,8 @@ export async function getCreditCardById(id) {
   let outstanding = 0;
   for (let i = 0; i < txRes.rows.length; i++) {
     const tx = txRes.rows.item(i);
-    if (tx.is_counted !== null && tx.is_counted !== undefined && Number(tx.is_counted) === 0) {
-      continue;
-    }
+    // Include all transactions (including is_counted = 0, i.e. "Not a Spend" and "Not a Income")
+    // because all charges and credits affect credit card outstanding balance.
     const amount = Number(tx.amount || 0);
     if (tx.type === "expense") {
       outstanding += amount;
@@ -322,6 +324,106 @@ export async function getCreditCardBySourceId(sourceId) {
   return res.rows.item(0);
 }
 
+export async function resolveCreditCardForBill(bill) {
+  if (!bill) return null;
+  const cards = await getCreditCards(false);
+  if (!cards || cards.length === 0) return null;
+
+  // 1. Gather all candidate IDs from bill and its children
+  const candidateBillIds = new Set();
+  const rawId = Number(bill.id);
+  if (Number.isFinite(rawId) && rawId > 0) candidateBillIds.add(rawId);
+  if (bill.bill_id) {
+    const bId = Number(bill.bill_id);
+    if (Number.isFinite(bId) && bId > 0) candidateBillIds.add(bId);
+  }
+  if (Array.isArray(bill.children)) {
+    bill.children.forEach((c) => {
+      const cId = Number(c?.id);
+      if (Number.isFinite(cId) && cId > 0) candidateBillIds.add(cId);
+      if (c?.bill_id) {
+        const cbId = Number(c.bill_id);
+        if (Number.isFinite(cbId) && cbId > 0) candidateBillIds.add(cbId);
+      }
+    });
+  }
+  if (Array.isArray(bill._displayStatements)) {
+    bill._displayStatements.forEach((s) => {
+      const sId = Number(s?.id);
+      if (Number.isFinite(sId) && sId > 0) candidateBillIds.add(sId);
+      if (s?.bill_id) {
+        const sbId = Number(s.bill_id);
+        if (Number.isFinite(sbId) && sbId > 0) candidateBillIds.add(sbId);
+      }
+    });
+  }
+
+  // 2. Query credit_card_statements to see if any candidate bill ID is linked directly to a statement
+  if (candidateBillIds.size > 0) {
+    const ids = Array.from(candidateBillIds);
+    const placeholders = ids.map(() => "?").join(",");
+    try {
+      const stmtRes = await executeSql(
+        `SELECT card_id FROM credit_card_statements WHERE bill_id IN (${placeholders}) LIMIT 1`,
+        ids,
+      );
+      if (stmtRes.rows.length > 0) {
+        const matchedCardId = stmtRes.rows.item(0).card_id;
+        const matchedCard = cards.find((c) => Number(c.id) === Number(matchedCardId));
+        if (matchedCard) return matchedCard;
+      }
+    } catch (e) {
+      console.warn("[resolveCreditCardForBill] statement bill lookup error:", e);
+    }
+  }
+
+  // 3. Match by payment_bill_id
+  const parentKey = Number(
+    bill.parent_bill_id ||
+      bill._templateId ||
+      (typeof bill.id === "number" ? bill.id : null),
+  );
+  if (parentKey && Number.isFinite(parentKey) && parentKey > 0) {
+    const cardByParent = cards.find(
+      (c) => Number(c.payment_bill_id) === parentKey,
+    );
+    if (cardByParent) return cardByParent;
+  }
+
+  // 4. Match by source_id
+  if (bill.source_id) {
+    const cardBySource = cards.find(
+      (c) => Number(c.source_id) === Number(bill.source_id),
+    );
+    if (cardBySource) return cardBySource;
+  }
+
+  // 5. Match by exact or normalized card name
+  const billName = String(bill.name || "").trim().toLowerCase();
+  if (billName) {
+    const cardByName = cards.find(
+      (c) => String(c.name || "").trim().toLowerCase() === billName,
+    );
+    if (cardByName) return cardByName;
+  }
+
+  // 6. Check if bill notes contain card reference or template
+  if (typeof bill.notes === "string") {
+    for (const c of cards) {
+      if (c.name && bill.notes.includes(c.name)) {
+        return c;
+      }
+    }
+  }
+
+  // 7. Single credit card fallback
+  if (cards.length === 1) {
+    return cards[0];
+  }
+
+  return null;
+}
+
 export async function refreshCreditCardTotals(cardId) {
   const card = await getCreditCardById(cardId);
   if (!card || !card.source_id) return null;
@@ -333,9 +435,8 @@ export async function refreshCreditCardTotals(cardId) {
   let outstanding = 0;
   for (let i = 0; i < txRes.rows.length; i++) {
     const tx = txRes.rows.item(i);
-    if (tx.is_counted !== null && tx.is_counted !== undefined && Number(tx.is_counted) === 0) {
-      continue;
-    }
+    // Include all transactions (including is_counted = 0, i.e. "Not a Spend" and "Not a Income")
+    // because all charges and credits affect credit card outstanding balance.
     const amount = Number(tx.amount || 0);
     if (tx.type === "expense") {
       outstanding += amount;
@@ -675,16 +776,24 @@ export async function deleteCreditCardStatement(statementId) {
   }
 
   // ---------------------------------------------------------
-  // Delete generated bill
+  // Delete generated bill (only if not paid)
   // ---------------------------------------------------------
 
   if (statement.bill_id) {
-    await executeSql(`DELETE FROM bills WHERE id = ?`, [statement.bill_id]);
+    const billRes = await executeSql(
+      `SELECT status, is_paid FROM bills WHERE id = ?`,
+      [statement.bill_id]
+    );
+    const bill = billRes.rows.length > 0 ? billRes.rows.item(0) : null;
+    const isPaid = bill && (bill.status === "paid" || bill.is_paid === 1);
+    if (!isPaid) {
+      await executeSql(`DELETE FROM bills WHERE id = ?`, [statement.bill_id]);
 
-    // Remove bill ↔ transaction links if any
-    await executeSql(`DELETE FROM bill_linked_transactions WHERE bill_id = ?`, [
-      statement.bill_id,
-    ]);
+      // Remove bill ↔ transaction links if any
+      await executeSql(`DELETE FROM bill_linked_transactions WHERE bill_id = ?`, [
+        statement.bill_id,
+      ]);
+    }
   }
 
   // ---------------------------------------------------------
@@ -836,8 +945,9 @@ export async function updateCreditCardStatement(statementId, fields) {
   const newInterest = fields.interest != null ? Number(fields.interest) : Number(statement.interest || 0);
   const newRefunds = fields.refunds != null ? Number(fields.refunds) : Number(statement.refunds || 0);
   
-  // Calculate new closing balance
-  const closingBalance = newOpeningBalance + Number(statement.purchases || 0) + newFees + newInterest - Number(statement.payments || 0) - newRefunds;
+  // Calculate new closing balance: Total Amount Due generated for cycle
+  const purchases = Number(statement.purchases || 0);
+  const closingBalance = Math.max(0, newOpeningBalance + purchases + newFees + newInterest - newRefunds);
   
   // Need to get card for minimum_due
   let minimumDue = statement.minimum_due;
@@ -847,24 +957,41 @@ export async function updateCreditCardStatement(statementId, fields) {
     minimumDue = closingBalance > 0 ? closingBalance * (Number(card.minimum_due_percent || 0) / 100) : 0;
   }
 
+  const currentPayments = Number(statement.payments || 0);
+  let newStatus = statement.status;
+  if (closingBalance > 0 && currentPayments >= closingBalance) {
+    newStatus = 'paid';
+  } else if (statement.status === 'paid' && closingBalance > currentPayments) {
+    newStatus = 'generated';
+  }
+
   await executeSql(
     `UPDATE credit_card_statements 
-     SET opening_balance = ?, fees = ?, interest = ?, refunds = ?, closing_balance = ?, minimum_due = ?
+     SET opening_balance = ?, fees = ?, interest = ?, refunds = ?, closing_balance = ?, minimum_due = ?, status = ?, is_generated = 0
      WHERE id = ?`,
-    [newOpeningBalance, newFees, newInterest, newRefunds, closingBalance, minimumDue, statementId]
+    [newOpeningBalance, newFees, newInterest, newRefunds, closingBalance, minimumDue, newStatus, statementId]
   );
   
-  // Also update the linked bill amount if not paid
+  // Also update the linked bill amount and sync payment status
   if (statement.bill_id) {
-    const billRes = await executeSql(`SELECT status, is_paid FROM bills WHERE id = ?`, [statement.bill_id]);
+    const billRes = await executeSql(`SELECT status, is_paid, deleted_at FROM bills WHERE id = ?`, [statement.bill_id]);
     if (billRes.rows.length > 0) {
       const bill = billRes.rows.item(0);
-      if (bill.status !== 'paid' && bill.is_paid === 0) {
+      if (!bill.deleted_at) {
         await executeSql(
           `UPDATE bills SET amount = ? WHERE id = ?`,
           [closingBalance, statement.bill_id]
         );
       }
+      await syncBillPaymentStatus(statement.bill_id);
     }
   }
+
+  if (statement.card_id) {
+    await refreshCreditCardTotals(statement.card_id);
+  }
+
+  events.emit('statementChanged');
+  events.emit('transactionsChanged');
+  emitBillsChanged();
 }

@@ -29,7 +29,7 @@ function normalizeBill(row) {
 function nowIso() {
   return new Date().toISOString();
 }
-function emitBillsChanged() {
+export function emitBillsChanged() {
   emit("billsChanged");
   syncBillNotifications().catch(e => console.warn('Failed to sync bill notifications', e));
 }
@@ -182,10 +182,307 @@ export async function getBillLinkedTransactions(billId) {
   }
 }
 
-export async function getBillsForTransaction(transactionId) {
+
+export function calcBillPaidAmount(linkedTxs) {
+  if (!linkedTxs || linkedTxs.length === 0) return 0;
+  const seenTransferGroups = new Set();
+  let total = 0;
+  for (const tx of linkedTxs) {
+    if (!tx) continue;
+    if (tx.transfer_group_id) {
+      if (seenTransferGroups.has(tx.transfer_group_id)) continue;
+      seenTransferGroups.add(tx.transfer_group_id);
+    }
+    total += Number(tx.amount || 0);
+  }
+  return total;
+}
+
+async function enrichBillsWithPaymentInfo(billsList) {
+  if (!billsList || billsList.length === 0) return [];
   try {
+    const allLinksRes = await executeSql(`SELECT * FROM bill_linked_transactions`, []);
+    const allLinks = rowsToArray(allLinksRes);
+
+    const allTxsRes = await executeSql(
+      `SELECT id, amount, transfer_group_id, type, direction FROM transactions`,
+      []
+    );
+    const txMap = new Map(rowsToArray(allTxsRes).map((t) => [Number(t.id), t]));
+
+    const linksByBill = new Map();
+    for (const link of allLinks) {
+      const bid = Number(link.bill_id);
+      if (!linksByBill.has(bid)) linksByBill.set(bid, []);
+      const tx = txMap.get(Number(link.transaction_id));
+      if (tx) linksByBill.get(bid).push(tx);
+    }
+
+    return billsList.map((bill) => {
+      if (!bill) return null;
+      if (bill.is_deleted || bill.status === 'deleted') return bill;
+      const txsForBill = linksByBill.get(Number(bill.id)) || [];
+      if (txsForBill.length === 0 && bill.linked_transaction_id) {
+        const legacyTx = txMap.get(Number(bill.linked_transaction_id));
+        if (legacyTx) txsForBill.push(legacyTx);
+      }
+      const totalPaid = calcBillPaidAmount(txsForBill);
+      const billAmount = Number(bill.amount || 0);
+      const isCompletelyPaid = billAmount > 0 ? totalPaid >= billAmount : totalPaid > 0;
+      const isPartiallyPaid = totalPaid > 0 && !isCompletelyPaid;
+      const remainingAmount = Math.max(0, billAmount - totalPaid);
+
+      return {
+        ...bill,
+        paid_amount: totalPaid,
+        total_paid: totalPaid,
+        remaining_amount: remainingAmount,
+        is_partially_paid: isPartiallyPaid,
+        is_completely_paid: isCompletelyPaid,
+        linked_tx_count: txsForBill.length,
+      };
+    }).filter(Boolean);
+  } catch (e) {
+    return billsList;
+  }
+}
+
+export async function syncBillPaymentStatus(billId) {
+  if (!billId) return;
+
+  const now = nowIso();
+  const billRes = await executeSql(`SELECT * FROM bills WHERE id = ?`, [billId]);
+  if (!billRes.rows.length) return;
+  const bill = billRes.rows.item(0);
+
+  const linkedTxs = await getBillLinkedTransactions(billId);
+  const totalPaid = calcBillPaidAmount(linkedTxs);
+  const billAmount = Number(bill.amount || 0);
+  const isFullyPaid = billAmount > 0 ? totalPaid >= billAmount : totalPaid > 0;
+
+  if (linkedTxs.length === 0) {
+    if (!bill.deleted_at) {
+      // Reset status to pending when unpaid
+      await executeSql(
+        `UPDATE bills
+         SET status = ?, is_paid = 0, linked_transaction_id = NULL, paid_at = NULL, updated_at = ?
+         WHERE id = ?`,
+        [BILL_STATUS.PENDING, now, billId]
+      );
+    } else {
+      await executeSql(
+        `UPDATE bills SET linked_transaction_id = NULL, updated_at = ? WHERE id = ?`,
+        [now, billId]
+      );
+    }
+
+    await executeSql(
+      `UPDATE credit_card_statements
+       SET status = 'generated', payments = 0
+       WHERE bill_id = ?`,
+      [billId]
+    );
+  } else if (isFullyPaid) {
+    const latestTx = linkedTxs[0];
+    const paidAt = latestTx?.date || now;
+    const primaryTxId = latestTx?.id || null;
+
+    if (!bill.deleted_at) {
+      await executeSql(
+        `UPDATE bills
+         SET status = ?, is_paid = 1, paid_at = ?, linked_transaction_id = ?, updated_at = ?
+         WHERE id = ?`,
+        [BILL_STATUS.PAID, paidAt, primaryTxId, now, billId]
+      );
+    }
+
+    await executeSql(
+      `UPDATE credit_card_statements
+       SET status = 'paid', payments = closing_balance
+       WHERE bill_id = ?`,
+      [billId]
+    );
+  } else {
+    // Partially paid: totalPaid > 0 && totalPaid < billAmount
+    const latestTx = linkedTxs[0];
+    const primaryTxId = latestTx?.id || null;
+    const computed = computeBillStatus({ ...bill, status: 'pending', is_paid: 0 });
+
+    if (!bill.deleted_at) {
+      await executeSql(
+        `UPDATE bills
+         SET status = ?, is_paid = 0, paid_at = NULL, linked_transaction_id = ?, updated_at = ?
+         WHERE id = ?`,
+        [BILL_STATUS.PENDING, primaryTxId, now, billId]
+      );
+    }
+
+    await executeSql(
+      `UPDATE credit_card_statements
+       SET status = 'generated', payments = ?
+       WHERE bill_id = ?`,
+      [totalPaid, billId]
+    );
+  }
+
+  return { totalPaid, billAmount, isFullyPaid, linkedCount: linkedTxs.length };
+}
+
+
+/**
+ * Cleans up any legacy duplicate links where both debit and credit legs
+ * of the same transfer were linked to the same bill. Retains the expense leg
+ * and unlinks the credit leg.
+ */
+export async function cleanupDuplicateTransferBillLinks() {
+  try {
+    const bltRes = await executeSql(`SELECT * FROM bill_linked_transactions`, []);
+    const bltRows = rowsToArray(bltRes);
+    if (!bltRows || bltRows.length === 0) return;
+
+    const txRes = await executeSql(
+      `SELECT id, type, direction, transfer_group_id FROM transactions WHERE transfer_group_id IS NOT NULL`,
+      []
+    );
+    const txRows = rowsToArray(txRes);
+    const txMap = new Map(txRows.map((t) => [Number(t.id), t]));
+
+    // Group links by bill_id and transfer_group_id
+    const groupMap = new Map();
+    for (const link of bltRows) {
+      const tx = txMap.get(Number(link.transaction_id));
+      if (!tx || !tx.transfer_group_id) continue;
+      const key = `${link.bill_id}_${tx.transfer_group_id}`;
+      if (!groupMap.has(key)) groupMap.set(key, []);
+      groupMap.get(key).push({ ...link, ...tx });
+    }
+
+    for (const [, items] of groupMap.entries()) {
+      if (items.length > 1) {
+        // Multiple legs linked to the same bill: retain expense leg, remove credit leg(s)
+        const creditLegs = items.filter(
+          (t) => t.type === "income" || t.direction === "credit"
+        );
+        for (const cl of creditLegs) {
+          await executeSql(
+            `DELETE FROM bill_linked_transactions WHERE bill_id = ? AND transaction_id = ?`,
+            [cl.bill_id, cl.transaction_id]
+          );
+          await executeSql(
+            `UPDATE transactions SET bill_id = NULL WHERE id = ? AND bill_id = ?`,
+            [cl.transaction_id, cl.bill_id]
+          );
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[cleanupDuplicateTransferBillLinks] Error:", err);
+  }
+}
+
+/**
+ * Returns transfer group details for a transaction if it belongs to a transfer,
+ * including expense leg and credit leg source names and IDs.
+ */
+export async function getTransferInfoForTransaction(transactionId) {
+  if (!transactionId) return null;
+  try {
+    const txRes = await executeSql(
+      `SELECT id, type, direction, source_id, amount, transfer_group_id FROM transactions WHERE id = ?`,
+      [transactionId]
+    );
+    const txRows = rowsToArray(txRes);
+    if (!txRows || txRows.length === 0 || !txRows[0].transfer_group_id) {
+      return null;
+    }
+    const currentTx = txRows[0];
+    const groupId = currentTx.transfer_group_id;
+
+    const groupRes = await executeSql(
+      `SELECT id, type, direction, source_id, amount FROM transactions WHERE transfer_group_id = ?`,
+      [groupId]
+    );
+    const groupRows = rowsToArray(groupRes);
+    if (!groupRows || groupRows.length === 0) return null;
+
+    let expenseItem = groupRows.find(
+      (t) => t.type === "expense" || t.direction === "debit"
+    );
+    let creditItem = groupRows.find(
+      (t) => t.type === "income" || t.direction === "credit"
+    );
+
+    let expenseSourceName = "";
+    let creditSourceName = "";
+    try {
+      const srcRes = await executeSql(`SELECT id, name FROM sources`, []);
+      const sources = rowsToArray(srcRes);
+      if (expenseItem?.source_id) {
+        const s = sources.find((x) => Number(x.id) === Number(expenseItem.source_id));
+        if (s) expenseSourceName = s.name;
+      }
+      if (creditItem?.source_id) {
+        const s = sources.find((x) => Number(x.id) === Number(creditItem.source_id));
+        if (s) creditSourceName = s.name;
+      }
+    } catch (e) {}
+
+    return {
+      isTransfer: true,
+      groupId,
+      expenseTxId: expenseItem?.id,
+      expenseSourceName: expenseSourceName || "Source Account",
+      expenseAmount: expenseItem?.amount,
+      creditTxId: creditItem?.id,
+      creditSourceName: creditSourceName || "Destination Account",
+      creditAmount: creditItem?.amount,
+      currentLeg:
+        currentTx.direction === "credit" || currentTx.type === "income"
+          ? "credit"
+          : "expense",
+    };
+  } catch (err) {
+    console.warn("[getTransferInfoForTransaction] Error:", err);
+    return null;
+  }
+}
+
+export async function getBillsForTransaction(transactionId, includeDeleted = true) {
+  if (!transactionId) return [];
+  try {
+    try {
+      await cleanupDuplicateTransferBillLinks();
+    } catch (cleanErr) {}
+    // Resolve all transaction IDs in the transfer group if this is a transfer
+    let txIds = [transactionId];
+    try {
+      const txRes = await executeSql(
+        `SELECT transfer_group_id, bill_id FROM transactions WHERE id = ?`,
+        [transactionId]
+      );
+      if (txRes.rows.length > 0) {
+        const row = txRes.rows.item(0);
+        if (row.transfer_group_id) {
+          const groupRes = await executeSql(
+            `SELECT id, bill_id FROM transactions WHERE transfer_group_id = ?`,
+            [row.transfer_group_id]
+          );
+          const gIds = [];
+          for (let i = 0; i < groupRes.rows.length; i++) {
+            gIds.push(groupRes.rows.item(i).id);
+          }
+          if (gIds.length > 0) txIds = gIds;
+        }
+      }
+    } catch (e) {
+      // transfer group lookup is non-critical fallback
+    }
+
+    const placeholders = txIds.map(() => '?').join(',');
+    const deletedCondition = includeDeleted ? '' : 'AND b.deleted_at IS NULL';
+
     const res = await executeSql(
-      `SELECT
+      `SELECT DISTINCT
         b.id,
         b.name,
         b.amount,
@@ -204,13 +501,338 @@ export async function getBillsForTransaction(transactionId) {
         b.created_at,
         b.updated_at,
         b.deleted_at
-       FROM bill_linked_transactions blt
-       JOIN bills b ON b.id = blt.bill_id
-       WHERE blt.transaction_id = ? AND b.deleted_at IS NULL`,
-      [transactionId],
+       FROM bills b
+       LEFT JOIN bill_linked_transactions blt ON blt.bill_id = b.id
+       WHERE (blt.transaction_id IN (${placeholders}) OR b.linked_transaction_id IN (${placeholders}))
+         ${deletedCondition}`,
+      [...txIds, ...txIds],
     );
-    return rowsToArray(res).map(normalizeBill).filter(Boolean);
+    const rawBills = rowsToArray(res).map(row => {
+      if (!row) return null;
+      if (row.deleted_at) {
+        return { ...row, status: 'deleted', is_paid: 0, is_deleted: true };
+      }
+      return normalizeBill(row);
+    }).filter(Boolean);
+
+    return await enrichBillsWithPaymentInfo(rawBills);
   } catch (e) {
+    // Fallback if JOIN is unsupported (e.g. Web)
+    try {
+      let txIds = [transactionId];
+      let directBillId = null;
+      try {
+        const txRes = await executeSql(
+          `SELECT transfer_group_id, bill_id FROM transactions WHERE id = ?`,
+          [transactionId]
+        );
+        if (txRes.rows.length > 0) {
+          const row = txRes.rows.item(0);
+          if (row.bill_id) directBillId = Number(row.bill_id);
+          if (row.transfer_group_id) {
+            const groupRes = await executeSql(
+              `SELECT id, bill_id FROM transactions WHERE transfer_group_id = ?`,
+              [row.transfer_group_id]
+            );
+            const gIds = [];
+            for (let i = 0; i < groupRes.rows.length; i++) {
+              gIds.push(groupRes.rows.item(i).id);
+              if (groupRes.rows.item(i).bill_id) {
+                directBillId = Number(groupRes.rows.item(i).bill_id);
+              }
+            }
+            if (gIds.length > 0) txIds = gIds;
+          }
+        }
+      } catch (err) {}
+
+      const allBillsRes = await executeSql(
+        includeDeleted ? `SELECT * FROM bills` : `SELECT * FROM bills WHERE deleted_at IS NULL`,
+        []
+      );
+      const allBills = rowsToArray(allBillsRes);
+      const linksRes = await executeSql(`SELECT * FROM bill_linked_transactions`, []);
+      const links = rowsToArray(linksRes);
+
+      const matchedBillIds = new Set();
+      if (directBillId) {
+        matchedBillIds.add(directBillId);
+      }
+      for (const link of links) {
+        if (txIds.some((id) => Number(id) === Number(link.transaction_id))) {
+          matchedBillIds.add(Number(link.bill_id));
+        }
+      }
+      for (const b of allBills) {
+        if (txIds.some((id) => Number(id) === Number(b.linked_transaction_id))) {
+          matchedBillIds.add(Number(b.id));
+        }
+      }
+
+      const rawBills = allBills
+        .filter((b) => matchedBillIds.has(Number(b.id)))
+        .map(row => {
+          if (!row) return null;
+          if (row.deleted_at) {
+            return { ...row, status: 'deleted', is_paid: 0, is_deleted: true };
+          }
+          return normalizeBill(row);
+        })
+        .filter(Boolean);
+
+      return await enrichBillsWithPaymentInfo(rawBills);
+    } catch (err) {
+      return [];
+    }
+  }
+}
+
+/**
+ * Unlinks a bill from a transaction (including its transfer pair if applicable).
+ * Clears junction table, updates transaction's bill_id, and synchronizes
+ * the bill's payment status, remaining amounts, and any linked statements.
+ */
+export async function unlinkBillFromTransaction(billId, transactionId) {
+  if (!billId || !transactionId) return;
+
+  // 1. Resolve all transaction IDs in the transfer group (if transfer)
+  let txIds = [transactionId];
+  try {
+    const txRes = await executeSql(
+      `SELECT transfer_group_id FROM transactions WHERE id = ?`,
+      [transactionId]
+    );
+    if (txRes.rows.length > 0 && txRes.rows.item(0).transfer_group_id) {
+      const groupRes = await executeSql(
+        `SELECT id FROM transactions WHERE transfer_group_id = ?`,
+        [txRes.rows.item(0).transfer_group_id]
+      );
+      const gIds = [];
+      for (let i = 0; i < groupRes.rows.length; i++) {
+        gIds.push(groupRes.rows.item(i).id);
+      }
+      if (gIds.length > 0) txIds = gIds;
+    }
+  } catch (err) {
+    console.warn("[unlinkBillFromTransaction] Error resolving transfer group:", err);
+  }
+
+  // 2. Delete junction table links for all involved transactions
+  for (const tid of txIds) {
+    await executeSql(
+      `DELETE FROM bill_linked_transactions WHERE bill_id = ? AND transaction_id = ?`,
+      [billId, tid]
+    );
+  }
+
+  // 3. Clear transactions.bill_id if set
+  for (const tid of txIds) {
+    await executeSql(
+      `UPDATE transactions SET bill_id = NULL WHERE id = ? AND bill_id = ?`,
+      [tid, billId]
+    );
+  }
+
+  // 4. Synchronize bill payment status and statement totals
+  await syncBillPaymentStatus(billId);
+
+  // 5. Run scheduler to sync statements and card totals
+  try {
+    await runCreditCardStatementScheduler();
+  } catch (schedErr) {
+    console.warn("[unlinkBillFromTransaction] Scheduler sync warning:", schedErr);
+  }
+
+  emitBillsChanged();
+  emit("transactionsChanged");
+}
+
+/**
+ * Links a bill to a transaction (including its transfer pair if applicable).
+ * Adds link to junction table, updates transaction bill_id, and synchronizes
+ * bill payment status (partially paid vs fully paid) and credit card statements.
+ */
+export async function linkBillToTransaction(billId, transactionId, targetLeg = "expense") {
+  if (!billId || !transactionId) return;
+
+  const now = nowIso();
+
+  let targetTxId = transactionId;
+  let otherTxIds = [];
+
+  try {
+    const txRes = await executeSql(
+      `SELECT id, type, direction, transfer_group_id, date FROM transactions WHERE id = ?`,
+      [transactionId]
+    );
+    const txRows = rowsToArray(txRes);
+    if (txRows.length > 0) {
+      const txRow = txRows[0];
+      if (txRow.transfer_group_id) {
+        const groupRes = await executeSql(
+          `SELECT id, type, direction, date FROM transactions WHERE transfer_group_id = ?`,
+          [txRow.transfer_group_id]
+        );
+        const groupItems = rowsToArray(groupRes);
+        let expenseItem = null;
+        let creditItem = null;
+
+        for (const item of groupItems) {
+          if (item.type === "expense" || item.direction === "debit") {
+            expenseItem = item;
+          } else if (item.type === "income" || item.direction === "credit") {
+            creditItem = item;
+          }
+        }
+
+        if (targetLeg === "credit" && creditItem) {
+          targetTxId = creditItem.id;
+          if (expenseItem) otherTxIds.push(expenseItem.id);
+        } else {
+          // Default to expense leg
+          targetTxId = expenseItem ? expenseItem.id : txRow.id;
+          if (creditItem) otherTxIds.push(creditItem.id);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[linkBillToTransaction] Error resolving transfer leg:", err);
+  }
+
+  // 2. Add ONLY the target leg to junction table
+  await executeSql(
+    `INSERT OR IGNORE INTO bill_linked_transactions (bill_id, transaction_id) VALUES (?, ?)`,
+    [billId, targetTxId]
+  );
+
+  // 3. Update target transaction bill_id
+  await executeSql(
+    `UPDATE transactions SET bill_id = ? WHERE id = ?`,
+    [billId, targetTxId]
+  );
+
+  // 4. Ensure non-target counterpart legs in transfer group are NOT linked to this bill
+  for (const otherId of otherTxIds) {
+    await executeSql(
+      `DELETE FROM bill_linked_transactions WHERE bill_id = ? AND transaction_id = ?`,
+      [billId, otherId]
+    );
+    await executeSql(
+      `UPDATE transactions SET bill_id = NULL WHERE id = ? AND bill_id = ?`,
+      [otherId, billId]
+    );
+  }
+
+  // 5. Synchronize bill status (partially paid vs fully paid) and statement totals
+  await syncBillPaymentStatus(billId);
+
+  // 6. Run credit card scheduler so all statements and balances sync
+  try {
+    await runCreditCardStatementScheduler();
+  } catch (schedErr) {
+    console.warn("[linkBillToTransaction] Scheduler sync warning:", schedErr);
+  }
+
+  emitBillsChanged();
+  emit("transactionsChanged");
+}
+
+/**
+ * Returns available active bills that can be linked to the specified transaction.
+ * Allows linking until the complete amount of the bill is paid, supporting multiple transactions.
+ * Partially paid bills appear first with remaining amounts.
+ */
+export async function getAvailableBillsForTransactionLink(transactionId) {
+  try {
+    // 1. Fetch currently linked bill IDs for this transaction
+    const linkedBills = await getBillsForTransaction(transactionId, true);
+    const linkedBillIds = new Set(linkedBills.map((b) => Number(b.id)));
+
+    // 2. Fetch all active bills
+    const allBillsRes = await executeSql(
+      `SELECT * FROM bills WHERE deleted_at IS NULL ORDER BY due_date DESC`,
+      []
+    );
+    const allBills = rowsToArray(allBillsRes).map(normalizeBill).filter(Boolean);
+
+    // 3. Fetch all junction links & transactions for payment calculation
+    const allLinksRes = await executeSql(`SELECT * FROM bill_linked_transactions`, []);
+    const allLinks = rowsToArray(allLinksRes);
+
+    const allTxsRes = await executeSql(
+      `SELECT id, amount, transfer_group_id, type, direction FROM transactions`,
+      []
+    );
+    const txMap = new Map(rowsToArray(allTxsRes).map((t) => [Number(t.id), t]));
+
+    const linksByBill = new Map();
+    for (const link of allLinks) {
+      const bid = Number(link.bill_id);
+      if (!linksByBill.has(bid)) linksByBill.set(bid, []);
+      const tx = txMap.get(Number(link.transaction_id));
+      if (tx) linksByBill.get(bid).push(tx);
+    }
+
+    // Filter candidate bills
+    const candidateBills = [];
+    for (const b of allBills) {
+      // Exclude recurrence parent templates with amount == 0 or credit card templates
+      const isCcTemplate =
+        !b.parent_bill_id &&
+        Number(b.is_recurring) === 1 &&
+        (Number(b.amount || 0) === 0 || String(b.notes || '').startsWith('Recurring payment template for'));
+      if (isCcTemplate) continue;
+
+      // Exclude bills already linked to this transaction
+      if (linkedBillIds.has(Number(b.id))) continue;
+
+      const txsForBill = linksByBill.get(Number(b.id)) || [];
+      if (txsForBill.length === 0 && b.linked_transaction_id) {
+        const legacyTx = txMap.get(Number(b.linked_transaction_id));
+        if (legacyTx) txsForBill.push(legacyTx);
+      }
+
+      const totalPaid = calcBillPaidAmount(txsForBill);
+      const billAmount = Number(b.amount || 0);
+      const isCompletelyPaid = billAmount > 0 && totalPaid >= billAmount;
+      const isPartiallyPaid = totalPaid > 0 && !isCompletelyPaid;
+      const remainingAmount = Math.max(0, billAmount - totalPaid);
+
+      candidateBills.push({
+        ...b,
+        total_paid: totalPaid,
+        paid_amount: totalPaid,
+        remaining_amount: remainingAmount,
+        linked_tx_count: txsForBill.length,
+        is_partially_paid: isPartiallyPaid,
+        is_completely_paid: isCompletelyPaid,
+      });
+    }
+
+    // Sort:
+    // 1. Partially paid bills FIRST (actively in payment progress)
+    // 2. Pending & Overdue bills NEXT
+    // 3. Completely paid bills LAST
+    candidateBills.sort((a, b) => {
+      // Priority 1: partially paid first
+      const aPartial = a.is_partially_paid ? 1 : 0;
+      const bPartial = b.is_partially_paid ? 1 : 0;
+      if (aPartial !== bPartial) return bPartial - aPartial;
+
+      // Priority 2: completely paid last
+      const aComplete = a.is_completely_paid ? 1 : 0;
+      const bComplete = b.is_completely_paid ? 1 : 0;
+      if (aComplete !== bComplete) return aComplete - bComplete;
+
+      // Priority 3: due date
+      const da = a.due_date ? new Date(a.due_date).getTime() : 0;
+      const db = b.due_date ? new Date(b.due_date).getTime() : 0;
+      return db - da;
+    });
+
+    return candidateBills;
+  } catch (err) {
+    console.warn("[getAvailableBillsForTransactionLink] Error:", err);
     return [];
   }
 }
@@ -1942,6 +2564,13 @@ export async function markBillPaid(
     [billId]
   );
 
+  // Sync downstream credit card statements immediately if this bill belonged to a card
+  try {
+    await runCreditCardStatementScheduler();
+  } catch (schedErr) {
+    console.warn("[markBillPaid] Scheduler sync warning:", schedErr);
+  }
+
   // IMPORTANT:
   // Marking a bill as paid must NOT create the next recurring occurrence.
   // The recurring scheduler handles future occurrences.
@@ -3449,6 +4078,13 @@ export default {
   removeTransactionFromBill,
   getBillLinkedTransactions,
   getBillsForTransaction,
+  unlinkBillFromTransaction,
+  linkBillToTransaction,
+  cleanupDuplicateTransferBillLinks,
+  getTransferInfoForTransaction,
+  calcBillPaidAmount,
+  syncBillPaymentStatus,
+  getAvailableBillsForTransactionLink,
   getTransactionsForBillLink,
   skipBill,
   unskipBill,

@@ -22,12 +22,25 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
 
     useEffect(() => {
         if (editData) {
-            setOpeningBalance(editData.opening_balance ? String(editData.opening_balance) : '0');
-            setFees(editData.fees ? String(editData.fees) : '0');
-            setInterest(editData.interest ? String(editData.interest) : '0');
-            setRefunds(editData.refunds ? String(editData.refunds) : '0');
+            setOpeningBalance(editData.opening_balance != null ? String(editData.opening_balance) : '0');
+            setFees(editData.fees != null ? String(editData.fees) : '0');
+            setInterest(editData.interest != null ? String(editData.interest) : '0');
+            setRefunds(editData.refunds != null ? String(editData.refunds) : '0');
         }
     }, [editData]);
+
+    const parseVal = (v) => {
+        if (v == null) return 0;
+        const cleaned = String(v).replace(/,/g, '').trim();
+        const num = parseFloat(cleaned);
+        return isNaN(num) ? 0 : num;
+    };
+
+    const purchases = Number(editData?.purchases || 0);
+    const calculatedClosing = Math.max(
+        0,
+        parseVal(openingBalance) + purchases + parseVal(fees) + parseVal(interest) - parseVal(refunds)
+    );
 
     async function handleSave() {
         if (saving) return;
@@ -36,10 +49,10 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
         await new Promise(resolve => requestAnimationFrame(resolve)); // Allow UI to render the loading state on button
         try {
             const payload = {
-                opening_balance: parseFloat(openingBalance) || 0,
-                fees: parseFloat(fees) || 0,
-                interest: parseFloat(interest) || 0,
-                refunds: parseFloat(refunds) || 0
+                opening_balance: parseVal(openingBalance),
+                fees: parseVal(fees),
+                interest: parseVal(interest),
+                refunds: parseVal(refunds)
             };
 
             if (editData && editData.id) {
@@ -55,7 +68,7 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
         }
     }
 
-    const themeColor = "#4B7CF3";
+    const themeColor = editData?.card_color || "#4B7CF3";
 
     return (
         <KeyboardAvoidingView
@@ -179,8 +192,79 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
                         />
                     </View>
 
+                    {/* ── CALCULATION PREVIEW ── */}
+                    <View
+                        style={{
+                            backgroundColor: "#F8FAFC",
+                            borderRadius: 20,
+                            padding: 20,
+                            borderWidth: 1,
+                            borderColor: "#E2E8F0",
+                            marginBottom: 24,
+                        }}
+                    >
+                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}>
+                            <MaterialCommunityIcons name="calculator-variant-outline" size={20} color={themeColor} />
+                            <Text style={{ fontSize: 13, fontWeight: "800", color: "#334155", marginLeft: 8, letterSpacing: 0.3 }}>
+                                STATEMENT CALCULATION PREVIEW
+                            </Text>
+                        </View>
+
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
+                            <Text style={{ fontSize: 14, color: "#64748B" }}>Opening Balance</Text>
+                            <Text style={{ fontSize: 14, fontWeight: "600", color: "#1E293B" }}>
+                                ₹{parseVal(openingBalance).toFixed(2)}
+                            </Text>
+                        </View>
+
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
+                            <Text style={{ fontSize: 14, color: "#64748B" }}>Purchases & Debits</Text>
+                            <Text style={{ fontSize: 14, fontWeight: "600", color: "#1E293B" }}>
+                                + ₹{purchases.toFixed(2)}
+                            </Text>
+                        </View>
+
+                        {parseVal(fees) > 0 && (
+                            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
+                                <Text style={{ fontSize: 14, color: "#64748B" }}>Fees</Text>
+                                <Text style={{ fontSize: 14, fontWeight: "600", color: "#DC2626" }}>
+                                    + ₹{parseVal(fees).toFixed(2)}
+                                </Text>
+                            </View>
+                        )}
+
+                        {parseVal(interest) > 0 && (
+                            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
+                                <Text style={{ fontSize: 14, color: "#64748B" }}>Interest</Text>
+                                <Text style={{ fontSize: 14, fontWeight: "600", color: "#DC2626" }}>
+                                    + ₹{parseVal(interest).toFixed(2)}
+                                </Text>
+                            </View>
+                        )}
+
+                        {parseVal(refunds) > 0 && (
+                            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
+                                <Text style={{ fontSize: 14, color: "#64748B" }}>Refunds</Text>
+                                <Text style={{ fontSize: 14, fontWeight: "600", color: "#059669" }}>
+                                    - ₹{parseVal(refunds).toFixed(2)}
+                                </Text>
+                            </View>
+                        )}
+
+                        <View style={{ height: 1, backgroundColor: "#E2E8F0", marginVertical: 10 }} />
+
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                            <Text style={{ fontSize: 15, fontWeight: "800", color: "#0F172A" }}>
+                                New Statement Balance
+                            </Text>
+                            <Text style={{ fontSize: 18, fontWeight: "900", color: themeColor }}>
+                                ₹{calculatedClosing.toFixed(2)}
+                            </Text>
+                        </View>
+                    </View>
+
                     {/* SPACER TO PUSH BUTTON TO BOTTOM */}
-                    <View style={{ flex: 1, minHeight: 40 }} />
+                    <View style={{ flex: 1, minHeight: 20 }} />
 
                     <Button
                         mode="contained"

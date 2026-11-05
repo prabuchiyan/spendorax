@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { getAllCreditCardStatements } from "../services/creditCards";
-import { deleteStatement, runCreditCardStatementScheduler } from "../services/creditCardScheduler";
+import { regenerateCreditCardStatement, runCreditCardStatementScheduler } from "../services/creditCardScheduler";
 import Card from "../components/Card";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useAppDispatch, useCreditCardStatements } from '../redux/hooks';
@@ -25,12 +25,33 @@ function formatDate(value) {
 }
 
 export default function CreditCardStatementsScreen({ route, navigation }) {
-  const { sourceId } = route?.params || {};
+  const { sourceId, cardId } = route?.params || {};
   const dispatch = useAppDispatch();
   const reduxStatements = useCreditCardStatements();
   const statements = reduxStatements || [];
   const [regenerateTarget, setRegenerateTarget] = useState(null);
   const [regenerating, setRegenerating] = useState(false);
+
+  const filterStatements = useCallback((items) => {
+    if (!items || items.length === 0) return [];
+    if (!sourceId && !cardId) return items;
+
+    const filtered = items.filter(item => {
+      if (sourceId && Number(item.source_id) === Number(sourceId)) return true;
+      if (cardId && Number(item.card_id) === Number(cardId)) return true;
+      return false;
+    });
+
+    if (filtered.length === 0 && items.length > 0) {
+      console.warn(`[CreditCardStatements] Filter sourceId=${sourceId}, cardId=${cardId} returned 0 results. Falling back to all statements.`);
+      const uniqueCardIds = [...new Set(items.map(it => it.card_id))];
+      if (uniqueCardIds.length === 1) {
+        return items;
+      }
+    }
+
+    return filtered;
+  }, [sourceId, cardId]);
 
   const load = async () => {
     try {
@@ -39,11 +60,7 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
       console.warn("[CreditCardStatements] Scheduler sync error:", e);
     }
     const items = await getAllCreditCardStatements();
-    if (sourceId) {
-      dispatch(setStatements(items.filter(item => Number(item.source_id) === Number(sourceId))));
-    } else {
-      dispatch(setStatements(items));
-    }
+    dispatch(setStatements(filterStatements(items)));
   };
 
   const handleRegenerateStatement = useCallback((statement) => {
@@ -54,13 +71,9 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
     if (!regenerateTarget || regenerating) return;
     try {
       setRegenerating(true);
-      await deleteStatement(regenerateTarget.id);
+      await regenerateCreditCardStatement(regenerateTarget.id);
       const items = await getAllCreditCardStatements();
-      if (sourceId) {
-        dispatch(setStatements(items.filter(item => Number(item.source_id) === Number(sourceId))));
-      } else {
-        dispatch(setStatements(items || []));
-      }
+      dispatch(setStatements(filterStatements(items)));
       setRegenerateTarget(null);
     } catch (error) {
       console.error("[CreditCardStatements] Regenerate failed:", error);
@@ -72,12 +85,12 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
     } finally {
       setRegenerating(false);
     }
-  }, [regenerateTarget, regenerating, dispatch, sourceId]);
+  }, [regenerateTarget, regenerating, dispatch, filterStatements]);
 
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [sourceId]),
+    }, [sourceId, cardId, filterStatements]),
   );
 
   const isStatementPaid = (statement) => {
@@ -276,7 +289,7 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
             </Text>
 
             <Text style={styles.regenerateWarning}>
-              This will recreate the statement and its linked bill based on your latest transactions.
+              This will recalculate the statement based on your latest transactions. Paid bills will remain paid.
             </Text>
 
             <View style={styles.regenerateModalActions}>

@@ -132,13 +132,7 @@ export default function TransactionForm({
   const [showLoanActionSheet, setShowLoanActionSheet] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
-  const [showMoreOptions, setShowMoreOptions] = useState(
-    isEdit && transaction
-      ? transaction.loan_id ||
-      transaction.is_counted === 0 ||
-      transaction.is_counted === false
-      : false,
-  );
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [isCounted, setIsCounted] = useState(
     isEdit && transaction
       ? transaction.is_counted !== undefined
@@ -148,6 +142,16 @@ export default function TransactionForm({
   );
   const [loanTab, setLoanTab] = useState("active");
   const [hasLinkedBill, setHasLinkedBill] = useState(false);
+  const [linkedBills, setLinkedBills] = useState([]);
+
+  const isNotSpendOrIncome = !isCounted && type !== "transfer";
+  const isLoanLinked = Boolean(selectedLoanId);
+  const isBillLinked = Boolean(hasLinkedBill || linkedBills.length > 0);
+  const hasActiveHighlights = isNotSpendOrIncome || isLoanLinked || isBillLinked;
+  const activeHighlightsCount =
+    (isNotSpendOrIncome ? 1 : 0) +
+    (isLoanLinked ? 1 : 0) +
+    (isBillLinked ? 1 : 0);
 
   function markDirty() {
     setIsDirty(true);
@@ -209,12 +213,13 @@ export default function TransactionForm({
             if (cancelled) return;
             setLoansList([]);
           });
-          
+
         // LINKED BILLS
         if (isEdit && transaction?.id) {
-          getBillsForTransaction(transaction.id)
+          getBillsForTransaction(transaction.id, true)
             .then((bills) => {
               if (cancelled) return;
+              setLinkedBills(bills || []);
               setHasLinkedBill(bills?.length > 0);
             })
             .catch((error) => {
@@ -714,12 +719,12 @@ export default function TransactionForm({
           {(isEdit && type === 'transfer'
             ? [{ id: "transfer", label: "Transfer", activeColor: "#000" }]
             : [
-                { id: "expense", label: "Expense", activeColor: "#E46A6A" },
-                { id: "income", label: "Income", activeColor: "#36B37E" },
-                ...(!isEdit
-                  ? [{ id: "transfer", label: "Transfer", activeColor: "#000" }]
-                  : []),
-              ]
+              { id: "expense", label: "Expense", activeColor: "#E46A6A" },
+              { id: "income", label: "Income", activeColor: "#36B37E" },
+              ...(!isEdit
+                ? [{ id: "transfer", label: "Transfer", activeColor: "#000" }]
+                : []),
+            ]
           ).map((tab) => {
             const active = type === tab.id;
             return (
@@ -1345,45 +1350,7 @@ export default function TransactionForm({
         )}
       </View>
 
-      {type !== "transfer" && (
-        <View style={{ marginBottom: 18, alignItems: "center" }}>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setShowMoreOptions(true)}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              paddingVertical: 10,
-              paddingHorizontal: 16,
-              backgroundColor: "#F4F6F8",
-              borderRadius: 20,
-            }}
-          >
-            <MaterialCommunityIcons name="tune" size={18} color="#4B7CF3" />
-            <Text
-              style={{
-                marginLeft: 8,
-                fontSize: 14,
-                fontWeight: "700",
-                color: "#4B7CF3",
-              }}
-            >
-              More Options
-            </Text>
-            {(!isCounted || selectedLoanId || hasLinkedBill) && (
-              <View
-                style={{
-                  marginLeft: 8,
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: "#E46A6A",
-                }}
-              />
-            )}
-          </TouchableOpacity>
-        </View>
-      )}
+
 
       {/* MORE OPTIONS BOTTOM SHEET MODAL */}
       <Modal
@@ -1868,11 +1835,28 @@ export default function TransactionForm({
 
               {isEdit && transaction?.id && (
                 <View style={{ marginTop: type !== "transfer" ? 16 : 0, marginBottom: 8 }}>
+                  {type !== "transfer" && (
+                    <View
+                      style={{
+                        height: 1,
+                        backgroundColor: "#F1F5F9",
+                        marginVertical: 16,
+                      }}
+                    />
+                  )}
                   <LinkedBillCard
                     transactionId={transaction.id}
                     onPressBill={(bill) => {
                       setShowMoreOptions(false);
                       if (onPressBill) onPressBill(bill);
+                    }}
+                    onBillsChanged={() => {
+                      if (transaction?.id) {
+                        getBillsForTransaction(transaction.id, true).then((bills) => {
+                          setLinkedBills(bills || []);
+                          setHasLinkedBill(bills?.length > 0);
+                        });
+                      }
                     }}
                   />
                 </View>
@@ -2500,6 +2484,171 @@ export default function TransactionForm({
         </View>
       )}
 
+      {/* MORE OPTIONS TRIGGER & ACTIVE HIGHLIGHTS (FOR ALL TYPES) */}
+      {(type !== "transfer" || (isEdit && transaction?.id)) && (
+        <View style={{ marginTop: 18, marginBottom: 14, alignItems: "center" }}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setShowMoreOptions(true)}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              paddingVertical: 10,
+              paddingHorizontal: 20,
+              backgroundColor: hasActiveHighlights ? "#EFF6FF" : "#F4F6F8",
+              borderRadius: 24,
+              borderWidth: hasActiveHighlights ? 1.5 : 1,
+              borderColor: hasActiveHighlights ? "#3B82F6" : "#E2E8F0",
+              shadowColor: hasActiveHighlights ? "#3B82F6" : "transparent",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: hasActiveHighlights ? 0.12 : 0,
+              shadowRadius: 4,
+              elevation: hasActiveHighlights ? 2 : 0,
+            }}
+          >
+            <MaterialCommunityIcons
+              name={hasActiveHighlights ? "tune-variant" : "tune"}
+              size={18}
+              color={hasActiveHighlights ? "#2563EB" : "#64748B"}
+            />
+            <Text
+              style={{
+                marginLeft: 8,
+                fontSize: 14,
+                fontWeight: "700",
+                color: hasActiveHighlights ? "#1D4ED8" : "#475569",
+              }}
+            >
+              More Options
+            </Text>
+
+            {hasActiveHighlights && (
+              <View
+                style={{
+                  marginLeft: 8,
+                  backgroundColor: "#2563EB",
+                  borderRadius: 10,
+                  paddingHorizontal: 7,
+                  paddingVertical: 1,
+                  minWidth: 18,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text
+                  style={{
+                    color: "#FFF",
+                    fontSize: 11,
+                    fontWeight: "800",
+                  }}
+                >
+                  {activeHighlightsCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* ACTIVE HIGHLIGHT CHIPS */}
+          {hasActiveHighlights && (
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: 8,
+                marginTop: 10,
+                paddingHorizontal: 4,
+              }}
+            >
+              {isBillLinked && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setShowMoreOptions(true)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: "#EFF6FF",
+                    borderColor: "#93C5FD",
+                    borderWidth: 1,
+                    borderRadius: 14,
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name="file-document-outline"
+                    size={14}
+                    color="#2563EB"
+                    style={{ marginRight: 5 }}
+                  />
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: "#1D4ED8" }}>
+                    {linkedBills.length > 1
+                      ? `${linkedBills.length} Bills Linked`
+                      : linkedBills[0]?.name
+                        ? `Bill: ${linkedBills[0].name}`
+                        : "Bill Linked"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {isLoanLinked && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setShowMoreOptions(true)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: "#F5F3FF",
+                    borderColor: "#C4B5FD",
+                    borderWidth: 1,
+                    borderRadius: 14,
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name="bank-outline"
+                    size={14}
+                    color="#7C3AED"
+                    style={{ marginRight: 5 }}
+                  />
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: "#6D28D9" }}>
+                    Loan Linked
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {isNotSpendOrIncome && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setShowMoreOptions(true)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: "#FFFBEB",
+                    borderColor: "#FCD34D",
+                    borderWidth: 1,
+                    borderRadius: 14,
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name="tag-off-outline"
+                    size={14}
+                    color="#D97706"
+                    style={{ marginRight: 5 }}
+                  />
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: "#B45309" }}>
+                    {type === "expense" ? "Not a Spend" : "Not a Income"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </View>
+      )}
 
       <View
         style={{ flexDirection: "row", alignItems: "center", marginTop: 12 }}
@@ -3100,7 +3249,7 @@ export default function TransactionForm({
                         paymentType: "FORECLOSURE",
                       },
                     ];
-                
+
                 const isClosed = String(pendingLoan.status || "").toLowerCase() === "closed";
                 let displayOptions = options;
                 if (isClosed) {

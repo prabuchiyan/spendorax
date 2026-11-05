@@ -35,7 +35,7 @@ import { Colors, Spacing } from "../components/Theme";
 import { BILL_STATUS } from "../services/billUtils";
 import CurrencyText from "../components/CurrencyText";
 import { getSources } from "../services/sources";
-import { getCreditCards, payCreditCardBill } from "../services/creditCards";
+import { getCreditCards, payCreditCardBill, resolveCreditCardForBill } from "../services/creditCards";
 // Redux imports
 import { setBillsSummary } from "../redux/slices/billSlice";
 import { setCategoriesMap } from "../redux/slices/categorySlice";
@@ -379,13 +379,7 @@ export default function BillsScreen({ navigation }) {
       const actualBill = bill._displayOccurrence?.id ? bill._displayOccurrence : bill;
 
       // FIND CREDIT CARD
-      const cards = await getCreditCards(false);
-      const parentBillId = Number(
-        actualBill.parent_bill_id || actualBill._templateId || actualBill.id,
-      );
-      const card = cards.find(
-        (c) => Number(c.payment_bill_id) === parentBillId,
-      );
+      const card = await resolveCreditCardForBill(actualBill);
       // NORMAL BILL
       if (!card) {
         await markBillPaid(actualBill.id, {
@@ -495,12 +489,11 @@ export default function BillsScreen({ navigation }) {
       );
       const handleViewStatements = async () => {
         try {
-          const cards = await getCreditCards(false);
-          const card = cards.find(
-            (c) => Number(c.payment_bill_id) === Number(parentKey)
-          );
+          const card = await resolveCreditCardForBill(item);
           if (card && card.source_id) {
-            navigation.navigate("CreditCardStatements", { sourceId: card.source_id });
+            navigation.navigate("CreditCardStatements", { sourceId: card.source_id, cardId: card.id });
+          } else if (card && card.id) {
+            navigation.navigate("CreditCardStatements", { cardId: card.id });
           } else {
             navigation.navigate("CreditCardStatements");
           }
@@ -1080,33 +1073,33 @@ export default function BillsScreen({ navigation }) {
         {listHeader}
 
         {viewMode === "list" && groupedSections.length === 0 && (
-            <View style={{ alignItems: "center", paddingTop: 32 }}>
-              <MaterialCommunityIcons
-                name="clipboard-check-outline"
-                size={48}
-                color="#ccc"
-              />
-              <Text style={{ color: Colors.muted, marginTop: 10 }}>
-                No bills this month
+          <View style={{ alignItems: "center", paddingTop: 32 }}>
+            <MaterialCommunityIcons
+              name="clipboard-check-outline"
+              size={48}
+              color="#ccc"
+            />
+            <Text style={{ color: Colors.muted, marginTop: 10 }}>
+              No bills this month
+            </Text>
+          </View>
+        )}
+
+        {viewMode === "list" && groupedSections.map((section, idx) => (
+          <View key={section.title || idx}>
+            <View style={{ paddingTop: 8, paddingBottom: 8, paddingHorizontal: 4 }}>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: theme.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                {section.title}
               </Text>
             </View>
-          )}
-
-          {viewMode === "list" && groupedSections.map((section, idx) => (
-            <View key={section.title || idx}>
-              <View style={{ paddingTop: 8, paddingBottom: 8, paddingHorizontal: 4 }}>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: theme.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  {section.title}
-                </Text>
+            {section.data.map((item, i) => (
+              <View key={item._displayOccurrenceId ? String(item._displayOccurrenceId) : (String(item.id) + "-" + i)}>
+                {renderBill({ item })}
               </View>
-              {section.data.map((item, i) => (
-                <View key={item._displayOccurrenceId ? String(item._displayOccurrenceId) : (String(item.id) + "-" + i)}>
-                  {renderBill({ item })}
-                </View>
-              ))}
-            </View>
-          ))}
-        </ScrollView>
+            ))}
+          </View>
+        ))}
+      </ScrollView>
 
       {/* Status modal */}
       <Modal visible={showStatusDD} transparent>

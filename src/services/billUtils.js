@@ -146,6 +146,19 @@ export function getBillDisplayStatus(bill) {
       color: "#3F8F6B",
     };
   }
+  // PARTIALLY PAID
+  if (
+    status === "partially_paid" ||
+    bill.is_partially_paid ||
+    (Number(bill.paid_amount || 0) > 0 &&
+      Number(bill.amount || 0) > 0 &&
+      Number(bill.paid_amount || 0) < Number(bill.amount || 0))
+  ) {
+    return {
+      label: "Partially Paid",
+      color: "#3B82F6",
+    };
+  }
   // SKIPPED
   if (status === "skipped") {
     return {
