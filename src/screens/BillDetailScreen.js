@@ -238,6 +238,240 @@ function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink, onEdit }) {
   );
 }
 
+function YearQuickJumpModal({
+  visible,
+  onClose,
+  series = [],
+  availableYears = [],
+  yearGroups = {},
+  activeYear,
+  onSelectOccurrence,
+}) {
+  const { theme, isDarkMode } = useTheme();
+  const [selectedYear, setSelectedYear] = useState(activeYear || availableYears[0]);
+
+  useEffect(() => {
+    if (visible) {
+      setSelectedYear(activeYear || availableYears[0]);
+    }
+  }, [visible, activeYear, availableYears]);
+
+  if (!visible) return null;
+
+  const oldestOcc = series && series.length > 0 ? series[0] : null;
+  const latestOcc = series && series.length > 0 ? series[series.length - 1] : null;
+  const oldestYear = oldestOcc?.due_date ? new Date(oldestOcc.due_date).getFullYear() : null;
+  const latestYear = latestOcc?.due_date ? new Date(latestOcc.due_date).getFullYear() : null;
+
+  const monthsInSelectedYear = selectedYear && yearGroups[selectedYear] ? yearGroups[selectedYear] : [];
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onClose}>
+      <View style={styles.unlinkModalOverlay}>
+        <Pressable style={styles.unlinkModalBackdrop} onPress={onClose} />
+        <View
+          style={[
+            styles.jumpModalCard,
+            {
+              backgroundColor: theme.cardBg,
+              borderColor: theme.border,
+              borderWidth: isDarkMode ? 1 : 0,
+            },
+          ]}>
+          {/* Header */}
+          <View style={styles.jumpModalHeader}>
+            <View style={styles.jumpIconCircle}>
+              <MaterialCommunityIcons name="calendar-clock" size={26} color="#006a61" />
+            </View>
+            <Text style={[styles.jumpModalTitle, { color: theme.textPrimary }]}>
+              Jump to Period
+            </Text>
+            <Text style={[styles.jumpModalSubtitle, { color: theme.textSecondary }]}>
+              Quickly navigate through {series.length} bill cycles
+            </Text>
+          </View>
+
+          {/* Quick Shortcuts: Oldest & Latest */}
+          {series.length > 5 && (
+            <View style={styles.jumpShortcutsRow}>
+              {oldestOcc && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    onSelectOccurrence(oldestOcc);
+                    onClose();
+                  }}
+                  style={[
+                    styles.jumpShortcutBtn,
+                    {
+                      backgroundColor: isDarkMode ? "#1e293b" : "#f1f5f9",
+                      borderColor: theme.border,
+                    },
+                  ]}>
+                  <MaterialCommunityIcons name="page-first" size={16} color="#006a61" style={{ marginRight: 4 }} />
+                  <Text style={[styles.jumpShortcutText, { color: theme.textPrimary }]}>
+                    Oldest ({oldestYear})
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {latestOcc && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    onSelectOccurrence(latestOcc);
+                    onClose();
+                  }}
+                  style={[
+                    styles.jumpShortcutBtn,
+                    {
+                      backgroundColor: isDarkMode ? "#1e293b" : "#f1f5f9",
+                      borderColor: theme.border,
+                    },
+                  ]}>
+                  <MaterialCommunityIcons name="page-last" size={16} color="#006a61" style={{ marginRight: 4 }} />
+                  <Text style={[styles.jumpShortcutText, { color: theme.textPrimary }]}>
+                    Latest ({latestYear})
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {/* Years Section Title */}
+          {availableYears.length > 0 && (
+            <>
+              <Text style={[styles.jumpSectionLabel, { color: theme.textSecondary }]}>
+                SELECT YEAR ({availableYears.length})
+              </Text>
+
+              {/* Years Grid */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.jumpYearRow}
+                style={{ maxHeight: 46 }}>
+                {availableYears.map((yr) => {
+                  const isSelected = Number(selectedYear) === Number(yr);
+                  return (
+                    <TouchableOpacity
+                      key={String(yr)}
+                      activeOpacity={0.7}
+                      onPress={() => setSelectedYear(yr)}
+                      style={[
+                        styles.yearGridBtn,
+                        {
+                          backgroundColor: isSelected
+                            ? "#006a61"
+                            : isDarkMode
+                            ? "#1e293b"
+                            : "#f8faff",
+                          borderColor: isSelected
+                            ? "#006a61"
+                            : isDarkMode
+                            ? "#334155"
+                            : "#e2ebf8",
+                        },
+                      ]}>
+                      <Text
+                        style={[
+                          styles.yearGridBtnText,
+                          { color: isSelected ? "#ffffff" : theme.textPrimary },
+                        ]}>
+                        {yr}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </>
+          )}
+
+          {/* Months in Selected Year */}
+          {monthsInSelectedYear.length > 0 && (
+            <View style={{ marginTop: 14, width: "100%" }}>
+              <Text style={[styles.jumpSectionLabel, { color: theme.textSecondary }]}>
+                CYCLES IN {selectedYear} ({monthsInSelectedYear.length})
+              </Text>
+              <ScrollView
+                style={{ maxHeight: 150 }}
+                contentContainerStyle={styles.monthChipsGrid}
+                showsVerticalScrollIndicator={false}>
+                {monthsInSelectedYear.map((occ) => {
+                  const date = new Date(occ.due_date);
+                  const monthName = date.toLocaleDateString("en-IN", {
+                    month: "short",
+                  });
+                  const isPaid = occ.status === BILL_STATUS.PAID;
+                  const isSkipped = occ.status === BILL_STATUS.SKIPPED;
+
+                  return (
+                    <TouchableOpacity
+                      key={String(occ.id)}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        onSelectOccurrence(occ);
+                        onClose();
+                      }}
+                      style={[
+                        styles.monthChipBtn,
+                        {
+                          backgroundColor: isDarkMode ? "#1e293b" : "#f8faff",
+                          borderColor: isPaid
+                            ? "#10b981"
+                            : isSkipped
+                            ? "#94a3b8"
+                            : theme.border,
+                        },
+                      ]}>
+                      <View
+                        style={[
+                          styles.monthStatusDot,
+                          {
+                            backgroundColor: isPaid
+                              ? "#10b981"
+                              : isSkipped
+                              ? "#94a3b8"
+                              : "#f59e0b",
+                          },
+                        ]}
+                      />
+                      <Text style={[styles.monthChipText, { color: theme.textPrimary }]}>
+                        {monthName}
+                      </Text>
+                      <Text style={[styles.monthChipAmount, { color: theme.textSecondary }]}>
+                        {formatCurrency(occ.amount)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Close button */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={onClose}
+            style={[
+              styles.jumpCloseBtn,
+              { backgroundColor: isDarkMode ? "#334155" : "#f1f5f9" },
+            ]}>
+            <Text style={[styles.jumpCloseBtnText, { color: theme.textPrimary }]}>
+              Close
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 function LinkTransactionModal({ visible, bill, onLink, onClose }) {
   const { theme, isDarkMode } = useTheme();
   const [candidates, setCandidates] = useState([]);
@@ -473,6 +707,7 @@ export default function BillDetailScreen({ route, navigation }) {
   const [toastVisible, setToastVisible] = useState(false);
   const [unlinkingTx, setUnlinkingTx] = useState(null);
   const [unlinking, setUnlinking] = useState(false);
+  const [showYearJumpModal, setShowYearJumpModal] = useState(false);
   const { visible: loaderVisible, show: showPageLoader, hide: hidePageLoader } = usePageLoader();
   const dispatch = useAppDispatch();
   const reduxSummary = useBillsSummary();
@@ -527,6 +762,44 @@ export default function BillDetailScreen({ route, navigation }) {
     const start = Math.max(0, chartData.length - itemsToShow - chartOffset);
     return chartData.slice(start, start + itemsToShow);
   }, [chartData, chartOffset]);
+
+  const availableYears = useMemo(() => {
+    if (!series || series.length === 0) return [];
+    const yearSet = new Set();
+    series.forEach((occ) => {
+      if (occ.due_date) {
+        const y = new Date(occ.due_date).getFullYear();
+        if (!isNaN(y)) yearSet.add(y);
+      }
+    });
+    return Array.from(yearSet).sort((a, b) => b - a);
+  }, [series]);
+
+  const yearGroups = useMemo(() => {
+    const map = {};
+    (series || []).forEach((occ) => {
+      if (!occ.due_date) return;
+      const y = new Date(occ.due_date).getFullYear();
+      if (isNaN(y)) return;
+      if (!map[y]) map[y] = [];
+      map[y].push(occ);
+    });
+    return map;
+  }, [series]);
+
+  const visibleYearLabel = useMemo(() => {
+    if (!displayChartData || displayChartData.length === 0) return "";
+    const years = displayChartData
+      .map((item) => {
+        const occ = series.find((s) => Number(s.id) === Number(item.id));
+        return occ?.due_date ? new Date(occ.due_date).getFullYear() : null;
+      })
+      .filter((y) => y != null && !isNaN(y));
+    if (years.length === 0) return "";
+    const minYear = Math.min(...years);
+    const maxYear = Math.max(...years);
+    return minYear === maxYear ? String(minYear) : `${minYear}-${String(maxYear).slice(2)}`;
+  }, [displayChartData, series]);
 
   const totalDueAmount = useMemo(() => {
     return series.reduce((sum, b) => {
@@ -828,6 +1101,21 @@ export default function BillDetailScreen({ route, navigation }) {
       })
     );
   }
+
+  const handleJumpToOccurrence = useCallback(
+    (targetOcc) => {
+      if (!targetOcc || !series || series.length === 0) return;
+      const targetIdx = series.findIndex((o) => Number(o.id) === Number(targetOcc.id));
+      if (targetIdx !== -1) {
+        const itemsToShow = 5;
+        const idealStart = Math.max(0, Math.min(series.length - itemsToShow, targetIdx - Math.floor(itemsToShow / 2)));
+        const newOffset = Math.max(0, series.length - itemsToShow - idealStart);
+        setChartOffset(newOffset);
+      }
+      handleSelectOccurrence(targetOcc);
+    },
+    [series]
+  );
 
   const handleShareBill = async () => {
     try {
@@ -1230,11 +1518,31 @@ export default function BillDetailScreen({ route, navigation }) {
         {/* ── 4. Billing History Section ────────────────────────────────────── */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", flex: 1, marginRight: 8 }}>
               <Text style={styles.sectionTitle}>Billing History</Text>
               <View style={styles.countBadge}>
                 <Text style={styles.countBadgeText}>{series.length} Occurrences</Text>
               </View>
+
+              {/* Year Quick-Jump Pill */}
+              {availableYears.length > 0 && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setShowYearJumpModal(true)}
+                  style={[
+                    styles.yearJumpPill,
+                    {
+                      backgroundColor: isDarkMode ? "#1e293b" : "#f1f5f9",
+                      borderColor: theme.border,
+                    },
+                  ]}>
+                  <MaterialCommunityIcons name="calendar-search" size={13} color="#006a61" style={{ marginRight: 4 }} />
+                  <Text style={[styles.yearJumpPillText, { color: theme.textPrimary }]}>
+                    {visibleYearLabel ? visibleYearLabel : "Year"}
+                  </Text>
+                  <MaterialCommunityIcons name="chevron-down" size={14} color={theme.textSecondary} style={{ marginLeft: 2 }} />
+                </TouchableOpacity>
+              )}
             </View>
 
             <View style={{ flexDirection: "row" }}>
@@ -1527,6 +1835,16 @@ export default function BillDetailScreen({ route, navigation }) {
             </View>
           </View>
         </Modal>
+
+        <YearQuickJumpModal
+          visible={showYearJumpModal}
+          onClose={() => setShowYearJumpModal(false)}
+          series={series}
+          availableYears={availableYears}
+          yearGroups={yearGroups}
+          activeYear={activeBill?.due_date ? new Date(activeBill.due_date).getFullYear() : availableYears[0]}
+          onSelectOccurrence={handleJumpToOccurrence}
+        />
       </ScrollView>
 
       {/* ── 5. Stitch Bottom Action Dock ──────────────────────────────────── */}
@@ -2432,6 +2750,152 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: "#FFFFFF",
+    fontFamily: "Inter",
+  },
+
+  /* ── Year Quick-Jump Styles ───────────────────────────────────────── */
+  yearJumpPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginLeft: 6,
+  },
+  yearJumpPillText: {
+    fontSize: 11,
+    fontWeight: "700",
+    fontFamily: "Inter",
+  },
+  jumpModalCard: {
+    width: "100%",
+    maxWidth: 380,
+    borderRadius: 24,
+    padding: 20,
+    alignItems: "center",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 24,
+  },
+  jumpModalHeader: {
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  jumpIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "rgba(0, 106, 97, 0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  jumpModalTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    fontFamily: "Plus Jakarta Sans",
+    marginBottom: 4,
+  },
+  jumpModalSubtitle: {
+    fontSize: 12.5,
+    fontFamily: "Inter",
+    textAlign: "center",
+  },
+  jumpShortcutsRow: {
+    flexDirection: "row",
+    gap: 10,
+    width: "100%",
+    marginBottom: 14,
+  },
+  jumpShortcutBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 9,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  jumpShortcutText: {
+    fontSize: 12,
+    fontWeight: "700",
+    fontFamily: "Inter",
+  },
+  jumpSectionLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    fontFamily: "Inter",
+    alignSelf: "flex-start",
+    marginBottom: 8,
+  },
+  jumpYearRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingVertical: 2,
+  },
+  yearGridBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  yearGridBtnText: {
+    fontSize: 12.5,
+    fontWeight: "800",
+    fontFamily: "Plus Jakarta Sans",
+  },
+  monthChipsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingVertical: 4,
+  },
+  monthChipBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 12,
+    borderWidth: 1,
+    minWidth: "30%",
+    flexGrow: 1,
+  },
+  monthStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  monthChipText: {
+    fontSize: 12,
+    fontWeight: "700",
+    fontFamily: "Inter",
+    marginRight: 6,
+  },
+  monthChipAmount: {
+    fontSize: 11,
+    fontWeight: "600",
+    fontFamily: "Inter",
+    marginLeft: "auto",
+  },
+  jumpCloseBtn: {
+    width: "100%",
+    height: 44,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 16,
+  },
+  jumpCloseBtnText: {
+    fontSize: 13.5,
+    fontWeight: "700",
     fontFamily: "Inter",
   },
   emptyLinkedCard: {
