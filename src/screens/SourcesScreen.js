@@ -14,6 +14,7 @@ import { getSources, deleteSource } from '../services/sources';
 import { getTransactions } from '../services/transactions';
 import Card from '../components/Card';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../components/Theme';
 import ContextualFAB from '../components/ContextualFAB';
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
@@ -22,6 +23,7 @@ import { setSources } from '../redux/slices/sourceSlice';
 import { formatAmount } from "../utils/numberUtils";
 
 export default function SourcesScreen({ route, navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const dispatch = useAppDispatch();
   const reduxItems = useSourcesList();
   const items = reduxItems || [];
@@ -121,7 +123,7 @@ export default function SourcesScreen({ route, navigation }) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
 
       {/* =====================================================
            HEADER / SUMMARY
@@ -205,8 +207,8 @@ export default function SourcesScreen({ route, navigation }) {
           placeholder="Search accounts"
           onChangeText={setSearchQuery}
           value={searchQuery}
-          style={styles.searchBar}
-          inputStyle={styles.searchInput}
+          style={[styles.searchBar, { backgroundColor: theme.cardBg, borderColor: theme.border }]}
+          inputStyle={[styles.searchInput, { color: theme.textPrimary }]}
           iconColor="#7A8794"
           placeholderTextColor="#9AA5B1" />
 
@@ -227,11 +229,11 @@ export default function SourcesScreen({ route, navigation }) {
         ListHeaderComponent={
           filteredItems.length > 0 ?
             <View style={styles.listHeader}>
-              <Text style={styles.listTitle}>
+              <Text style={[styles.listTitle, { color: theme.textPrimary }]}>
                 All Accounts
               </Text>
 
-              <Text style={styles.listCount}>
+              <Text style={[styles.listCount, { backgroundColor: isDarkMode ? "#1e293b" : "#E9EDF1", color: isDarkMode ? "#94A3B8" : "#778491" }]}>
                 {filteredItems.length}
               </Text>
             </View> :
@@ -247,11 +249,11 @@ export default function SourcesScreen({ route, navigation }) {
 
             </View>
 
-            <Text style={styles.emptyTitle}>
+            <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
               No accounts found
             </Text>
 
-            <Text style={styles.emptySubtitle}>
+            <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
               {searchQuery ?
                 'Try searching with a different name' :
                 'Create your first account to get started'}
@@ -269,7 +271,7 @@ export default function SourcesScreen({ route, navigation }) {
             item.color || '#4B7CF3';
 
           return (
-            <Card style={styles.accountCard}>
+            <Card style={[styles.accountCard, { backgroundColor: theme.cardBg, borderColor: theme.border, borderWidth: isDarkMode ? 1 : 0 }]}>
 
               <TouchableOpacity
                 activeOpacity={0.75}
@@ -309,7 +311,7 @@ export default function SourcesScreen({ route, navigation }) {
 
                       <Text
                         numberOfLines={1}
-                        style={styles.accountName}>
+                        style={[styles.accountName, { color: theme.textPrimary }]}>
 
                         {item.name}
                       </Text>
@@ -328,7 +330,7 @@ export default function SourcesScreen({ route, navigation }) {
                           } />
 
 
-                        <Text style={styles.accountMetaText}>
+                        <Text style={[styles.accountMetaText, { color: theme.textSecondary }]}>
                           {isCreditCard ? 'Total outstanding' : (isNegative ?
                             'Negative balance' :
                             'Available balance')}
@@ -387,7 +389,7 @@ export default function SourcesScreen({ route, navigation }) {
                 {/* =================================================
                      ACTION BAR
                   ================================================== */}
-                <View style={styles.accountBottom}>
+                <View style={[styles.accountBottom, { borderTopColor: theme.border }]}>
 
                   <View style={styles.initialBalanceInfo}>
                     <MaterialCommunityIcons
@@ -396,7 +398,7 @@ export default function SourcesScreen({ route, navigation }) {
                       color="#9AA5B1" />
 
 
-                    <Text style={styles.initialBalanceText}>
+                    <Text style={[styles.initialBalanceText, { color: theme.textSecondary }]}>
                       Initial ₹
                       {formatAmount(
                         item.initial_balance || 0

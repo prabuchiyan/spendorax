@@ -1,3 +1,4 @@
+import { useTheme } from '../context/ThemeContext';
 import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
@@ -490,6 +491,7 @@ function getInitialDate(value) {
 ========================================================= */
 
 export default function LoanFormScreen({ navigation, route }) {
+  const { theme, isDarkMode } = useTheme();
   const rawId = route?.params?.id ?? route?.params?.loanId;
 
   const editId = rawId != null && rawId !== "" ? Number(rawId) : null;
@@ -1313,7 +1315,7 @@ export default function LoanFormScreen({ navigation, route }) {
                 color="#64748B"
                 style={{ marginRight: 8 }}
               />
-              <Text style={styles.switchLabel}>Has EMI Options</Text>
+              <Text style={[styles.switchLabel, { color: theme.textPrimary }]}>Has EMI Options</Text>
             </View>
             <Switch
               value={hasEmi}
@@ -1413,7 +1415,7 @@ export default function LoanFormScreen({ navigation, route }) {
             <>
               <View style={styles.divider} />
 
-              <Text style={styles.subSectionTitle}>Transaction setup</Text>
+              <Text style={[styles.subSectionTitle, { color: theme.textPrimary }]}>Transaction setup</Text>
 
               <CompactSelect
                 label={cfg.sourceLabel}
@@ -1443,9 +1445,9 @@ export default function LoanFormScreen({ navigation, route }) {
             activeOpacity={0.8}
             disabled={submitting || deleting}
             onPress={handleCancel}
-            style={styles.cancelButton}
+            style={[styles.cancelButton, { backgroundColor: theme.cardBg, borderColor: theme.border }]}
           >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
+            <Text style={[styles.cancelButtonText, { color: theme.textSecondary }]}>Cancel</Text>
           </TouchableOpacity>
 
           <PaperButton
@@ -1702,6 +1704,7 @@ export default function LoanFormScreen({ navigation, route }) {
                       }}
                       style={[
                         styles.dayTile,
+                        { backgroundColor: theme.cardBg, borderColor: theme.border },
                         selected && {
                           backgroundColor: cfg.color,
                           borderColor: cfg.color,
@@ -2090,6 +2093,7 @@ function CompactInput({
   accent,
   large,
 }) {
+  const { theme, isDarkMode } = useTheme();
   return (
     <View style={styles.fieldWrap}>
       <PaperTextInput
@@ -2103,7 +2107,8 @@ function CompactInput({
         disabled={disabled}
         error={!!error}
         left={<PaperTextInput.Icon icon={icon} color={accent || "#64748B"} />}
-        style={[styles.input, large && styles.largeInput]}
+        style={[styles.input, { backgroundColor: theme.cardBg }, large && styles.largeInput]}
+        textColor={theme.textPrimary}
         outlineStyle={styles.inputOutline}
       />
 
@@ -2125,6 +2130,7 @@ function CompactSelect({
   color,
   error,
 }) {
+  const { theme, isDarkMode } = useTheme();
   return (
     <View style={styles.fieldWrap}>
       <TouchableOpacity
@@ -2624,8 +2630,8 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#F8FAFC",
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
     alignItems: "center",
     justifyContent: "center",
   },

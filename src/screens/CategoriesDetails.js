@@ -12,6 +12,7 @@ import {
 import { deleteTransaction, getTransactionsByDateRange } from '../services/transactions';
 import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
+import { useTheme } from '../context/ThemeContext';
 import { Colors, Spacing } from '../components/Theme';
 import { Feather } from '@expo/vector-icons';
 import ContextualFAB from '../components/ContextualFAB';
@@ -65,6 +66,7 @@ const rgbaFromColor = (color, opacity = 1) => {
 };
 
 export default function CategoriesDetails({ route, navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const { categoryId, categoryName, mode, periodLabel } = route.params || {};
 
   const [transactions, setTransactions] = useState([]);
@@ -372,7 +374,7 @@ export default function CategoriesDetails({ route, navigation }) {
 
 
         <View style={{ alignItems: 'center', marginBottom: 8, marginTop: 4 }}>
-          <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          <Text style={{ fontSize: 13, fontWeight: '800', color: theme.textPrimary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
             {period === 'day' ? 'Days' : period === 'week' ? 'Weeks' : period === 'month' ? 'Months' : 'Years'}
           </Text>
         </View>
@@ -391,7 +393,7 @@ export default function CategoriesDetails({ route, navigation }) {
             }}
             disabled={chartOffset === 0}>
 
-            <Feather name="chevron-left" size={20} color={Colors.text} />
+            <Feather name="chevron-left" size={20} color={theme.textPrimary} />
           </TouchableOpacity>
 
           <PremiumRoundedBarChart
@@ -420,7 +422,7 @@ export default function CategoriesDetails({ route, navigation }) {
               shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3
             }}>
 
-            <Feather name="chevron-right" size={20} color={Colors.text} />
+            <Feather name="chevron-right" size={20} color={theme.textPrimary} />
           </TouchableOpacity>
         </View>
 
@@ -483,7 +485,7 @@ export default function CategoriesDetails({ route, navigation }) {
 
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <SectionList
         sections={groupedTransactions}
         keyExtractor={(item) =>
@@ -508,8 +510,7 @@ export default function CategoriesDetails({ route, navigation }) {
             style={{
               paddingTop: 9,
               paddingBottom: 7,
-              backgroundColor:
-                Colors.background
+              backgroundColor: theme.bg
             }}>
 
             <View
@@ -625,7 +626,7 @@ export default function CategoriesDetails({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F6F8FF',
     padding: Spacing.xs
   },
 

@@ -10,9 +10,10 @@ import {
 } from 'react-native';
 import { TextInput as PaperInput, Button as PaperButton } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { createBill, updateBill } from '../services/bills';
+import { updateBill } from '../services/bills';
 import { getOccurrenceDateConstraints } from '../services/billUtils';
 import MuiDateTimePicker from "../components/MuiDateTimePicker";
+import { useTheme } from '../context/ThemeContext';
 
 function isCreditCardBill(bill) {
     return (
@@ -22,6 +23,7 @@ function isCreditCardBill(bill) {
 }
 
 export default function BillOccurrenceEditScreen({ route, navigation }) {
+    const { isDarkMode, theme } = useTheme();
     const { occurrence, bill } = route.params;
 
     const [amount, setAmount] = useState('');
@@ -67,27 +69,20 @@ export default function BillOccurrenceEditScreen({ route, navigation }) {
             setLoading(true);
             await new Promise(resolve => requestAnimationFrame(resolve)); // allow UI to render loading
 
-            if (
-                occurrence.id === bill.id &&
-                bill.is_recurring &&
-                !isCreditCardBill(bill)
-            ) {
-                await createBill({
-                    ...bill,
-                    amount: amt,
-                    due_date: dueDate,
-                    is_recurring: 0,
-                    recurrence_type: null,
-                    parent_bill_id: bill.id
+            await updateBill(occurrence.id, {
+                amount: amt,
+                due_date: dueDate
+            });
+
+            if (navigation.canGoBack()) {
+                navigation.navigate({
+                    name: 'BillDetail',
+                    params: { occurrenceId: occurrence.id, preservedDueDate: dueDate },
+                    merge: true,
                 });
             } else {
-                await updateBill(occurrence.id, {
-                    amount: amt,
-                    due_date: dueDate
-                });
+                navigation.goBack();
             }
-
-            navigation.goBack();
         } catch (e) {
             console.error("[BillOccurrenceEdit] Save occurrence failed:", e);
             Alert.alert("Error", e?.message || "Failed to save occurrence.");
@@ -199,7 +194,7 @@ export default function BillOccurrenceEditScreen({ route, navigation }) {
                                     mode="outlined"
                                     outlineColor="#E2E8F0"
                                     activeOutlineColor="#2563EB"
-                                    style={{ backgroundColor: "#FAFAFA", fontSize: 18, fontWeight: '600' }}
+                                    style={{ backgroundColor: theme.inputBg, fontSize: 18, fontWeight: '600' }}
                                     error={!!errors.dueDate}
                                     right={
                                         <PaperInput.Icon
@@ -229,10 +224,21 @@ export default function BillOccurrenceEditScreen({ route, navigation }) {
                             loading={loading}
                             disabled={loading}
                             buttonColor="#2563EB"
-                            style={{ borderRadius: 16, paddingVertical: 8, marginBottom: 24 }}
+                            style={{ borderRadius: 16, paddingVertical: 8, marginBottom: 12 }}
                             labelStyle={{ fontSize: 18, fontWeight: "800", color: "#FFF", letterSpacing: 0.5 }}
                         >
                             Save Changes
+                        </PaperButton>
+
+                        <PaperButton
+                            mode="outlined"
+                            onPress={() => navigation.goBack()}
+                            disabled={loading}
+                            textColor="#64748B"
+                            style={{ borderRadius: 16, paddingVertical: 4, borderColor: "#CBD5E1", marginBottom: 24 }}
+                            labelStyle={{ fontSize: 16, fontWeight: "600" }}
+                        >
+                            Cancel
                         </PaperButton>
                     </View>
                 </ScrollView>

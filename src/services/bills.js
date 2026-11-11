@@ -29,7 +29,7 @@ function normalizeBill(row) {
 function nowIso() {
   return new Date().toISOString();
 }
-function emitBillsChanged() {
+export function emitBillsChanged() {
   emit("billsChanged");
   syncBillNotifications().catch(e => console.warn('Failed to sync bill notifications', e));
 }
@@ -182,10 +182,394 @@ export async function getBillLinkedTransactions(billId) {
   }
 }
 
-export async function getBillsForTransaction(transactionId) {
+
+export function calcBillPaidAmount(linkedTxs) {
+  if (!linkedTxs || linkedTxs.length === 0) return 0;
+  const seenTransferGroups = new Set();
+  let total = 0;
+  for (const tx of linkedTxs) {
+    if (!tx) continue;
+    if (tx.transfer_group_id) {
+      if (seenTransferGroups.has(tx.transfer_group_id)) continue;
+      seenTransferGroups.add(tx.transfer_group_id);
+    }
+    total += Number(tx.amount || 0);
+  }
+  return total;
+}
+
+async function enrichBillsWithPaymentInfo(billsList) {
+  if (!billsList || billsList.length === 0) return [];
   try {
+    const allLinksRes = await executeSql(`SELECT * FROM bill_linked_transactions`, []);
+    const allLinks = rowsToArray(allLinksRes);
+
+    const allTxsRes = await executeSql(
+      `SELECT id, amount, transfer_group_id, type, direction FROM transactions`,
+      []
+    );
+    const txMap = new Map(rowsToArray(allTxsRes).map((t) => [Number(t.id), t]));
+
+    const linksByBill = new Map();
+    for (const link of allLinks) {
+      const bid = Number(link.bill_id);
+      if (!linksByBill.has(bid)) linksByBill.set(bid, []);
+      const tx = txMap.get(Number(link.transaction_id));
+      if (tx) linksByBill.get(bid).push(tx);
+    }
+
+    return billsList.map((bill) => {
+      if (!bill) return null;
+      if (bill.is_deleted || bill.status === 'deleted') return bill;
+      const txsForBill = linksByBill.get(Number(bill.id)) || [];
+      if (txsForBill.length === 0 && bill.linked_transaction_id) {
+        const legacyTx = txMap.get(Number(bill.linked_transaction_id));
+        if (legacyTx) txsForBill.push(legacyTx);
+      }
+      const totalPaid = calcBillPaidAmount(txsForBill);
+      const billAmount = Number(bill.amount || 0);
+      const isCompletelyPaid = billAmount > 0 ? totalPaid >= billAmount : totalPaid > 0;
+      const isPartiallyPaid = totalPaid > 0 && !isCompletelyPaid;
+      const remainingAmount = Math.max(0, billAmount - totalPaid);
+
+      return {
+        ...bill,
+        paid_amount: totalPaid,
+        total_paid: totalPaid,
+        remaining_amount: remainingAmount,
+        is_partially_paid: isPartiallyPaid,
+        is_completely_paid: isCompletelyPaid,
+        linked_tx_count: txsForBill.length,
+      };
+    }).filter(Boolean);
+  } catch (e) {
+    return billsList;
+  }
+}
+
+/**
+ * Synchronizes payment across any paired duplicate bills in the same recurring cycle
+ * (e.g. parent template and child occurrence for the initial cycle, or duplicate child rows).
+ * This ensures that paying one bill automatically resolves its duplicate so the user
+ * can never be prompted to pay duplicate bills for the same period.
+ */
+export async function syncRecurringCycleDuplicatesOnPayment(bill, { paidAt, txId }) {
+  if (!bill) return;
+  const isChild = Boolean(bill.parent_bill_id);
+  const isTemplate = Number(bill.is_recurring) === 1 && !bill.parent_bill_id;
+  if (!isChild && !isTemplate) return;
+
+  const templateId = isChild ? Number(bill.parent_bill_id) : Number(bill.id);
+  const template = isChild ? await getBillById(templateId) : bill;
+  if (!template) return;
+
+  const templateKey = getRecurrenceOccurrenceKey(
+    template.recurrence_type,
+    template.due_date,
+    template.recurrence_interval,
+  );
+  const billKey = bill.recurrence_occurrence_key ||
+    getRecurrenceOccurrenceKey(
+      template.recurrence_type,
+      bill.due_date,
+      template.recurrence_interval,
+    );
+  const billMonth = bill.due_date ? String(bill.due_date).slice(0, 7) : null;
+  const now = nowIso();
+
+  // 1. If bill is child and matches template's initial cycle, sync template:
+  if (isChild && template) {
+    const isInitialCycle = (templateKey && billKey && String(templateKey) === String(billKey)) ||
+      (template.due_date && billMonth && String(template.due_date).slice(0, 7) === billMonth);
+
+    if (isInitialCycle && Number(template.is_paid) !== 1) {
+      await executeSql(
+        `UPDATE bills
+         SET status = ?, is_paid = 1, paid_at = ?, linked_transaction_id = ?, updated_at = ?
+         WHERE id = ?`,
+        [BILL_STATUS.PAID, paidAt || now, txId, now, template.id],
+      );
+      if (txId) {
+        await addTransactionToBill(template.id, txId);
+      }
+    }
+  }
+
+  // 2. Query any other child bills for this template with the same cycle:
+  const siblingRes = await executeSql(
+    `SELECT * FROM bills WHERE parent_bill_id = ? AND id != ? AND deleted_at IS NULL`,
+    [templateId, bill.id],
+  );
+  const siblings = rowsToArray(siblingRes);
+
+  for (const sibling of siblings) {
+    const sKey = sibling.recurrence_occurrence_key ||
+      getRecurrenceOccurrenceKey(
+        template.recurrence_type,
+        sibling.due_date,
+        template.recurrence_interval,
+      );
+    const sMonth = sibling.due_date ? String(sibling.due_date).slice(0, 7) : null;
+
+    const matchesCycle = (billKey && sKey && String(billKey) === String(sKey)) ||
+      (billMonth && sMonth && billMonth === sMonth) ||
+      (isTemplate && templateKey && sKey && String(templateKey) === String(sKey));
+
+    if (matchesCycle && Number(sibling.is_paid) !== 1) {
+      await executeSql(
+        `UPDATE bills
+         SET status = ?, is_paid = 1, paid_at = ?, linked_transaction_id = ?, updated_at = ?
+         WHERE id = ?`,
+        [BILL_STATUS.PAID, paidAt || now, txId, now, sibling.id],
+      );
+      if (txId) {
+        await addTransactionToBill(sibling.id, txId);
+      }
+    }
+  }
+}
+
+export async function syncBillPaymentStatus(billId) {
+  if (!billId) return;
+
+  const now = nowIso();
+  const billRes = await executeSql(`SELECT * FROM bills WHERE id = ?`, [billId]);
+  if (!billRes.rows.length) return;
+  const bill = billRes.rows.item(0);
+
+  const linkedTxs = await getBillLinkedTransactions(billId);
+  const totalPaid = calcBillPaidAmount(linkedTxs);
+  const billAmount = Number(bill.amount || 0);
+  const isFullyPaid = billAmount > 0 ? totalPaid >= billAmount : totalPaid > 0;
+
+  if (linkedTxs.length === 0) {
+    if (!bill.deleted_at) {
+      // Reset status to pending when unpaid
+      await executeSql(
+        `UPDATE bills
+         SET status = ?, is_paid = 0, linked_transaction_id = NULL, paid_at = NULL, updated_at = ?
+         WHERE id = ?`,
+        [BILL_STATUS.PENDING, now, billId]
+      );
+    } else {
+      await executeSql(
+        `UPDATE bills SET linked_transaction_id = NULL, updated_at = ? WHERE id = ?`,
+        [now, billId]
+      );
+    }
+
+    await executeSql(
+      `UPDATE credit_card_statements
+       SET status = 'generated', payments = 0
+       WHERE bill_id = ?`,
+      [billId]
+    );
+  } else if (isFullyPaid) {
+    const latestTx = linkedTxs[0];
+    const paidAt = latestTx?.date || now;
+    const primaryTxId = latestTx?.id || null;
+
+    if (!bill.deleted_at) {
+      await executeSql(
+        `UPDATE bills
+         SET status = ?, is_paid = 1, paid_at = ?, linked_transaction_id = ?, updated_at = ?
+         WHERE id = ?`,
+        [BILL_STATUS.PAID, paidAt, primaryTxId, now, billId]
+      );
+      try {
+        await syncRecurringCycleDuplicatesOnPayment(bill, { paidAt, txId: primaryTxId });
+      } catch (e) {
+        console.warn("[syncBillPaymentStatus] Duplicate sync warning:", e);
+      }
+    }
+
+    await executeSql(
+      `UPDATE credit_card_statements
+       SET status = 'paid', payments = closing_balance
+       WHERE bill_id = ?`,
+      [billId]
+    );
+  } else {
+    // Partially paid: totalPaid > 0 && totalPaid < billAmount
+    const latestTx = linkedTxs[0];
+    const primaryTxId = latestTx?.id || null;
+    const computed = computeBillStatus({ ...bill, status: 'pending', is_paid: 0 });
+
+    if (!bill.deleted_at) {
+      await executeSql(
+        `UPDATE bills
+         SET status = ?, is_paid = 0, paid_at = NULL, linked_transaction_id = ?, updated_at = ?
+         WHERE id = ?`,
+        [BILL_STATUS.PENDING, primaryTxId, now, billId]
+      );
+    }
+
+    await executeSql(
+      `UPDATE credit_card_statements
+       SET status = 'generated', payments = ?
+       WHERE bill_id = ?`,
+      [totalPaid, billId]
+    );
+  }
+
+  return { totalPaid, billAmount, isFullyPaid, linkedCount: linkedTxs.length };
+}
+
+
+/**
+ * Cleans up any legacy duplicate links where both debit and credit legs
+ * of the same transfer were linked to the same bill. Retains the expense leg
+ * and unlinks the credit leg.
+ */
+export async function cleanupDuplicateTransferBillLinks() {
+  try {
+    const bltRes = await executeSql(`SELECT * FROM bill_linked_transactions`, []);
+    const bltRows = rowsToArray(bltRes);
+    if (!bltRows || bltRows.length === 0) return;
+
+    const txRes = await executeSql(
+      `SELECT id, type, direction, transfer_group_id FROM transactions WHERE transfer_group_id IS NOT NULL`,
+      []
+    );
+    const txRows = rowsToArray(txRes);
+    const txMap = new Map(txRows.map((t) => [Number(t.id), t]));
+
+    // Group links by bill_id and transfer_group_id
+    const groupMap = new Map();
+    for (const link of bltRows) {
+      const tx = txMap.get(Number(link.transaction_id));
+      if (!tx || !tx.transfer_group_id) continue;
+      const key = `${link.bill_id}_${tx.transfer_group_id}`;
+      if (!groupMap.has(key)) groupMap.set(key, []);
+      groupMap.get(key).push({ ...link, ...tx });
+    }
+
+    for (const [, items] of groupMap.entries()) {
+      if (items.length > 1) {
+        // Multiple legs linked to the same bill: retain expense leg, remove credit leg(s)
+        const creditLegs = items.filter(
+          (t) => t.type === "income" || t.direction === "credit"
+        );
+        for (const cl of creditLegs) {
+          await executeSql(
+            `DELETE FROM bill_linked_transactions WHERE bill_id = ? AND transaction_id = ?`,
+            [cl.bill_id, cl.transaction_id]
+          );
+          await executeSql(
+            `UPDATE transactions SET bill_id = NULL WHERE id = ? AND bill_id = ?`,
+            [cl.transaction_id, cl.bill_id]
+          );
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[cleanupDuplicateTransferBillLinks] Error:", err);
+  }
+}
+
+/**
+ * Returns transfer group details for a transaction if it belongs to a transfer,
+ * including expense leg and credit leg source names and IDs.
+ */
+export async function getTransferInfoForTransaction(transactionId) {
+  if (!transactionId) return null;
+  try {
+    const txRes = await executeSql(
+      `SELECT id, type, direction, source_id, amount, transfer_group_id FROM transactions WHERE id = ?`,
+      [transactionId]
+    );
+    const txRows = rowsToArray(txRes);
+    if (!txRows || txRows.length === 0 || !txRows[0].transfer_group_id) {
+      return null;
+    }
+    const currentTx = txRows[0];
+    const groupId = currentTx.transfer_group_id;
+
+    const groupRes = await executeSql(
+      `SELECT id, type, direction, source_id, amount FROM transactions WHERE transfer_group_id = ?`,
+      [groupId]
+    );
+    const groupRows = rowsToArray(groupRes);
+    if (!groupRows || groupRows.length === 0) return null;
+
+    let expenseItem = groupRows.find(
+      (t) => t.type === "expense" || t.direction === "debit"
+    );
+    let creditItem = groupRows.find(
+      (t) => t.type === "income" || t.direction === "credit"
+    );
+
+    let expenseSourceName = "";
+    let creditSourceName = "";
+    try {
+      const srcRes = await executeSql(`SELECT id, name FROM sources`, []);
+      const sources = rowsToArray(srcRes);
+      if (expenseItem?.source_id) {
+        const s = sources.find((x) => Number(x.id) === Number(expenseItem.source_id));
+        if (s) expenseSourceName = s.name;
+      }
+      if (creditItem?.source_id) {
+        const s = sources.find((x) => Number(x.id) === Number(creditItem.source_id));
+        if (s) creditSourceName = s.name;
+      }
+    } catch (e) {}
+
+    return {
+      isTransfer: true,
+      groupId,
+      expenseTxId: expenseItem?.id,
+      expenseSourceName: expenseSourceName || "Source Account",
+      expenseAmount: expenseItem?.amount,
+      creditTxId: creditItem?.id,
+      creditSourceName: creditSourceName || "Destination Account",
+      creditAmount: creditItem?.amount,
+      currentLeg:
+        currentTx.direction === "credit" || currentTx.type === "income"
+          ? "credit"
+          : "expense",
+    };
+  } catch (err) {
+    console.warn("[getTransferInfoForTransaction] Error:", err);
+    return null;
+  }
+}
+
+export async function getBillsForTransaction(transactionId, includeDeleted = true) {
+  if (!transactionId) return [];
+  try {
+    try {
+      await cleanupDuplicateTransferBillLinks();
+    } catch (cleanErr) {}
+    // Resolve all transaction IDs in the transfer group if this is a transfer
+    let txIds = [transactionId];
+    try {
+      const txRes = await executeSql(
+        `SELECT transfer_group_id, bill_id FROM transactions WHERE id = ?`,
+        [transactionId]
+      );
+      if (txRes.rows.length > 0) {
+        const row = txRes.rows.item(0);
+        if (row.transfer_group_id) {
+          const groupRes = await executeSql(
+            `SELECT id, bill_id FROM transactions WHERE transfer_group_id = ?`,
+            [row.transfer_group_id]
+          );
+          const gIds = [];
+          for (let i = 0; i < groupRes.rows.length; i++) {
+            gIds.push(groupRes.rows.item(i).id);
+          }
+          if (gIds.length > 0) txIds = gIds;
+        }
+      }
+    } catch (e) {
+      // transfer group lookup is non-critical fallback
+    }
+
+    const placeholders = txIds.map(() => '?').join(',');
+    const deletedCondition = includeDeleted ? '' : 'AND b.deleted_at IS NULL';
+
     const res = await executeSql(
-      `SELECT
+      `SELECT DISTINCT
         b.id,
         b.name,
         b.amount,
@@ -204,13 +588,372 @@ export async function getBillsForTransaction(transactionId) {
         b.created_at,
         b.updated_at,
         b.deleted_at
-       FROM bill_linked_transactions blt
-       JOIN bills b ON b.id = blt.bill_id
-       WHERE blt.transaction_id = ? AND b.deleted_at IS NULL`,
-      [transactionId],
+       FROM bills b
+       LEFT JOIN bill_linked_transactions blt ON blt.bill_id = b.id
+       WHERE (blt.transaction_id IN (${placeholders}) OR b.linked_transaction_id IN (${placeholders}))
+         ${deletedCondition}`,
+      [...txIds, ...txIds],
     );
-    return rowsToArray(res).map(normalizeBill).filter(Boolean);
+    const rawBills = rowsToArray(res).map(row => {
+      if (!row) return null;
+      if (row.deleted_at) {
+        return { ...row, status: 'deleted', is_paid: 0, is_deleted: true };
+      }
+      return normalizeBill(row);
+    }).filter(Boolean);
+
+    return await enrichBillsWithPaymentInfo(rawBills);
   } catch (e) {
+    // Fallback if JOIN is unsupported (e.g. Web)
+    try {
+      let txIds = [transactionId];
+      let directBillId = null;
+      try {
+        const txRes = await executeSql(
+          `SELECT transfer_group_id, bill_id FROM transactions WHERE id = ?`,
+          [transactionId]
+        );
+        if (txRes.rows.length > 0) {
+          const row = txRes.rows.item(0);
+          if (row.bill_id) directBillId = Number(row.bill_id);
+          if (row.transfer_group_id) {
+            const groupRes = await executeSql(
+              `SELECT id, bill_id FROM transactions WHERE transfer_group_id = ?`,
+              [row.transfer_group_id]
+            );
+            const gIds = [];
+            for (let i = 0; i < groupRes.rows.length; i++) {
+              gIds.push(groupRes.rows.item(i).id);
+              if (groupRes.rows.item(i).bill_id) {
+                directBillId = Number(groupRes.rows.item(i).bill_id);
+              }
+            }
+            if (gIds.length > 0) txIds = gIds;
+          }
+        }
+      } catch (err) {}
+
+      const allBillsRes = await executeSql(
+        includeDeleted ? `SELECT * FROM bills` : `SELECT * FROM bills WHERE deleted_at IS NULL`,
+        []
+      );
+      const allBills = rowsToArray(allBillsRes);
+      const linksRes = await executeSql(`SELECT * FROM bill_linked_transactions`, []);
+      const links = rowsToArray(linksRes);
+
+      const matchedBillIds = new Set();
+      if (directBillId) {
+        matchedBillIds.add(directBillId);
+      }
+      for (const link of links) {
+        if (txIds.some((id) => Number(id) === Number(link.transaction_id))) {
+          matchedBillIds.add(Number(link.bill_id));
+        }
+      }
+      for (const b of allBills) {
+        if (txIds.some((id) => Number(id) === Number(b.linked_transaction_id))) {
+          matchedBillIds.add(Number(b.id));
+        }
+      }
+
+      const rawBills = allBills
+        .filter((b) => matchedBillIds.has(Number(b.id)))
+        .map(row => {
+          if (!row) return null;
+          if (row.deleted_at) {
+            return { ...row, status: 'deleted', is_paid: 0, is_deleted: true };
+          }
+          return normalizeBill(row);
+        })
+        .filter(Boolean);
+
+      return await enrichBillsWithPaymentInfo(rawBills);
+    } catch (err) {
+      return [];
+    }
+  }
+}
+
+/**
+ * Unlinks a bill from a transaction (including its transfer pair if applicable).
+ * Clears junction table, updates transaction's bill_id, and synchronizes
+ * the bill's payment status, remaining amounts, and any linked statements.
+ */
+export async function unlinkBillFromTransaction(billId, transactionId) {
+  if (!billId || !transactionId) return;
+
+  // 1. Resolve all transaction IDs in the transfer group (if transfer)
+  let txIds = [transactionId];
+  try {
+    const txRes = await executeSql(
+      `SELECT transfer_group_id FROM transactions WHERE id = ?`,
+      [transactionId]
+    );
+    if (txRes.rows.length > 0 && txRes.rows.item(0).transfer_group_id) {
+      const groupRes = await executeSql(
+        `SELECT id FROM transactions WHERE transfer_group_id = ?`,
+        [txRes.rows.item(0).transfer_group_id]
+      );
+      const gIds = [];
+      for (let i = 0; i < groupRes.rows.length; i++) {
+        gIds.push(groupRes.rows.item(i).id);
+      }
+      if (gIds.length > 0) txIds = gIds;
+    }
+  } catch (err) {
+    console.warn("[unlinkBillFromTransaction] Error resolving transfer group:", err);
+  }
+
+  // 2. Delete junction table links for all involved transactions
+  for (const tid of txIds) {
+    await executeSql(
+      `DELETE FROM bill_linked_transactions WHERE bill_id = ? AND transaction_id = ?`,
+      [billId, tid]
+    );
+  }
+
+  // 3. Clear transactions.bill_id if set
+  for (const tid of txIds) {
+    await executeSql(
+      `UPDATE transactions SET bill_id = NULL WHERE id = ? AND bill_id = ?`,
+      [tid, billId]
+    );
+  }
+
+  // 4. Synchronize bill payment status and statement totals
+  await syncBillPaymentStatus(billId);
+
+  // 5. Run scheduler to sync statements and card totals
+  try {
+    await runCreditCardStatementScheduler();
+  } catch (schedErr) {
+    console.warn("[unlinkBillFromTransaction] Scheduler sync warning:", schedErr);
+  }
+
+  emitBillsChanged();
+  emit("transactionsChanged");
+}
+
+/**
+ * Links a bill to a transaction (including its transfer pair if applicable).
+ * Adds link to junction table, updates transaction bill_id, and synchronizes
+ * bill payment status (partially paid vs fully paid) and credit card statements.
+ */
+export async function linkBillToTransaction(billId, transactionId, targetLeg = "expense") {
+  if (!billId || !transactionId) return;
+
+  const now = nowIso();
+
+  let targetTxId = transactionId;
+  let otherTxIds = [];
+
+  try {
+    const txRes = await executeSql(
+      `SELECT id, type, direction, transfer_group_id, date FROM transactions WHERE id = ?`,
+      [transactionId]
+    );
+    const txRows = rowsToArray(txRes);
+    if (txRows.length > 0) {
+      const txRow = txRows[0];
+      if (txRow.transfer_group_id) {
+        const groupRes = await executeSql(
+          `SELECT id, type, direction, date FROM transactions WHERE transfer_group_id = ?`,
+          [txRow.transfer_group_id]
+        );
+        const groupItems = rowsToArray(groupRes);
+        let expenseItem = null;
+        let creditItem = null;
+
+        for (const item of groupItems) {
+          if (item.type === "expense" || item.direction === "debit") {
+            expenseItem = item;
+          } else if (item.type === "income" || item.direction === "credit") {
+            creditItem = item;
+          }
+        }
+
+        if (targetLeg === "credit" && creditItem) {
+          targetTxId = creditItem.id;
+          if (expenseItem) otherTxIds.push(expenseItem.id);
+        } else {
+          // Default to expense leg
+          targetTxId = expenseItem ? expenseItem.id : txRow.id;
+          if (creditItem) otherTxIds.push(creditItem.id);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[linkBillToTransaction] Error resolving transfer leg:", err);
+  }
+
+  // 2. Add ONLY the target leg to junction table
+  await executeSql(
+    `INSERT OR IGNORE INTO bill_linked_transactions (bill_id, transaction_id) VALUES (?, ?)`,
+    [billId, targetTxId]
+  );
+
+  // 3. Update target transaction bill_id
+  await executeSql(
+    `UPDATE transactions SET bill_id = ? WHERE id = ?`,
+    [billId, targetTxId]
+  );
+
+  // 4. Ensure non-target counterpart legs in transfer group are NOT linked to this bill
+  for (const otherId of otherTxIds) {
+    await executeSql(
+      `DELETE FROM bill_linked_transactions WHERE bill_id = ? AND transaction_id = ?`,
+      [billId, otherId]
+    );
+    await executeSql(
+      `UPDATE transactions SET bill_id = NULL WHERE id = ? AND bill_id = ?`,
+      [otherId, billId]
+    );
+  }
+
+  // 5. Synchronize bill status (partially paid vs fully paid) and statement totals
+  await syncBillPaymentStatus(billId);
+
+  // 6. Run credit card scheduler so all statements and balances sync
+  try {
+    await runCreditCardStatementScheduler();
+  } catch (schedErr) {
+    console.warn("[linkBillToTransaction] Scheduler sync warning:", schedErr);
+  }
+
+  emitBillsChanged();
+  emit("transactionsChanged");
+}
+
+/**
+ * Returns available active bills that can be linked to the specified transaction.
+ * Allows linking until the complete amount of the bill is paid, supporting multiple transactions.
+ * Partially paid bills appear first with remaining amounts.
+ */
+export async function getAvailableBillsForTransactionLink(transactionId) {
+  try {
+    // 1. Fetch currently linked bill IDs for this transaction
+    const linkedBills = await getBillsForTransaction(transactionId, true);
+    const linkedBillIds = new Set(linkedBills.map((b) => Number(b.id)));
+
+    // 2. Fetch all active bills
+    const allBillsRes = await executeSql(
+      `SELECT * FROM bills WHERE deleted_at IS NULL ORDER BY due_date DESC`,
+      []
+    );
+    const allBills = rowsToArray(allBillsRes).map(normalizeBill).filter(Boolean);
+
+    // 3. Fetch all junction links & transactions for payment calculation
+    const allLinksRes = await executeSql(`SELECT * FROM bill_linked_transactions`, []);
+    const allLinks = rowsToArray(allLinksRes);
+
+    const allTxsRes = await executeSql(
+      `SELECT id, amount, transfer_group_id, type, direction FROM transactions`,
+      []
+    );
+    const txMap = new Map(rowsToArray(allTxsRes).map((t) => [Number(t.id), t]));
+
+    const linksByBill = new Map();
+    for (const link of allLinks) {
+      const bid = Number(link.bill_id);
+      if (!linksByBill.has(bid)) linksByBill.set(bid, []);
+      const tx = txMap.get(Number(link.transaction_id));
+      if (tx) linksByBill.get(bid).push(tx);
+    }
+
+    // Filter candidate bills
+    const candidateBills = [];
+    for (const b of allBills) {
+      // Exclude recurrence parent templates with amount == 0 or credit card templates
+      const isCcTemplate =
+        !b.parent_bill_id &&
+        Number(b.is_recurring) === 1 &&
+        (Number(b.amount || 0) === 0 || String(b.notes || '').startsWith('Recurring payment template for'));
+      if (isCcTemplate) continue;
+
+      // Exclude recurrence parent templates if child occurrences exist for its cycle
+      if (!b.parent_bill_id && Number(b.is_recurring) === 1) {
+        const tMonth = b.due_date ? String(b.due_date).slice(0, 7) : "";
+        const tKey = getRecurrenceOccurrenceKey(b.recurrence_type, b.due_date, b.recurrence_interval);
+        const hasChildOverride = allBills.some((child) => {
+          if (Number(child.parent_bill_id) !== Number(b.id)) return false;
+          const cMonth = child.due_date ? String(child.due_date).slice(0, 7) : "";
+          const cKey = child.recurrence_occurrence_key ||
+            getRecurrenceOccurrenceKey(b.recurrence_type, child.due_date, b.recurrence_interval);
+          return (tKey && cKey && String(tKey) === String(cKey)) || (tMonth && cMonth === tMonth);
+        });
+        if (hasChildOverride) continue;
+      }
+
+      // Exclude bills already linked to this transaction
+      if (linkedBillIds.has(Number(b.id))) continue;
+
+      const txsForBill = linksByBill.get(Number(b.id)) || [];
+      if (txsForBill.length === 0 && b.linked_transaction_id) {
+        const legacyTx = txMap.get(Number(b.linked_transaction_id));
+        if (legacyTx) txsForBill.push(legacyTx);
+      }
+
+      const totalPaid = calcBillPaidAmount(txsForBill);
+      const billAmount = Number(b.amount || 0);
+      const isCompletelyPaid = billAmount > 0 && totalPaid >= billAmount;
+      const isPartiallyPaid = totalPaid > 0 && !isCompletelyPaid;
+      const remainingAmount = Math.max(0, billAmount - totalPaid);
+
+      candidateBills.push({
+        ...b,
+        total_paid: totalPaid,
+        paid_amount: totalPaid,
+        remaining_amount: remainingAmount,
+        linked_tx_count: txsForBill.length,
+        is_partially_paid: isPartiallyPaid,
+        is_completely_paid: isCompletelyPaid,
+      });
+    }
+
+    // Deduplicate any redundant recurring cycle duplicates
+    const seenRecurringCycles = new Set();
+    const uniqueCandidates = [];
+    for (const b of candidateBills) {
+      if (b.is_recurring || b.parent_bill_id) {
+        const templateId = Number(b.parent_bill_id || b.id);
+        const dateStr = b.due_date ? String(b.due_date).slice(0, 10) : "";
+        const cycleKey = b.recurrence_occurrence_key ||
+          (b.recurrence_type && dateStr ? getRecurrenceOccurrenceKey(b.recurrence_type, dateStr, b.recurrence_interval) : null) ||
+          dateStr.slice(0, 7) ||
+          String(b.id);
+        const cycleIdentity = `${templateId}_${cycleKey}`;
+        if (seenRecurringCycles.has(cycleIdentity)) {
+          continue;
+        }
+        seenRecurringCycles.add(cycleIdentity);
+      }
+      uniqueCandidates.push(b);
+    }
+
+    // Sort:
+    // 1. Partially paid bills FIRST (actively in payment progress)
+    // 2. Pending & Overdue bills NEXT
+    // 3. Completely paid bills LAST
+    uniqueCandidates.sort((a, b) => {
+      // Priority 1: partially paid first
+      const aPartial = a.is_partially_paid ? 1 : 0;
+      const bPartial = b.is_partially_paid ? 1 : 0;
+      if (aPartial !== bPartial) return bPartial - aPartial;
+
+      // Priority 2: completely paid last
+      const aComplete = a.is_completely_paid ? 1 : 0;
+      const bComplete = b.is_completely_paid ? 1 : 0;
+      if (aComplete !== bComplete) return aComplete - bComplete;
+
+      // Priority 3: due date
+      const da = a.due_date ? new Date(a.due_date).getTime() : 0;
+      const db = b.due_date ? new Date(b.due_date).getTime() : 0;
+      return db - da;
+    });
+
+    return uniqueCandidates;
+  } catch (err) {
+    console.warn("[getAvailableBillsForTransactionLink] Error:", err);
     return [];
   }
 }
@@ -735,6 +1478,12 @@ export async function backfillBillOccurrences(templateId) {
   // 7. CREATE ONLY MISSING OCCURRENCES
   // =========================================================
 
+  const templateKey = getRecurrenceOccurrenceKey(
+    template.recurrence_type,
+    templateDate,
+    template.recurrence_interval,
+  );
+
   let createdCount = 0;
 
   for (const generatedDate of expectedDates) {
@@ -768,6 +1517,11 @@ export async function backfillBillOccurrences(templateId) {
     }
 
     const key = String(occurrenceKey);
+
+    // Never create a child for the template's own occurrence cycle.
+    if (templateKey && key === String(templateKey)) {
+      continue;
+    }
 
     // -------------------------------------------------------
     // User explicitly deleted this occurrence.
@@ -888,6 +1642,40 @@ export async function getBillById(id) {
  * FIX: No longer calls backfillBillOccurrences — read-only, safe to call
  * on every screen focus without creating duplicates.
  */
+
+function deduplicateSeriesChildren(children, template) {
+  if (!children || children.length <= 1) return children || [];
+  const byCycle = new Map();
+  for (const c of children) {
+    const dateStr = c.due_date ? String(c.due_date).slice(0, 10) : "";
+    const key = c.recurrence_occurrence_key ||
+      (template && dateStr ? getRecurrenceOccurrenceKey(template.recurrence_type, dateStr, template.recurrence_interval) : null) ||
+      (dateStr ? dateStr.slice(0, 7) : String(c.id));
+
+    if (!byCycle.has(key)) {
+      byCycle.set(key, [c]);
+    } else {
+      byCycle.get(key).push(c);
+    }
+  }
+
+  const result = [];
+  for (const group of byCycle.values()) {
+    if (group.length === 1) {
+      result.push(group[0]);
+    } else {
+      group.sort((a, b) => {
+        const aPaid = (a.status === BILL_STATUS.PAID || a.status === BILL_STATUS.SKIPPED || a.is_paid) ? 1 : 0;
+        const bPaid = (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED || b.is_paid) ? 1 : 0;
+        if (aPaid !== bPaid) return bPaid - aPaid;
+        return (b.id || 0) - (a.id || 0);
+      });
+      result.push(group[0]);
+    }
+  }
+  return result;
+}
+
 export async function getBillSeries(templateId) {
   const template = await getBillById(templateId);
   if (!template) return [];
@@ -943,17 +1731,25 @@ export async function getBillSeries(templateId) {
     .filter(Boolean);
 
   const children = allChildren.filter((c) => !c.deleted_at);
+  const dedupedChildren = deduplicateSeriesChildren(children, template);
 
   let activeTemplate = template;
   if (template.due_date) {
     const templateMonth = template.due_date.slice(0, 7);
-    const overrideChild = allChildren.find(
-      (c) => c.due_date && c.due_date.slice(0, 7) === templateMonth,
+    const templateKey = getRecurrenceOccurrenceKey(
+      template.recurrence_type,
+      template.due_date,
+      template.recurrence_interval,
+    );
+    const overrideChild = dedupedChildren.find(
+      (c) =>
+        (c.due_date && c.due_date.slice(0, 7) === templateMonth) ||
+        (templateKey && c.recurrence_occurrence_key && String(c.recurrence_occurrence_key) === String(templateKey)),
     );
     if (overrideChild) activeTemplate = null;
   }
 
-  const series = activeTemplate ? [activeTemplate, ...children] : [...children];
+  const series = activeTemplate ? [activeTemplate, ...dedupedChildren] : [...dedupedChildren];
 
   const links = rowsToArray(
     await executeSql(`SELECT * FROM bill_linked_transactions`, []),
@@ -1043,17 +1839,25 @@ export async function getBillSeriesMultiple(templateIds) {
         return { ...bill, paid_amount: paidAmount };
       });
     } else {
+      const dedupedChildren = deduplicateSeriesChildren(allChildren, template);
       let activeTemplate = template;
       if (template.due_date) {
         const templateMonth = template.due_date.slice(0, 7);
-        const overrideChild = allChildren.find(
-          (c) => c.due_date && c.due_date.slice(0, 7) === templateMonth,
+        const templateKey = getRecurrenceOccurrenceKey(
+          template.recurrence_type,
+          template.due_date,
+          template.recurrence_interval,
+        );
+        const overrideChild = dedupedChildren.find(
+          (c) =>
+            (c.due_date && c.due_date.slice(0, 7) === templateMonth) ||
+            (templateKey && c.recurrence_occurrence_key && String(c.recurrence_occurrence_key) === String(templateKey)),
         );
         if (overrideChild) activeTemplate = null;
       }
       const series = activeTemplate
-        ? [activeTemplate, ...allChildren]
-        : [...allChildren];
+        ? [activeTemplate, ...dedupedChildren]
+        : [...dedupedChildren];
       enriched = series.map((bill) => {
         const billLinks = links.filter(
           (l) => Number(l.bill_id) === Number(bill.id),
@@ -1332,7 +2136,8 @@ export async function getBillsForCurrentMonth(options = {}) {
   // ============================================================
 
   for (const template of Object.values(recurringGroups)) {
-    const endOfMonth = new Date(year, month + 1, 0).toISOString().slice(0, 10);
+    const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+    const endOfMonth = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDayOfMonth).padStart(2, "0")}`;
 
     const upTo = template.recurrence_end_date
       ? [template.recurrence_end_date.slice(0, 10), endOfMonth].sort()[0]
@@ -1464,7 +2269,13 @@ export async function getBillsForCurrentMonth(options = {}) {
       // ========================================================
       else if (
         template.due_date &&
-        template.due_date.slice(0, 10) === thisMonthDate
+        (template.due_date.slice(0, 10) === thisMonthDate ||
+          (occurrenceKey &&
+            getRecurrenceOccurrenceKey(
+              template.recurrence_type,
+              template.due_date,
+              template.recurrence_interval,
+            ) === occurrenceKey))
       ) {
         occurrenceRow = normalizeBill(template);
       }
@@ -1665,7 +2476,156 @@ export async function getBills({
 
 // ─── syncBillStatuses ─────────────────────────────────────────────────────────
 
+
+/**
+ * Detects and heals existing duplicate recurring bill occurrences in the database.
+ * If one duplicate is paid, synchronizes the payment status and soft-deletes or marks the redundant bill.
+ * If both duplicates are unpaid, safely soft-deletes the unlinked redundant duplicate row.
+ * This guarantees existing databases never present duplicate bills or allow duplicate payments.
+ */
+export async function healDuplicateBills() {
+  try {
+    const templatesRes = await executeSql(
+      `SELECT * FROM bills WHERE is_recurring = 1 AND parent_bill_id IS NULL AND deleted_at IS NULL`,
+      []
+    );
+    const templates = rowsToArray(templatesRes);
+
+    for (const template of templates) {
+      if (!template.due_date) continue;
+      const templateDate = String(template.due_date).slice(0, 10);
+      const templateMonth = templateDate.slice(0, 7);
+      const templateKey = getRecurrenceOccurrenceKey(
+        template.recurrence_type,
+        templateDate,
+        template.recurrence_interval
+      );
+
+      const childrenRes = await executeSql(
+        `SELECT * FROM bills WHERE parent_bill_id = ? AND deleted_at IS NULL`,
+        [template.id]
+      );
+      const children = rowsToArray(childrenRes);
+      if (!children.length) continue;
+
+      const childrenByCycle = new Map();
+      for (const child of children) {
+        const cDate = child.due_date ? String(child.due_date).slice(0, 10) : "";
+        const cKey = child.recurrence_occurrence_key ||
+          (cDate ? getRecurrenceOccurrenceKey(template.recurrence_type, cDate, template.recurrence_interval) : null) ||
+          (cDate ? cDate.slice(0, 7) : String(child.id));
+        if (!cKey) continue;
+
+        if (!childrenByCycle.has(cKey)) {
+          childrenByCycle.set(cKey, []);
+        }
+        childrenByCycle.get(cKey).push(child);
+      }
+
+      const isTemplateCycleMatch = (cKey, cDate) => {
+        if (templateKey && cKey && String(templateKey) === String(cKey)) return true;
+        if (templateMonth && cDate && cDate.slice(0, 7) === templateMonth) return true;
+        return false;
+      };
+
+      for (const [cKey, group] of childrenByCycle.entries()) {
+        const isTemplateCycle = isTemplateCycleMatch(cKey, group[0].due_date);
+
+        if (isTemplateCycle) {
+          const anyPaid = Number(template.is_paid) === 1 || template.status === BILL_STATUS.PAID ||
+            group.some((c) => Number(c.is_paid) === 1 || c.status === BILL_STATUS.PAID);
+
+          if (anyPaid) {
+            const paidItem = (Number(template.is_paid) === 1 || template.status === BILL_STATUS.PAID)
+              ? template
+              : group.find((c) => Number(c.is_paid) === 1 || c.status === BILL_STATUS.PAID);
+
+            const paidTxId = paidItem?.linked_transaction_id || null;
+            const paidAt = paidItem?.paid_at || nowIso();
+
+            if (Number(template.is_paid) !== 1) {
+              await executeSql(
+                `UPDATE bills SET status = ?, is_paid = 1, paid_at = ?, linked_transaction_id = ?, updated_at = ? WHERE id = ?`,
+                [BILL_STATUS.PAID, paidAt, paidTxId, nowIso(), template.id]
+              );
+              if (paidTxId) {
+                await addTransactionToBill(template.id, paidTxId);
+              }
+            }
+
+            for (const child of group) {
+              if (Number(child.is_paid) !== 1) {
+                const links = rowsToArray(await executeSql(`SELECT * FROM bill_linked_transactions WHERE bill_id = ?`, [child.id]));
+                if (links.length === 0 && !child.linked_transaction_id) {
+                  await executeSql(
+                    `UPDATE bills SET deleted_at = ?, updated_at = ? WHERE id = ?`,
+                    [nowIso(), nowIso(), child.id]
+                  );
+                } else {
+                  await executeSql(
+                    `UPDATE bills SET status = ?, is_paid = 1, paid_at = ?, linked_transaction_id = ?, updated_at = ? WHERE id = ?`,
+                    [BILL_STATUS.PAID, paidAt, paidTxId, nowIso(), child.id]
+                  );
+                  if (paidTxId) {
+                    await addTransactionToBill(child.id, paidTxId);
+                  }
+                }
+              }
+            }
+          } else {
+            for (const child of group) {
+              const links = rowsToArray(await executeSql(`SELECT * FROM bill_linked_transactions WHERE bill_id = ?`, [child.id]));
+              if (links.length === 0 && !child.linked_transaction_id) {
+                await executeSql(
+                  `UPDATE bills SET deleted_at = ?, updated_at = ? WHERE id = ?`,
+                  [nowIso(), nowIso(), child.id]
+                );
+              }
+            }
+          }
+        } else if (group.length > 1) {
+          const paidChild = group.find((c) => Number(c.is_paid) === 1 || c.status === BILL_STATUS.PAID);
+          if (paidChild) {
+            for (const child of group) {
+              if (child.id === paidChild.id) continue;
+              const links = rowsToArray(await executeSql(`SELECT * FROM bill_linked_transactions WHERE bill_id = ?`, [child.id]));
+              if (links.length === 0 && !child.linked_transaction_id) {
+                await executeSql(
+                  `UPDATE bills SET deleted_at = ?, updated_at = ? WHERE id = ?`,
+                  [nowIso(), nowIso(), child.id]
+                );
+              } else {
+                await executeSql(
+                  `UPDATE bills SET status = ?, is_paid = 1, paid_at = ?, linked_transaction_id = ?, updated_at = ? WHERE id = ?`,
+                  [BILL_STATUS.PAID, paidChild.paid_at || nowIso(), paidChild.linked_transaction_id, nowIso(), child.id]
+                );
+                if (paidChild.linked_transaction_id) {
+                  await addTransactionToBill(child.id, paidChild.linked_transaction_id);
+                }
+              }
+            }
+          } else {
+            const [keep, ...extras] = group;
+            for (const extra of extras) {
+              const links = rowsToArray(await executeSql(`SELECT * FROM bill_linked_transactions WHERE bill_id = ?`, [extra.id]));
+              if (links.length === 0 && !extra.linked_transaction_id) {
+                await executeSql(
+                  `UPDATE bills SET deleted_at = ?, updated_at = ? WHERE id = ?`,
+                  [nowIso(), nowIso(), extra.id]
+                );
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[healDuplicateBills] Error:", err);
+  }
+}
+
 export async function syncBillStatuses() {
+  await healDuplicateBills();
   const today = todayStr();
   const rows = await fetchAllBillsRaw();
   for (const bill of rows) {
@@ -1685,6 +2645,57 @@ export async function syncBillStatuses() {
 
 // ─── summary / insights ───────────────────────────────────────────────────────
 
+
+function deduplicateBillsForSummary(bills) {
+  const recurringByTemplateAndCycle = new Map();
+  const nonRecurring = [];
+
+  for (const b of bills) {
+    const isRecurring = Boolean(b.is_recurring || b.parent_bill_id);
+    if (!isRecurring) {
+      nonRecurring.push(b);
+      continue;
+    }
+
+    const templateId = Number(b.parent_bill_id || b.id);
+    const dateStr = b.due_date ? String(b.due_date).slice(0, 10) : "";
+    const cycleKey = b.recurrence_occurrence_key ||
+      (b.recurrence_type && dateStr ? getRecurrenceOccurrenceKey(b.recurrence_type, dateStr, b.recurrence_interval) : null) ||
+      dateStr.slice(0, 7) ||
+      String(b.id);
+    const mapKey = `${templateId}_${cycleKey}`;
+
+    if (!recurringByTemplateAndCycle.has(mapKey)) {
+      recurringByTemplateAndCycle.set(mapKey, [b]);
+    } else {
+      recurringByTemplateAndCycle.get(mapKey).push(b);
+    }
+  }
+
+  const deduplicated = [...nonRecurring];
+
+  for (const group of recurringByTemplateAndCycle.values()) {
+    if (group.length === 1) {
+      deduplicated.push(group[0]);
+    } else {
+      group.sort((a, b) => {
+        const aPaid = (a.status === BILL_STATUS.PAID || a.status === BILL_STATUS.SKIPPED || a.is_paid) ? 1 : 0;
+        const bPaid = (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED || b.is_paid) ? 1 : 0;
+        if (aPaid !== bPaid) return bPaid - aPaid;
+
+        const aIsChild = a.parent_bill_id ? 1 : 0;
+        const bIsChild = b.parent_bill_id ? 1 : 0;
+        if (aIsChild !== bIsChild) return bIsChild - aIsChild;
+
+        return (b.id || 0) - (a.id || 0);
+      });
+      deduplicated.push(group[0]);
+    }
+  }
+
+  return deduplicated;
+}
+
 export async function getBillsSummary() {
   await syncBillStatuses();
   const today = todayStr();
@@ -1699,9 +2710,7 @@ export async function getBillsSummary() {
   const rows = (await fetchAllBillsRaw()).map(normalizeBill).filter(Boolean);
 
   const active = rows.filter((b) => {
-    if (b.status === BILL_STATUS.SKIPPED) {
-      return false;
-    }
+    // We now include SKIPPED bills in active so they can be counted as "paid" in the progress bar.
 
     const isCreditCardTemplate =
       !b.parent_bill_id &&
@@ -1712,7 +2721,9 @@ export async function getBillsSummary() {
     return !isCreditCardTemplate;
   });
 
-  const thisMonth = active.filter((b) => {
+  const dedupedActive = deduplicateBillsForSummary(active);
+
+  const thisMonth = dedupedActive.filter((b) => {
     if (!b.due_date) return false;
     const d = new Date(b.due_date.slice(0, 10));
     return d.getFullYear() === year && d.getMonth() === month;
@@ -1723,16 +2734,17 @@ export async function getBillsSummary() {
     0,
   );
   const totalPaid = thisMonth
-    .filter((b) => b.status === BILL_STATUS.PAID)
+    .filter((b) => b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED)
     .reduce((s, b) => s + Number(b.amount || 0), 0);
-  const overdueAmount = active
+  const paidCount = thisMonth.filter((b) => b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED).length;
+  const overdueAmount = dedupedActive
     .filter((b) => b.status === BILL_STATUS.OVERDUE)
     .reduce((s, b) => s + Number(b.amount || 0), 0);
-  const overdueCount = active.filter(
+  const overdueCount = dedupedActive.filter(
     (b) => b.status === BILL_STATUS.OVERDUE,
   ).length;
 
-  const upcoming7 = active
+  const upcoming7 = dedupedActive
     .filter((b) => {
       if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED)
         return false;
@@ -1741,7 +2753,7 @@ export async function getBillsSummary() {
     })
     .reduce((s, b) => s + Number(b.amount || 0), 0);
 
-  const upcoming3 = active.filter((b) => {
+  const upcoming3 = dedupedActive.filter((b) => {
     if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED)
       return false;
     const days = daysBetween(today, b.due_date);
@@ -1758,14 +2770,14 @@ export async function getBillsSummary() {
     );
   };
 
-  const dueThisMonthCount = active.filter(
+  const dueThisMonthCount = dedupedActive.filter(
     (b) =>
       b.status !== BILL_STATUS.PAID &&
       b.status !== BILL_STATUS.SKIPPED &&
       inThisCalMonth(b),
   ).length;
 
-  const dueThisMonthAmount = active
+  const dueThisMonthAmount = dedupedActive
     .filter(
       (b) =>
         b.status !== BILL_STATUS.PAID &&
@@ -1774,8 +2786,8 @@ export async function getBillsSummary() {
     )
     .reduce((s, b) => s + Number(b.amount || 0), 0);
 
-  const upcomingAndPendingDueAmt = active
-    .filter((b) => !b.is_paid && inThisCalMonth(b))
+  const upcomingAndPendingDueAmt = dedupedActive
+    .filter((b) => !b.is_paid && b.status !== BILL_STATUS.SKIPPED && inThisCalMonth(b))
     .reduce(
       (acc, b) => {
         acc.totalAmount += Number(b.amount || 0);
@@ -1789,13 +2801,14 @@ export async function getBillsSummary() {
     month: mk,
     totalThisMonth,
     totalPaid,
+    paidCount,
     overdueAmount,
     overdueCount,
     upcoming7,
     upcoming3Count: upcoming3.length,
     dueThisMonthCount,
     dueThisMonthAmount,
-    pendingCount: active.filter((b) => b.status === BILL_STATUS.PENDING).length,
+    pendingCount: dedupedActive.filter((b) => b.status === BILL_STATUS.PENDING).length,
     upcomingAndPendingDueAmt,
   };
 }
@@ -1934,6 +2947,13 @@ export async function markBillPaid(
     await addTransactionToBill(billId, txId);
   }
 
+  // Synchronize payment with any paired duplicate bill in the same recurring cycle
+  try {
+    await syncRecurringCycleDuplicatesOnPayment(bill, { paidAt, txId });
+  } catch (syncErr) {
+    console.warn("[markBillPaid] Duplicate sync warning:", syncErr);
+  }
+
   // If this bill is linked to a credit card statement, update the statement status too
   await executeSql(
     `UPDATE credit_card_statements
@@ -1941,6 +2961,13 @@ export async function markBillPaid(
      WHERE bill_id = ?`,
     [billId]
   );
+
+  // Sync downstream credit card statements immediately if this bill belonged to a card
+  try {
+    await runCreditCardStatementScheduler();
+  } catch (schedErr) {
+    console.warn("[markBillPaid] Scheduler sync warning:", schedErr);
+  }
 
   // IMPORTANT:
   // Marking a bill as paid must NOT create the next recurring occurrence.
@@ -2089,16 +3116,26 @@ async function _ensureNextOccurrence(templateId) {
     if (dueDateOnly < effectiveDateOnly) {
       continue;
     }
-    // Template's own date already exists.
-    if (dueDateOnly === String(template.due_date || "").slice(0, 10)) {
-      continue;
-    }
+    const templateKey = getRecurrenceOccurrenceKey(
+      template.recurrence_type,
+      template.due_date,
+      template.recurrence_interval,
+    );
 
     const occurrenceKey = getRecurrenceOccurrenceKey(
       template.recurrence_type,
       dueDateOnly,
       template.recurrence_interval,
     );
+
+    // Template's own date already exists.
+    if (
+      dueDateOnly === String(template.due_date || "").slice(0, 10) ||
+      (templateKey && occurrenceKey && String(occurrenceKey) === String(templateKey))
+    ) {
+      continue;
+    }
+
     // Already exists.
     if (occurrenceKey && existingKeys.has(String(occurrenceKey))) {
       continue;
@@ -3388,11 +4425,10 @@ function getStatementPeriod(statementDay, referenceDate) {
     previousStatementDay,
   );
 
-  // Billing cycle starts the day AFTER previous statement
+  // Billing cycle starts on previous statement date
   const statementStart = new Date(previousStatementDate);
-  statementStart.setDate(statementStart.getDate() + 1);
 
-  // Billing cycle ends the DAY BEFORE current statement
+  // Billing cycle ends the day before current statement date
   const statementEnd = new Date(statementDate);
   statementEnd.setDate(statementEnd.getDate() - 1);
 
@@ -3450,6 +4486,13 @@ export default {
   removeTransactionFromBill,
   getBillLinkedTransactions,
   getBillsForTransaction,
+  unlinkBillFromTransaction,
+  linkBillToTransaction,
+  cleanupDuplicateTransferBillLinks,
+  getTransferInfoForTransaction,
+  calcBillPaidAmount,
+  syncBillPaymentStatus,
+  getAvailableBillsForTransactionLink,
   getTransactionsForBillLink,
   skipBill,
   unskipBill,
@@ -3459,5 +4502,6 @@ export default {
   processReminders,
   runBillMaintenance,
   syncBillStatuses,
+  healDuplicateBills,
   createBillLinkedTransactionsTable,
 };

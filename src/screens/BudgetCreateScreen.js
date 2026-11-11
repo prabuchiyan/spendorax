@@ -1,3 +1,4 @@
+import { useTheme } from '../context/ThemeContext';
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, FlatList, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { TextInput as PaperInput, Button as PaperButton, Avatar } from 'react-native-paper';
@@ -79,6 +80,7 @@ function FieldCard({ icon, title, value, color = "#2563EB", onPress, error, disa
 }
 
 export default function BudgetCreateScreen({ route, navigation }) {
+  const { isDarkMode, theme } = useTheme();
     const editData = route.params?.editData;
     const selectedMonth = route.params?.selectedMonth;
     const selectedYear = route.params?.selectedYear;
@@ -253,7 +255,7 @@ export default function BudgetCreateScreen({ route, navigation }) {
                                 error={!!errors.amount}
                                 outlineColor="#E2E8F0"
                                 activeOutlineColor="#36B37E"
-                                style={{ backgroundColor: "#FAFAFA", fontSize: 24, fontWeight: '700', paddingVertical: 8 }}
+                                style={{ backgroundColor: theme.inputBg, fontSize: 24, fontWeight: '700', paddingVertical: 8 }}
                                 disabled={loading}
                                 left={<PaperInput.Affix text="₹ " textStyle={{ fontSize: 24, color: '#36B37E', fontWeight: '700' }} />}
                                 placeholder="0.00"

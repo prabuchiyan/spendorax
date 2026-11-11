@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Animated, Modal, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from './Theme';
 
 const ANIMATION_DURATION = 250;
 
 export default function ExitConfirmationModal({ visible, onCancel, onExit }) {
-  const colorScheme = useColorScheme();
+  const { isDarkMode, theme } = useTheme();
+  const colorScheme = isDarkMode ? 'dark' : 'light';
   const [showModal, setShowModal] = useState(visible);
   const animation = useState(() => new Animated.Value(0))[0];
 

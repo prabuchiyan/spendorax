@@ -12,8 +12,10 @@ import { TextInput, Button, Switch } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { createCreditCard, updateCreditCard } from '../services/creditCards';
 import ColorPickerModal from '../components/ColorPickerModal';
+import { useTheme } from '../context/ThemeContext';
 
 export default function CreditCardCreateScreen({ route, navigation }) {
+  const { isDarkMode, theme } = useTheme();
     const { editData } = route.params || {};
     const [name, setName] = useState('');
     const [bank, setBank] = useState('');
@@ -189,7 +191,7 @@ export default function CreditCardCreateScreen({ route, navigation }) {
                             error={!!errors.name}
                             outlineColor="#E2E8F0"
                             activeOutlineColor={color}
-                            style={{ backgroundColor: "#FAFAFA", fontSize: 16, fontWeight: '600' }}
+                            style={{ backgroundColor: theme.inputBg, fontSize: 16, fontWeight: '600' }}
                             disabled={saving}
                         />
                         {!!errors.name && (
@@ -205,44 +207,44 @@ export default function CreditCardCreateScreen({ route, navigation }) {
                     <View style={{ flexDirection: 'row', marginBottom: 16 }}>
                         <View style={{ flex: 1, marginRight: 8 }}>
                             <Text style={{ fontSize: 13, color: "#64748B", fontWeight: "700", marginBottom: 8, marginLeft: 4 }}>BANK</Text>
-                            <TextInput mode="outlined" value={bank} onChangeText={setBank} placeholder="e.g. HDFC" outlineColor="#E2E8F0" activeOutlineColor={color} style={{ backgroundColor: "#FAFAFA", fontSize: 16, fontWeight: '600' }} disabled={saving} />
+                            <TextInput mode="outlined" value={bank} onChangeText={setBank} placeholder="e.g. HDFC" outlineColor="#E2E8F0" activeOutlineColor={color} style={{ backgroundColor: theme.inputBg, fontSize: 16, fontWeight: '600' }} disabled={saving} />
                         </View>
                         <View style={{ flex: 1, marginLeft: 8 }}>
                             <Text style={{ fontSize: 13, color: "#64748B", fontWeight: "700", marginBottom: 8, marginLeft: 4 }}>LAST 4 DIGITS</Text>
-                            <TextInput mode="outlined" value={last4} onChangeText={(text) => setLast4(text.replace(/[^0-9]/g, '').slice(0, 4))} placeholder="1234" maxLength={4} keyboardType="numeric" outlineColor="#E2E8F0" activeOutlineColor={color} style={{ backgroundColor: "#FAFAFA", fontSize: 16, fontWeight: '600' }} disabled={saving} />
+                            <TextInput mode="outlined" value={last4} onChangeText={(text) => setLast4(text.replace(/[^0-9]/g, '').slice(0, 4))} placeholder="1234" maxLength={4} keyboardType="numeric" outlineColor="#E2E8F0" activeOutlineColor={color} style={{ backgroundColor: theme.inputBg, fontSize: 16, fontWeight: '600' }} disabled={saving} />
                         </View>
                     </View>
 
                     <View style={{ flexDirection: 'row', marginBottom: 16 }}>
                         <View style={{ flex: 1, marginRight: 8 }}>
                             <Text style={{ fontSize: 13, color: "#64748B", fontWeight: "700", marginBottom: 8, marginLeft: 4 }}>NETWORK</Text>
-                            <TextInput mode="outlined" value={network} onChangeText={setNetwork} placeholder="Visa / Mastercard" outlineColor="#E2E8F0" activeOutlineColor={color} style={{ backgroundColor: "#FAFAFA", fontSize: 16, fontWeight: '600' }} disabled={saving} />
+                            <TextInput mode="outlined" value={network} onChangeText={setNetwork} placeholder="Visa / Mastercard" outlineColor="#E2E8F0" activeOutlineColor={color} style={{ backgroundColor: theme.inputBg, fontSize: 16, fontWeight: '600' }} disabled={saving} />
                         </View>
                         <View style={{ flex: 1, marginLeft: 8 }}>
                             <Text style={{ fontSize: 13, color: "#64748B", fontWeight: "700", marginBottom: 8, marginLeft: 4 }}>CREDIT LIMIT</Text>
-                            <TextInput mode="outlined" value={creditLimit} onChangeText={setCreditLimit} placeholder="0.00" keyboardType="numeric" outlineColor="#E2E8F0" activeOutlineColor={color} style={{ backgroundColor: "#FAFAFA", fontSize: 16, fontWeight: '600' }} disabled={saving} />
+                            <TextInput mode="outlined" value={creditLimit} onChangeText={setCreditLimit} placeholder="0.00" keyboardType="numeric" outlineColor="#E2E8F0" activeOutlineColor={color} style={{ backgroundColor: theme.inputBg, fontSize: 16, fontWeight: '600' }} disabled={saving} />
                         </View>
                     </View>
 
                     <View style={{ flexDirection: 'row', marginBottom: 16 }}>
                         <View style={{ flex: 1, marginRight: 8 }}>
                             <Text style={{ fontSize: 13, color: "#64748B", fontWeight: "700", marginBottom: 8, marginLeft: 4 }}>STATEMENT DAY</Text>
-                            <TextInput mode="outlined" value={statementDay} onChangeText={(t) => setStatementDay(t.replace(/[^0-9]/g, ''))} placeholder="e.g. 5" keyboardType="numeric" outlineColor="#E2E8F0" activeOutlineColor={color} style={{ backgroundColor: "#FAFAFA", fontSize: 16, fontWeight: '600' }} disabled={saving} />
+                            <TextInput mode="outlined" value={statementDay} onChangeText={(t) => setStatementDay(t.replace(/[^0-9]/g, ''))} placeholder="e.g. 5" keyboardType="numeric" outlineColor="#E2E8F0" activeOutlineColor={color} style={{ backgroundColor: theme.inputBg, fontSize: 16, fontWeight: '600' }} disabled={saving} />
                         </View>
                         <View style={{ flex: 1, marginLeft: 8 }}>
                             <Text style={{ fontSize: 13, color: "#64748B", fontWeight: "700", marginBottom: 8, marginLeft: 4 }}>DUE AFTER DAYS</Text>
-                            <TextInput mode="outlined" value={dueAfterDays} onChangeText={(t) => setDueAfterDays(t.replace(/[^0-9]/g, ''))} placeholder="e.g. 20" keyboardType="numeric" outlineColor="#E2E8F0" activeOutlineColor={color} style={{ backgroundColor: "#FAFAFA", fontSize: 16, fontWeight: '600' }} disabled={saving} />
+                            <TextInput mode="outlined" value={dueAfterDays} onChangeText={(t) => setDueAfterDays(t.replace(/[^0-9]/g, ''))} placeholder="e.g. 20" keyboardType="numeric" outlineColor="#E2E8F0" activeOutlineColor={color} style={{ backgroundColor: theme.inputBg, fontSize: 16, fontWeight: '600' }} disabled={saving} />
                         </View>
                     </View>
 
                     <View style={{ flexDirection: 'row', marginBottom: 24 }}>
                         <View style={{ flex: 1, marginRight: 8 }}>
                             <Text style={{ fontSize: 13, color: "#64748B", fontWeight: "700", marginBottom: 8, marginLeft: 4 }}>MIN DUE %</Text>
-                            <TextInput mode="outlined" value={minimumDuePercent} onChangeText={setMinimumDuePercent} placeholder="5" keyboardType="numeric" outlineColor="#E2E8F0" activeOutlineColor={color} style={{ backgroundColor: "#FAFAFA", fontSize: 16, fontWeight: '600' }} disabled={saving} />
+                            <TextInput mode="outlined" value={minimumDuePercent} onChangeText={setMinimumDuePercent} placeholder="5" keyboardType="numeric" outlineColor="#E2E8F0" activeOutlineColor={color} style={{ backgroundColor: theme.inputBg, fontSize: 16, fontWeight: '600' }} disabled={saving} />
                         </View>
                         <View style={{ flex: 1, marginLeft: 8 }}>
                             <Text style={{ fontSize: 13, color: "#64748B", fontWeight: "700", marginBottom: 8, marginLeft: 4 }}>INTEREST RATE %</Text>
-                            <TextInput mode="outlined" value={interestRatePercent} onChangeText={setInterestRatePercent} placeholder="3" keyboardType="numeric" outlineColor="#E2E8F0" activeOutlineColor={color} style={{ backgroundColor: "#FAFAFA", fontSize: 16, fontWeight: '600' }} disabled={saving} />
+                            <TextInput mode="outlined" value={interestRatePercent} onChangeText={setInterestRatePercent} placeholder="3" keyboardType="numeric" outlineColor="#E2E8F0" activeOutlineColor={color} style={{ backgroundColor: theme.inputBg, fontSize: 16, fontWeight: '600' }} disabled={saving} />
                         </View>
                     </View>
 

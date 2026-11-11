@@ -1,3 +1,4 @@
+import { useTheme } from '../context/ThemeContext';
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -53,6 +54,7 @@ function formatDateTime(value) {
 // =============================================================================
 
 function FieldCard({ icon, title, value, color = "#2563EB", onPress, error }) {
+  const { theme, isDarkMode } = useTheme();
   const hasError = !!error;
 
   return (
@@ -60,7 +62,7 @@ function FieldCard({ icon, title, value, color = "#2563EB", onPress, error }) {
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={onPress}
-        style={[styles.fieldCard, hasError && styles.fieldCardError]}
+        style={[styles.fieldCard, { backgroundColor: theme.cardBg, borderColor: theme.border }, hasError && styles.fieldCardError]}
       >
         <View
           style={[
@@ -78,7 +80,7 @@ function FieldCard({ icon, title, value, color = "#2563EB", onPress, error }) {
         </View>
 
         <View style={{ flex: 1 }}>
-          <Text style={[styles.fieldTitle, hasError && styles.fieldTitleError]}>
+          <Text style={[styles.fieldTitle, { color: theme.textSecondary }, hasError && styles.fieldTitleError]}>
             {title}
             <Text style={styles.requiredMark}> *</Text>
           </Text>
@@ -196,6 +198,7 @@ function FieldError({ message }) {
 // =============================================================================
 
 export default function TopUpScreen({ route, navigation }) {
+  const { theme, isDarkMode } = useTheme();
   // -------------------------------------------------------------------------
   // Loan
   // -------------------------------------------------------------------------
@@ -847,7 +850,7 @@ export default function TopUpScreen({ route, navigation }) {
         onRequestClose={() => setShowSourcePicker(false)}
       >
         <View style={styles.pickerOverlay}>
-          <View style={styles.pickerSheet}>
+          <View style={[styles.pickerSheet, { backgroundColor: theme.cardBg }]}>
             <View style={styles.pickerHandle} />
 
             <View style={styles.pickerHeader}>
@@ -930,7 +933,7 @@ export default function TopUpScreen({ route, navigation }) {
         }}
       >
         <View style={styles.pickerOverlay}>
-          <View style={styles.pickerSheet}>
+          <View style={[styles.pickerSheet, { backgroundColor: theme.cardBg }]}>
             <View style={styles.pickerHandle} />
 
             {/* Header */}
@@ -958,7 +961,7 @@ export default function TopUpScreen({ route, navigation }) {
             </View>
 
             {/* Search */}
-            <View style={styles.categorySearchContainer}>
+            <View style={[styles.categorySearchContainer, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
               <MaterialCommunityIcons
                 name="magnify"
                 size={22}
@@ -970,7 +973,7 @@ export default function TopUpScreen({ route, navigation }) {
                 onChangeText={setCategorySearch}
                 placeholder="Search income category..."
                 placeholderTextColor="#94A3B8"
-                style={styles.categorySearchInput}
+                style={[styles.categorySearchInput, { color: theme.textPrimary }]}
                 autoCorrect={false}
                 autoCapitalize="none"
               />
@@ -1399,7 +1402,7 @@ const styles = StyleSheet.create({
   },
 
   pickerSheet: {
-    backgroundColor: "#F8FAFC",
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: 20,

@@ -1,3 +1,4 @@
+import { useTheme } from '../context/ThemeContext';
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -16,6 +17,7 @@ import IconPicker from '../components/IconPicker';
 import ColorPickerModal from '../components/ColorPickerModal';
 
 export default function SourceCreateScreen({ route, navigation }) {
+  const { isDarkMode, theme } = useTheme();
     const { editData, onSourceCreated } = route.params || {};
     const [name, setName] = useState('');
     const [initial, setInitial] = useState('');
@@ -177,7 +179,7 @@ export default function SourceCreateScreen({ route, navigation }) {
                             error={!!errors.name}
                             outlineColor="#E2E8F0"
                             activeOutlineColor={color}
-                            style={{ backgroundColor: "#FAFAFA", fontSize: 16, fontWeight: '600' }}
+                            style={{ backgroundColor: theme.inputBg, fontSize: 16, fontWeight: '600' }}
                             disabled={saving}
                             left={<TextInput.Icon icon="bank-outline" color="#94A3B8" />}
                         />
@@ -204,7 +206,7 @@ export default function SourceCreateScreen({ route, navigation }) {
                             placeholder="0.00"
                             outlineColor="#E2E8F0"
                             activeOutlineColor={color}
-                            style={{ backgroundColor: "#FAFAFA", fontSize: 16, fontWeight: '600' }}
+                            style={{ backgroundColor: theme.inputBg, fontSize: 16, fontWeight: '600' }}
                             disabled={saving}
                             left={<TextInput.Affix text="₹ " textStyle={{ fontSize: 16, color: '#94A3B8', fontWeight: '600' }} />}
                         />
@@ -222,7 +224,7 @@ export default function SourceCreateScreen({ route, navigation }) {
                                 style={{
                                     flexDirection: 'row',
                                     alignItems: 'center',
-                                    backgroundColor: '#FAFAFA',
+                                    backgroundColor: theme.inputBg,
                                     borderWidth: 1,
                                     borderColor: '#E2E8F0',
                                     padding: 14,
@@ -249,7 +251,7 @@ export default function SourceCreateScreen({ route, navigation }) {
                                 style={{
                                     flexDirection: 'row',
                                     alignItems: 'center',
-                                    backgroundColor: '#FAFAFA',
+                                    backgroundColor: theme.inputBg,
                                     borderWidth: 1,
                                     borderColor: '#E2E8F0',
                                     padding: 14,

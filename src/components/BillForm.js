@@ -25,6 +25,7 @@ import { getSources } from "../services/sources";
 import { createBill, updateBill } from "../services/bills";
 import { RECURRENCE_TYPES } from "../services/billUtils";
 import { Colors } from "./Theme";
+import { useTheme } from "../context/ThemeContext";
 
 function toDateStr(isoOrDate) {
   if (!isoOrDate) {
@@ -73,6 +74,7 @@ function getRecurrenceLabel(type) {
  * Invalid MaterialCommunityIcons names render as "?".
  */
 function SelectionRow({ type, label, value, onPress, color, icon }) {
+  const { theme } = useTheme();
   const isSource = type === "source";
   const defaultBg = isSource ? "#EFF6FF" : "#F5F3FF";
   const defaultIconColor = isSource ? "#2563EB" : "#7C3AED";
@@ -82,7 +84,7 @@ function SelectionRow({ type, label, value, onPress, color, icon }) {
     <TouchableOpacity
       activeOpacity={0.82}
       onPress={onPress}
-      style={styles.selectionRow}>
+      style={[styles.selectionRow, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
 
       <View
         style={[
@@ -100,10 +102,10 @@ function SelectionRow({ type, label, value, onPress, color, icon }) {
       </View>
 
       <View style={styles.selectionContent}>
-        <Text style={styles.selectionLabel}>{label}</Text>
+        <Text style={[styles.selectionLabel, { color: theme.textSecondary }]}>{label}</Text>
 
         <Text
-          style={styles.selectionValue}
+          style={[styles.selectionValue, { color: theme.textPrimary }]}
           numberOfLines={1}
           ellipsizeMode="tail">
 
@@ -117,6 +119,7 @@ function SelectionRow({ type, label, value, onPress, color, icon }) {
 }
 
 function SectionHeader({ icon, title, subtitle }) {
+  const { theme } = useTheme();
   return (
     <View style={styles.sectionHeader}>
       <View style={styles.sectionIcon}>
@@ -124,10 +127,10 @@ function SectionHeader({ icon, title, subtitle }) {
       </View>
 
       <View style={styles.sectionHeaderText}>
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>{title}</Text>
 
         {!!subtitle &&
-          <Text style={styles.sectionSubtitle} numberOfLines={1}>
+          <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
             {subtitle}
           </Text>
         }
@@ -137,6 +140,7 @@ function SectionHeader({ icon, title, subtitle }) {
 }
 
 export default function BillForm({ bill, onSaved, onCancel }) {
+  const { theme } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
   const isSmallPhone = screenWidth < 380;
   const isEdit = Boolean(bill?.id);
@@ -354,7 +358,7 @@ export default function BillForm({ bill, onSaved, onCancel }) {
           {/* BASIC DETAILS                                            */}
           {/* ======================================================= */}
 
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.border, borderWidth: theme.isDark ? 1 : 0 }]}>
             {/* NAME */}
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Bill name</Text>
@@ -467,7 +471,7 @@ export default function BillForm({ bill, onSaved, onCancel }) {
           {/* PAYMENT                                                   */}
           {/* ======================================================= */}
 
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.border, borderWidth: theme.isDark ? 1 : 0 }]}>
             <SectionHeader
               icon="wallet-outline"
               title="Payment"
@@ -498,7 +502,7 @@ export default function BillForm({ bill, onSaved, onCancel }) {
           {/* SCHEDULE                                                  */}
           {/* ======================================================= */}
 
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.border, borderWidth: theme.isDark ? 1 : 0 }]}>
             <SectionHeader
               icon="calendar-refresh-outline"
               title="Schedule"
@@ -699,7 +703,7 @@ export default function BillForm({ bill, onSaved, onCancel }) {
           </TouchableOpacity>
 
           {showAdvanced &&
-            <View style={styles.card}>
+            <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.border, borderWidth: theme.isDark ? 1 : 0 }]}>
               <View style={styles.fieldGroup}>
                 <Text style={styles.fieldLabel}>Notes</Text>
 

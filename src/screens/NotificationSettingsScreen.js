@@ -1,3 +1,4 @@
+import { useTheme } from '../context/ThemeContext';
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   View,
@@ -66,6 +67,7 @@ function formatTime(hour, minute) {
 }
 
 export default function NotificationSettingsScreen() {
+  const { isDarkMode, theme } = useTheme();
   const [notifications, setNotifications] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -186,7 +188,7 @@ export default function NotificationSettingsScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
@@ -218,7 +220,7 @@ export default function NotificationSettingsScreen() {
           return (
             <View
               key={notification.id}
-              style={[styles.card, isEnabled && styles.cardActive]}>
+              style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.border }, isEnabled && (isDarkMode ? { borderColor: meta.color + "60", backgroundColor: theme.cardBg } : styles.cardActive)]}>
 
               {/* Icon + Label row */}
               <View style={styles.cardHeader}>
@@ -230,8 +232,8 @@ export default function NotificationSettingsScreen() {
 
                 </View>
                 <View style={{ flex: 1, marginLeft: 14 }}>
-                  <Text style={styles.cardTitle}>{meta.label}</Text>
-                  <Text style={styles.cardDesc}>{meta.description}</Text>
+                  <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>{meta.label}</Text>
+                  <Text style={[styles.cardDesc, { color: theme.textSecondary }]}>{meta.description}</Text>
                 </View>
                 <Switch
                   value={isEnabled}
@@ -245,7 +247,7 @@ export default function NotificationSettingsScreen() {
               {/* Time row — only shown when enabled */}
               {isEnabled &&
                 <TouchableOpacity
-                  style={[styles.timeRow, { borderColor: meta.color + "40" }]}
+                  style={[styles.timeRow, { borderColor: meta.color + "40", backgroundColor: theme.cardBg }]}
                   onPress={() => openTimePicker(notification)}
                   activeOpacity={0.8}>
 
@@ -356,10 +358,10 @@ const styles = StyleSheet.create({
   },
 
   timeRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 14,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: '#F8FAFC',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,

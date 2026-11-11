@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
-  ScrollView
+  ScrollView,
+  Dimensions
 } from
   'react-native';
 import { getTransactions, getAdvancedSearchTransactions, getAvailableMonths } from '../services/transactions';
@@ -14,6 +15,7 @@ import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Spacing } from '../components/Theme';
+import { useTheme } from '../context/ThemeContext';
 import { useFocusEffect } from '@react-navigation/native';
 import MuiDateTimePicker from '../components/MuiDateTimePicker';
 import {
@@ -30,6 +32,7 @@ import { getDateKey } from '../utils/dateUtils';
 import TransactionListItem from '../components/TransactionListItem';
 
 export default function SearchScreen({ navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const dispatch = useAppDispatch();
   const reduxCategories = useCategories();
   const categories = reduxCategories || [];
@@ -62,6 +65,108 @@ export default function SearchScreen({ navigation }) {
   const [groupByOption, setGroupByOption] = useState('day'); // day, month, year
   const [datePickerTarget, setDatePickerTarget] = useState(null); // 'exact', 'start', 'end'
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const monthScrollRef = useRef(null);
+  const yearScrollRef = useRef(null);
+  const monthChipPositions = useRef({});
+  const yearChipPositions = useRef({});
+  const monthScrollWidth = useRef(0);
+  const yearScrollWidth = useRef(0);
+
+  const focusSelectedMonth = useCallback((month, animated = true) => {
+    if (!month) return;
+    const index = availableMonths.indexOf(month);
+    if (index < 0) return;
+
+    const scrollWidth = monthScrollWidth.current || (Dimensions.get('window').width - 48);
+
+    let chipX = 0;
+    for (let i = 0; i < index; i++) {
+      const prevMonth = availableMonths[i];
+      const prevWidth = monthChipPositions.current[prevMonth]?.width || 126;
+      chipX += prevWidth + 10;
+    }
+
+    const currentWidth = monthChipPositions.current[month]?.width || 126;
+    const chipCenter = chipX + currentWidth / 2;
+    const targetX = Math.max(0, chipCenter - scrollWidth / 2);
+
+    if (monthScrollRef.current) {
+      try {
+        monthScrollRef.current.scrollTo({
+          x: targetX,
+          y: 0,
+          animated,
+        });
+      } catch (e) {}
+
+      const node = monthScrollRef.current.getScrollableNode?.() || monthScrollRef.current;
+      if (node && typeof node.scrollLeft === 'number' && !animated) {
+        node.scrollLeft = targetX;
+      }
+    }
+  }, [availableMonths]);
+
+  const focusSelectedYear = useCallback((year, animated = true) => {
+    if (!year) return;
+    const index = availableYears.indexOf(year);
+    if (index < 0) return;
+
+    const scrollWidth = yearScrollWidth.current || (Dimensions.get('window').width - 48);
+
+    let chipX = 0;
+    for (let i = 0; i < index; i++) {
+      const prevYear = availableYears[i];
+      const prevWidth = yearChipPositions.current[prevYear]?.width || 92;
+      chipX += prevWidth + 10;
+    }
+
+    const currentWidth = yearChipPositions.current[year]?.width || 92;
+    const chipCenter = chipX + currentWidth / 2;
+    const targetX = Math.max(0, chipCenter - scrollWidth / 2);
+
+    if (yearScrollRef.current) {
+      try {
+        yearScrollRef.current.scrollTo({
+          x: targetX,
+          y: 0,
+          animated,
+        });
+      } catch (e) {}
+
+      const node = yearScrollRef.current.getScrollableNode?.() || yearScrollRef.current;
+      if (node && typeof node.scrollLeft === 'number' && !animated) {
+        node.scrollLeft = targetX;
+      }
+    }
+  }, [availableYears]);
+
+  useEffect(() => {
+    if (isAdvancedModalVisible) {
+      if (advDateType === 'month' && advMonth) {
+        focusSelectedMonth(advMonth, false);
+        const t1 = setTimeout(() => focusSelectedMonth(advMonth, true), 80);
+        const t2 = setTimeout(() => focusSelectedMonth(advMonth, true), 200);
+        const t3 = setTimeout(() => focusSelectedMonth(advMonth, true), 400);
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+          clearTimeout(t3);
+        };
+      } else if (advDateType === 'year' && advYear) {
+        focusSelectedYear(advYear, false);
+        const t1 = setTimeout(() => focusSelectedYear(advYear, true), 80);
+        const t2 = setTimeout(() => focusSelectedYear(advYear, true), 200);
+        const t3 = setTimeout(() => focusSelectedYear(advYear, true), 400);
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+          clearTimeout(t3);
+        };
+      }
+    }
+  }, [isAdvancedModalVisible, advDateType, advMonth, advYear, focusSelectedMonth, focusSelectedYear]);
+
   const clearAdvancedSearch = () => {
     setAdvAmount('');
     setAdvNote('');
@@ -73,6 +178,8 @@ export default function SearchScreen({ navigation }) {
     setAdvStartDate('');
     setAdvEndDate('');
     setGroupByOption('day');
+    monthScrollRef.current?.scrollTo?.({ x: 0, animated: false });
+    yearScrollRef.current?.scrollTo?.({ x: 0, animated: false });
   };
 
   // ---------------------------------------------------------
@@ -338,7 +445,7 @@ export default function SearchScreen({ navigation }) {
     <View
       style={{
         flex: 1,
-        backgroundColor: '#F8F9FB'
+        backgroundColor: theme.isDark ? '#111827' : '#F8F9FB'
       }}>
 
 
@@ -358,7 +465,7 @@ export default function SearchScreen({ navigation }) {
             style={{
               fontSize: 24,
               fontWeight: '800',
-              color: Colors.text,
+              color: theme.textPrimary,
               letterSpacing: -0.5
             }}>
             Search
@@ -389,7 +496,7 @@ export default function SearchScreen({ navigation }) {
           style={{
             height: 46,
             borderRadius: 13,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: theme.cardBg,
             borderWidth: 1,
             borderColor: '#E7E9ED',
 
@@ -651,7 +758,7 @@ export default function SearchScreen({ navigation }) {
         onRequestClose={() => setAdvancedModalVisible(false)}
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingVertical: 20, maxHeight: '92%' }}>
+          <View style={{ backgroundColor: theme.cardBg, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingVertical: 20, maxHeight: '92%' }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <Text style={{ fontSize: 22, fontWeight: '800', color: Colors.text, letterSpacing: -0.5 }}>Advanced Filters</Text>
               <TouchableOpacity onPress={() => setAdvancedModalVisible(false)} style={{ backgroundColor: '#F3F4F6', padding: 6, borderRadius: 20 }}>
@@ -716,12 +823,14 @@ export default function SearchScreen({ navigation }) {
                   const isActive = advDateType === d.id;
                   return (
                     <TouchableOpacity key={d.id} onPress={() => {
-                      setAdvDateType(d.id);
-                      setAdvExactDate('');
-                      setAdvMonth('');
-                      setAdvYear('');
-                      setAdvStartDate('');
-                      setAdvEndDate('');
+                      if (advDateType !== d.id) {
+                        setAdvDateType(d.id);
+                        setAdvExactDate('');
+                        setAdvMonth('');
+                        setAdvYear('');
+                        setAdvStartDate('');
+                        setAdvEndDate('');
+                      }
                     }} style={{
                       flexDirection: 'row', alignItems: 'center', gap: 6,
                       paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20,
@@ -745,14 +854,45 @@ export default function SearchScreen({ navigation }) {
 
               {advDateType === 'month' && (
                 <View style={{ marginBottom: 24 }}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+                  <ScrollView
+                    ref={monthScrollRef}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 10 }}
+                    onLayout={(event) => {
+                      monthScrollWidth.current = event.nativeEvent.layout.width;
+                      if (advMonth) {
+                        requestAnimationFrame(() => {
+                          focusSelectedMonth(advMonth, false);
+                        });
+                      }
+                    }}
+                  >
                     {availableMonths.map(m => (
-                      <TouchableOpacity key={m} onPress={() => setAdvMonth(m)} style={{
-                        flexDirection: 'row', alignItems: 'center', gap: 6,
-                        paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12,
-                        backgroundColor: advMonth === m ? '#EC4899' : '#FDF2F8',
-                        borderWidth: 1, borderColor: advMonth === m ? '#EC4899' : '#FBCFE8'
-                      }}>
+                      <TouchableOpacity
+                        key={m}
+                        onLayout={(event) => {
+                          const { width } = event.nativeEvent.layout;
+                          if (width > 0) {
+                            monthChipPositions.current[m] = { width };
+                          }
+                          if (m === advMonth) {
+                            requestAnimationFrame(() => {
+                              focusSelectedMonth(m, false);
+                            });
+                          }
+                        }}
+                        onPress={() => {
+                          setAdvMonth(m);
+                          focusSelectedMonth(m, true);
+                        }}
+                        style={{
+                          flexDirection: 'row', alignItems: 'center', gap: 6,
+                          paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12,
+                          backgroundColor: advMonth === m ? '#EC4899' : '#FDF2F8',
+                          borderWidth: 1, borderColor: advMonth === m ? '#EC4899' : '#FBCFE8'
+                        }}
+                      >
                         <MaterialCommunityIcons name="calendar-month" size={18} color={advMonth === m ? '#fff' : '#EC4899'} />
                         <Text style={{ color: advMonth === m ? '#fff' : '#BE185D', fontWeight: '800', fontSize: 14 }}>{formatMonth(m)}</Text>
                       </TouchableOpacity>
@@ -763,14 +903,45 @@ export default function SearchScreen({ navigation }) {
 
               {advDateType === 'year' && (
                 <View style={{ marginBottom: 24 }}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+                  <ScrollView
+                    ref={yearScrollRef}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 10 }}
+                    onLayout={(event) => {
+                      yearScrollWidth.current = event.nativeEvent.layout.width;
+                      if (advYear) {
+                        requestAnimationFrame(() => {
+                          focusSelectedYear(advYear, false);
+                        });
+                      }
+                    }}
+                  >
                     {availableYears.map(y => (
-                      <TouchableOpacity key={y} onPress={() => setAdvYear(y)} style={{
-                        flexDirection: 'row', alignItems: 'center', gap: 6,
-                        paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12,
-                        backgroundColor: advYear === y ? '#8B5CF6' : '#F5F3FF',
-                        borderWidth: 1, borderColor: advYear === y ? '#8B5CF6' : '#EDE9FE'
-                      }}>
+                      <TouchableOpacity
+                        key={y}
+                        onLayout={(event) => {
+                          const { width } = event.nativeEvent.layout;
+                          if (width > 0) {
+                            yearChipPositions.current[y] = { width };
+                          }
+                          if (y === advYear) {
+                            requestAnimationFrame(() => {
+                              focusSelectedYear(y, false);
+                            });
+                          }
+                        }}
+                        onPress={() => {
+                          setAdvYear(y);
+                          focusSelectedYear(y, true);
+                        }}
+                        style={{
+                          flexDirection: 'row', alignItems: 'center', gap: 6,
+                          paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12,
+                          backgroundColor: advYear === y ? '#8B5CF6' : '#F5F3FF',
+                          borderWidth: 1, borderColor: advYear === y ? '#8B5CF6' : '#EDE9FE'
+                        }}
+                      >
                         <MaterialCommunityIcons name="calendar-multiselect" size={18} color={advYear === y ? '#fff' : '#8B5CF6'} />
                         <Text style={{ color: advYear === y ? '#fff' : '#6D28D9', fontWeight: '800', fontSize: 14 }}>{y}</Text>
                       </TouchableOpacity>

@@ -38,20 +38,29 @@ function executeCustomSelect(sql, lowerSql, params, readTable) {
 
   // Bills JOIN
   if (
-    lowerSql.includes('from bill_linked_transactions') &&
-    lowerSql.includes('join bills')
+    lowerSql.includes('bill_linked_transactions') &&
+    lowerSql.includes('bills')
   ) {
-    const transactionId = params[0];
+    const txIds = params.map((p) => String(p));
 
-    const links = readTable('bill_linked_transactions')
-      .filter(link => String(link.transaction_id) === String(transactionId));
-
+    const links = readTable('bill_linked_transactions');
     const bills = readTable('bills');
 
-    const result = links
-      .map(link => bills.find(bill => String(bill.id) === String(link.bill_id)))
-      .filter(Boolean)
-      .filter(bill => !bill.deleted_at);
+    const matchedBillIds = new Set();
+    for (const link of links) {
+      if (txIds.includes(String(link.transaction_id))) {
+        matchedBillIds.add(String(link.bill_id));
+      }
+    }
+    for (const b of bills) {
+      if (txIds.includes(String(b.linked_transaction_id))) {
+        matchedBillIds.add(String(b.id));
+      }
+    }
+
+    const filterDeleted = lowerSql.includes('deleted_at is null');
+    const result = bills
+      .filter((bill) => matchedBillIds.has(String(bill.id)) && (!filterDeleted || !bill.deleted_at));
 
     return makeRows(result);
   }
@@ -143,6 +152,13 @@ function createWebExecuteSql() {
         updates[col] = false;
       } else if (!isNaN(Number(valueExpr)) && valueExpr !== '') {
         updates[col] = Number(valueExpr);
+      } else if (
+        !valueExpr.startsWith("'") &&
+        !valueExpr.startsWith('"') &&
+        /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(valueExpr)
+      ) {
+        // Unquoted identifier (column reference like `payments = closing_balance`)
+        updates[col] = { __col: valueExpr };
       } else {
         updates[col] = valueExpr.replace(/^['"]|['"]$/g, '');
       }
@@ -210,6 +226,8 @@ function createWebExecuteSql() {
           // Fallback: just set the param value
           row[col] = paramVal;
         }
+      } else if (val && typeof val === 'object' && val.__col !== undefined) {
+        row[col] = row[val.__col];
       } else {
         row[col] = val;
       }

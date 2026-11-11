@@ -9,7 +9,7 @@ import {
 import { formatCompactAmount } from '../utils/numberUtils';
 import { Colors } from './Theme';
 
-const BAR_TRACK_HEIGHT = 170;
+const BAR_TRACK_HEIGHT = 100;
 
 const hexToRgb = (hex) => {
   if (!hex || typeof hex !== 'string') return null;
@@ -21,18 +21,8 @@ const hexToRgb = (hex) => {
 };
 
 const getPremiumBarColor = (baseColor, index, total, opacity = 1) => {
-  const safeColor = baseColor || Colors.primary;
-  const rgb = hexToRgb(safeColor);
-  if (!rgb) return `rgba(76,110,245,${Math.max(0.84, opacity)})`;
-  const spread = total > 1 ? index / (total - 1) : 0;
-  const lightenAmount = 0.04 + spread * 0.16;
-  const r = Math.round(rgb.r + (255 - rgb.r) * lightenAmount);
-  const g = Math.round(rgb.g + (255 - rgb.g) * lightenAmount);
-  const b = Math.round(rgb.b + (255 - rgb.b) * lightenAmount);
-  return `rgba(${r},${g},${b},${Math.min(1, Math.max(0.84, opacity))})`;
+  return baseColor || '#dce9ff';
 };
-
-
 
 export default function PremiumRoundedBarChart({
   labels = [],
@@ -41,25 +31,25 @@ export default function PremiumRoundedBarChart({
   dueValues = [],
   paidValues = [],
   width,
-  height = 165,
+  height = 150,
   baseColor,
   onBarPress,
   selectedLabel,
+  selectedId = null,
   isEmpty = false,
 }) {
-  // ── hook 1 — must be before ANY early return ──────────────────────────────
   const scrollRef = useRef(null);
 
-  // ── hook 2 — must be before ANY early return ──────────────────────────────
-  // FIX: was previously placed AFTER the `if (isEmpty) return` guard.
-  // When isEmpty=true on first render, useEffect was skipped → hook count = 1.
-  // When isEmpty=false on second render, useEffect ran → hook count = 2.
-  // React threw "Rendered more hooks than during the previous render".
-  // Moving it here means it's always called; the inner guard handles the no-op case.
   useEffect(() => {
-    if (isEmpty || !selectedLabel || !scrollRef.current) return;
+    if (isEmpty || (!selectedLabel && selectedId == null) || !scrollRef.current) return;
 
-    const index = labels.findIndex(l => l === selectedLabel);
+    let index = -1;
+    if (selectedId != null && ids.length > 0) {
+      index = ids.findIndex((id) => Number(id) === Number(selectedId));
+    }
+    if (index < 0 && selectedLabel) {
+      index = labels.findIndex((l) => l === selectedLabel);
+    }
     if (index < 0) return;
 
     const itemWidth = Math.min(52, Math.max(38, width / 5));
@@ -70,9 +60,8 @@ export default function PremiumRoundedBarChart({
     requestAnimationFrame(() => {
       scrollRef.current?.scrollTo({ x, animated: true });
     });
-  }, [selectedLabel, labels, width, isEmpty]);
+  }, [selectedLabel, selectedId, ids, labels, width, isEmpty]);
 
-  // ── early return AFTER all hooks ──────────────────────────────────────────
   if (isEmpty) {
     return (
       <View style={[styles.emptyChartArea, { width, height }]}>
@@ -97,15 +86,13 @@ export default function PremiumRoundedBarChart({
       <View style={[styles.customChartWrap, { width: chartInnerWidth, height }]}>
         <View style={styles.customChartBarsRow}>
           {finalDue.map((due, index) => {
-            const selected = labels[index] === selectedLabel;
-            // const due = Number(finalDue[index] || 0);
+            const selected =
+              selectedId != null && ids[index] != null
+                ? Number(ids[index]) === Number(selectedId)
+                : labels[index] === selectedLabel;
             const paid = Number(finalPaid[index] || 0);
-            const barHeight =
-              (due / maxValue) * BAR_TRACK_HEIGHT;
-            const paidHeight =
-              due === 0
-                ? 0
-                : (paid / due) * barHeight;
+            const barHeight = (due / maxValue) * BAR_TRACK_HEIGHT;
+            const paidHeight = due === 0 ? 0 : (paid / due) * barHeight;
             const barColor = selected
               ? baseColor || Colors.primary
               : getPremiumBarColor(
@@ -131,24 +118,31 @@ export default function PremiumRoundedBarChart({
                 }
               >
                 <View style={styles.customBarTrack}>
-                  <View style={[styles.customBarGroup, { height: barHeight + 22 }]}>
-                    <Text
-                      numberOfLines={1}
-                      style={[
-                        styles.customBarValue,
-                        selected && { color: baseColor || Colors.primary, fontSize: 11 },
-                      ]}
-                    >
-                      {formatCompactAmount(due)}
-                    </Text>
+                  <View style={[styles.customBarGroup, { height: barHeight + 24 }]}>
+                    {selected ? (
+                      <View style={[styles.selectedTooltipBadge, baseColor ? { backgroundColor: baseColor } : null]}>
+                        <Text style={styles.selectedTooltipText}>
+                          {formatCompactAmount(due)}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text
+                        numberOfLines={1}
+                        style={styles.customBarValue}
+                      >
+                        {formatCompactAmount(due)}
+                      </Text>
+                    )}
                     <View
                       style={[
                         styles.customBar,
                         {
-                          height: barHeight,
+                          height: BAR_TRACK_HEIGHT,
                           width: selected ? 32 : 26,
-                          backgroundColor: "#ECECEC",
+                          backgroundColor: selected ? "#f0fdfa" : "#f4f8fb",
                           borderRadius: selected ? 20 : 16,
+                          borderWidth: selected ? 2 : 1,
+                          borderColor: selected ? (baseColor || "#006a61") : "#e2ebf8",
                           overflow: "hidden",
                         },
                       ]}
@@ -159,8 +153,8 @@ export default function PremiumRoundedBarChart({
                           bottom: 0,
                           width: "100%",
                           height: paidHeight,
-                          backgroundColor: barColor,
-                          borderRadius: selected ? 20 : 16,
+                          backgroundColor: selected ? (baseColor || "#006a61") : barColor,
+                          borderRadius: selected ? 18 : 15,
                         }}
                       />
                     </View>
@@ -187,10 +181,28 @@ export default function PremiumRoundedBarChart({
 const styles = StyleSheet.create({
   customChartWrap: { justifyContent: 'flex-end', flex: 1 },
   customChartBarsRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-evenly', flex: 1 },
-  customBarItem: { width: 42, alignItems: 'center' },
-  customBarTrack: { width: 38, height: BAR_TRACK_HEIGHT + 22, justifyContent: 'flex-end', alignItems: 'center' },
+  customBarItem: { width: 44, alignItems: 'center' },
+  customBarTrack: { width: 40, height: BAR_TRACK_HEIGHT + 26, justifyContent: 'flex-end', alignItems: 'center' },
   customBarGroup: { width: '100%', alignItems: 'center', justifyContent: 'flex-end' },
-  customBarValue: { fontSize: 10, fontWeight: '800', color: Colors.text, marginBottom: 6, maxWidth: 56, textAlign: 'center' },
+  customBarValue: { fontSize: 10, fontWeight: '700', color: Colors.muted || '#64748b', marginBottom: 6, maxWidth: 56, textAlign: 'center' },
+  selectedTooltipBadge: {
+    backgroundColor: '#006a61',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginBottom: 5,
+    shadowColor: '#006a61',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  selectedTooltipText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#ffffff',
+    textAlign: 'center',
+  },
   customBar: { width: 28 },
   customBarLabel: { marginTop: 10, fontSize: 11, fontWeight: '700', color: Colors.muted },
   emptyChartArea: { alignItems: 'center', justifyContent: 'center' },

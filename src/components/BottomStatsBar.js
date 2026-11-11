@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSelector } from 'react-redux';
 import { Colors } from './Theme';
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
+import { useTheme } from '../context/ThemeContext';
 import {
   selectTotalBalance,
   selectUpcomingBillsCount,
@@ -14,27 +15,28 @@ export default function BottomStatsBar({
   navigation,
 }) {
   const { balanceVisible } = useBalanceVisibility();
+  const { theme } = useTheme();
   const totalBalance = useSelector(selectTotalBalance);
   const billsCount = useSelector(selectUpcomingBillsCount);
   const billsTotal = useSelector(selectUpcomingBillsTotal);
   const totalMonthlySpend = useSelector(selectTotalMonthlySpend);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bottomBarBg, borderTopColor: theme.bottomBarBorder }]}>
 
       <TouchableOpacity
         style={styles.item}
         onPress={() => navigation.navigate('SourcesDashboard')}
       >
-        <Text style={styles.label}>Balance</Text>
-        <Text style={styles.value}>
+        <Text style={[styles.label, { color: theme.textSecondary }]}>Balance</Text>
+        <Text style={[styles.value, { color: theme.textPrimary }]}>
           {balanceVisible
             ? `₹${Number(totalBalance).toLocaleString('en-IN')}`
             : '••••••'}
         </Text>
       </TouchableOpacity>
 
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
       <TouchableOpacity
         style={styles.item}
@@ -45,18 +47,18 @@ export default function BottomStatsBar({
             ? `₹${Number(billsTotal || 0).toLocaleString('en-IN')}`
             : '••••••'}
         </Text>
-        <Text style={styles.subLabel}>
+        <Text style={[styles.subLabel, { color: theme.textSecondary }]}>
           {billsCount || 0} Bill Due
         </Text>
       </TouchableOpacity>
 
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
       <TouchableOpacity
         style={styles.item}
         onPress={() => navigation.navigate('Reports')}
       >
-        <Text style={styles.label}>Spend</Text>
+        <Text style={[styles.label, { color: theme.textSecondary }]}>Spend</Text>
         <Text style={[styles.value, { color: '#E46A6A' }]}>
           {balanceVisible
             ? `₹${Number(totalMonthlySpend).toLocaleString('en-IN')}`

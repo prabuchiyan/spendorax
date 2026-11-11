@@ -16,8 +16,10 @@ import { getCreditCardById } from "../services/creditCards";
 import { useAppDispatch, useCreditCards } from "../redux/hooks";
 import { setCreditCards } from "../redux/slices/creditCardSlice";
 import { useBalanceVisibility } from "../context/BalanceVisibilityContext";
+import { useTheme } from "../context/ThemeContext";
 
 export default function CreditCardsScreen({ navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const dispatch = useAppDispatch();
   const cards = useCreditCards() || [];
   const [confirmVisible, setConfirmVisible] = useState(false);
@@ -56,10 +58,10 @@ export default function CreditCardsScreen({ navigation }) {
     totals.limit > 0 ? (totals.outstanding / totals.limit) * 100 : 0;
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
       {/* DASHBOARD OVERVIEW */}
       <View style={styles.overviewContainer}>
-        <View style={styles.overviewCard}>
+        <View style={[styles.overviewCard, { backgroundColor: theme.cardBg, borderColor: theme.border, borderWidth: theme.isDark ? 1 : 0 }]}>
           <View style={styles.overviewHeader}>
             <View style={styles.overviewIconWrap}>
               <MaterialCommunityIcons
@@ -68,12 +70,12 @@ export default function CreditCardsScreen({ navigation }) {
                 color={Colors.primary}
               />
             </View>
-            <Text style={styles.overviewTitle}>Credit Overview</Text>
+            <Text style={[styles.overviewTitle, { color: theme.textSecondary }]}>Credit Overview</Text>
           </View>
 
           <View style={styles.mainBalanceArea}>
-            <Text style={styles.mainBalanceLabel}>Total Outstanding</Text>
-            <Text style={styles.mainBalanceValue}>
+            <Text style={[styles.mainBalanceLabel, { color: theme.textSecondary }]}>Total Outstanding</Text>
+            <Text style={[styles.mainBalanceValue, { color: theme.textPrimary }]}>
               {balanceVisible
                 ? `₹ ${totals.outstanding.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
                 : "••••••"}
@@ -83,7 +85,7 @@ export default function CreditCardsScreen({ navigation }) {
           {/* Utilization Bar */}
           <View style={styles.utilizationSection}>
             <View style={styles.utilizationLabels}>
-              <Text style={styles.utilText}>Utilization</Text>
+              <Text style={[styles.utilText, { color: theme.textSecondary }]}>Utilization</Text>
               <Text
                 style={[
                   styles.utilText,
@@ -123,15 +125,15 @@ export default function CreditCardsScreen({ navigation }) {
                 color="#22C55E"
                 style={{ marginBottom: 4 }}
               />
-              <Text style={styles.statLabel}>Available Limit</Text>
-              <Text style={styles.statValue}>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Available Limit</Text>
+              <Text style={[styles.statValue, { color: theme.textPrimary }]}>
                 {balanceVisible
                   ? `₹${totals.available.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`
                   : "••••"}
               </Text>
             </View>
 
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
 
             <View style={styles.statItem}>
               <MaterialCommunityIcons
@@ -140,15 +142,15 @@ export default function CreditCardsScreen({ navigation }) {
                 color={Colors.primary}
                 style={{ marginBottom: 4 }}
               />
-              <Text style={styles.statLabel}>Total Limit</Text>
-              <Text style={styles.statValue}>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Total Limit</Text>
+              <Text style={[styles.statValue, { color: theme.textPrimary }]}>
                 {balanceVisible
                   ? `₹${totals.limit.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`
                   : "••••"}
               </Text>
             </View>
 
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
 
             <View style={styles.statItem}>
               <MaterialCommunityIcons
@@ -157,15 +159,15 @@ export default function CreditCardsScreen({ navigation }) {
                 color="#8B5CF6"
                 style={{ marginBottom: 4 }}
               />
-              <Text style={styles.statLabel}>Active Cards</Text>
-              <Text style={styles.statValue}>{cards.length}</Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Active Cards</Text>
+              <Text style={[styles.statValue, { color: theme.textPrimary }]}>{cards.length}</Text>
             </View>
           </View>
         </View>
       </View>
 
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Your Cards</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Your Cards</Text>
       </View>
 
       <FlatList
@@ -179,7 +181,7 @@ export default function CreditCardsScreen({ navigation }) {
               size={48}
               color="#ccc"
             />
-            <Text style={styles.emptyText}>No credit cards added yet</Text>
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No credit cards added yet</Text>
           </View>
         }
         renderItem={({ item }) => {

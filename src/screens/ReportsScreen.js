@@ -7,6 +7,7 @@ import { getCategories } from '../services/categories';
 import { groupTransactions } from '../services/reports';
 import { getLabelForDate } from '../utils/dateUtils';
 import Card from '../components/Card';
+import { useTheme } from '../context/ThemeContext';
 import { Colors, Spacing } from '../components/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import events from '../services/events';
@@ -47,10 +48,11 @@ const hexToRgba = (hex, alpha = 0.15) => {
 };
 
 const ReportItemCard = React.memo(({ data, categoriesMap, onCategoryPress }) => {
+  const { theme, isDarkMode } = useTheme();
   return (
     <Card style={styles.itemCard}>
       <View style={styles.cardHeader}>
-        <Text style={styles.periodLabel}>{data.label}</Text>
+        <Text style={[styles.periodLabel, { color: theme.textPrimary }]}>{data.label}</Text>
         <Text style={[styles.netBalance, { color: data.balance >= 0 ? '#36B37E' : '#E46A6A' }]}>
           Net: <CurrencyText amount={data.balance} minimumFractionDigits={2} />
         </Text>
@@ -75,6 +77,7 @@ const ReportItemCard = React.memo(({ data, categoriesMap, onCategoryPress }) => 
                 key={cid}
                 style={({ pressed }) => [
                   styles.catRow,
+                  { backgroundColor: theme.inputBg, borderColor: theme.border },
                   pressed && { backgroundColor: hexToRgba(cat.color, 0.05), borderColor: hexToRgba(cat.color, 0.2) }]
                 }
                 onPress={() => onCategoryPress(cid, cat.name, data.label)}>
@@ -89,12 +92,12 @@ const ReportItemCard = React.memo(({ data, categoriesMap, onCategoryPress }) => 
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 6 }}>
-                      <Text style={styles.catName}>{cat.name}</Text>
+                      <Text style={[styles.catName, { color: theme.textPrimary }]}>{cat.name}</Text>
                       <Text style={[styles.catAmount, { color: isExpense ? '#E46A6A' : '#36B37E' }]}>
                         {isExpense ? '-' : '+'}<CurrencyText amount={amount} minimumFractionDigits={0} maximumFractionDigits={0} />
                       </Text>
                     </View>
-                    <View style={styles.progressBarBackground}>
+                    <View style={[styles.progressBarBackground, { backgroundColor: isDarkMode ? "#334155" : "#EAEAEA" }]}>
                       <View style={[styles.progressBarFill, { width: `${Math.min(100, percentage)}%`, backgroundColor: cat.color }]} />
                     </View>
                   </View>
@@ -108,6 +111,7 @@ const ReportItemCard = React.memo(({ data, categoriesMap, onCategoryPress }) => 
 });
 
 export default function ReportsScreen() {
+  const { isDarkMode, theme } = useTheme();
   const [transactions, setTransactions] = useState([]);
   const [categoriesMap, setCategoriesMap] = useState({});
   const [mode, setMode] = useState('monthly');
@@ -199,7 +203,7 @@ export default function ReportsScreen() {
     return (
       <View>
         <Card style={styles.chartCard}>
-          <Text style={styles.chartTitle}>Income vs Expense Chart</Text>
+          <Text style={[styles.chartTitle, { color: theme.textPrimary }]}>Income vs Expense Chart</Text>
           {loading ?
             <View style={styles.loaderContainer}>
               <ActivityIndicator size="large" color={Colors.primary} />
@@ -295,11 +299,11 @@ export default function ReportsScreen() {
             <View style={styles.legendRow}>
               <View style={styles.legendItem}>
                 <View style={[styles.dot, { backgroundColor: '#36B37E' }]} />
-                <Text style={styles.legendText}>Income</Text>
+                <Text style={[styles.legendText, { color: theme.textSecondary }]}>Income</Text>
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.dot, { backgroundColor: '#E46A6A' }]} />
-                <Text style={styles.legendText}>Expense</Text>
+                <Text style={[styles.legendText, { color: theme.textSecondary }]}>Expense</Text>
               </View>
             </View>
           }
@@ -313,7 +317,7 @@ export default function ReportsScreen() {
   }, [categoriesMap, handleCategoryPress]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <View style={styles.tabContainer}>
         {['daily', 'weekly', 'monthly', 'yearly'].map((m) =>
           <Chip
@@ -355,7 +359,7 @@ export default function ReportsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F6F8FF',
     padding: Spacing.xs,
     alignSelf: 'center',
     width: '100%',

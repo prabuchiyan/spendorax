@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { StyleSheet, View, Animated, TouchableWithoutFeedback, Text, Platform } from 'react-native';
 import { FAB, Portal } from 'react-native-paper';
 import { useIsFocused } from '@react-navigation/native';
-import { Colors } from './Theme';
+import { useAppLock } from '../context/AppLockContext';
 
 export default function ContextualFAB({
   actions = [],
@@ -15,6 +15,15 @@ export default function ContextualFAB({
   const [open, setOpen] = useState(false);
   const isFocused = useIsFocused();
   const animation = useRef(new Animated.Value(0)).current;
+  const appLock = useAppLock();
+  const isLocked = appLock?.isLocked;
+
+  // Close speed dial actions if app gets locked
+  useEffect(() => {
+    if (isLocked) {
+      setOpen(false);
+    }
+  }, [isLocked]);
 
   // Sync open state changes with animation
   useEffect(() => {
@@ -26,6 +35,9 @@ export default function ContextualFAB({
       useNativeDriver: true,
     }).start();
   }, [open]);
+
+  // Do not render FAB when app is locked
+  if (isLocked) return null;
 
   if (!actions || actions.length === 0) {
     return (
@@ -68,7 +80,7 @@ export default function ContextualFAB({
       </Animated.View>
 
       <View style={[styles.container, style]} pointerEvents="box-none">
-        
+
         {/* Glow behind main FAB when open */}
         <Animated.View
           style={[
@@ -94,14 +106,14 @@ export default function ContextualFAB({
         {/* Actions */}
         {actions.map((action, i) => {
           const R = 110; // Perfect sweet-spot radius
-          
+
           // Use a fixed 45 degree (PI/4) step, centered around 135 degrees (3*PI/4)
-          const ARC_STEP = Math.PI / 4; 
-          const CENTER_ANGLE = (3 * Math.PI) / 4; 
+          const ARC_STEP = Math.PI / 4;
+          const CENTER_ANGLE = (3 * Math.PI) / 4;
           const startAngle = CENTER_ANGLE - ((actions.length - 1) * ARC_STEP) / 2;
-          
+
           const angle = startAngle + i * ARC_STEP;
-          
+
           const targetX = R * Math.cos(angle);
           const targetY = -R * Math.sin(angle);
 

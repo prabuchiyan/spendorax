@@ -1,20 +1,22 @@
 import React from 'react';
+import { useTheme } from '../context/ThemeContext';
 import { View, Text, StyleSheet } from 'react-native';
 import Card from './Card';
 import { Colors } from './Theme';
 
 export default function UpcomingEMICard({ loan }) {
+  const { isDarkMode, theme } = useTheme();
   const due = loan.nextEmiDate || loan.loan_start_date || '';
   const isOverdue = loan.isOverdue;
 
   return (
     <Card style={[styles.card, isOverdue && { borderColor: Colors.danger || '#E46A6A', borderWidth: 1 }]}>
-      <Text style={styles.type}>{loan.loan_type || 'Loan'}</Text>
-      <Text style={styles.name}>{loan.loan_name}</Text>
+      <Text style={[styles.type, { color: theme.textSecondary }]}>{loan.loan_type || 'Loan'}</Text>
+      <Text style={[styles.name, { color: theme.textPrimary }]}>{loan.loan_name}</Text>
       <View style={{ height: 8 }} />
       <Text style={styles.dueLabel}>{isOverdue ? 'Overdue' : 'Due'}</Text>
-      <Text style={styles.dueDate}>{due ? new Date(due).toLocaleDateString() : '-'}</Text>
-      <Text style={styles.amount}>₹{Number(loan.emi_amount || 0).toLocaleString('en-IN')}</Text>
+      <Text style={[styles.dueDate, { color: isOverdue ? (Colors.danger || "#E46A6A") : theme.textPrimary }]}>{due ? new Date(due).toLocaleDateString() : '-'}</Text>
+      <Text style={[styles.amount, { color: theme.textPrimary }]}>₹{Number(loan.emi_amount || 0).toLocaleString('en-IN')}</Text>
     </Card>
   );
 }

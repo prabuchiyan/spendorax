@@ -1,3 +1,4 @@
+import { useTheme } from '../context/ThemeContext';
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, Animated, UIManager, Platform, LayoutAnimation } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -19,6 +20,7 @@ const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
 const WEEKDAYS_FULL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function MuiDateTimePicker({ visible, initialDate, onClose, onSelect, disableFutureDates = false, minDate = null, maxDate = null, allowClear = false, onClear, hideTime = false, hideDate = false }) {
+  const { isDarkMode, theme } = useTheme();
   const [tab, setTab] = useState('date'); // 'date' | 'time'
   const [date, setDate] = useState(new Date());
   
@@ -446,7 +448,7 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
         </View>
 
         <View style={styles.clockContainer}>
-          <View style={[styles.clockFace, { width: clockSize, height: clockSize, borderRadius: center }]}>
+          <View style={[styles.clockFace, { backgroundColor: isDarkMode ? "#1e293b" : "#F3F4F6" }, { width: clockSize, height: clockSize, borderRadius: center }]}>
             <Svg width={clockSize} height={clockSize} style={StyleSheet.absoluteFill}>
               <SvgCircle cx={center} cy={center} r="4" fill={PRIMARY_COLOR} />
               <Line x1={center} y1={center} x2={lineX} y2={lineY} stroke={PRIMARY_COLOR} strokeWidth="2" />
@@ -490,7 +492,7 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
 
            {/* Tabs */}
            {!hideTime && !hideDate && (
-             <View style={styles.tabContainer}>
+             <View style={[styles.tabContainer, { backgroundColor: theme.cardBg }]}>
                <TouchableOpacity 
                  style={[styles.tab, tab === 'date' && styles.tabActive]} 
                  onPress={() => { triggerAnimation(); setTab('date'); setDateMode('days'); }}
@@ -514,7 +516,7 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
            </View>
            
            {/* Footer */}
-           <View style={styles.footer}>
+           <View style={[styles.footer, { backgroundColor: isDarkMode ? "#1e293b" : "#FAFAFA", borderColor: theme.border }]}>
              {allowClear && (
                <Button onPress={() => onClear ? onClear() : onSelect(null)} textColor="#DC2626" style={{ marginRight: 'auto' }}>
                  Clear

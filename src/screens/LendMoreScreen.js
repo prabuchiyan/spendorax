@@ -1,3 +1,4 @@
+import { useTheme } from '../context/ThemeContext';
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -19,6 +20,7 @@ import { getCategories } from "../services/categories";
 import Card from "../components/Card";
 
 function FieldCard({ icon, title, value, color = "#2563EB", onPress, error, disabled }) {
+  const { isDarkMode, theme } = useTheme();
   const hasError = !!error;
   return (
     <View style={styles.fieldWrapper}>
@@ -47,7 +49,7 @@ function FieldCard({ icon, title, value, color = "#2563EB", onPress, error, disa
           />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.fieldTitle, hasError && styles.fieldTitleError]}>
+          <Text style={[styles.fieldTitle, { color: theme.textSecondary }, hasError && styles.fieldTitleError]}>
             {title}
             <Text style={styles.requiredMark}> *</Text>
           </Text>
@@ -180,6 +182,7 @@ function formatDateTime(value) {
 }
 
 export default function LendMoreScreen({ route, navigation }) {
+  const { theme, isDarkMode } = useTheme();
   const loanId = route?.params?.id ? Number(route.params.id) : null;
   const [loan, setLoan] = useState(null);
   const [amount, setAmount] = useState("");
@@ -647,7 +650,7 @@ export default function LendMoreScreen({ route, navigation }) {
       {/* ── SOURCE PICKER MODAL ── */}
       <Modal visible={showSourcePicker} transparent animationType="slide">
         <View style={styles.pickerOverlay}>
-          <View style={styles.pickerSheet}>
+          <View style={[styles.pickerSheet, { backgroundColor: theme.cardBg }]}>
             <View style={styles.pickerHandle} />
             <View style={styles.pickerHeader}>
               <View>
@@ -704,7 +707,7 @@ export default function LendMoreScreen({ route, navigation }) {
         }}
       >
         <View style={styles.pickerOverlay}>
-          <View style={styles.pickerSheet}>
+          <View style={[styles.pickerSheet, { backgroundColor: theme.cardBg }]}>
             <View style={styles.pickerHandle} />
 
             <View style={styles.pickerHeader}>
@@ -731,7 +734,7 @@ export default function LendMoreScreen({ route, navigation }) {
             </View>
 
             {/* CATEGORY SEARCH */}
-            <View style={styles.categorySearchContainer}>
+            <View style={[styles.categorySearchContainer, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
               <MaterialCommunityIcons
                 name="magnify"
                 size={21}
@@ -743,7 +746,7 @@ export default function LendMoreScreen({ route, navigation }) {
                 onChangeText={setCategorySearch}
                 placeholder="Search category..."
                 placeholderTextColor="#94A3B8"
-                style={styles.categorySearchInput}
+                style={[styles.categorySearchInput, { color: theme.textPrimary }]}
                 autoCorrect={false}
                 returnKeyType="search"
               />
@@ -928,7 +931,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(15,23,42,0.45)",
   },
   pickerSheet: {
-    backgroundColor: "#F8FAFC",
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: 20,

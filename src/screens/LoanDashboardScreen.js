@@ -11,6 +11,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { getLoans, getLoanPayments } from "../services/loans";
 import events from "../services/events";
 import ContextualFAB from "../components/ContextualFAB";
+import { useTheme } from '../context/ThemeContext';
 import { Colors, Spacing } from "../components/Theme";
 import { useAppDispatch, useLoans } from '../redux/hooks';
 import { setLoans } from '../redux/slices/loanSlice';
@@ -155,6 +156,7 @@ function HeroDashboardCard({
   navigation,
   direction,
 }) {
+  const { theme, isDarkMode } = useTheme();
   const { outstanding, paid, percentage, emi, total, activeCount, overdue } = summary;
   const progressColor = getProgressColor(percentage);
   const safePercentage = Math.max(0, Math.min(100, Number(percentage || 0)));
@@ -191,7 +193,7 @@ function HeroDashboardCard({
             numberOfLines={2}
             adjustsFontSizeToFit
             minimumFontScale={0.5}
-            style={{ fontSize: 28, fontWeight: "900", color: "#172033", marginTop: 4 }}
+            style={{ fontSize: 28, fontWeight: "900", color: theme.textPrimary, marginTop: 4 }}
           >
             {money(outstanding)}
           </Text>
@@ -222,7 +224,7 @@ function HeroDashboardCard({
             {Math.round(safePercentage)}%
           </Text>
         </View>
-        <View style={{ height: 8, backgroundColor: "#F0F3F6", borderRadius: 4 }}>
+        <View style={{ height: 8, backgroundColor: isDarkMode ? "#334155" : "#F0F3F6", borderRadius: 4 }}>
           <View
             style={{
               width: `${safePercentage}%`,
@@ -234,10 +236,10 @@ function HeroDashboardCard({
         </View>
         <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
           <Text style={{ fontSize: 11, fontWeight: "600", color: "#687385" }}>
-            Paid: <Text style={{ color: "#172033" }}>{money(paid)}</Text>
+            Paid: <Text style={{ color: theme.textPrimary }}>{money(paid)}</Text>
           </Text>
           <Text style={{ fontSize: 11, fontWeight: "600", color: "#687385" }}>
-            Total: <Text style={{ color: "#172033" }}>{money(total)}</Text>
+            Total: <Text style={{ color: theme.textPrimary }}>{money(total)}</Text>
           </Text>
         </View>
       </View>
@@ -245,7 +247,7 @@ function HeroDashboardCard({
       <View
         style={{
           flexDirection: "row",
-          backgroundColor: "#F8FAFC",
+          backgroundColor: theme.bg,
           borderRadius: 16,
           padding: 14,
           borderWidth: 1,
@@ -256,11 +258,11 @@ function HeroDashboardCard({
           <Text style={{ fontSize: 11, color: "#8A94A6", marginBottom: 4, fontWeight: "600" }}>
             {isBorrowed ? "Monthly EMI" : "Total Lent"}
           </Text>
-          <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.5} style={{ fontSize: 16, fontWeight: "900", color: "#172033" }}>
+          <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.5} style={{ fontSize: 16, fontWeight: "900", color: theme.textPrimary }}>
             {money(isBorrowed ? emi : total)}
           </Text>
         </View>
-        <View style={{ width: 1, backgroundColor: "#EAF0F6", marginHorizontal: 16 }} />
+        <View style={{ width: 1, backgroundColor: isDarkMode ? theme.border : "#EAF0F6", marginHorizontal: 16 }} />
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 11, color: "#8A94A6", marginBottom: 4, fontWeight: "600" }}>
             Status
@@ -367,6 +369,7 @@ function SectionHeader({ title, subtitle, count, onViewAll }) {
 ========================================================= */
 
 function DirectionLoanCard({ loan, direction, navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const outstanding = number(loan.outstanding_amount);
   const paid = number(loan.principal_paid);
 
@@ -561,6 +564,7 @@ function DirectionLoanCard({ loan, direction, navigation }) {
 ========================================================= */
 
 function UpcomingCard({ loan, direction, navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const accent = direction === "BORROWED" ? "#36B37E" : "#4F7CAC";
   const dueDate = loan.nextDueDate || computeNextDueDate(loan);
   const overdue =
@@ -626,6 +630,7 @@ function UpcomingCard({ loan, direction, navigation }) {
 ========================================================= */
 
 function RecentPaymentCard({ item, direction }) {
+  const { isDarkMode, theme } = useTheme();
   const accent = direction === "BORROWED" ? "#36B37E" : "#4F7CAC";
 
   return (
@@ -849,6 +854,7 @@ function DirectionTab({ active, icon, label, color, onPress }) {
 ========================================================= */
 
 function LoanDirectionDashboard({ navigation }) {
+  const { theme, isDarkMode } = useTheme();
   const dispatch = useAppDispatch();
   const reduxLoans = useLoans();
   const loans = reduxLoans || [];
@@ -1037,7 +1043,7 @@ function LoanDirectionDashboard({ navigation }) {
       <View
         style={{
           flex: 1,
-          backgroundColor: Colors.background,
+          backgroundColor: theme.bg,
           alignItems: "center",
           justifyContent: "center",
         }}
@@ -1077,7 +1083,7 @@ function LoanDirectionDashboard({ navigation }) {
     <View
       style={{
         flex: 1,
-        backgroundColor: Colors.background,
+        backgroundColor: theme.bg,
       }}
     >
       <ScrollView

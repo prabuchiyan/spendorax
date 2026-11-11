@@ -23,6 +23,7 @@ import {
 } from "../services/transactions";
 import { getCategories } from "../services/categories";
 import { getSources } from "../services/sources";
+import { useTheme } from '../context/ThemeContext';
 import { Colors, Spacing } from "../components/Theme";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import TransactionListItem from "../components/TransactionListItem";
@@ -31,6 +32,7 @@ import { useBalanceVisibility } from "../context/BalanceVisibilityContext";
 import { parseDate } from "../utils/dateUtils";
 
 function PageLoader({ message = "Loading transactions..." }) {
+  const { theme } = useTheme();
   const rotation = React.useRef(new Animated.Value(0)).current;
 
   const pulse = React.useRef(new Animated.Value(0)).current;
@@ -93,7 +95,7 @@ function PageLoader({ message = "Loading transactions..." }) {
         flex: 1,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: Colors.background,
+        backgroundColor: theme.bg,
       }}
     >
       {/* OUTER LOADER */}
@@ -199,6 +201,7 @@ function PageLoader({ message = "Loading transactions..." }) {
 }
 
 export default function SourcesDetails({ route, navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const { sourceId, sourceName } = route.params || {};
 
   const { balanceVisible } = useBalanceVisibility();
@@ -511,12 +514,12 @@ export default function SourcesDetails({ route, navigation }) {
 
   // SCREEN
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       {/* BALANCE */}
-      <View style={styles.hero}>
-        <Text style={styles.heroLabel}>{isCreditCard ? 'Total Outstanding' : 'Available Balance'}</Text>
+      <View style={[styles.hero, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+        <Text style={[styles.heroLabel, { color: theme.textSecondary }]}>{isCreditCard ? 'Total Outstanding' : 'Available Balance'}</Text>
 
-        <Text style={styles.heroAmount}>
+        <Text style={[styles.heroAmount, { color: theme.textPrimary }]}>
           {balanceVisible
             ? `₹ ${totalBalance.toLocaleString("en-IN", {
               minimumFractionDigits: 2,
@@ -539,15 +542,15 @@ export default function SourcesDetails({ route, navigation }) {
       {/* HEADER */}
       <View style={styles.headerRow}>
         <View>
-          <Text style={styles.headerTitle}>Recent Activity</Text>
+          <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Recent Activity</Text>
 
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
             Transactions from this source
           </Text>
         </View>
 
-        <View style={styles.countBadge}>
-          <Text style={styles.countText}>{transactions.length}</Text>
+        <View style={[styles.countBadge, { backgroundColor: isDarkMode ? "#1e293b" : "#EEF0F3" }]}>
+          <Text style={[styles.countText, { color: isDarkMode ? "#94A3B8" : "#6B7280" }]}>{transactions.length}</Text>
         </View>
       </View>
 
@@ -560,14 +563,14 @@ export default function SourcesDetails({ route, navigation }) {
             style={{
               ...styles.chip,
 
-              backgroundColor: groupMode === option.key ? "#5B67F1" : "#F0F1F3",
+              backgroundColor: groupMode === option.key ? "#5B67F1" : (isDarkMode ? "#1e293b" : "#F0F1F3"),
             }}
           >
             <Text
               style={{
                 ...styles.chipText,
 
-                color: groupMode === option.key ? "#FFFFFF" : "#6B7280",
+                color: groupMode === option.key ? "#FFFFFF" : (isDarkMode ? "#9CA3AF" : "#6B7280"),
               }}
             >
               {option.label}
@@ -590,9 +593,9 @@ export default function SourcesDetails({ route, navigation }) {
             />
           </View>
 
-          <Text style={styles.emptyTitle}>No transactions found</Text>
+          <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>No transactions found</Text>
 
-          <Text style={styles.emptySubtitle}>
+          <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
             Transactions for this source will appear here
           </Text>
         </View>
@@ -633,7 +636,7 @@ export default function SourcesDetails({ route, navigation }) {
 
                 paddingBottom: 7,
 
-                backgroundColor: Colors.background,
+                backgroundColor: theme.bg,
               }}
             >
               <View
@@ -769,7 +772,7 @@ export default function SourcesDetails({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F6F8FF',
     padding: Spacing.xs,
   },
   hero: {

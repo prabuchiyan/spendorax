@@ -2,6 +2,7 @@ import React from 'react';
 import { useAppLock } from '../context/AppLockContext';
 import AppLockScreen from './AppLockScreen';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { Portal } from 'react-native-paper';
 import { Colors } from './Theme';
 
 export default function AppLockWrapper({ children }) {
@@ -17,8 +18,18 @@ export default function AppLockWrapper({ children }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.childrenContainer}>
-        {children}
+      <View
+        style={[
+          styles.childrenContainer,
+          isLocked && styles.hiddenChildren,
+        ]}
+        pointerEvents={isLocked ? 'none' : 'auto'}
+        accessibilityElementsHidden={isLocked}
+        importantForAccessibility={isLocked ? 'no-hide-descendants' : 'auto'}
+      >
+        <Portal.Host>
+          {children}
+        </Portal.Host>
       </View>
       {isLocked && (
         <View style={styles.lockScreenContainer}>
@@ -36,8 +47,13 @@ const styles = StyleSheet.create({
   childrenContainer: {
     flex: 1,
   },
+  hiddenChildren: {
+    opacity: 0,
+  },
   lockScreenContainer: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 9999,
-  }
+    zIndex: 99999,
+    elevation: 99999,
+    backgroundColor: '#F9FBFA',
+  },
 });

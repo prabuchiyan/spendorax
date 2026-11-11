@@ -262,7 +262,7 @@ export async function initDB() {
     // 4. Trigger immediate backfill of all recurring bill occurrences
     //    so existing users get past + future dues generated on first launch.
     try {
-      const { backfillBillOccurrences } = require('../services/bills');
+      const { backfillBillOccurrences, healDuplicateBills } = require('../services/bills');
       const { executeSql: sql } = require('./db');
       const templatesRes = await sql(
         `SELECT *
@@ -281,6 +281,7 @@ export async function initDB() {
         }
         await backfillBillOccurrences(bill.id);
       }
+      await healDuplicateBills();
     } catch (e) {
       console.warn('Recurring bill backfill on init failed', e);
     }

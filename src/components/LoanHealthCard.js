@@ -1,3 +1,4 @@
+import { useTheme } from '../context/ThemeContext';
 import React, { useEffect, useRef } from 'react';
 import {
   View,
@@ -15,6 +16,7 @@ export default function LoanHealthCard({
   closed = 0,
   overdue = 0
 }) {
+  const { theme, isDarkMode } = useTheme();
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -42,8 +44,8 @@ export default function LoanHealthCard({
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>Loan Health</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: theme.textPrimary }]}>Loan Health</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
             Overall repayment progress
           </Text>
         </View>
@@ -71,7 +73,7 @@ export default function LoanHealthCard({
 
       {/* Progress */}
 
-      <View style={styles.progressBackground}>
+      <View style={[styles.progressBackground, { backgroundColor: isDarkMode ? "#334155" : "#E5E7EB" }]}>
         <Animated.View
           style={[
           styles.progressFill,
@@ -121,8 +123,9 @@ function StatCard({
   color,
   bg
 }) {
+  const { theme, isDarkMode } = useTheme();
   return (
-    <View style={styles.statCard}>
+    <View style={[styles.statCard, isDarkMode && { backgroundColor: "#1e293b", borderWidth: 1, borderColor: "#334155" }]}>
       <View
         style={[
         styles.iconBox,

@@ -1,3 +1,4 @@
+import { useTheme } from '../context/ThemeContext';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Card from './Card';
@@ -26,6 +27,7 @@ const THEMES = {
 };
 
 export default function RecentActivityItem({ item }) {
+  const { isDarkMode, theme: appTheme } = useTheme();
   const theme = THEMES[item.payment_type] || {
     icon: 'bank-transfer',
     color: '#6366F1',
@@ -59,7 +61,7 @@ export default function RecentActivityItem({ item }) {
         </View>
 
         <View style={styles.content}>
-          <Text style={styles.loanName} numberOfLines={1}>
+          <Text style={[styles.loanName, { color: appTheme.textPrimary }]} numberOfLines={1}>
             {item.loan_name || 'Loan'}
           </Text>
 
@@ -76,11 +78,11 @@ export default function RecentActivityItem({ item }) {
         </View>
 
         <View style={styles.right}>
-          <Text style={styles.amount}>
+          <Text style={[styles.amount, { color: appTheme.textPrimary }]}>
             <CurrencyText amount={item.payment_amount} />
           </Text>
 
-          <Text style={styles.date}>
+          <Text style={[styles.date, { color: appTheme.textSecondary }]}>
             {date}
           </Text>
         </View>
