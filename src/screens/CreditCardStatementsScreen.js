@@ -16,6 +16,7 @@ import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useAppDispatch, useCreditCardStatements } from '../redux/hooks';
 import { setStatements } from '../redux/slices/creditCardSlice';
 import { formatCurrency } from "../utils/numberUtils";
+import { useTheme } from "../context/ThemeContext";
 
 function formatDate(value) {
   if (!value) return "-";
@@ -25,6 +26,7 @@ function formatDate(value) {
 }
 
 export default function CreditCardStatementsScreen({ route, navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const { sourceId, cardId } = route?.params || {};
   const dispatch = useAppDispatch();
   const reduxStatements = useCreditCardStatements();
@@ -121,35 +123,35 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
   ), [statements]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       {/* PREMIUM HERO SECTION */}
       <View style={styles.headerContainer}>
-        <View style={styles.heroCard}>
+        <View style={[styles.heroCard, { backgroundColor: theme.cardBg, borderColor: theme.border, borderWidth: theme.isDark ? 1 : 0 }]}>
           <View style={styles.heroTop}>
             <View style={styles.heroIconWrapper}>
               <MaterialCommunityIcons name="receipt" size={24} color="#FFF" />
             </View>
             <View style={styles.heroTopTextRow}>
-              <Text style={styles.heroTitle}>Total Statement Due</Text>
-              <Text style={styles.heroAmount}>
+              <Text style={[styles.heroTitle, { color: theme.textSecondary }]}>Total Statement Due</Text>
+              <Text style={[styles.heroAmount, { color: theme.textPrimary }]}>
                 ₹{totalDue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </Text>
             </View>
           </View>
 
-          <View style={styles.heroDivider} />
+          <View style={[styles.heroDivider, { backgroundColor: theme.border }]} />
 
           <View style={styles.heroBottom}>
             <View style={styles.heroStatItem}>
-              <Text style={styles.heroStatLabel}>MINIMUM DUE</Text>
-              <Text style={styles.heroStatValue}>
+              <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>MINIMUM DUE</Text>
+              <Text style={[styles.heroStatValue, { color: theme.textPrimary }]}>
                 ₹{totalMinimum.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </Text>
             </View>
-            <View style={styles.heroStatDivider} />
+            <View style={[styles.heroStatDivider, { backgroundColor: theme.border }]} />
             <View style={styles.heroStatItem}>
-              <Text style={styles.heroStatLabel}>STATEMENTS</Text>
-              <Text style={styles.heroStatValue}>{statements.length}</Text>
+              <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>STATEMENTS</Text>
+              <Text style={[styles.heroStatValue, { color: theme.textPrimary }]}>{statements.length}</Text>
             </View>
           </View>
         </View>
@@ -189,7 +191,7 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
                   })
                 }
               >
-                <View style={styles.cardHeader}>
+                <View style={[styles.cardHeader, { backgroundColor: theme.cardBg }]}>
                   <View style={styles.cardHeaderLeft}>
                     <View style={[styles.cardIconWrapper, { backgroundColor: `${itemColor}15` }]}>
                       <MaterialCommunityIcons
@@ -199,7 +201,7 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
                       />
                     </View>
                     <View>
-                      <Text style={styles.cardName}>{item.card_name || "Credit Card"}</Text>
+                      <Text style={[styles.cardName, { color: theme.textPrimary }]}>{item.card_name || "Credit Card"}</Text>
                       <Text style={styles.cardDate}>Generated on {formatDate(item.statement_date)}</Text>
                     </View>
                   </View>
@@ -214,8 +216,8 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
                 <View style={styles.cardBody}>
                   <View style={styles.detailRow}>
                     <Feather name="calendar" size={14} color="#8A96A3" />
-                    <Text style={styles.detailText}>
-                      Period: <Text style={styles.detailValue}>{formatDate(item.statement_start)} – {formatDate(item.statement_end)}</Text>
+                    <Text style={[styles.detailText, { color: theme.textSecondary }]}>
+                      Period: <Text style={[styles.detailValue, { color: theme.textPrimary }]}>{formatDate(item.statement_start)} – {formatDate(item.statement_end)}</Text>
                     </Text>
                   </View>
 
@@ -227,10 +229,10 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
                   </View>
                 </View>
 
-                <View style={styles.cardFooter}>
+                <View style={[styles.cardFooter, { backgroundColor: theme.isDark ? '#1E293B' : '#F8FAFC', borderTopColor: theme.border }]}>
                   <View style={styles.footerBalanceBox}>
-                    <Text style={styles.footerBalanceLabel}>Closing Balance</Text>
-                    <Text style={styles.footerBalanceAmount}>{formatCurrency(item.closing_balance)}</Text>
+                    <Text style={[styles.footerBalanceLabel, { color: theme.textSecondary }]}>Closing Balance</Text>
+                    <Text style={[styles.footerBalanceAmount, { color: theme.textPrimary }]}>{formatCurrency(item.closing_balance)}</Text>
                     {paymentsMade > 0 && (
                       <Text style={{ fontSize: 11, color: '#10B981', fontWeight: '700', marginTop: 4 }}>
                         Paid: {formatCurrency(paymentsMade)}
@@ -240,7 +242,7 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
 
                   <View style={styles.footerActions}>
                     <View style={styles.minDueBox}>
-                      <Text style={styles.minDueLabel}>{isPaid ? 'Status' : 'Remaining Due'}</Text>
+                      <Text style={[styles.minDueLabel, { color: theme.textSecondary }]}>{isPaid ? 'Status' : 'Remaining Due'}</Text>
                       <Text style={[styles.minDueAmount, isPaid && { color: '#10B981' }]}>
                         {isPaid ? 'Fully Paid' : formatCurrency(remainingBal)}
                       </Text>
@@ -273,7 +275,7 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
         }}
       >
         <View style={styles.regenerateOverlay}>
-          <View style={styles.regenerateModal}>
+          <View style={[styles.regenerateModal, { backgroundColor: theme.cardBg, borderColor: theme.border, borderWidth: theme.isDark ? 1 : 0 }]}>
             <View style={styles.regenerateIconCircle}>
               <MaterialCommunityIcons
                 name="refresh"
@@ -282,9 +284,9 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
               />
             </View>
 
-            <Text style={styles.regenerateTitle}>Regenerate Statement?</Text>
+            <Text style={[styles.regenerateTitle, { color: theme.textPrimary }]}>Regenerate Statement?</Text>
 
-            <Text style={styles.regenerateMessage}>
+            <Text style={[styles.regenerateMessage, { color: theme.textSecondary }]}>
               Are you sure you want to regenerate the statement from <Text style={{ fontWeight: '800' }}>{regenerateTarget ? formatDate(regenerateTarget.statement_date) : ""}</Text> for <Text style={{ fontWeight: '800' }}>{regenerateTarget?.card_name || "Credit Card"}</Text>?
             </Text>
 
@@ -298,7 +300,7 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
                 onPress={() => setRegenerateTarget(null)}
                 style={styles.cancelRegenerateButton}
               >
-                <Text style={styles.cancelRegenerateText}>Cancel</Text>
+                <Text style={[styles.cancelRegenerateText, { color: theme.textSecondary }]}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity

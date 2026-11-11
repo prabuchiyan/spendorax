@@ -28,6 +28,7 @@ import BottomStatsBar from "../components/BottomStatsBar";
 import CurrencyText from "../components/CurrencyText";
 import { useBalanceVisibility } from "../context/BalanceVisibilityContext";
 import { usePageLoader } from "../context/PageLoaderContext";
+import { useTheme } from "../context/ThemeContext";
 import PageLoader from "../components/PageLoader";
 import {
   setTopCategories,
@@ -518,6 +519,7 @@ function BudgetDonut({
 ============================================================ */
 
 export default function HomeScreen({ navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const { balanceVisible } = useBalanceVisibility();
 
   const { width: screenWidth } = useWindowDimensions();
@@ -1133,7 +1135,7 @@ export default function HomeScreen({ navigation }) {
     <View
       style={{
         flex: 1,
-        backgroundColor: "#F5FAF7",
+        backgroundColor: theme.bgApp,
       }}
     >
       <ScrollView
@@ -1219,7 +1221,7 @@ export default function HomeScreen({ navigation }) {
                           style={{
                             fontWeight: "900",
                             fontSize: 18,
-                            color: "#2F7355",
+                            color: isDarkMode ? "#6EE7B7" : "#2F7355",
                           }}
                         >
                           Budgets
@@ -1329,7 +1331,7 @@ export default function HomeScreen({ navigation }) {
                           style={{
                             fontSize: 13,
                             fontWeight: "900",
-                            color: "#25352D",
+                            color: isDarkMode ? "#F3F4F6" : "#25352D",
                             marginTop: 2,
                           }}
                         >
@@ -1478,7 +1480,7 @@ export default function HomeScreen({ navigation }) {
                             style={{
                               fontSize: 13,
                               fontWeight: "900",
-                              color: "#2F7355",
+                              color: isDarkMode ? "#6EE7B7" : "#2F7355",
                               marginTop: 1,
                             }}
                           >
@@ -1659,7 +1661,7 @@ export default function HomeScreen({ navigation }) {
                 style={{
                   fontWeight: "800",
                   fontSize: 16,
-                  color: "#2F7355",
+                  color: isDarkMode ? "#6EE7B7" : "#2F7355",
                 }}
               >
                 Category Budgets
@@ -1672,7 +1674,7 @@ export default function HomeScreen({ navigation }) {
                   paddingHorizontal: 10,
                   paddingVertical: 6,
                   borderRadius: 10,
-                  backgroundColor: "#EAF5EF",
+                  backgroundColor: isDarkMode ? "#1E293B" : "#EAF5EF",
                 }}
               >
                 <Text
@@ -1880,7 +1882,7 @@ export default function HomeScreen({ navigation }) {
               style={{
                 fontWeight: "800",
                 fontSize: 16,
-                color: "#2F7355",
+                color: isDarkMode ? "#6EE7B7" : "#2F7355",
               }}
             >
               Latest transactions
@@ -1894,7 +1896,7 @@ export default function HomeScreen({ navigation }) {
                   paddingHorizontal: 10,
                   paddingVertical: 6,
                   borderRadius: 10,
-                  backgroundColor: "#EAF5EF",
+                  backgroundColor: isDarkMode ? "#1E293B" : "#EAF5EF",
                 }}
               >
                 <Text
@@ -2058,7 +2060,7 @@ export default function HomeScreen({ navigation }) {
                             fontSize: 15,
                             lineHeight: 19,
                             fontWeight: "800",
-                            color: "#25352D",
+                            color: isDarkMode ? "#F3F4F6" : "#25352D",
                             letterSpacing: -0.15,
                           }}
                         >
@@ -2372,7 +2374,7 @@ export default function HomeScreen({ navigation }) {
               style={{
                 fontWeight: "800",
                 fontSize: 16,
-                color: "#2F7355",
+                color: isDarkMode ? "#6EE7B7" : "#2F7355",
               }}
             >
               Spend Areas
@@ -2391,7 +2393,7 @@ export default function HomeScreen({ navigation }) {
                   paddingHorizontal: 10,
                   paddingVertical: 6,
                   borderRadius: 10,
-                  backgroundColor: "#EAF5EF",
+                  backgroundColor: isDarkMode ? "#1E293B" : "#EAF5EF",
                 }}
               >
                 <Text
@@ -2514,7 +2516,7 @@ export default function HomeScreen({ navigation }) {
                       style={{
                         fontSize: 14,
                         fontWeight: "800",
-                        color: "#2F7355",
+                        color: isDarkMode ? "#6EE7B7" : "#2F7355",
                         marginBottom: 3,
                       }}
                     >
@@ -2615,7 +2617,7 @@ export default function HomeScreen({ navigation }) {
                 style={{
                   fontWeight: "800",
                   fontSize: 16,
-                  color: "#2F7355",
+                  color: isDarkMode ? "#6EE7B7" : "#2F7355",
                 }}
               >
                 Bills
@@ -2639,7 +2641,7 @@ export default function HomeScreen({ navigation }) {
                 paddingHorizontal: 10,
                 paddingVertical: 6,
                 borderRadius: 10,
-                backgroundColor: "#EAF5EF",
+                backgroundColor: isDarkMode ? "#1E293B" : "#EAF5EF",
               }}
             >
               <Text
@@ -2697,7 +2699,7 @@ export default function HomeScreen({ navigation }) {
                       style={{
                         fontSize: 22,
                         fontWeight: "900",
-                        color: "#2F7355",
+                        color: isDarkMode ? "#6EE7B7" : "#2F7355",
                         letterSpacing: -0.5,
                       }}
                     >
@@ -2712,7 +2714,7 @@ export default function HomeScreen({ navigation }) {
                       width: 54,
                       height: 54,
                       borderRadius: 17,
-                      backgroundColor: "#EAF5EF",
+                      backgroundColor: isDarkMode ? "#1E293B" : "#EAF5EF",
                       alignItems: "center",
                       justifyContent: "center",
                       marginLeft: 12,
@@ -2794,7 +2796,7 @@ export default function HomeScreen({ navigation }) {
                     style={{
                       fontSize: 12,
                       fontWeight: "900",
-                      color: "#2F7355",
+                      color: isDarkMode ? "#6EE7B7" : "#2F7355",
                     }}
                   >
                     {balanceVisible
@@ -2990,7 +2992,7 @@ export default function HomeScreen({ navigation }) {
                         style={{
                           fontSize: 13,
                           fontWeight: "800",
-                          color: "#25352D",
+                          color: isDarkMode ? "#F3F4F6" : "#25352D",
                         }}
                       >
                         {bill.name}
@@ -3107,7 +3109,7 @@ export default function HomeScreen({ navigation }) {
                   width: 46,
                   height: 46,
                   borderRadius: 15,
-                  backgroundColor: "#EAF5EF",
+                  backgroundColor: isDarkMode ? "#1E293B" : "#EAF5EF",
                   alignItems: "center",
                   justifyContent: "center",
                   marginBottom: 8,
@@ -3124,7 +3126,7 @@ export default function HomeScreen({ navigation }) {
                 style={{
                   fontSize: 13,
                   fontWeight: "800",
-                  color: "#2F7355",
+                  color: isDarkMode ? "#6EE7B7" : "#2F7355",
                 }}
               >
                 No bills added

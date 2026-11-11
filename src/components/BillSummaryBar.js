@@ -2,8 +2,11 @@ import React, { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import CurrencyText from './CurrencyText';
+import { useTheme } from '../context/ThemeContext';
 
-function BillSummaryBar({ summary, isDarkMode }) {
+function BillSummaryBar({ summary, isDarkMode: propIsDark }) {
+  const { isDarkMode: globalIsDark } = useTheme();
+  const isDarkMode = propIsDark !== undefined ? propIsDark : globalIsDark;
   if (!summary) return null;
 
   const theme = isDarkMode

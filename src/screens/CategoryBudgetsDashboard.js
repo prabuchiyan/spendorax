@@ -1,3 +1,4 @@
+import { useTheme } from '../context/ThemeContext';
 import React, { useLayoutEffect } from "react";
 import {
   View,
@@ -23,6 +24,7 @@ function getBudgetProgressColor(percentage) {
 }
 
 export default function CategoryBudgetsDashboard({ navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const categoryBudgets = useCategoryBudgets();
   const otherCategorySpending = useOtherCategorySpending();
   const othersExpanded = useOthersExpanded();
@@ -43,7 +45,7 @@ export default function CategoryBudgetsDashboard({ navigation }) {
   }, [navigation]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F5FAF7" }}>
+    <View style={{ flex: 1, backgroundColor: theme.bgApp }}>
       <ScrollView
         contentContainerStyle={{
           padding: 16,

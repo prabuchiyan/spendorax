@@ -35,14 +35,21 @@ export default function PremiumRoundedBarChart({
   baseColor,
   onBarPress,
   selectedLabel,
+  selectedId = null,
   isEmpty = false,
 }) {
   const scrollRef = useRef(null);
 
   useEffect(() => {
-    if (isEmpty || !selectedLabel || !scrollRef.current) return;
+    if (isEmpty || (!selectedLabel && selectedId == null) || !scrollRef.current) return;
 
-    const index = labels.findIndex(l => l === selectedLabel);
+    let index = -1;
+    if (selectedId != null && ids.length > 0) {
+      index = ids.findIndex((id) => Number(id) === Number(selectedId));
+    }
+    if (index < 0 && selectedLabel) {
+      index = labels.findIndex((l) => l === selectedLabel);
+    }
     if (index < 0) return;
 
     const itemWidth = Math.min(52, Math.max(38, width / 5));
@@ -53,7 +60,7 @@ export default function PremiumRoundedBarChart({
     requestAnimationFrame(() => {
       scrollRef.current?.scrollTo({ x, animated: true });
     });
-  }, [selectedLabel, labels, width, isEmpty]);
+  }, [selectedLabel, selectedId, ids, labels, width, isEmpty]);
 
   if (isEmpty) {
     return (
@@ -79,7 +86,10 @@ export default function PremiumRoundedBarChart({
       <View style={[styles.customChartWrap, { width: chartInnerWidth, height }]}>
         <View style={styles.customChartBarsRow}>
           {finalDue.map((due, index) => {
-            const selected = labels[index] === selectedLabel;
+            const selected =
+              selectedId != null && ids[index] != null
+                ? Number(ids[index]) === Number(selectedId)
+                : labels[index] === selectedLabel;
             const paid = Number(finalPaid[index] || 0);
             const barHeight = (due / maxValue) * BAR_TRACK_HEIGHT;
             const paidHeight = due === 0 ? 0 : (paid / due) * barHeight;

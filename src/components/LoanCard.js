@@ -1,10 +1,12 @@
 import React from 'react';
+import { useTheme } from '../context/ThemeContext';
 import { View, Text, StyleSheet } from 'react-native';
 import Card from './Card';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import CurrencyText from './CurrencyText';
 
 export default function LoanCard({ loan }) {
+  const { isDarkMode, theme } = useTheme();
 
   const outstanding = Number(loan.outstanding_amount || 0);
   const originalPrincipal = Number(loan.principal_amount || 0);
@@ -112,8 +114,8 @@ export default function LoanCard({ loan }) {
             />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.loanName} numberOfLines={1}>{loan.loan_name}</Text>
-            <Text style={styles.lender}>{loan.lender || (isLent ? 'Borrower' : 'Lender')}</Text>
+            <Text style={[styles.loanName, { color: theme.textPrimary }]} numberOfLines={1}>{loan.loan_name}</Text>
+            <Text style={[styles.lender, { color: theme.textSecondary }]}>{loan.lender || (isLent ? 'Borrower' : 'Lender')}</Text>
           </View>
         </View>
         <View style={[styles.statusChip, { backgroundColor: status === 'Closed' ? '#DCFCE7' : '#DBEAFE' }]}>
@@ -124,17 +126,17 @@ export default function LoanCard({ loan }) {
       {/* Outstanding & Progress */}
       <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
         <View>
-          <Text style={styles.label}>Outstanding Balance</Text>
-          <Text style={styles.amount}>
-            <CurrencyText amount={outstanding} style={styles.amount} />
+          <Text style={[styles.label, { color: theme.textSecondary }]}>Outstanding Balance</Text>
+          <Text style={[styles.amount, { color: theme.text }]}>
+            <CurrencyText amount={outstanding} style={[styles.amount, { color: theme.text }]} />
           </Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={styles.progressText}>{progress}% Repaid</Text>
+          <Text style={[styles.progressText, { color: theme.textSecondary }]}>{progress}% Repaid</Text>
         </View>
       </View>
 
-      <View style={styles.progressBg}>
+      <View style={[styles.progressBg, { backgroundColor: isDarkMode ? "#334155" : "#E2E8F0" }]}>
         <View style={[styles.progress, { width: `${progress}%`, backgroundColor: status === 'Closed' ? '#16A34A' : '#3B82F6' }]} />
       </View>
 

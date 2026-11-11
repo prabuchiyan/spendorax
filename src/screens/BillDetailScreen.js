@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -37,6 +37,7 @@ import {
 import { getCategories } from "../services/categories";
 import { getSources } from "../services/sources";
 import ConfirmDialog from "../components/ConfirmDialog";
+import SkipBillModal from "../components/SkipBillModal";
 import BillForm from "../components/BillForm";
 import CurrencyText from "../components/CurrencyText";
 import {
@@ -47,6 +48,7 @@ import {
 } from "../services/billUtils";
 import { getCreditCards, payCreditCardBill } from "../services/creditCards";
 import { usePageLoader } from "../context/PageLoaderContext";
+import { useTheme } from "../context/ThemeContext";
 import PageLoader from "../components/PageLoader";
 import { onStatementPaid } from "../services/creditCardScheduler";
 import { setCategoriesMap } from "../redux/slices/categorySlice";
@@ -104,11 +106,12 @@ function formatRecurrenceType(type, isRecurring = true) {
 }
 
 function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
+  const { theme } = useTheme();
   return (
-    <View style={styles.sectionCard}>
+    <View style={[styles.sectionCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
       <View style={styles.sectionHeaderRow}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Text style={styles.sectionTitle}>Linked Transactions</Text>
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Linked Transactions</Text>
           <View style={styles.countBadge}>
             <Text style={styles.countBadgeText}>{linkedTxs.length}</Text>
           </View>
@@ -130,7 +133,7 @@ function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
           <View style={styles.emptyLinkedIconWrap}>
             <MaterialCommunityIcons name="link-variant-off" size={24} color="#94a3b8" />
           </View>
-          <Text style={styles.emptyLinkedTitle}>No linked transactions</Text>
+          <Text style={[styles.emptyLinkedTitle, { color: theme.textSecondary }]}>No linked transactions</Text>
           <Text style={styles.emptyLinkedSub}>
             Link a payment to automatically record and mark this bill as paid.
           </Text>
@@ -152,7 +155,7 @@ function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
               {/* Details */}
               <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
-                  <Text numberOfLines={1} style={styles.txTitle}>
+                  <Text numberOfLines={1} style={[styles.txTitle, { color: theme.textPrimary }]}>
                     {tx.notes || "Payment Transaction"}
                   </Text>
                   <View style={styles.verifiedTag}>
@@ -178,7 +181,7 @@ function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
                   </View>
                 </View>
 
-                <Text style={styles.txAmountText}>
+                <Text style={[styles.txAmountText, { color: theme.textPrimary }]}>
                   {formatCurrency(tx.amount)}
                 </Text>
               </View>
@@ -206,6 +209,7 @@ function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
 }
 
 function LinkTransactionModal({ visible, bill, onLink, onClose }) {
+  const { theme, isDarkMode } = useTheme();
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -255,15 +259,15 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
       animationType="slide"
       onRequestClose={onClose}>
       <View style={styles.modalBackdrop}>
-        <View style={styles.modalSheet}>
+        <View style={[styles.modalSheet, { backgroundColor: theme.cardBg }]}>
           <View style={styles.sheetHandle} />
 
           <View style={styles.modalHeaderRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.modalHeaderTitle}>
+              <Text style={[styles.modalHeaderTitle, { color: theme.textPrimary }]}>
                 Link Transaction
               </Text>
-              <Text style={styles.modalHeaderSubtitle}>
+              <Text style={[styles.modalHeaderSubtitle, { color: theme.textSecondary }]}>
                 Select an expense for "{bill?.name}" • {filteredCandidates.length} available
               </Text>
             </View>
@@ -306,7 +310,7 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
           ) : filteredCandidates.length === 0 ? (
             <View style={styles.emptyCandidatesBox}>
               <MaterialCommunityIcons name="text-box-search-outline" size={36} color="#94a3b8" />
-              <Text style={styles.emptyCandidatesTitle}>No matching transactions</Text>
+              <Text style={[styles.emptyCandidatesTitle, { color: theme.textPrimary }]}>No matching transactions</Text>
               <Text style={styles.emptyCandidatesSub}>
                 {search ? "Try a different search term" : "Only expense transactions within 45 days can be linked."}
               </Text>
@@ -352,7 +356,7 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
                   </View>
 
                   <View style={{ flex: 1 }}>
-                    <Text numberOfLines={1} style={styles.candidateNotes}>
+                    <Text numberOfLines={1} style={[styles.candidateNotes, { color: theme.textPrimary }]}>
                       {tx.notes || "Payment Transaction"}
                     </Text>
                     <View style={{ flexDirection: "row", alignItems: "center", marginTop: 3 }}>
@@ -367,7 +371,7 @@ function LinkTransactionModal({ visible, bill, onLink, onClose }) {
                       </Text>
                       {tx.source_name ? (
                         <View style={styles.candidateSourceTag}>
-                          <Text style={styles.candidateSourceText}>{tx.source_name}</Text>
+                          <Text style={[styles.candidateSourceText, { color: theme.textSecondary }]}>{tx.source_name}</Text>
                         </View>
                       ) : null}
                     </View>
@@ -410,6 +414,7 @@ function isCreditCardBill(bill) {
 }
 
 export default function BillDetailScreen({ route, navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const insets = useSafeAreaInsets();
   const rawId = route.params?.billId ?? route.params?.id;
   const occurrenceId = route.params?.occurrenceId;
@@ -427,6 +432,7 @@ export default function BillDetailScreen({ route, navigation }) {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [showLinkModal, setShowLinkModal] = useState(false);
+  const [showSkipModal, setShowSkipModal] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState(null);
   const [showPaymentSourcePicker, setShowPaymentSourcePicker] = useState(false);
   const [paymentSources, setPaymentSources] = useState([]);
@@ -440,9 +446,18 @@ export default function BillDetailScreen({ route, navigation }) {
   const reduxSummary = useBillsSummary();
   const categoriesMap = useCategoriesMap();
 
+  const selectedOccRef = useRef(null);
+  const prevRawIdRef = useRef(rawId);
+
+  // If rawId changes (different bill opened), reset selected occurrence reference
+  if (prevRawIdRef.current !== rawId) {
+    prevRawIdRef.current = rawId;
+    selectedOccRef.current = null;
+  }
+
   useFocusEffect(
     useCallback(() => {
-      load();
+      load(selectedOccRef.current?.id, selectedOccRef.current?.due_date);
     }, [rawId])
   );
 
@@ -522,7 +537,7 @@ export default function BillDetailScreen({ route, navigation }) {
           try {
             showPageLoader();
             setEditing(false);
-            await load(selectedOcc?.id);
+            await load(selectedOcc?.id, selectedOcc?.due_date);
           } catch (e) {
             console.error("[BillDetail] Bill save refresh failed:", e);
           } finally {
@@ -536,7 +551,7 @@ export default function BillDetailScreen({ route, navigation }) {
 
   // ── handlers & actions ───────────────────────────────────────────────────
 
-  async function load(preserveOccId = null) {
+  async function load(preserveOccId = null, preserveDueDate = null) {
     if (!rawId) {
       hidePageLoader();
       return;
@@ -570,15 +585,33 @@ export default function BillDetailScreen({ route, navigation }) {
       if (b?.source_id)
         setSource(srcs.find((ss) => ss.id === b.source_id) || null);
 
+      const targetOccId = preserveOccId ?? selectedOccRef.current?.id;
+      const targetDueDate = preserveDueDate ?? selectedOccRef.current?.due_date;
+
       let occ = null;
-      if (preserveOccId) {
-        occ = s.find((o) => o.id === preserveOccId) || null;
+      if (targetOccId != null) {
+        occ =
+          s.find((o) => Number(o.id) === Number(targetOccId)) ||
+          s.find((o) => String(o.id) === String(targetOccId)) ||
+          null;
+      }
+      if (!occ && targetDueDate) {
+        const targetMonth = String(targetDueDate).slice(0, 7);
+        occ =
+          s.find((o) => o.due_date && String(o.due_date).slice(0, 7) === targetMonth) ||
+          null;
       }
       if (!occ && occurrenceId) {
-        occ = s.find((o) => o.id === occurrenceId) || null;
+        occ =
+          s.find((o) => Number(o.id) === Number(occurrenceId)) ||
+          s.find((o) => String(o.id) === String(occurrenceId)) ||
+          null;
       }
       if (!occ && rawBill?.parent_bill_id) {
-        occ = s.find((o) => o.id === rawId) || null;
+        occ =
+          s.find((o) => Number(o.id) === Number(rawId)) ||
+          s.find((o) => String(o.id) === String(rawId)) ||
+          null;
       }
       if (!occ) {
         const now = new Date();
@@ -597,11 +630,20 @@ export default function BillDetailScreen({ route, navigation }) {
           null;
       }
       setSelectedOcc(occ);
+      selectedOccRef.current = occ;
 
-      if (occ && s.length > 5) {
-        const idx = s.findIndex((o) => o.id === occ.id);
+      const itemsToShow = 5;
+      if (occ && s.length > itemsToShow) {
+        const idx = s.findIndex((o) => Number(o.id) === Number(occ.id));
         if (idx !== -1) {
-          setChartOffset(Math.max(0, Math.min(s.length - 5, s.length - 3 - idx)));
+          setChartOffset((prevOffset) => {
+            const currentStart = Math.max(0, s.length - itemsToShow - prevOffset);
+            const currentEnd = currentStart + itemsToShow - 1;
+            if (idx >= currentStart && idx <= currentEnd) {
+              return prevOffset;
+            }
+            return Math.max(0, Math.min(s.length - itemsToShow, s.length - 3 - idx));
+          });
         }
       } else {
         setChartOffset(0);
@@ -623,6 +665,7 @@ export default function BillDetailScreen({ route, navigation }) {
       setBill(null);
       setSeries([]);
       setSelectedOcc(null);
+      selectedOccRef.current = null;
       setLinkedTxs([]);
     } finally {
       hidePageLoader();
@@ -632,8 +675,15 @@ export default function BillDetailScreen({ route, navigation }) {
   async function refreshSelectedOccurrence() {
     const updatedSeries = await getBillSeries(billId);
     setSeries(updatedSeries);
-    const occ = updatedSeries.find((o) => Number(o.id) === Number(selectedOcc?.id)) || null;
+    const targetId = selectedOccRef.current?.id ?? selectedOcc?.id;
+    const targetDate = selectedOccRef.current?.due_date ?? selectedOcc?.due_date;
+    let occ = updatedSeries.find((o) => Number(o.id) === Number(targetId)) || null;
+    if (!occ && targetDate) {
+      const targetMonth = String(targetDate).slice(0, 7);
+      occ = updatedSeries.find((o) => o.due_date && String(o.due_date).slice(0, 7) === targetMonth) || null;
+    }
     setSelectedOcc(occ);
+    selectedOccRef.current = occ;
     setLinkedTxs(occ ? await getBillLinkedTransactions(occ.id) : []);
   }
 
@@ -726,6 +776,7 @@ export default function BillDetailScreen({ route, navigation }) {
 
   async function handleSelectOccurrence(occ) {
     setSelectedOcc(occ);
+    selectedOccRef.current = occ;
     setLinkedTxs(await getBillLinkedTransactions(occ.id));
     setSelectedLabel(
       new Date(occ.due_date).toLocaleDateString("en", {
@@ -757,7 +808,9 @@ export default function BillDetailScreen({ route, navigation }) {
             if (isCreditCardBill(activeBill)) {
               setEditing(true);
             } else {
-              navigation.navigate("BillOccurrenceEdit", { occurrence: selectedOcc, bill });
+              const targetOcc = selectedOcc || bill;
+              selectedOccRef.current = targetOcc;
+              navigation.navigate("BillOccurrenceEdit", { occurrence: targetOcc, bill });
             }
           }
         },
@@ -802,20 +855,20 @@ export default function BillDetailScreen({ route, navigation }) {
   })();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       {/* ── Stitch Custom Sticky TopBar ───────────────────────────────────── */}
-      <View style={[styles.topBar, { paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 44 : 14) }]}>
+      <View style={[styles.topBar, { backgroundColor: theme.cardBg, borderBottomColor: theme.border, paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 44 : 14) }]}>
         <View style={styles.topBarLeft}>
           <TouchableOpacity
             aria-label="Go Back"
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
             style={styles.headerBackButton}>
-            <MaterialCommunityIcons name="arrow-left" size={20} color="#1e293b" />
+            <MaterialCommunityIcons name="arrow-left" size={20} color={theme.textPrimary} />
           </TouchableOpacity>
           <View style={styles.headerTitleWrap}>
             <View style={styles.headerTitleRow}>
-              <Text numberOfLines={1} style={styles.headerTitle}>
+              <Text numberOfLines={1} style={[styles.headerTitle, { color: theme.textPrimary }]}>
                 {bill.name}
               </Text>
               <View style={[
@@ -836,7 +889,7 @@ export default function BillDetailScreen({ route, navigation }) {
                 </Text>
               </View>
             </View>
-            <Text numberOfLines={1} style={styles.headerSubtitle}>
+            <Text numberOfLines={1} style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
               {bill.notes || (reduxCategory?.name ? `${reduxCategory.name} • ${formatRecurrenceType(bill.recurrence_type, bill.is_recurring)}` : "Govt. Guaranteed Savings Scheme")}
             </Text>
           </View>
@@ -878,7 +931,7 @@ export default function BillDetailScreen({ route, navigation }) {
                 <Stop offset="100%" stopColor="#0c1424" />
               </LinearGradient>
             </Defs>
-            <Rect width="100%" height="100%" rx={26} fill="url(#heroGradient)" />
+            <Rect width="100%" height="100%" rx={24} fill="url(#heroGradient)" />
           </Svg>
           {/* Ambient Glow accents */}
           <View style={styles.heroGlowTeal} pointerEvents="none" />
@@ -890,21 +943,21 @@ export default function BillDetailScreen({ route, navigation }) {
               <View style={styles.heroCategoryAvatar}>
                 <MaterialCommunityIcons
                   name={reduxCategory?.icon || "cellphone"}
-                  size={24}
+                  size={20}
                   color="#34d399"
                 />
               </View>
-              <View style={{ marginLeft: 11, flexShrink: 1 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
-                  <Text style={styles.heroCategoryName}>
+              <View style={styles.heroCategoryTextWrap}>
+                <View style={styles.heroCategoryNameRow}>
+                  <Text numberOfLines={1} style={styles.heroCategoryName}>
                     {reduxCategory?.name || "General"}
                   </Text>
                   <View style={styles.heroBullet} />
-                  <Text style={styles.heroRecurrenceText}>
+                  <Text numberOfLines={1} style={styles.heroRecurrenceText}>
                     {formatRecurrenceType(bill.recurrence_type, bill.is_recurring)}
                   </Text>
                 </View>
-                <Text style={styles.heroOccurrenceSub}>
+                <Text numberOfLines={1} style={styles.heroOccurrenceSub}>
                   Occurrence: <Text style={styles.heroOccurrenceHighlight}>{selectedLabel || formatDueDate(activeBill.due_date)}</Text>
                 </Text>
               </View>
@@ -914,20 +967,20 @@ export default function BillDetailScreen({ route, navigation }) {
             <View style={[
               styles.heroStatusPill,
               isPaidOrSkipped
-                ? styles.heroStatusPillPaid
+                ? (activeBill.status === BILL_STATUS.SKIPPED ? styles.heroStatusPillSkipped : styles.heroStatusPillPaid)
                 : (display?.label?.toLowerCase().includes("overdue") ? styles.heroStatusPillOverdue : styles.heroStatusPillActive)
             ]}>
               <MaterialCommunityIcons
-                name={isPaidOrSkipped ? "check" : (display?.label?.toLowerCase().includes("overdue") ? "alert-circle-outline" : "clock-outline")}
+                name={isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "skip-next" : "check") : (display?.label?.toLowerCase().includes("overdue") ? "alert-circle-outline" : "clock-outline")}
                 size={12}
-                color={isPaidOrSkipped ? "#34d399" : (display?.label?.toLowerCase().includes("overdue") ? "#fb7185" : "#38bdf8")}
+                color={isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "#f59e0b" : "#34d399") : (display?.label?.toLowerCase().includes("overdue") ? "#fb7185" : "#38bdf8")}
                 style={{ marginRight: 4 }}
               />
-              <Text style={[
+              <Text numberOfLines={1} style={[
                 styles.heroStatusPillText,
-                { color: isPaidOrSkipped ? "#6ee7b7" : (display?.label?.toLowerCase().includes("overdue") ? "#fda4af" : "#bae6fd") }
+                { color: isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "#fde68a" : "#6ee7b7") : (display?.label?.toLowerCase().includes("overdue") ? "#fda4af" : "#bae6fd") }
               ]}>
-                {display?.label || "Active"}
+                {activeBill.status === BILL_STATUS.SKIPPED ? "Skipped" : (display?.label || "Active")}
               </Text>
             </View>
           </View>
@@ -942,11 +995,11 @@ export default function BillDetailScreen({ route, navigation }) {
             {/* Due Amount Panel */}
             <View style={styles.heroAmountCol}>
               <Text style={styles.heroAmountLabel}>DUE AMOUNT</Text>
-              <Text numberOfLines={1} style={styles.heroAmountValueDue}>
+              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.heroAmountValueDue}>
                 <CurrencyText amount={activeBill.amount} />
               </Text>
               <View style={styles.heroAmountSubRow}>
-                <MaterialCommunityIcons name="calendar-outline" size={13} color="#94a3b8" />
+                <MaterialCommunityIcons name="calendar-outline" size={12} color="#94a3b8" />
                 <Text numberOfLines={1} style={styles.heroAmountSubText}>
                   Due {formatDueDate(activeBill.due_date)}
                 </Text>
@@ -959,28 +1012,30 @@ export default function BillDetailScreen({ route, navigation }) {
             {/* Paid Amount Panel */}
             <View style={styles.heroAmountCol}>
               <Text style={[styles.heroAmountLabel, { color: "#34d399" }]}>PAID AMOUNT</Text>
-              <Text numberOfLines={1} style={styles.heroAmountValuePaid}>
+              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.heroAmountValuePaid}>
                 <CurrencyText amount={activeBill.paid_amount || 0} />
               </Text>
               <View style={[
                 styles.heroSettledBadge,
                 isPaidOrSkipped
-                  ? { backgroundColor: "rgba(16, 185, 129, 0.2)", borderColor: "rgba(52, 211, 153, 0.3)" }
+                  ? (activeBill.status === BILL_STATUS.SKIPPED
+                      ? { backgroundColor: "rgba(245, 158, 11, 0.2)", borderColor: "rgba(251, 191, 36, 0.3)" }
+                      : { backgroundColor: "rgba(16, 185, 129, 0.2)", borderColor: "rgba(52, 211, 153, 0.3)" })
                   : (Number(activeBill.paid_amount || 0) > 0
                     ? { backgroundColor: "rgba(59, 130, 246, 0.2)", borderColor: "rgba(96, 165, 250, 0.3)" }
                     : { backgroundColor: "rgba(245, 158, 11, 0.2)", borderColor: "rgba(251, 191, 36, 0.3)" })
               ]}>
                 <MaterialCommunityIcons
-                  name={isPaidOrSkipped ? "check-circle" : (Number(activeBill.paid_amount || 0) > 0 ? "progress-check" : "clock-outline")}
+                  name={isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "skip-next" : "check-circle") : (Number(activeBill.paid_amount || 0) > 0 ? "progress-check" : "clock-outline")}
                   size={11}
-                  color={isPaidOrSkipped ? "#34d399" : (Number(activeBill.paid_amount || 0) > 0 ? "#60a5fa" : "#fbbf24")}
+                  color={isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "#fbbf24" : "#34d399") : (Number(activeBill.paid_amount || 0) > 0 ? "#60a5fa" : "#fbbf24")}
                   style={{ marginRight: 3 }}
                 />
-                <Text style={[
+                <Text numberOfLines={1} style={[
                   styles.heroSettledBadgeText,
-                  { color: isPaidOrSkipped ? "#6ee7b7" : (Number(activeBill.paid_amount || 0) > 0 ? "#93c5fd" : "#fde68a") }
+                  { color: isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "#fde68a" : "#6ee7b7") : (Number(activeBill.paid_amount || 0) > 0 ? "#93c5fd" : "#fde68a") }
                 ]}>
-                  {isPaidOrSkipped ? "Fully Settled" : (Number(activeBill.paid_amount || 0) > 0 ? "Partially Paid" : "Pending")}
+                  {isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "Skipped" : "Fully Settled") : (Number(activeBill.paid_amount || 0) > 0 ? "Partially Paid" : "Pending")}
                 </Text>
               </View>
             </View>
@@ -991,10 +1046,10 @@ export default function BillDetailScreen({ route, navigation }) {
             {/* Tile 1: Bill Due Date */}
             <View style={styles.heroMetaItem}>
               <View style={[styles.heroMetaIconWrap, { backgroundColor: "rgba(59, 130, 246, 0.18)", borderColor: "rgba(96, 165, 250, 0.3)" }]}>
-                <MaterialCommunityIcons name="calendar-month-outline" size={16} color="#60a5fa" />
+                <MaterialCommunityIcons name="calendar-month-outline" size={15} color="#60a5fa" />
               </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.heroMetaLabel}>Bill Due Date</Text>
+              <View style={styles.heroMetaTextWrap}>
+                <Text numberOfLines={1} style={styles.heroMetaLabel}>Bill Due Date</Text>
                 <Text numberOfLines={1} style={styles.heroMetaValue}>
                   {formatDueDate(activeBill.due_date)}
                 </Text>
@@ -1004,10 +1059,10 @@ export default function BillDetailScreen({ route, navigation }) {
             {/* Tile 2: Category */}
             <View style={styles.heroMetaItem}>
               <View style={[styles.heroMetaIconWrap, { backgroundColor: "rgba(16, 185, 129, 0.18)", borderColor: "rgba(52, 211, 153, 0.3)" }]}>
-                <MaterialCommunityIcons name="shape-outline" size={16} color="#34d399" />
+                <MaterialCommunityIcons name="shape-outline" size={15} color="#34d399" />
               </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.heroMetaLabel}>Category</Text>
+              <View style={styles.heroMetaTextWrap}>
+                <Text numberOfLines={1} style={styles.heroMetaLabel}>Category</Text>
                 <Text numberOfLines={1} style={styles.heroMetaValue}>
                   {reduxCategory?.name || "General"}
                 </Text>
@@ -1017,10 +1072,10 @@ export default function BillDetailScreen({ route, navigation }) {
             {/* Tile 3: Source */}
             <View style={styles.heroMetaItem}>
               <View style={[styles.heroMetaIconWrap, { backgroundColor: "rgba(99, 102, 241, 0.18)", borderColor: "rgba(129, 140, 248, 0.3)" }]}>
-                <MaterialCommunityIcons name="bank-outline" size={16} color="#818cf8" />
+                <MaterialCommunityIcons name="bank-outline" size={15} color="#818cf8" />
               </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.heroMetaLabel}>Source</Text>
+              <View style={styles.heroMetaTextWrap}>
+                <Text numberOfLines={1} style={styles.heroMetaLabel}>Source</Text>
                 <Text numberOfLines={1} style={styles.heroMetaValue}>
                   {source?.name || "Not specified"}
                 </Text>
@@ -1030,10 +1085,10 @@ export default function BillDetailScreen({ route, navigation }) {
             {/* Tile 4: Repeat */}
             <View style={styles.heroMetaItem}>
               <View style={[styles.heroMetaIconWrap, { backgroundColor: "rgba(20, 184, 166, 0.18)", borderColor: "rgba(45, 212, 191, 0.3)" }]}>
-                <MaterialCommunityIcons name="calendar-sync-outline" size={16} color="#2dd4bf" />
+                <MaterialCommunityIcons name="calendar-sync-outline" size={15} color="#2dd4bf" />
               </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.heroMetaLabel}>Repeat</Text>
+              <View style={styles.heroMetaTextWrap}>
+                <Text numberOfLines={1} style={styles.heroMetaLabel}>Repeat</Text>
                 <Text numberOfLines={1} style={styles.heroMetaValue}>
                   {formatRecurrenceType(bill.recurrence_type, bill.is_recurring)}
                 </Text>
@@ -1185,9 +1240,10 @@ export default function BillDetailScreen({ route, navigation }) {
               height={155}
               baseColor={'#006a61'}
               selectedLabel={selectedLabel}
+              selectedId={selectedOcc?.id}
               isEmpty={displayChartData.length === 0}
               onBarPress={(data) => {
-                const match = series.find((x) => x.id === data.id);
+                const match = series.find((x) => Number(x.id) === Number(data.id));
                 if (match) {
                   handleSelectOccurrence(match);
                 }
@@ -1214,13 +1270,9 @@ export default function BillDetailScreen({ route, navigation }) {
         {/* Dialogs */}
         <ConfirmDialog
           visible={confirmVisible}
-          title={confirmAction === "delete_occ" ? "Delete Occurrence" : "Skip Bill"}
-          message={
-            confirmAction === "delete_occ"
-              ? `Delete the occurrence for ${formatDueDate(activeBill.due_date)}? It won't be recreated.`
-              : `Skip "${activeBill.name}" for ${formatDueDate(activeBill.due_date)}?`
-          }
-          confirmLabel={confirmAction === "skip" ? "Skip" : "Delete"}
+          title="Delete Occurrence"
+          message={`Delete the occurrence for ${formatDueDate(activeBill.due_date)}? It won't be recreated.`}
+          confirmLabel="Delete"
           onCancel={() => {
             setConfirmVisible(false);
             setConfirmAction(null);
@@ -1231,17 +1283,37 @@ export default function BillDetailScreen({ route, navigation }) {
               if (confirmAction === "delete_occ") {
                 const isTemplate = activeBill.id === bill?.id && bill?.is_recurring;
                 await softDeleteBillOccurrence(activeBill.id, isTemplate, activeBill.due_date);
+                selectedOccRef.current = null;
                 await load();
-              } else if (confirmAction === "skip") {
-                await skipBill(activeBill.id);
-                await refreshSelectedOccurrence();
-                await load(activeBill.id);
               }
             } catch (e) {
               console.error("[BillDetail] Action failed:", e);
             } finally {
               setConfirmVisible(false);
               setConfirmAction(null);
+              hidePageLoader();
+            }
+          }}
+        />
+
+        <SkipBillModal
+          visible={showSkipModal}
+          bill={activeBill}
+          onCancel={() => setShowSkipModal(false)}
+          onConfirm={async () => {
+            try {
+              showPageLoader();
+              await skipBill(activeBill.id);
+              await refreshSelectedOccurrence();
+              await load(activeBill.id, activeBill.due_date);
+              const monthYear = getBillMonthYear(activeBill);
+              setToastMsg(`Bill skipped for ${monthYear}`);
+              setToastVisible(true);
+            } catch (e) {
+              console.error("[BillDetail] Skip failed:", e);
+              Alert.alert("Error", "Unable to skip this bill occurrence.");
+            } finally {
+              setShowSkipModal(false);
               hidePageLoader();
             }
           }}
@@ -1256,7 +1328,7 @@ export default function BillDetailScreen({ route, navigation }) {
       </ScrollView>
 
       {/* ── 5. Stitch Bottom Action Dock ──────────────────────────────────── */}
-      <View style={[styles.bottomDock, { paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 24 : 12) }]}>
+      <View style={[styles.bottomDock, { backgroundColor: theme.cardBg, borderTopColor: theme.border, paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 24 : 12) }]}>
         {isPayable && (
           <TouchableOpacity
             style={[
@@ -1298,10 +1370,7 @@ export default function BillDetailScreen({ route, navigation }) {
           ) : !isPaidOrSkipped ? (
             <TouchableOpacity
               style={styles.dockActionButton}
-              onPress={() => {
-                setConfirmAction("skip");
-                setConfirmVisible(true);
-              }}
+              onPress={() => setShowSkipModal(true)}
               disabled={isMarkingPaid}
               activeOpacity={0.7}>
               <View style={[styles.dockIconCircle, { backgroundColor: "#fef3c7", borderColor: "#fde68a" }]}>
@@ -1326,7 +1395,11 @@ export default function BillDetailScreen({ route, navigation }) {
           {!isCreditCardBill(activeBill) && (
             <TouchableOpacity
               style={styles.dockActionButton}
-              onPress={() => navigation.navigate("BillOccurrenceEdit", { occurrence: selectedOcc, bill })}
+              onPress={() => {
+                const targetOcc = selectedOcc || bill;
+                selectedOccRef.current = targetOcc;
+                navigation.navigate("BillOccurrenceEdit", { occurrence: targetOcc, bill });
+              }}
               activeOpacity={0.7}>
               <View style={[styles.dockIconCircle, { backgroundColor: "#f1f5f9", borderColor: "#e2e8f0" }]}>
                 <MaterialCommunityIcons name="pencil-outline" color="#475569" size={18} />
@@ -1396,7 +1469,7 @@ export default function BillDetailScreen({ route, navigation }) {
                 .map((sItem) => (
                   <TouchableOpacity
                     key={sItem.id}
-                    style={styles.paymentSourceRow}
+                    style={[styles.paymentSourceRow, { borderBottomColor: theme.border }]}
                     onPress={async () => {
                       try {
                         setIsMarkingPaid(true);
@@ -1414,7 +1487,7 @@ export default function BillDetailScreen({ route, navigation }) {
                         setShowPaymentSourcePicker(false);
                         setSelectedCreditCard(null);
                         setPaymentSourceSearch("");
-                        await load();
+                        await load(activeBill.id, activeBill.due_date);
                         const monthYear = getBillMonthYear(activeBill);
                         setToastMsg(`Bill paid for ${monthYear}`);
                         setToastVisible(true);
@@ -1432,7 +1505,7 @@ export default function BillDetailScreen({ route, navigation }) {
                         color="#006a61"
                       />
                     </View>
-                    <Text style={styles.paymentSourceName}>
+                    <Text style={[styles.paymentSourceName, { color: theme.textPrimary }]}>
                       {sItem.name}
                     </Text>
                     <MaterialCommunityIcons name="chevron-right" size={18} color="#94a3b8" />
@@ -1592,8 +1665,9 @@ const styles = StyleSheet.create({
 
   /* ── 1. Executive Dark Hero Card ───────────────────────────────────── */
   heroCard: {
-    borderRadius: 26,
-    padding: 18,
+    backgroundColor: "#0c1626",
+    borderRadius: 24,
+    padding: 16,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: "rgba(51, 65, 85, 0.6)",
@@ -1601,73 +1675,86 @@ const styles = StyleSheet.create({
     position: "relative",
     shadowColor: "#0c1424",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.22,
     shadowRadius: 18,
     elevation: 6,
   },
   heroGlowTeal: {
     position: "absolute",
-    top: -50,
-    right: -50,
-    width: 170,
-    height: 170,
-    borderRadius: 85,
-    backgroundColor: "rgba(0, 163, 150, 0.2)",
+    top: -40,
+    right: -40,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: "rgba(0, 163, 150, 0.18)",
   },
   heroGlowBlue: {
     position: "absolute",
-    bottom: -50,
-    left: -50,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
+    bottom: -40,
+    left: -40,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     backgroundColor: "rgba(59, 130, 246, 0.12)",
   },
   heroTopRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   heroCategoryChipWrap: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+    minWidth: 0,
     marginRight: 8,
   },
   heroCategoryAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     backgroundColor: "rgba(16, 185, 129, 0.15)",
     borderWidth: 1,
     borderColor: "rgba(52, 211, 153, 0.3)",
     justifyContent: "center",
     alignItems: "center",
+    flexShrink: 0,
+  },
+  heroCategoryTextWrap: {
+    marginLeft: 10,
+    flex: 1,
+    minWidth: 0,
+    justifyContent: "center",
+  },
+  heroCategoryNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "nowrap",
   },
   heroCategoryName: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: "800",
     color: "#ffffff",
-    fontFamily: "Inter",
+    flexShrink: 1,
   },
   heroBullet: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
     backgroundColor: "#64748b",
-    marginHorizontal: 5,
+    marginHorizontal: 6,
+    flexShrink: 0,
   },
   heroRecurrenceText: {
     fontSize: 12,
     fontWeight: "700",
     color: "#5eead4",
-    fontFamily: "Inter",
+    flexShrink: 1,
   },
   heroOccurrenceSub: {
     fontSize: 11,
     color: "#94a3b8",
-    fontFamily: "Inter",
     marginTop: 2,
   },
   heroOccurrenceHighlight: {
@@ -1677,14 +1764,19 @@ const styles = StyleSheet.create({
   heroStatusPill: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 3.5,
-    borderRadius: 20,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 16,
     borderWidth: 1,
+    flexShrink: 0,
   },
   heroStatusPillPaid: {
     backgroundColor: "rgba(16, 185, 129, 0.15)",
     borderColor: "rgba(52, 211, 153, 0.3)",
+  },
+  heroStatusPillSkipped: {
+    backgroundColor: "rgba(245, 158, 11, 0.15)",
+    borderColor: "rgba(251, 191, 36, 0.3)",
   },
   heroStatusPillActive: {
     backgroundColor: "rgba(59, 130, 246, 0.15)",
@@ -1697,49 +1789,46 @@ const styles = StyleSheet.create({
   heroStatusPillText: {
     fontSize: 11,
     fontWeight: "700",
-    fontFamily: "Inter",
   },
   heroMainTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "800",
     color: "#ffffff",
-    fontFamily: "Plus Jakarta Sans",
-    letterSpacing: -0.4,
-    marginBottom: 14,
-    lineHeight: 26,
+    letterSpacing: -0.3,
+    marginVertical: 10,
+    lineHeight: 28,
   },
   heroAmountBox: {
     backgroundColor: "rgba(255, 255, 255, 0.05)",
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderColor: "rgba(255, 255, 255, 0.08)",
     borderWidth: 1,
-    borderRadius: 18,
+    borderRadius: 16,
     paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     flexDirection: "row",
     alignItems: "stretch",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   heroAmountCol: {
     flex: 1,
+    minWidth: 0,
     justifyContent: "space-between",
   },
   heroAmountDivider: {
     width: 1,
     backgroundColor: "rgba(255, 255, 255, 0.1)",
-    marginHorizontal: 12,
+    marginHorizontal: 10,
   },
   heroAmountLabel: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: "800",
     letterSpacing: 0.8,
     color: "#94a3b8",
-    fontFamily: "Inter",
   },
   heroAmountValueDue: {
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: "800",
     color: "#ffffff",
-    fontFamily: "Plus Jakarta Sans",
     marginTop: 2,
     letterSpacing: -0.3,
   },
@@ -1752,68 +1841,74 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontSize: 11,
     color: "#94a3b8",
-    fontFamily: "Inter",
     fontWeight: "500",
+    flex: 1,
   },
   heroAmountValuePaid: {
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: "800",
     color: "#6ee7b7",
-    fontFamily: "Plus Jakarta Sans",
     marginTop: 2,
     letterSpacing: -0.3,
   },
   heroSettledBadge: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 20,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 12,
     borderWidth: 1,
     alignSelf: "flex-start",
+    maxWidth: "100%",
     marginTop: 4,
   },
   heroSettledBadgeText: {
     fontSize: 10.5,
     fontWeight: "700",
-    fontFamily: "Inter",
+    flexShrink: 1,
   },
   heroMetaGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
+    rowGap: 7,
   },
   heroMetaItem: {
     width: "48.5%",
     backgroundColor: "rgba(255, 255, 255, 0.04)",
     borderColor: "rgba(255, 255, 255, 0.08)",
     borderWidth: 1,
-    borderRadius: 14,
-    padding: 9,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 7,
   },
   heroMetaIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 9,
+    marginRight: 8,
+    flexShrink: 0,
+  },
+  heroMetaTextWrap: {
+    flex: 1,
+    minWidth: 0,
   },
   heroMetaLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: "#94a3b8",
-    fontFamily: "Inter",
-    fontWeight: "500",
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
   },
   heroMetaValue: {
     fontSize: 12,
     fontWeight: "700",
     color: "#ffffff",
-    fontFamily: "Inter",
     marginTop: 1,
   },
 

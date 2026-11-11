@@ -11,6 +11,7 @@ import {
   formatDueDate,
 } from '../services/billUtils';
 import CurrencyText from './CurrencyText';
+import { useTheme } from '../context/ThemeContext';
 
 function BillCard({
   bill,
@@ -20,7 +21,7 @@ function BillCard({
   onSkip,
   onEdit,
   onDelete,
-  isDarkMode,
+  isDarkMode: propIsDark,
 
   // CREDIT CARD EXPAND / COLLAPSE
   showExpandButton = false,
@@ -29,6 +30,8 @@ function BillCard({
 }) {
   const [menuVisible, setMenuVisible] = useState(false);
 
+  const { isDarkMode: globalIsDark } = useTheme();
+  const isDarkMode = propIsDark !== undefined ? propIsDark : globalIsDark;
   const theme = isDarkMode
     ? {
       cardBg: "#182234",

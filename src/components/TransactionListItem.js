@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../components/Theme';
+import { useTheme } from '../context/ThemeContext';
 import {
   getTransactionType,
   getAmountColor,
@@ -21,6 +22,7 @@ export default function TransactionListItem({
   hideAmount,
   onPress,
 }) {
+  const { theme } = useTheme();
   const type = getTransactionType(item);
   let amountColor = getAmountColor(type);
   let prefix = getAmountPrefix(type);
@@ -63,7 +65,9 @@ export default function TransactionListItem({
     >
       <View
         style={{
-          backgroundColor: '#FFFFFF',
+          backgroundColor: theme.cardBg,
+          borderColor: theme.border,
+          borderWidth: theme.isDark ? 1 : 0,
           borderRadius: 17,
           overflow: 'hidden',
 
@@ -151,7 +155,7 @@ export default function TransactionListItem({
                 fontSize: 15,
                 lineHeight: 19,
                 fontWeight: '800',
-                color: Colors.text,
+                color: theme.textPrimary,
                 letterSpacing: -0.15,
               }}
             >
@@ -173,12 +177,12 @@ export default function TransactionListItem({
                    <View
                       style={{
                         flexShrink: 0,
-                        backgroundColor: '#F1F3F5',
+                        backgroundColor: theme.isDark ? '#1E293B' : '#F1F3F5',
                         borderRadius: 6,
                         paddingHorizontal: 7,
                         paddingVertical: 4,
                         borderWidth: 1,
-                        borderColor: '#E5E7EB',
+                        borderColor: theme.isDark ? '#334155' : '#E5E7EB',
                         marginRight: 6,
                       }}
                     >
@@ -186,7 +190,7 @@ export default function TransactionListItem({
                         numberOfLines={1}
                         ellipsizeMode="tail"
                         style={{
-                          color: '#718096',
+                          color: theme.isDark ? '#94A3B8' : '#718096',
                           fontSize: 11,
                           lineHeight: 13,
                           fontWeight: '900',
@@ -203,7 +207,7 @@ export default function TransactionListItem({
                         ellipsizeMode="tail"
                         style={{
                           flexShrink: 1,
-                          color: '#9299A3',
+                          color: theme.textSecondary,
                           fontSize: 11,
                           lineHeight: 14,
                           fontWeight: '600',
@@ -222,7 +226,7 @@ export default function TransactionListItem({
                         ellipsizeMode="tail"
                         style={{
                           flexShrink: 1,
-                          color: '#9299A3',
+                          color: theme.textSecondary,
                           fontSize: 11,
                           lineHeight: 14,
                           fontWeight: '600',
@@ -283,7 +287,7 @@ export default function TransactionListItem({
                     style={{
                       flex: 1,
                       minWidth: 0,
-                      color: '#9299A3',
+                      color: theme.textSecondary,
                       fontSize: 11,
                       lineHeight: 14,
                       fontWeight: '600',
@@ -332,7 +336,7 @@ export default function TransactionListItem({
             {item.is_counted === 0 && (
               <View
                 style={{
-                  backgroundColor: '#F3F4F6',
+                  backgroundColor: theme.isDark ? '#1E293B' : '#F3F4F6',
                   borderRadius: 4,
                   paddingHorizontal: 6,
                   paddingVertical: 2,

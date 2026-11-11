@@ -10,6 +10,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getLoanPayments } from '../services/loans';
 import Card from '../components/Card';
+import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../components/Theme';
 
 const PAGE_SIZE = 30;
@@ -47,6 +48,7 @@ function getPaymentStyle(type = '') {
 }
 
 export default function LoanHistoryScreen({ route }) {
+  const { theme, isDarkMode } = useTheme();
   const loanId = route?.params?.id;
   const [payments, setPayments] = useState([]);
   const [query, setQuery] = useState('');
@@ -229,7 +231,7 @@ export default function LoanHistoryScreen({ route }) {
 
       <View style={styles.searchContainer}>
 
-        <View style={styles.searchBox}>
+        <View style={[styles.searchBox, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
 
           <MaterialCommunityIcons
             name="magnify"
@@ -242,7 +244,7 @@ export default function LoanHistoryScreen({ route }) {
             onChangeText={setQuery}
             placeholder="Search payment type, remarks..."
             placeholderTextColor="#94A3B8"
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: theme.textPrimary }]}
             selectionColor={Colors.primary}
             underlineColorAndroid="transparent"
             cursorColor={Colors.primary}
@@ -279,11 +281,11 @@ export default function LoanHistoryScreen({ route }) {
         renderSectionHeader={({ section }) => (
           <View style={styles.monthHeader}>
             <View>
-              <Text style={styles.monthTitle}>
+              <Text style={[styles.monthTitle, { color: theme.textPrimary }]}>
                 {section.title}
               </Text>
 
-              <Text style={styles.monthSubtitle}>
+              <Text style={[styles.monthSubtitle, { color: theme.textSecondary }]}>
                 {section.data.length} Payments • ₹
                 {section.total.toLocaleString('en-IN')}
               </Text>
@@ -335,7 +337,7 @@ export default function LoanHistoryScreen({ route }) {
                         flex: 1,
                       }}
                     >
-                      <Text style={styles.paymentTitle}>
+                      <Text style={[styles.paymentTitle, { color: theme.textPrimary }]}>
                         {item.payment_type === 'ADVANCE'
                           ? 'Additional Lending'
                           : item.payment_type === 'PREPAYMENT'
@@ -435,7 +437,7 @@ export default function LoanHistoryScreen({ route }) {
                   {!!item.remarks && (
                     <View
                       style={
-                        styles.notesBox
+                        [styles.notesBox, { backgroundColor: theme.cardBg }]
                       }
                     >
                       <MaterialCommunityIcons

@@ -15,11 +15,13 @@ import { getTransactions } from "../services/transactions";
 import events from "../services/events";
 import Card from "../components/Card";
 import calc from "../services/loanCalculations";
+import { useTheme } from '../context/ThemeContext';
 import { Colors } from "../components/Theme";
 import { useLoans } from "../redux/hooks";
 import CurrencyText from "../components/CurrencyText";
 
 function ActionButton({ icon, title, color, bg, onPress, width = "31%" }) {
+  const { isDarkMode, theme } = useTheme();
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -71,6 +73,7 @@ function ActionButton({ icon, title, color, bg, onPress, width = "31%" }) {
 }
 
 export default function LoanDetailsScreen({ route, navigation }) {
+  const { theme, isDarkMode } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
 
   const isSmallPhone = screenWidth < 380;
@@ -218,7 +221,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
     <ScrollView
       style={{
         flex: 1,
-        backgroundColor: Colors.background,
+        backgroundColor: theme.bg,
       }}
       contentContainerStyle={{
         paddingHorizontal: horizontalPadding,
@@ -436,7 +439,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
               key={index}
               style={{
                 width: isVerySmallPhone ? "100%" : "48%",
-                backgroundColor: "#F8FAFC",
+                backgroundColor: theme.bg,
                 padding: isSmallPhone ? 12 : 14,
                 borderRadius: 16,
                 marginBottom: 12,
@@ -666,9 +669,9 @@ export default function LoanDetailsScreen({ route, navigation }) {
                 minWidth: 0,
               }}
             >
-              <Text style={styles.activityTitle}>Loan Activity</Text>
+              <Text style={[styles.activityTitle, { color: theme.textPrimary }]}>Loan Activity</Text>
 
-              <Text style={styles.activitySubtitle} numberOfLines={2}>
+              <Text style={[styles.activitySubtitle, { color: theme.textSecondary }]} numberOfLines={2}>
                 Payments and top-ups recorded for this loan
               </Text>
             </View>
@@ -691,9 +694,9 @@ export default function LoanDetailsScreen({ route, navigation }) {
               />
             </View>
 
-            <Text style={styles.activityEmptyTitle}>No loan activity yet</Text>
+            <Text style={[styles.activityEmptyTitle, { color: theme.textPrimary }]}>No loan activity yet</Text>
 
-            <Text style={styles.activityEmptyText}>
+            <Text style={[styles.activityEmptyText, { color: theme.textSecondary }]}>
               Payments and additional borrowing will appear here.
             </Text>
           </View>
@@ -803,6 +806,7 @@ export default function LoanDetailsScreen({ route, navigation }) {
                     style={[
                       styles.activityItemCard,
                       {
+                        backgroundColor: theme.cardBg,
                         borderLeftColor: activityColor,
                       },
                     ]}
@@ -1310,7 +1314,7 @@ const styles = StyleSheet.create({
   activityItemCard: {
     flex: 1,
     minWidth: 0,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: '#F6F8FF',
     borderRadius: 16,
     padding: 12,
     borderLeftWidth: 3,

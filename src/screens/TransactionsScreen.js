@@ -16,6 +16,7 @@ import { Colors, Spacing } from '../components/Theme';
 import ContextualFAB from '../components/ContextualFAB';
 import { useFocusEffect } from '@react-navigation/native';
 import { usePageLoader } from '../context/PageLoaderContext';
+import { useTheme } from '../context/ThemeContext';
 import PageLoader from '../components/PageLoader';
 // Redux imports
 import {
@@ -31,6 +32,7 @@ import { useAppDispatch } from '../redux/hooks';
 import CurrencyText from '../components/CurrencyText';
 
 export default function TransactionsScreen({ navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const dispatch = useAppDispatch();
   const { visible: loaderVisible, show: showLoader, hide: hideLoader } = usePageLoader();
 
@@ -275,7 +277,7 @@ export default function TransactionsScreen({ navigation }) {
           style={{
             fontSize: 12,
             fontWeight: active ? '800' : '600',
-            color: active ? '#fff' : '#6B7280'
+            color: active ? "#fff" : (theme.isDark ? "#9CA3AF" : "#6B7280")
           }}>
 
           {label}
@@ -292,7 +294,7 @@ export default function TransactionsScreen({ navigation }) {
     <View
       style={{
         flex: 1,
-        backgroundColor: '#F8F9FB'
+        backgroundColor: theme.isDark ? '#111827' : '#F8F9FB'
       }}>
 
       {/* SEARCH */}
@@ -330,7 +332,7 @@ export default function TransactionsScreen({ navigation }) {
             style={{
               flex: 1,
               fontSize: 15,
-              color: Colors.text,
+              color: theme.textPrimary,
               paddingVertical: 0
             }} />
 

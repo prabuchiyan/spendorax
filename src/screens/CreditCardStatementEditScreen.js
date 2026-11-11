@@ -11,8 +11,10 @@ import { TextInput, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { updateCreditCardStatement } from '../services/creditCards';
 import events from '../services/events';
+import { useTheme } from '../context/ThemeContext';
 
 export default function CreditCardStatementEditScreen({ route, navigation }) {
+  const { isDarkMode, theme } = useTheme();
     const { editData } = route.params || {};
     const [openingBalance, setOpeningBalance] = useState('0');
     const [fees, setFees] = useState('0');
@@ -72,7 +74,7 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
 
     return (
         <KeyboardAvoidingView
-            style={{ flex: 1, backgroundColor: "#FFF" }}
+            style={{ flex: 1, backgroundColor: theme.bg }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
             <ScrollView
@@ -126,7 +128,7 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
 
                     {/* ── OPENING BALANCE ── */}
                     <View style={{ marginBottom: 20 }}>
-                        <Text style={{ fontSize: 13, color: "#64748B", fontWeight: "700", marginBottom: 8, marginLeft: 4 }}>
+                        <Text style={{ fontSize: 13, color: theme.textSecondary, fontWeight: "700", marginBottom: 8, marginLeft: 4 }}>
                             OPENING BALANCE
                         </Text>
                         <TextInput
@@ -134,9 +136,9 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
                             keyboardType="numeric"
                             value={openingBalance}
                             onChangeText={setOpeningBalance}
-                            outlineColor="#E2E8F0"
+                            outlineColor={theme.border}
                             activeOutlineColor={themeColor}
-                            style={{ backgroundColor: "#FAFAFA", fontSize: 18, fontWeight: '600' }}
+                            style={{ backgroundColor: theme.inputBg, fontSize: 18, fontWeight: '600' }}
                             disabled={saving}
                             left={<TextInput.Affix text="₹ " textStyle={{ fontSize: 18, color: '#94A3B8', fontWeight: '600' }} />}
                         />
@@ -145,29 +147,29 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
                     {/* ── FEES & INTEREST ── */}
                     <View style={{ flexDirection: 'row', marginBottom: 20 }}>
                         <View style={{ flex: 1, marginRight: 8 }}>
-                            <Text style={{ fontSize: 13, color: "#64748B", fontWeight: "700", marginBottom: 8, marginLeft: 4 }}>FEES</Text>
+                            <Text style={{ fontSize: 13, color: theme.textSecondary, fontWeight: "700", marginBottom: 8, marginLeft: 4 }}>FEES</Text>
                             <TextInput
                                 mode="outlined"
                                 keyboardType="numeric"
                                 value={fees}
                                 onChangeText={setFees}
-                                outlineColor="#E2E8F0"
+                                outlineColor={theme.border}
                                 activeOutlineColor={themeColor}
-                                style={{ backgroundColor: "#FAFAFA", fontSize: 16, fontWeight: '600' }}
+                                style={{ backgroundColor: theme.inputBg, fontSize: 16, fontWeight: '600' }}
                                 disabled={saving}
                                 left={<TextInput.Affix text="₹ " textStyle={{ color: '#94A3B8' }} />}
                             />
                         </View>
                         <View style={{ flex: 1, marginLeft: 8 }}>
-                            <Text style={{ fontSize: 13, color: "#64748B", fontWeight: "700", marginBottom: 8, marginLeft: 4 }}>INTEREST</Text>
+                            <Text style={{ fontSize: 13, color: theme.textSecondary, fontWeight: "700", marginBottom: 8, marginLeft: 4 }}>INTEREST</Text>
                             <TextInput
                                 mode="outlined"
                                 keyboardType="numeric"
                                 value={interest}
                                 onChangeText={setInterest}
-                                outlineColor="#E2E8F0"
+                                outlineColor={theme.border}
                                 activeOutlineColor={themeColor}
-                                style={{ backgroundColor: "#FAFAFA", fontSize: 16, fontWeight: '600' }}
+                                style={{ backgroundColor: theme.inputBg, fontSize: 16, fontWeight: '600' }}
                                 disabled={saving}
                                 left={<TextInput.Affix text="₹ " textStyle={{ color: '#94A3B8' }} />}
                             />
@@ -176,7 +178,7 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
 
                     {/* ── REFUNDS ── */}
                     <View style={{ marginBottom: 24 }}>
-                        <Text style={{ fontSize: 13, color: "#64748B", fontWeight: "700", marginBottom: 8, marginLeft: 4 }}>
+                        <Text style={{ fontSize: 13, color: theme.textSecondary, fontWeight: "700", marginBottom: 8, marginLeft: 4 }}>
                             REFUNDS
                         </Text>
                         <TextInput
@@ -184,9 +186,9 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
                             keyboardType="numeric"
                             value={refunds}
                             onChangeText={setRefunds}
-                            outlineColor="#E2E8F0"
+                            outlineColor={theme.border}
                             activeOutlineColor={themeColor}
-                            style={{ backgroundColor: "#FAFAFA", fontSize: 18, fontWeight: '600' }}
+                            style={{ backgroundColor: theme.inputBg, fontSize: 18, fontWeight: '600' }}
                             disabled={saving}
                             left={<TextInput.Affix text="₹ " textStyle={{ fontSize: 18, color: '#94A3B8', fontWeight: '600' }} />}
                         />
@@ -195,11 +197,11 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
                     {/* ── CALCULATION PREVIEW ── */}
                     <View
                         style={{
-                            backgroundColor: "#F8FAFC",
+                            backgroundColor: theme.cardBg,
                             borderRadius: 20,
                             padding: 20,
                             borderWidth: 1,
-                            borderColor: "#E2E8F0",
+                            borderColor: theme.border,
                             marginBottom: 24,
                         }}
                     >
@@ -211,14 +213,14 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
                         </View>
 
                         <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
-                            <Text style={{ fontSize: 14, color: "#64748B" }}>Opening Balance</Text>
+                            <Text style={{ fontSize: 14, color: theme.textSecondary }}>Opening Balance</Text>
                             <Text style={{ fontSize: 14, fontWeight: "600", color: "#1E293B" }}>
                                 ₹{parseVal(openingBalance).toFixed(2)}
                             </Text>
                         </View>
 
                         <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
-                            <Text style={{ fontSize: 14, color: "#64748B" }}>Purchases & Debits</Text>
+                            <Text style={{ fontSize: 14, color: theme.textSecondary }}>Purchases & Debits</Text>
                             <Text style={{ fontSize: 14, fontWeight: "600", color: "#1E293B" }}>
                                 + ₹{purchases.toFixed(2)}
                             </Text>
@@ -226,7 +228,7 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
 
                         {parseVal(fees) > 0 && (
                             <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
-                                <Text style={{ fontSize: 14, color: "#64748B" }}>Fees</Text>
+                                <Text style={{ fontSize: 14, color: theme.textSecondary }}>Fees</Text>
                                 <Text style={{ fontSize: 14, fontWeight: "600", color: "#DC2626" }}>
                                     + ₹{parseVal(fees).toFixed(2)}
                                 </Text>
@@ -235,7 +237,7 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
 
                         {parseVal(interest) > 0 && (
                             <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
-                                <Text style={{ fontSize: 14, color: "#64748B" }}>Interest</Text>
+                                <Text style={{ fontSize: 14, color: theme.textSecondary }}>Interest</Text>
                                 <Text style={{ fontSize: 14, fontWeight: "600", color: "#DC2626" }}>
                                     + ₹{parseVal(interest).toFixed(2)}
                                 </Text>
@@ -244,7 +246,7 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
 
                         {parseVal(refunds) > 0 && (
                             <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
-                                <Text style={{ fontSize: 14, color: "#64748B" }}>Refunds</Text>
+                                <Text style={{ fontSize: 14, color: theme.textSecondary }}>Refunds</Text>
                                 <Text style={{ fontSize: 14, fontWeight: "600", color: "#059669" }}>
                                     - ₹{parseVal(refunds).toFixed(2)}
                                 </Text>

@@ -31,7 +31,9 @@ import BillCard from "../components/BillCard";
 import BillCalendarView from "../components/BillCalendarView";
 import BillForm from "../components/BillForm";
 import ConfirmDialog from "../components/ConfirmDialog";
+import SkipBillModal from "../components/SkipBillModal";
 import { Colors, Spacing } from "../components/Theme";
+import { useTheme } from "../context/ThemeContext";
 import { BILL_STATUS } from "../services/billUtils";
 import CurrencyText from "../components/CurrencyText";
 import { getSources } from "../services/sources";
@@ -65,34 +67,8 @@ function isCreditCardBill(bill) {
 export default function BillsScreen({ navigation }) {
   const dispatch = useAppDispatch();
 
-  // Theme state
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const theme = {
-    bg: isDarkMode ? "#0B0F17" : "#F8F9FF",
-    headerBg: isDarkMode ? "#0B0F17" : "#F8F9FF",
-    cardBg: isDarkMode ? "#182234" : "#FFFFFF",
-    cardBorder: isDarkMode ? "#334155" : "#c6c6cd",
-    textPrimary: isDarkMode ? "#F3F4F6" : "#0B1C30",
-    textSecondary: isDarkMode ? "#9CA3AF" : "#45464D",
-    activeBg: isDarkMode ? "#1E293B" : "#eff4ff",
-    activeBorder: isDarkMode ? "#334155" : "#c6c6cd",
-    activeText: isDarkMode ? "#FFFFFF" : "#000000",
-    inactiveText: isDarkMode ? "#9CA3AF" : "#76777D",
-    searchBg: isDarkMode ? "#182234" : "#FFFFFF",
-    searchBorder: isDarkMode ? "#334155" : "#c6c6cd",
-    alertBg: isDarkMode ? "rgba(159, 18, 57, 0.4)" : "#ffdad6", // rose-950/40 vs error-container
-    alertBorder: isDarkMode ? "rgba(244, 63, 94, 0.3)" : "rgba(186, 26, 26, 0.2)",
-    alertIconBg: isDarkMode ? "rgba(244, 63, 94, 0.1)" : "#ffb4ab",
-    alertTextPrimary: isDarkMode ? "#FDA4AF" : "#93000a", // rose-300 vs on-error-container
-    alertTextSecondary: isDarkMode ? "#FBCFE8" : "#ba1a1a",
-    modalBg: isDarkMode ? "#182234" : "#FFFFFF",
-    modalText: isDarkMode ? "#F3F4F6" : "#0B1C30",
-    statementBg: isDarkMode ? "#111827" : "#f8f9ff",
-    iconBg: isDarkMode ? "#1E293B" : "#eff4ff",
-    iconColor: isDarkMode ? "#FFFFFF" : "#000000",
-    successBg: isDarkMode ? "#134E4A" : "#e5eeff", // teal-900 vs surface-container
-    successText: isDarkMode ? "#5EEAD4" : "#006a61", // teal-300 vs secondary
-  };
+  // Global theme
+  const { isDarkMode, theme } = useTheme();
 
   // Redux state
   const reduxBills = useBills();
@@ -118,6 +94,8 @@ export default function BillsScreen({ navigation }) {
   const [confirmTarget, setConfirmTarget] = useState(null);
   const [confirmMessage, setConfirmMessage] = useState("");
   const [confirmAction, setConfirmAction] = useState("delete");
+  const [skipModalVisible, setSkipModalVisible] = useState(false);
+  const [skipTarget, setSkipTarget] = useState(null);
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [showPaymentSourcePicker, setShowPaymentSourcePicker] = useState(false);
@@ -410,10 +388,8 @@ export default function BillsScreen({ navigation }) {
 
   function handleSkip(bill) {
     const actualBill = bill._displayOccurrence?.id ? bill._displayOccurrence : bill;
-    setConfirmTarget(actualBill);
-    setConfirmAction("skip");
-    setConfirmMessage(`Skip "${actualBill.name}" for this period?`);
-    setConfirmVisible(true);
+    setSkipTarget(actualBill);
+    setSkipModalVisible(true);
   }
 
   function handleDeleteBill(bill) {
@@ -716,16 +692,7 @@ export default function BillsScreen({ navigation }) {
         </View>
 
         <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <TouchableOpacity
-            onPress={() => setIsDarkMode(!isDarkMode)}
-            style={{
-              width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center",
-              backgroundColor: isDarkMode ? "#182234" : "#eff4ff",
-              borderWidth: 1, borderColor: isDarkMode ? "#334155" : "rgba(198, 198, 205, 0.4)", marginRight: 8
-            }}
-          >
-            <MaterialCommunityIcons name={isDarkMode ? "white-balance-sunny" : "moon-waning-crescent"} size={18} color={isDarkMode ? "#fbbf24" : "#0b1c30"} />
-          </TouchableOpacity>
+
           <TouchableOpacity
             onPress={() => setShowForm(true)}
             style={{
@@ -1354,9 +1321,9 @@ export default function BillsScreen({ navigation }) {
 
       <ConfirmDialog
         visible={confirmVisible}
-        title={confirmAction === "delete" ? "Delete Bill?" : "Skip Bill?"}
+        title="Delete Bill?"
         message={confirmMessage}
-        confirmLabel={confirmAction === "delete" ? "Delete Bill" : "Skip"}
+        confirmLabel="Delete Bill"
         cancelLabel="Cancel"
         onCancel={() => {
           setConfirmVisible(false);
@@ -1370,28 +1337,36 @@ export default function BillsScreen({ navigation }) {
           }
 
           try {
-            if (confirmAction === "delete") {
-              await deleteBill(confirmTarget.id);
-            } else {
-              await skipBill(confirmTarget.id);
-            }
-
+            await deleteBill(confirmTarget.id);
             setConfirmVisible(false);
             setConfirmTarget(null);
-
             await load();
           } catch (error) {
-            console.error("[BillsScreen] confirm action failed:", error);
-
+            console.error("[BillsScreen] delete action failed:", error);
             setConfirmVisible(false);
             setConfirmTarget(null);
+            Alert.alert("Error", "Unable to delete this bill.");
+          }
+        }}
+      />
 
-            Alert.alert(
-              "Error",
-              confirmAction === "delete"
-                ? "Unable to delete this bill."
-                : "Unable to skip this bill.",
-            );
+      <SkipBillModal
+        visible={skipModalVisible}
+        bill={skipTarget}
+        onCancel={() => {
+          setSkipModalVisible(false);
+          setSkipTarget(null);
+        }}
+        onConfirm={async () => {
+          if (!skipTarget?.id) return;
+          try {
+            await skipBill(skipTarget.id);
+            setSkipModalVisible(false);
+            setSkipTarget(null);
+            await load();
+          } catch (error) {
+            console.error("[BillsScreen] Skip failed:", error);
+            Alert.alert("Error", "Unable to skip this bill.");
           }
         }}
       />

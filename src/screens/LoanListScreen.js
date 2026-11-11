@@ -11,12 +11,14 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { getLoans } from "../services/loans";
 import LoanCard from "../components/LoanCard";
+import { useTheme } from '../context/ThemeContext';
 import { Colors } from "../components/Theme";
 import { useAppDispatch, useLoans } from '../redux/hooks';
 import { setLoans } from '../redux/slices/loanSlice';
 import events from "../services/events";
 
 export default function LoanListScreen({ navigation, route }) {
+  const { isDarkMode, theme } = useTheme();
   const dispatch = useAppDispatch();
   const reduxLoans = useLoans();
   const loans = reduxLoans || [];
@@ -218,7 +220,7 @@ export default function LoanListScreen({ navigation, route }) {
     <View
       style={{
         flex: 1,
-        backgroundColor: Colors.background,
+        backgroundColor: theme.bg,
       }}
     >
       <FlatList
@@ -342,9 +344,9 @@ export default function LoanListScreen({ navigation, route }) {
                     color="#64748B"
                     style={{ marginRight: 6 }}
                   />
-                  <Text style={styles.filterLabel}>Loan Type</Text>
+                  <Text style={[styles.filterLabel, { color: theme.textSecondary }]}>Loan Type</Text>
                 </View>
-                <Text style={styles.filterSelectedHint}>
+                <Text style={[styles.filterSelectedHint, { color: theme.textSecondary }]}>
                   {directionFilter === "ALL"
                     ? "All types"
                     : directionFilter === "BORROWED"
@@ -353,7 +355,7 @@ export default function LoanListScreen({ navigation, route }) {
                 </Text>
               </View>
 
-              <View style={styles.segmentContainer}>
+              <View style={[styles.segmentContainer, { backgroundColor: isDarkMode ? "#1e293b" : "#F1F5F9", borderColor: theme.border }]}>
                 {[
                   {
                     key: "ALL",
@@ -384,7 +386,7 @@ export default function LoanListScreen({ navigation, route }) {
                       style={[
                         styles.segmentButton,
                         isActive && [
-                          styles.segmentButtonActive,
+                          [styles.segmentButtonActive, { backgroundColor: isDarkMode ? "#182234" : "#FFFFFF" }],
                           { borderColor: tab.color + "30" },
                         ],
                       ]}

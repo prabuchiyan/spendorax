@@ -9,6 +9,7 @@ import CurrencyText from '../components/CurrencyText';
 import { Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Card from '../components/Card';
+import { useTheme } from '../context/ThemeContext';
 import { Colors, Spacing } from '../components/Theme';
 import { usePageLoader } from '../context/PageLoaderContext';
 import PageLoader from '../components/PageLoader';
@@ -225,6 +226,7 @@ function CategoryDonut({ data = [], categoriesMap = {} }) {
 }
 
 export default function SpendAreasDashboard({ route, navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const dispatch = useAppDispatch();
   const params = route?.params || {};
   const {
@@ -832,7 +834,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
   ]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
       <ScrollView contentContainerStyle={{ padding: Spacing.xs, paddingBottom: 120 }}>
         {/* MODE SELECTOR */}
         <View style={styles.tabContainer}>
@@ -1157,11 +1159,11 @@ export default function SpendAreasDashboard({ route, navigation }) {
               {/* SECTION HEADER */}
               <View style={styles.transactionsHeader}>
                 <View>
-                  <Text style={styles.transactionsTitle}>
+                  <Text style={[styles.transactionsTitle, { color: isDarkMode ? "#6EE7B7" : "#2F7355" }]}>
                     Transactions
                   </Text>
 
-                  <Text style={styles.transactionsSubtitle}>
+                  <Text style={[styles.transactionsSubtitle, { color: isDarkMode ? "#9CA3AF" : "#718078" }]}>
                     {selectedPeriod
                       ? `${formatPeriodLabel(selectedPeriod)} • ${selectedPeriodTransactions.length
                       } ${selectedPeriodTransactions.length === 1
@@ -1172,7 +1174,7 @@ export default function SpendAreasDashboard({ route, navigation }) {
                   </Text>
                 </View>
 
-                <View style={styles.transactionCountBadge}>
+                <View style={[styles.transactionCountBadge, { backgroundColor: isDarkMode ? "#1e293b" : "#E6F2EC" }]}>
                   <Text style={styles.transactionCountText}>
                     {selectedPeriodTransactions.length}
                   </Text>
@@ -1190,10 +1192,10 @@ export default function SpendAreasDashboard({ route, navigation }) {
                       color="#AEB4BC"
                     />
                   </View>
-                  <Text style={styles.emptyTransactionsTitle}>
+                  <Text style={[styles.emptyTransactionsTitle, { color: theme.textPrimary }]}>
                     No transactions yet
                   </Text>
-                  <Text style={styles.emptyTransactionsText}>
+                  <Text style={[styles.emptyTransactionsText, { color: theme.textSecondary }]}>
                     No expenses found for this period
                   </Text>
                 </View>

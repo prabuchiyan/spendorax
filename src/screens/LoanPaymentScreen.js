@@ -1,3 +1,4 @@
+import { useTheme } from '../context/ThemeContext';
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -27,6 +28,7 @@ function FieldCard({
   error,
   disabled = false,
 }) {
+  const { isDarkMode, theme } = useTheme();
   const hasError = !!error;
 
   return (
@@ -34,7 +36,7 @@ function FieldCard({
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={onPress}
-        style={[styles.fieldCard, hasError && styles.fieldCardError]}
+        style={[styles.fieldCard, { backgroundColor: theme.cardBg, borderColor: theme.border }, hasError && styles.fieldCardError]}
         disabled={disabled}
       >
         <View
@@ -53,7 +55,7 @@ function FieldCard({
         </View>
 
         <View style={{ flex: 1 }}>
-          <Text style={[styles.fieldTitle, hasError && styles.fieldTitleError]}>
+          <Text style={[styles.fieldTitle, { color: theme.textSecondary }, hasError && styles.fieldTitleError]}>
             {title}
             <Text style={styles.requiredMark}> *</Text>
           </Text>
@@ -205,6 +207,7 @@ function formatDateTime(value) {
 }
 
 export default function LoanPaymentScreen({ route, navigation }) {
+  const { theme, isDarkMode } = useTheme();
   const routeLoanId = route?.params?.id ?? route?.params?.loanId;
   const loanIdParam = routeLoanId != null ? Number(routeLoanId) : null;
   const mode = route?.params?.mode || "payment";
@@ -825,7 +828,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
           >
             <View
               style={{
-                backgroundColor: "#F8FAFC",
+                backgroundColor: theme.bg,
                 borderTopLeftRadius: 28,
                 borderTopRightRadius: 28,
                 padding: 20,
@@ -949,7 +952,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
           >
             <View
               style={{
-                backgroundColor: "#F8FAFC",
+                backgroundColor: theme.bg,
                 borderTopLeftRadius: 28,
                 borderTopRightRadius: 28,
                 padding: 20,
@@ -1057,7 +1060,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
           >
             <View
               style={{
-                backgroundColor: "#F8FAFC",
+                backgroundColor: theme.bg,
                 borderTopLeftRadius: 28,
                 borderTopRightRadius: 28,
                 padding: 20,
@@ -1117,7 +1120,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.categorySearchContainer}>
+              <View style={[styles.categorySearchContainer, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
                 <MaterialCommunityIcons
                   name="magnify"
                   size={22}
@@ -1129,7 +1132,7 @@ export default function LoanPaymentScreen({ route, navigation }) {
                   onChangeText={setCategorySearch}
                   placeholder={`Search ${categoryType} categories...`}
                   placeholderTextColor="#94A3B8"
-                  style={styles.categorySearchInput}
+                  style={[styles.categorySearchInput, { color: theme.textPrimary }]}
                   autoCorrect={false}
                 />
 

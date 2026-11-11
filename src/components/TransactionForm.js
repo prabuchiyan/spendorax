@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useTheme } from "../context/ThemeContext";
 import {
   View,
   TouchableOpacity,
@@ -45,6 +46,8 @@ import PageLoader from "../components/PageLoader";
 import { onCardTransactionChanged } from "../services/creditCardScheduler";
 
 export default function TransactionForm({
+
+  // ...props
   onCreated,
   onCancel,
   transaction,
@@ -54,6 +57,7 @@ export default function TransactionForm({
   categoryId: initialCategoryId,
   initialType,
 }) {
+  const { theme, isDarkMode } = useTheme();
   const {
     visible: loaderVisible,
     show: showPageLoader,
@@ -1375,7 +1379,7 @@ export default function TransactionForm({
 
           <View
             style={{
-              backgroundColor: "#fff",
+              backgroundColor: theme.cardBg,
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               padding: 20,
@@ -3164,7 +3168,7 @@ export default function TransactionForm({
         >
           <View
             style={{
-              backgroundColor: "#fff",
+              backgroundColor: theme.cardBg,
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               padding: 20,

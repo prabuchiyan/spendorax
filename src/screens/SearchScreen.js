@@ -15,6 +15,7 @@ import { getCategories } from '../services/categories';
 import { getSources } from '../services/sources';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Spacing } from '../components/Theme';
+import { useTheme } from '../context/ThemeContext';
 import { useFocusEffect } from '@react-navigation/native';
 import MuiDateTimePicker from '../components/MuiDateTimePicker';
 import {
@@ -31,6 +32,7 @@ import { getDateKey } from '../utils/dateUtils';
 import TransactionListItem from '../components/TransactionListItem';
 
 export default function SearchScreen({ navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const dispatch = useAppDispatch();
   const reduxCategories = useCategories();
   const categories = reduxCategories || [];
@@ -443,7 +445,7 @@ export default function SearchScreen({ navigation }) {
     <View
       style={{
         flex: 1,
-        backgroundColor: '#F8F9FB'
+        backgroundColor: theme.isDark ? '#111827' : '#F8F9FB'
       }}>
 
 
@@ -463,7 +465,7 @@ export default function SearchScreen({ navigation }) {
             style={{
               fontSize: 24,
               fontWeight: '800',
-              color: Colors.text,
+              color: theme.textPrimary,
               letterSpacing: -0.5
             }}>
             Search
@@ -494,7 +496,7 @@ export default function SearchScreen({ navigation }) {
           style={{
             height: 46,
             borderRadius: 13,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: theme.cardBg,
             borderWidth: 1,
             borderColor: '#E7E9ED',
 
@@ -756,7 +758,7 @@ export default function SearchScreen({ navigation }) {
         onRequestClose={() => setAdvancedModalVisible(false)}
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingVertical: 20, maxHeight: '92%' }}>
+          <View style={{ backgroundColor: theme.cardBg, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingVertical: 20, maxHeight: '92%' }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <Text style={{ fontSize: 22, fontWeight: '800', color: Colors.text, letterSpacing: -0.5 }}>Advanced Filters</Text>
               <TouchableOpacity onPress={() => setAdvancedModalVisible(false)} style={{ backgroundColor: '#F3F4F6', padding: 6, borderRadius: 20 }}>

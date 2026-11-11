@@ -18,6 +18,7 @@ import BillsScreen from '../src/screens/BillsScreen';
 import { Colors } from '../src/components/Theme';
 import { Switch } from 'react-native';
 import { useBalanceVisibility } from '../src/context/BalanceVisibilityContext';
+import { useTheme } from '../src/context/ThemeContext';
 
 const Drawer = createDrawerNavigator();
 
@@ -37,20 +38,21 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
   const { state, navigation } = props;
   const activeRouteName = state.routeNames[state.index];
   const { balanceVisible, toggleBalance } = useBalanceVisibility();
+  const { isDarkMode, toggleDarkMode, theme } = useTheme();
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <View style={[styles.headerContainer, { paddingTop: insets.top + 20 }]}>
+    <View style={{ flex: 1, backgroundColor: theme.drawerBg }}>
+      <View style={[styles.headerContainer, { paddingTop: insets.top + 20, backgroundColor: theme.drawerBg }]}>
         <View style={styles.avatarContainer}>
           <Image source={require('../assets/logo.png')} style={{ width: 56, height: 56, resizeMode: 'contain' }} />
         </View>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.appName}>SpendoraX</Text>
-          <Text style={styles.appVersion}>v4.6.6</Text>
+          <Text style={[styles.appName, { color: theme.textPrimary }]}>SpendoraX</Text>
+          <Text style={[styles.appVersion, { color: theme.textSecondary }]}>v4.6.6</Text>
         </View>
       </View>
 
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: theme.drawerDivider }]} />
 
       <DrawerContentScrollView {...props} contentContainerStyle={styles.scrollContainer}>
         {menuItems.map((item) => {
@@ -73,10 +75,10 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
               <MaterialCommunityIcons
                 name={isActive ? item.activeIcon : item.icon}
                 size={22}
-                color={isActive ? '#fff' : '#666'}
+                color={isActive ? '#fff' : theme.textSecondary}
                 style={styles.drawerIcon}
               />
-              <Text style={[styles.drawerLabel, isActive && styles.drawerLabelActive]}>
+              <Text style={[styles.drawerLabel, { color: theme.drawerText }, isActive && styles.drawerLabelActive]}>
                 {item.label}
               </Text>
             </TouchableOpacity>
@@ -84,21 +86,38 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
         })}
       </DrawerContentScrollView>
 
-      <View style={[styles.footerContainer, { paddingBottom: insets.bottom + 20 }]}>
+      <View style={[styles.footerContainer, { paddingBottom: insets.bottom + 20, borderTopColor: theme.drawerDivider }]}>
         {/* ── BALANCE TOGGLE ── */}
         <View style={styles.footerButton}>
           <MaterialCommunityIcons
             name={balanceVisible ? 'eye-outline' : 'eye-off-outline'}
             size={18}
-            color="#666"
+            color={theme.textSecondary}
             style={{ marginRight: 10 }}
           />
-          <Text style={[styles.footerText, { flex: 1 }]}>Show Balance</Text>
+          <Text style={[styles.footerText, { flex: 1, color: theme.drawerText }]}>Show Balance</Text>
           <Switch
             value={balanceVisible}
             onValueChange={toggleBalance}
-            trackColor={{ false: '#ddd', true: Colors.primary + '80' }}
-            thumbColor={balanceVisible ? Colors.primary : '#aaa'}
+            trackColor={{ false: theme.border, true: Colors.primary + '80' }}
+            thumbColor={balanceVisible ? Colors.primary : theme.textMuted}
+          />
+        </View>
+
+        {/* ── DARK MODE TOGGLE ── */}
+        <View style={styles.footerButton}>
+          <MaterialCommunityIcons
+            name={isDarkMode ? 'weather-night' : 'white-balance-sunny'}
+            size={18}
+            color={isDarkMode ? '#F59E0B' : theme.textSecondary}
+            style={{ marginRight: 10 }}
+          />
+          <Text style={[styles.footerText, { flex: 1, color: theme.drawerText }]}>Dark Mode</Text>
+          <Switch
+            value={isDarkMode}
+            onValueChange={toggleDarkMode}
+            trackColor={{ false: theme.border, true: Colors.primary + '80' }}
+            thumbColor={isDarkMode ? Colors.primary : theme.textMuted}
           />
         </View>
 
@@ -111,8 +130,8 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
             });
           }}
         >
-          <MaterialCommunityIcons name="bell-outline" size={18} color="#666" style={{ marginRight: 10 }} />
-          <Text style={styles.footerText}>Notifications</Text>
+          <MaterialCommunityIcons name="bell-outline" size={18} color={theme.textSecondary} style={{ marginRight: 10 }} />
+          <Text style={[styles.footerText, { color: theme.drawerText }]}>Notifications</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -124,8 +143,8 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
             });
           }}
         >
-          <MaterialCommunityIcons name="security" size={18} color="#666" style={{ marginRight: 10 }} />
-          <Text style={styles.footerText}>Security</Text>
+          <MaterialCommunityIcons name="security" size={18} color={theme.textSecondary} style={{ marginRight: 10 }} />
+          <Text style={[styles.footerText, { color: theme.drawerText }]}>Security</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -137,8 +156,8 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
             });
           }}
         >
-          <Feather name="settings" size={18} color="#666" style={{ marginRight: 10 }} />
-          <Text style={styles.footerText}>Settings & Backup</Text>
+          <Feather name="settings" size={18} color={theme.textSecondary} style={{ marginRight: 10 }} />
+          <Text style={[styles.footerText, { color: theme.drawerText }]}>Settings & Backup</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -146,6 +165,8 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
 });
 
 export default function DrawerNavigator() {
+  const { isDarkMode, theme } = useTheme();
+
   return (
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawerContent {...props} />}
@@ -155,21 +176,26 @@ export default function DrawerNavigator() {
           borderTopRightRadius: 20,
           borderBottomRightRadius: 20,
           overflow: 'hidden',
+          backgroundColor: theme.drawerBg,
         },
         drawerType: 'front',
         animationDuration: 180,
-        overlayColor: 'rgba(0,0,0,0.5)',
-        headerTintColor: '#333',
+        overlayColor: isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.5)',
+        headerTintColor: theme.headerText,
         headerTitleStyle: {
           fontWeight: '700',
           fontSize: 18,
+          color: theme.headerText,
         },
         headerStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: theme.headerBg,
           elevation: 0,
           shadowOpacity: 0,
           borderBottomWidth: 1,
-          borderBottomColor: '#f0f0f0',
+          borderBottomColor: theme.headerBorder,
+        },
+        sceneContainerStyle: {
+          backgroundColor: theme.bg,
         },
         headerLeft: () => (
           <TouchableOpacity

@@ -11,6 +11,7 @@ import {
 import { getSources } from '../services/sources';
 import { getSourceTransactionBalances } from '../services/transactions';
 import { getCreditCards } from '../services/creditCards';
+import { useTheme } from '../context/ThemeContext';
 import { Colors, Spacing } from '../components/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
@@ -21,6 +22,7 @@ import { setSources } from '../redux/slices/sourceSlice';
 import { useAppDispatch, useSourcesList } from '../redux/hooks';
 
 export default function SourcesDashboard({ navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const dispatch = useAppDispatch();
   const reduxSources = useSourcesList();
   const sources = reduxSources || [];
@@ -133,7 +135,7 @@ export default function SourcesDashboard({ navigation }) {
   // UI
   if (loading) {
     return (
-      <View style={styles.loaderContainer}>
+      <View style={[styles.loaderContainer, { backgroundColor: theme.bg }]}>
         <ActivityIndicator
           size="large"
           color={Colors.primary} />
@@ -147,11 +149,11 @@ export default function SourcesDashboard({ navigation }) {
   const sourceCount = filteredSources.length;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
 
       {/* ACCOUNT TYPE SWITCHER */}
-      <View style={styles.tabArea}>
-        <View style={styles.tabContainer}>
+      <View style={[styles.tabArea, { backgroundColor: theme.bg }]}>
+        <View style={[styles.tabContainer, { backgroundColor: isDarkMode ? "#1e293b" : "#EEF1F5" }]}>
 
           {/* BANKS & OTHERS */}
           <TouchableOpacity
@@ -241,7 +243,7 @@ export default function SourcesDashboard({ navigation }) {
 
 
         {/* AVAILABLE BALANCE */}
-        <View style={styles.balanceCard}>
+        <View style={[styles.balanceCard, isDarkMode && { backgroundColor: "#182234", borderWidth: 1, borderColor: "#334155" }]}>
 
           <View style={styles.balanceTopRow}>
 
@@ -317,19 +319,19 @@ export default function SourcesDashboard({ navigation }) {
           <View style={styles.sectionHeader}>
 
             <View>
-              <Text style={styles.sectionTitle}>
+              <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
                 {tab === 'creditCards' ?
                   'Your Credit Cards' :
                   'Your Sources'}
               </Text>
 
-              <Text style={styles.sectionSubtitle}>
+              <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
                 Tap an account to view details
               </Text>
             </View>
 
-            <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>
+            <View style={[styles.countBadge, { backgroundColor: isDarkMode ? "#1e293b" : "#EEF3FF" }]}>
+              <Text style={[styles.countBadgeText, { color: isDarkMode ? "#60A5FA" : Colors.primary }]}>
                 {sourceCount}
               </Text>
             </View>
@@ -353,7 +355,7 @@ export default function SourcesDashboard({ navigation }) {
 
             </View>
 
-            <Text style={styles.emptyTitle}>
+            <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
               No{' '}
               {tab === 'creditCards' ?
                 'credit cards' :
@@ -361,7 +363,7 @@ export default function SourcesDashboard({ navigation }) {
               yet
             </Text>
 
-            <Text style={styles.emptyText}>
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
               Add a{' '}
               {tab === 'creditCards' ?
                 'credit card' :
@@ -754,7 +756,7 @@ export default function SourcesDashboard({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background
+    backgroundColor: '#F6F8FF'
   },
   content: {
     paddingHorizontal: 14,
@@ -765,7 +767,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.background,
+    backgroundColor: '#F6F8FF',
     padding: Spacing.md
   },
   loaderText: {
@@ -778,7 +780,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 10,
     paddingBottom: 4,
-    backgroundColor: Colors.background
+    backgroundColor: '#F6F8FF'
   },
   tabContainer: {
     flexDirection: 'row',

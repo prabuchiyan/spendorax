@@ -4,6 +4,7 @@ import Card from './Card';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from './Theme';
 import CurrencyText from './CurrencyText';
+import { useTheme } from '../context/ThemeContext';
 
 const typeIcon = (t) => {
   switch ((t||'').toLowerCase()) {
@@ -17,6 +18,7 @@ const typeIcon = (t) => {
 };
 
 export default function ActiveLoanCard({ loan }) {
+  const { isDarkMode, theme } = useTheme();
   const pct = useMemo(() => {
     const paid = Number(loan.principal_paid || 0) + Number(loan.interest_paid || 0);
     const total = Number(loan.total_paid || 0) + Number(loan.outstanding_amount || 0);
@@ -29,24 +31,24 @@ export default function ActiveLoanCard({ loan }) {
       <View style={styles.row}>
         <MaterialCommunityIcons name={typeIcon(loan.loan_type)} size={36} color={Colors.primary} />
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.name}>{loan.loan_name}</Text>
-          <Text style={styles.lender}>{loan.lender}</Text>
+          <Text style={[styles.name, { color: theme.textPrimary }]}>{loan.loan_name}</Text>
+          <Text style={[styles.lender, { color: theme.textSecondary }]}>{loan.lender}</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={styles.outstanding}><CurrencyText amount={loan.outstanding_amount} /></Text>
-          <Text style={styles.emi}>EMI <CurrencyText amount={loan.emi_amount} /></Text>
+          <Text style={[styles.outstanding, { color: theme.textPrimary }]}><CurrencyText amount={loan.outstanding_amount} /></Text>
+          <Text style={[styles.emi, { color: theme.textSecondary }]}>EMI <CurrencyText amount={loan.emi_amount} /></Text>
         </View>
       </View>
 
       <View style={{ height: 10 }} />
       <View style={styles.progressRow}>
-        <View style={styles.progressText}><Text style={{ fontWeight: '800' }}>{pct}%</Text><Text style={{ color: Colors.muted, fontSize: 11, marginLeft: 8 }}>Paid</Text></View>
-        <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${pct}%` }]} /></View>
+        <View style={styles.progressText}><Text style={{ fontWeight: '800', color: theme.textPrimary }}>{pct}%</Text><Text style={{ color: Colors.muted, fontSize: 11, marginLeft: 8 }}>Paid</Text></View>
+        <View style={[styles.progressBarBg, { backgroundColor: isDarkMode ? "#334155" : "#f1f5f9" }]}><View style={[styles.progressBarFill, { width: `${pct}%` }]} /></View>
       </View>
       <View style={{ height: 8 }} />
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <Text style={{ color: Colors.muted, fontSize: 12 }}>{loan.remaining_months || 0} months</Text>
-        <Text style={{ color: Colors.muted, fontSize: 12 }}>Next EMI {loan.nextEmiDate ? new Date(loan.nextEmiDate).toLocaleDateString() : '-'}</Text>
+        <Text style={{ color: theme.textSecondary, fontSize: 12 }}>{loan.remaining_months || 0} months</Text>
+        <Text style={{ color: theme.textSecondary, fontSize: 12 }}>Next EMI {loan.nextEmiDate ? new Date(loan.nextEmiDate).toLocaleDateString() : '-'}</Text>
       </View>
     </Card>
   );

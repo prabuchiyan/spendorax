@@ -19,6 +19,7 @@ import {
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { exportBackup, pickBackupFile, restoreBackup } from '../services/backup';
+import { useTheme } from '../context/ThemeContext';
 import { Colors, Spacing } from '../components/Theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAutomaticBackupConfig, setAutomaticBackupConfig, getAutomaticBackupStatus } from '../services/automaticBackupService';
@@ -27,6 +28,7 @@ import MuiDateTimePicker from '../components/MuiDateTimePicker';
 const LAST_BACKUP_KEY = 'mm_last_backup_time';
 
 export default function BackupScreen() {
+  const { isDarkMode, theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [progressPercentage, setProgressPercentage] = useState(-1);
   const [progressMessage, setProgressMessage] = useState('');
@@ -224,7 +226,7 @@ export default function BackupScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
       <ScrollView contentContainerStyle={{ padding: Spacing.xs }}>
         <Card style={styles.card}>
           <Card.Content>

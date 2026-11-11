@@ -21,6 +21,7 @@ import {
   getTransferInfoForTransaction,
 } from '../services/bills';
 import { Colors } from './Theme';
+import { useTheme } from '../context/ThemeContext';
 import { formatDueDate, getBillDisplayStatus } from '../services/billUtils';
 import CurrencyText from './CurrencyText';
 
@@ -33,6 +34,7 @@ export default function LinkedBillCard({
   const [transferInfo, setTransferInfo] = useState(null);
   const [selectedLeg, setSelectedLeg] = useState('expense');
   const [loading, setLoading] = useState(true);
+  const { isDarkMode, theme } = useTheme();
 
   // Unlinking confirmation state
   const [unlinkingBill, setUnlinkingBill] = useState(null);
@@ -147,14 +149,14 @@ export default function LinkedBillCard({
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
         <ActivityIndicator size="small" color={Colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.cardBg, borderColor: theme.border, borderWidth: theme.isDark ? 1 : 0 }]}>
       {/* Header */}
       <View style={styles.headerRow}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
@@ -163,7 +165,7 @@ export default function LinkedBillCard({
             size={16}
             color={Colors.primary}
           />
-          <Text style={styles.headerText}>
+          <Text style={[styles.headerText, { color: theme.textPrimary }]}>
             Linked Bill{bills.length > 1 ? 's' : ''}
           </Text>
           {bills.length > 0 && (
@@ -190,7 +192,7 @@ export default function LinkedBillCard({
 
       {/* Empty State */}
       {bills.length === 0 ? (
-        <View style={styles.emptyContainer}>
+        <View style={[styles.emptyContainer, { backgroundColor: theme.isDark ? "#1E293B" : "#FFFFFF", borderColor: theme.border }]}>
           <MaterialCommunityIcons
             name="link-variant-off"
             size={22}
@@ -203,7 +205,7 @@ export default function LinkedBillCard({
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => setShowLinkModal(true)}
-            style={styles.emptyLinkBtn}
+            style={[styles.emptyLinkBtn, { backgroundColor: theme.isDark ? "#1E293B" : "#EEF2FF" }]}
           >
             <Text style={styles.emptyLinkBtnText}>+ Link to Bill</Text>
           </TouchableOpacity>
@@ -223,7 +225,7 @@ export default function LinkedBillCard({
             <View
               key={bill.id}
               style={[
-                styles.billRow,
+                styles.billRow, { backgroundColor: theme.isDark ? "#1E293B" : "#FFFFFF" },
                 { borderLeftColor: display.color },
                 isDeleted && styles.billRowDeleted,
               ]}
@@ -256,7 +258,7 @@ export default function LinkedBillCard({
                       flexWrap: 'wrap',
                     }}
                   >
-                    <Text style={styles.billName} numberOfLines={1}>
+                    <Text style={[styles.billName, { color: theme.textPrimary }]} numberOfLines={1}>
                       {bill.name}
                     </Text>
                     {isDeleted && (
@@ -265,7 +267,7 @@ export default function LinkedBillCard({
                       </View>
                     )}
                   </View>
-                  <Text style={styles.billSub}>
+                  <Text style={[styles.billSub, { color: theme.textSecondary }]}>
                     {isDeleted
                       ? `Due ${formatDueDate(bill.due_date)}  ·  Deleted Bill`
                       : bill.is_partially_paid || (Number(bill.paid_amount || 0) > 0 && Number(bill.paid_amount || 0) < Number(bill.amount || 0))
@@ -336,7 +338,7 @@ export default function LinkedBillCard({
           }}
         >
           <Pressable
-            style={styles.unlinkModalCard}
+            style={[styles.unlinkModalCard, { backgroundColor: theme.cardBg, borderColor: theme.border, borderWidth: theme.isDark ? 1 : 0 }]}
             onPress={(e) => {
               if (e && e.stopPropagation) e.stopPropagation();
             }}
@@ -351,13 +353,13 @@ export default function LinkedBillCard({
             </View>
 
             {/* Title & Subtitle */}
-            <Text style={styles.unlinkModalTitle}>
+            <Text style={[styles.unlinkModalTitle, { color: theme.textPrimary }]}>
               {unlinkingBill?.is_deleted || unlinkingBill?.deleted_at
                 ? 'Unlink Deleted Bill?'
                 : 'Unlink Bill?'}
             </Text>
 
-            <Text style={styles.unlinkModalSubtitle}>
+            <Text style={[styles.unlinkModalSubtitle, { color: theme.textSecondary }]}>
               {unlinkingBill?.is_deleted || unlinkingBill?.deleted_at
                 ? 'This bill was previously deleted. Unlinking will remove the link from this transaction.'
                 : 'Are you sure you want to unlink this bill? The bill will be returned to pending status.'}
@@ -365,7 +367,7 @@ export default function LinkedBillCard({
 
             {/* Bill Details Preview Card */}
             {unlinkingBill && (
-              <View style={styles.unlinkBillPreview}>
+              <View style={[styles.unlinkBillPreview, { backgroundColor: theme.bg, borderColor: theme.border }]}>
                 <View style={styles.unlinkBillIconWrap}>
                   <MaterialCommunityIcons
                     name={
@@ -378,17 +380,17 @@ export default function LinkedBillCard({
                   />
                 </View>
                 <View style={{ flex: 1, marginRight: 10 }}>
-                  <Text style={styles.unlinkBillPreviewName} numberOfLines={1}>
+                  <Text style={[styles.unlinkBillPreviewName, { color: theme.textPrimary }]} numberOfLines={1}>
                     {unlinkingBill.name}
                   </Text>
-                  <Text style={styles.unlinkBillPreviewSub}>
+                  <Text style={[styles.unlinkBillPreviewSub, { color: theme.textSecondary }]}>
                     {unlinkingBill.due_date
                       ? `Due ${formatDueDate(unlinkingBill.due_date)}`
                       : 'No due date'}
                   </Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.unlinkBillPreviewAmount}>
+                  <Text style={[styles.unlinkBillPreviewAmount, { color: theme.textPrimary }]}>
                     <CurrencyText amount={Number(unlinkingBill.amount || 0)} />
                   </Text>
                   {unlinkingBill.is_deleted || unlinkingBill.deleted_at ? (
@@ -418,12 +420,12 @@ export default function LinkedBillCard({
             {/* Action Buttons Row */}
             <View style={styles.unlinkActionRow}>
               <TouchableOpacity
-                style={styles.unlinkCancelBtn}
+                style={[styles.unlinkCancelBtn, { backgroundColor: theme.isDark ? '#334155' : '#F1F5F9' }]}
                 activeOpacity={0.7}
                 onPress={() => setUnlinkingBill(null)}
                 disabled={unlinking}
               >
-                <Text style={styles.unlinkCancelBtnText}>Cancel</Text>
+                <Text style={[styles.unlinkCancelBtnText, { color: theme.isDark ? '#F3F4F6' : '#475569' }]}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -459,13 +461,13 @@ export default function LinkedBillCard({
         onRequestClose={() => setShowLinkModal(false)}
       >
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalSheet}>
+          <View style={[styles.modalSheet, { backgroundColor: theme.cardBg }]}>
             <View style={styles.sheetHandle} />
 
             <View style={styles.modalHeaderRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.modalHeaderTitle}>Link to a Bill</Text>
-                <Text style={styles.modalHeaderSubtitle}>
+                <Text style={[styles.modalHeaderTitle, { color: theme.textPrimary }]}>Link to a Bill</Text>
+                <Text style={[styles.modalHeaderSubtitle, { color: theme.textSecondary }]}>
                   Select an active bill to associate with this transaction
                 </Text>
               </View>
@@ -480,8 +482,8 @@ export default function LinkedBillCard({
 
             {/* Transfer Leg Option Selector */}
             {transferInfo && (
-              <View style={styles.transferLegBox}>
-                <Text style={styles.transferLegBoxLabel}>Link Bill To:</Text>
+              <View style={[styles.transferLegBox, { backgroundColor: theme.bg, borderColor: theme.border }]}>
+                <Text style={[styles.transferLegBoxLabel, { color: theme.textSecondary }]}>Link Bill To:</Text>
                 <View style={styles.transferLegRow}>
                   <TouchableOpacity
                     style={[
@@ -500,13 +502,13 @@ export default function LinkedBillCard({
                     <View style={{ flex: 1 }}>
                       <Text
                         style={[
-                          styles.transferLegChipTitle,
+                          styles.transferLegChipTitle, { color: theme.textPrimary },
                           selectedLeg === 'expense' && styles.transferLegChipTitleActiveExpense,
                         ]}
                       >
                         Expense ({transferInfo.expenseSourceName || 'Source Account'})
                       </Text>
-                      <Text style={styles.transferLegChipSub}>Outflow payment (Recommended)</Text>
+                      <Text style={[styles.transferLegChipSub, { color: theme.textSecondary }]}>Outflow payment (Recommended)</Text>
                     </View>
                   </TouchableOpacity>
 
@@ -533,7 +535,7 @@ export default function LinkedBillCard({
                       >
                         Credit ({transferInfo.creditSourceName || 'Destination Account'})
                       </Text>
-                      <Text style={styles.transferLegChipSub}>Inflow receipt</Text>
+                      <Text style={[styles.transferLegChipSub, { color: theme.textSecondary }]}>Inflow receipt</Text>
                     </View>
                   </TouchableOpacity>
                 </View>
@@ -541,7 +543,7 @@ export default function LinkedBillCard({
             )}
 
             {/* Search Input */}
-            <View style={styles.searchContainer}>
+            <View style={[styles.searchContainer, { backgroundColor: theme.bg, borderColor: theme.border }]}>
               <MaterialCommunityIcons
                 name="magnify"
                 size={20}
@@ -552,8 +554,8 @@ export default function LinkedBillCard({
                 placeholder="Search bills by name or amount..."
                 value={searchText}
                 onChangeText={setSearchText}
-                style={styles.searchInput}
-                placeholderTextColor="#94a3b8"
+                style={[styles.searchInput, { color: theme.textPrimary }]}
+                placeholderTextColor={theme.textMuted}
                 autoCapitalize="none"
               />
               {searchText ? (
@@ -585,10 +587,10 @@ export default function LinkedBillCard({
                   size={40}
                   color="#94a3b8"
                 />
-                <Text style={styles.emptyCandidatesTitle}>
+                <Text style={[styles.emptyCandidatesTitle, { color: theme.textPrimary }]}>
                   No matching bills found
                 </Text>
-                <Text style={styles.emptyCandidatesSub}>
+                <Text style={[styles.emptyCandidatesSub, { color: theme.textSecondary }]}>
                   {searchText
                     ? 'Try adjusting your search criteria'
                     : 'All active bills are already linked or no pending bills exist.'}
@@ -606,7 +608,7 @@ export default function LinkedBillCard({
 
                   return (
                     <TouchableOpacity
-                      style={styles.candidateRow}
+                      style={[styles.candidateRow, { borderBottomColor: theme.border }]}
                       activeOpacity={0.7}
                       disabled={isLinking}
                       onPress={() => handleSelectBillToLink(item)}
@@ -615,10 +617,10 @@ export default function LinkedBillCard({
                         style={[styles.dot, { backgroundColor: display.color }]}
                       />
                       <View style={{ flex: 1, marginRight: 8 }}>
-                        <Text style={styles.candidateName} numberOfLines={1}>
+                        <Text style={[styles.candidateName, { color: theme.textPrimary }]} numberOfLines={1}>
                           {item.name}
                         </Text>
-                        <Text style={styles.candidateSub}>
+                        <Text style={[styles.candidateSub, { color: theme.textSecondary }]}>
                           Due {formatDueDate(item.due_date)}
                           {item.is_partially_paid
                             ? ` · ₹${Number(item.total_paid || 0).toLocaleString()} of ₹${Number(item.amount || 0).toLocaleString()} paid`

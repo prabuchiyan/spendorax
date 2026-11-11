@@ -7,6 +7,7 @@ import { Provider as ReduxProvider } from 'react-redux';
 import store from './src/redux/store';
 import ErrorBoundary from './src/screens/ErrorBoundary';
 import { BalanceVisibilityProvider } from './src/context/BalanceVisibilityContext';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { PageLoaderProvider } from './src/context/PageLoaderContext';
 import { AppLockProvider } from './src/context/AppLockContext';
 import AppLockWrapper from './src/components/AppLockWrapper';
@@ -70,6 +71,112 @@ TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
 });
 
 const Stack = createNativeStackNavigator();
+
+function ThemedAppContent({ navigationRef, visible, hideDialog }) {
+  const { isDarkMode, theme } = useTheme();
+
+  return (
+    <PaperProvider
+      theme={{
+        ...PaperDefaultTheme,
+        dark: isDarkMode,
+        colors: {
+          ...PaperDefaultTheme.colors,
+          primary: theme.primary,
+          accent: theme.accent,
+          background: theme.bg,
+          surface: theme.cardBg,
+          text: theme.textPrimary,
+        },
+      }}
+    >
+      <StatusBar
+        style={isDarkMode ? 'light' : 'light'}
+        backgroundColor={isDarkMode ? '#0B0F17' : '#0B1F3A'}
+      />
+      <PageLoaderProvider>
+        <BalanceVisibilityProvider>
+          <AppLockProvider>
+            <AppLockWrapper>
+              <NavigationContainer
+                ref={navigationRef}
+                onReady={() => processPendingNotification(navigationRef)}
+                theme={{
+                  dark: isDarkMode,
+                  colors: {
+                    primary: theme.primary,
+                    background: theme.bg,
+                    card: theme.headerBg,
+                    text: theme.headerText,
+                    border: theme.border,
+                    notification: theme.accent,
+                  },
+                }}
+              >
+                <Stack.Navigator
+                  screenOptions={{
+                    headerStyle: {
+                      backgroundColor: theme.headerBg,
+                    },
+                    headerTintColor: theme.headerText,
+                    headerTitleStyle: {
+                      fontWeight: '700',
+                      color: theme.headerText,
+                    },
+                    contentStyle: {
+                      backgroundColor: theme.bg,
+                    },
+                  }}
+                >
+                  <Stack.Screen
+                    name="Drawer"
+                    component={DrawerNavigator}
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen name="Search" component={SearchScreen} />
+                  <Stack.Screen name="TransactionAdd" component={TransactionAddScreen} options={{ title: 'Add Transaction' }} />
+                  <Stack.Screen name="SourcesDashboard" component={SourcesDashboard} />
+                  <Stack.Screen name="SourcesDetails" component={SourcesDetails} />
+                  <Stack.Screen name="SpendAreasDashboard" component={SpendAreasDashboard} options={{ title: 'Spent Areas' }} />
+                  <Stack.Screen name="CategoryBudgetsDashboard" component={CategoryBudgetsDashboard} options={{ title: 'Category Budgets' }} />
+                  <Stack.Screen name="CategoriesDetails" component={CategoriesDetails} />
+                  <Stack.Screen name="CategoryCreate" component={CategoryCreateScreen} options={{ title: 'Category Details' }} />
+                  <Stack.Screen name="BudgetCreate" component={BudgetCreateScreen} options={{ title: 'Budget Details' }} />
+                  <Stack.Screen name="SourceCreate" component={SourceCreateScreen} options={{ title: 'Account Details' }} />
+                  <Stack.Screen name="CreditCardCreate" component={CreditCardCreateScreen} options={{ title: 'Credit Card Details' }} />
+                  <Stack.Screen name="CreditCardStatementEdit" component={CreditCardStatementEditScreen} options={{ title: 'Edit Statement' }} />
+                  <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Financial Reports' }} />
+                  <Stack.Screen name="BillDetail" component={BillDetailScreen} options={{ title: 'Bill Details' }} />
+                  <Stack.Screen name="BillOccurrenceEdit" component={require('./src/screens/BillOccurrenceEditScreen').default} options={{ title: 'Edit Occurrence' }} />
+                  <Stack.Screen name="Backup" component={BackupScreen} options={{ title: 'Backup & Restore' }} />
+                  <Stack.Screen name="LoanDashboard" component={LoanDashboardScreen} />
+                  <Stack.Screen name="LoanForm" component={LoanFormScreen} options={{ title: 'Add / Edit Loan' }} />
+                  <Stack.Screen name="LoanDetails" component={LoanDetailsScreen} options={{ title: 'Loan Details' }} />
+                  <Stack.Screen name="LoanPayment" component={LoanPaymentScreen} options={{ title: 'Record Payment' }} />
+                  <Stack.Screen name="LoanForeclose" component={LoanForeclosureScreen} options={{ title: 'Loan Foreclose' }} />
+                  <Stack.Screen name="LendMore" component={LendMoreScreen} options={{ title: 'Lend More' }} />
+                  <Stack.Screen name="TopUp" component={TopUpScreen} options={{ title: 'Top Up' }} />
+                  <Stack.Screen name="LoanList" component={LoanListScreen} options={{ title: 'All Loans' }} />
+                  <Stack.Screen name="CreditCardStatements" component={CreditCardStatementsScreen} options={{ title: 'Credit Card Statements' }} />
+                  <Stack.Screen name="CreditCardStatementDetail" component={require('./src/screens/CreditCardStatementDetailScreen').default} options={{ title: 'Statement Details' }} />
+                  <Stack.Screen name="LoanHistory" component={require('./src/screens/LoanHistoryScreen').default} options={{ title: 'Loan History' }} />
+                  <Stack.Screen name="LoanReports" component={require('./src/screens/LoanReportsScreen').default} options={{ title: 'Loan Reports' }} />
+                  <Stack.Screen name="NotificationSettings" component={require('./src/screens/NotificationSettingsScreen').default} options={{ title: 'Notifications' }} />
+                  <Stack.Screen name="SecuritySettings" component={require('./src/screens/SecuritySettingsScreen').default} options={{ title: 'Security Settings' }} />
+                </Stack.Navigator>
+              </NavigationContainer>
+            </AppLockWrapper>
+          </AppLockProvider>
+        </BalanceVisibilityProvider>
+      </PageLoaderProvider>
+      <ExitConfirmationModal
+        visible={visible}
+        onCancel={hideDialog}
+        onExit={() => BackHandler.exitApp()}
+      />
+    </PaperProvider>
+  );
+}
 
 export default function App() {
   const navigationRef = useNavigationContainerRef();
@@ -157,76 +264,13 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ReduxProvider store={store}>
-        <PaperProvider
-          theme={{
-            ...PaperDefaultTheme,
-            colors: {
-              ...PaperDefaultTheme.colors,
-              primary: Colors.primary,
-              accent: Colors.accent
-            }
-          }}
-        >
-          <StatusBar
-            style="light"
-            backgroundColor="#0B1F3A"
-          />
-          <PageLoaderProvider>
-            <BalanceVisibilityProvider>
-              <AppLockProvider>
-                <AppLockWrapper>
-                  <NavigationContainer
-                    ref={navigationRef}
-                    onReady={() => processPendingNotification(navigationRef)}
-                  >
-                    <Stack.Navigator>
-                      <Stack.Screen
-                        name="Drawer"
-                        component={DrawerNavigator}
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen name="Search" component={SearchScreen} />
-                      <Stack.Screen name="TransactionAdd" component={TransactionAddScreen} options={{ title: 'Add Transaction' }} />
-                      <Stack.Screen name="SourcesDashboard" component={SourcesDashboard} />
-                      <Stack.Screen name="SourcesDetails" component={SourcesDetails} />
-                      <Stack.Screen name="SpendAreasDashboard" component={SpendAreasDashboard} options={{ title: 'Spent Areas' }} />
-                      <Stack.Screen name="CategoryBudgetsDashboard" component={CategoryBudgetsDashboard} options={{ title: 'Category Budgets' }} />
-                      <Stack.Screen name="CategoriesDetails" component={CategoriesDetails} />
-                      <Stack.Screen name="CategoryCreate" component={CategoryCreateScreen} options={{ title: 'Category Details' }} />
-                      <Stack.Screen name="BudgetCreate" component={BudgetCreateScreen} options={{ title: 'Budget Details' }} />
-                      <Stack.Screen name="SourceCreate" component={SourceCreateScreen} options={{ title: 'Account Details' }} />
-                      <Stack.Screen name="CreditCardCreate" component={CreditCardCreateScreen} options={{ title: 'Credit Card Details' }} />
-                      <Stack.Screen name="CreditCardStatementEdit" component={CreditCardStatementEditScreen} options={{ title: 'Edit Statement' }} />
-                      <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Financial Reports' }} />
-                      <Stack.Screen name="BillDetail" component={BillDetailScreen} options={{ title: 'Bill Details' }} />
-                      <Stack.Screen name="BillOccurrenceEdit" component={require('./src/screens/BillOccurrenceEditScreen').default} options={{ title: 'Edit Occurrence' }} />
-                      <Stack.Screen name="Backup" component={BackupScreen} options={{ title: 'Backup & Restore' }} />
-                      <Stack.Screen name="LoanDashboard" component={LoanDashboardScreen} />
-                      <Stack.Screen name="LoanForm" component={LoanFormScreen} options={{ title: 'Add / Edit Loan' }} />
-                      <Stack.Screen name="LoanDetails" component={LoanDetailsScreen} options={{ title: 'Loan Details' }} />
-                      <Stack.Screen name="LoanPayment" component={LoanPaymentScreen} options={{ title: 'Record Payment' }} />
-                      <Stack.Screen name="LoanForeclose" component={LoanForeclosureScreen} options={{ title: 'Loan Foreclose' }} />
-                      <Stack.Screen name="LendMore" component={LendMoreScreen} options={{ title: 'Lend More' }} />
-                      <Stack.Screen name="TopUp" component={TopUpScreen} options={{ title: 'Top Up' }} />
-                      <Stack.Screen name="LoanList" component={LoanListScreen} options={{ title: 'All Loans' }} />
-                      <Stack.Screen name="CreditCardStatements" component={CreditCardStatementsScreen} options={{ title: 'Credit Card Statements' }} />
-                      <Stack.Screen name="CreditCardStatementDetail" component={require('./src/screens/CreditCardStatementDetailScreen').default} options={{ title: 'Statement Details' }} />
-                      <Stack.Screen name="LoanHistory" component={require('./src/screens/LoanHistoryScreen').default} options={{ title: 'Loan History' }} />
-                      <Stack.Screen name="LoanReports" component={require('./src/screens/LoanReportsScreen').default} options={{ title: 'Loan Reports' }} />
-                      <Stack.Screen name="NotificationSettings" component={require('./src/screens/NotificationSettingsScreen').default} options={{ title: 'Notifications' }} />
-                      <Stack.Screen name="SecuritySettings" component={require('./src/screens/SecuritySettingsScreen').default} options={{ title: 'Security Settings' }} />
-                    </Stack.Navigator>
-                  </NavigationContainer>
-                </AppLockWrapper>
-              </AppLockProvider>
-            </BalanceVisibilityProvider>
-          </PageLoaderProvider>
-          <ExitConfirmationModal
+        <ThemeProvider>
+          <ThemedAppContent
+            navigationRef={navigationRef}
             visible={visible}
-            onCancel={hideDialog}
-            onExit={() => BackHandler.exitApp()}
+            hideDialog={hideDialog}
           />
-        </PaperProvider>
+        </ThemeProvider>
       </ReduxProvider>
     </ErrorBoundary>
   );

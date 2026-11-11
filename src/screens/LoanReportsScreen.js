@@ -3,10 +3,11 @@ import { View, Text, ScrollView, Pressable } from 'react-native';
 import Card from '../components/Card';
 import { getLoans, getLoanPayments } from '../services/loans';
 import scheduleService from '../services/loanSchedule';
+import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../components/Theme';
 import CurrencyText from '../components/CurrencyText';
 
-function sum(arr, key) {return arr.reduce((s, x) => s + Number(x[key] || 0), 0);}
+function sum(arr, key) { return arr.reduce((s, x) => s + Number(x[key] || 0), 0);}
 
 function monthKey(d) {
   const date = new Date(d);
@@ -20,6 +21,7 @@ function formatMonthLabel(key) {
 }
 
 export default function LoanReportsScreen() {
+  const { theme, isDarkMode } = useTheme();
   const [loans, setLoans] = useState([]);
   const [payments, setPayments] = useState([]);
 
@@ -111,7 +113,7 @@ export default function LoanReportsScreen() {
   const maxPaid = Math.max(...(principalSeries.concat(interestSeries).length ? principalSeries.concat(interestSeries) : [100]));
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: Colors.background, padding: 12 }}>
+    <ScrollView style={{ flex: 1, backgroundColor: theme.bg, padding: 12 }}>
       <Card>
         <Text style={{ fontWeight: '800', fontSize: 16 }}>Loan Summary</Text>
         <Text style={{ marginTop: 8 }}>Total Outstanding: <CurrencyText amount={summary.totalOutstanding} /></Text>

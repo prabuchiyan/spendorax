@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '../context/ThemeContext';
 import {
   View,
   StyleSheet,
@@ -15,6 +16,7 @@ export default function PageLoader({
   source = DEFAULT_GIF,
   size = 130
 }) {
+  const { isDarkMode } = useTheme();
   const pulse = React.useRef(
     new Animated.Value(0)
   ).current;
@@ -53,7 +55,7 @@ export default function PageLoader({
   if (!visible) return null;
 
   return (
-    <View style={styles.overlay} pointerEvents="auto">
+    <View style={[styles.overlay, isDarkMode && { backgroundColor: 'rgba(11, 15, 23, 0.75)' }]} pointerEvents="auto">
         
         <View style={styles.card}>
           <Animated.Image

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { List, Switch, Divider, Button, Portal, Dialog, TextInput, Text } from 'react-native-paper';
+import { useTheme } from '../context/ThemeContext';
 import { Colors, Spacing } from '../components/Theme';
 import {
   getSecuritySettings,
@@ -13,6 +14,7 @@ import {
 } from '../services/authService';
 
 export default function SecuritySettingsScreen() {
+  const { isDarkMode, theme } = useTheme();
   const [settings, setSettings] = useState({
     appLockEnabled: false,
     biometricEnabled: false,
@@ -131,7 +133,7 @@ export default function SecuritySettingsScreen() {
 
   if (!isSupported) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: theme.bg }]}>
         <Text style={styles.unsupportedText}>
           Security features are not supported on this platform.
         </Text>
@@ -140,7 +142,7 @@ export default function SecuritySettingsScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.bg }]}>
       <List.Section>
         <List.Subheader>App Lock</List.Subheader>
         <List.Item
@@ -271,7 +273,7 @@ export default function SecuritySettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F6F8FF',
   },
   unsupportedText: {
     textAlign: 'center',

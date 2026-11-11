@@ -16,6 +16,7 @@ import ContextualFAB from "../components/ContextualFAB";
 import CurrencyText from "../components/CurrencyText";
 import { formatCurrency } from "../utils/numberUtils";
 import events from "../services/events";
+import { useTheme } from "../context/ThemeContext";
 
 function formatDate(value) {
   if (!value) return "-";
@@ -29,6 +30,7 @@ function formatDate(value) {
 }
 
 export default function CreditCardStatementDetailScreen({ route, navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const { statementId } = route.params;
   const [statement, setStatement] = useState(null);
   const [transactions, setTransactions] = useState([]);
@@ -103,36 +105,36 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
 
   const renderHeader = () => (
     <View>
-      <View style={[styles.headerCard, { borderTopColor: statement.card_color || Colors.primary }]}>
+      <View style={[styles.headerCard, { backgroundColor: theme.cardBg, borderColor: theme.border, borderWidth: theme.isDark ? 1 : 0, borderTopColor: statement.card_color || Colors.primary }]}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.bankName}>{statement.card_name || "Credit Card"}</Text>
-            <Text style={styles.statementTitle}>E-Statement</Text>
+            <Text style={[styles.bankName, { color: theme.textPrimary }]}>{statement.card_name || "Credit Card"}</Text>
+            <Text style={[styles.statementTitle, { color: theme.textSecondary }]}>E-Statement</Text>
           </View>
           <MaterialCommunityIcons name="credit-card-chip" size={32} color="#D4AF37" />
         </View>
 
         <View style={styles.datesRow}>
           <View>
-            <Text style={styles.dateLabel}>Statement Date</Text>
-            <Text style={styles.dateValue}>{formatDate(statement.statement_date)}</Text>
+            <Text style={[styles.dateLabel, { color: theme.textSecondary }]}>Statement Date</Text>
+            <Text style={[styles.dateValue, { color: theme.textPrimary }]}>{formatDate(statement.statement_date)}</Text>
           </View>
           <View>
-            <Text style={styles.dateLabel}>Payment Due Date</Text>
+            <Text style={[styles.dateLabel, { color: theme.textSecondary }]}>Payment Due Date</Text>
             <Text style={styles.dateValueError}>{formatDate(statement.due_date)}</Text>
           </View>
         </View>
 
         <View style={styles.periodRow}>
-          <Text style={styles.periodText}>
+          <Text style={[styles.periodText, { color: theme.textSecondary }]}>
             Billing Period: {formatDate(statement.statement_start)} - {formatDate(statement.statement_end)}
           </Text>
         </View>
       </View>
 
-      <View style={styles.summaryCard}>
+      <View style={[styles.summaryCard, { backgroundColor: theme.cardBg, borderColor: theme.border, borderWidth: theme.isDark ? 1 : 0 }]}>
         <View style={styles.summaryHeaderRow}>
-          <Text style={styles.sectionTitle}>Account Summary</Text>
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Account Summary</Text>
           <TouchableOpacity
             style={styles.summaryEditBtn}
             onPress={() => navigation.navigate("CreditCardStatementEdit", { editData: statement })}
@@ -144,15 +146,15 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
 
         <View style={styles.summaryGrid}>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Opening Balance</Text>
-            <CurrencyText style={styles.summaryValue} amount={statement.opening_balance} />
+            <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Opening Balance</Text>
+            <CurrencyText style={[styles.summaryValue, { color: theme.textPrimary }]} amount={statement.opening_balance} />
           </View>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Purchases & Debits</Text>
-            <CurrencyText style={styles.summaryValue} amount={statement.purchases} />
+            <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Purchases & Debits</Text>
+            <CurrencyText style={[styles.summaryValue, { color: theme.textPrimary }]} amount={statement.purchases} />
           </View>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Payments & Credits</Text>
+            <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Payments & Credits</Text>
             <CurrencyText
               style={styles.summaryValueSuccess}
               amount={(Number(statement.payments) || 0) + (Number(statement.refunds) || 0)}
@@ -164,7 +166,7 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
             )}
           </View>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Fees & Interest</Text>
+            <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Fees & Interest</Text>
             <CurrencyText
               style={styles.summaryValue}
               amount={(Number(statement.fees) || 0) + (Number(statement.interest) || 0)}
@@ -180,21 +182,21 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
           </View>
         </View>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
         <View style={styles.totalsRow}>
           <View>
-            <Text style={styles.totalLabel}>Total Amount Due</Text>
-            <CurrencyText style={styles.totalValue} amount={statement.closing_balance} />
+            <Text style={[styles.totalLabel, { color: theme.textSecondary }]}>Total Amount Due</Text>
+            <CurrencyText style={[styles.totalValue, { color: theme.textPrimary }]} amount={statement.closing_balance} />
           </View>
           <View style={{ alignItems: "flex-end" }}>
-            <Text style={styles.totalLabel}>Minimum Amount Due</Text>
-            <CurrencyText style={styles.totalValueSecondary} amount={statement.minimum_due} />
+            <Text style={[styles.totalLabel, { color: theme.textSecondary }]}>Minimum Amount Due</Text>
+            <CurrencyText style={[styles.totalValueSecondary, { color: theme.textPrimary }]} amount={statement.minimum_due} />
           </View>
         </View>
       </View>
 
-      <Text style={styles.transactionsHeader}>Transaction Details</Text>
+      <Text style={[styles.transactionsHeader, { color: theme.textPrimary }]}>Transaction Details</Text>
     </View>
   );
 
@@ -206,16 +208,16 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
       Number(item.is_counted) === 0;
 
     return (
-      <View style={styles.transactionRow}>
+      <View style={[styles.transactionRow, { borderBottomColor: theme.border }]}>
         <View style={styles.txDateCol}>
-          <Text style={styles.txDate}>{formatDate(item.date).split(" ")[0]}</Text>
-          <Text style={styles.txMonth}>{formatDate(item.date).split(" ")[1]}</Text>
+          <Text style={[styles.txDate, { color: theme.textPrimary }]}>{formatDate(item.date).split(" ")[0]}</Text>
+          <Text style={[styles.txMonth, { color: theme.textSecondary }]}>{formatDate(item.date).split(" ")[1]}</Text>
         </View>
         <View style={styles.txDetailsCol}>
-          <Text style={styles.txNote} numberOfLines={2}>
+          <Text style={[styles.txNote, { color: theme.textPrimary }]} numberOfLines={2}>
             {item.notes || item.category_name || item.type || "Transaction"}
           </Text>
-          {item.payee && <Text style={styles.txPayee}>{item.payee}</Text>}
+          {item.payee && <Text style={[styles.txPayee, { color: theme.textSecondary }]}>{item.payee}</Text>}
           {isNotCounted && (
             <View style={styles.notCountedTag}>
               <Text style={styles.notCountedTagText}>
@@ -251,7 +253,7 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <FlatList
         data={transactions}
         keyExtractor={(item) => String(item.id)}

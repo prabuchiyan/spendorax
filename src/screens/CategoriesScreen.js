@@ -9,12 +9,14 @@ import ColorPickerModal from '../components/ColorPickerModal';
 import { getCategories, softDeleteCategory, updateCategory } from '../services/categories';
 import Card from '../components/Card';
 import IconButton from '../components/IconButton';
+import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../components/Theme';
 import ContextualFAB from '../components/ContextualFAB';
 import { useCategories, useAppDispatch } from '../redux/hooks';
 import { setCategories, setCategoriesMap } from '../redux/slices/categorySlice';
 
 export default function CategoriesScreen({ route, navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const dispatch = useAppDispatch();
   const reduxItems = useCategories();
   const items = reduxItems || [];

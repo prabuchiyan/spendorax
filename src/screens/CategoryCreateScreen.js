@@ -1,3 +1,4 @@
+import { useTheme } from '../context/ThemeContext';
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import {
@@ -12,6 +13,7 @@ import { createCategory, updateCategory } from '../services/categories';
 import { suggestIconForText } from '../utils/iconSuggest';
 
 export default function CategoryCreateScreen({ route, navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const { editData, currentType = 'expense', onSave, onCategoryCreated } = route?.params || {};
   const onClose = () => navigation.goBack();
   const [action, setAction] = useState('');

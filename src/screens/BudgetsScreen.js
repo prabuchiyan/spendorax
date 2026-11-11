@@ -1,3 +1,4 @@
+import { useTheme } from '../context/ThemeContext';
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { TextInput as PaperInput, Button, Avatar, IconButton, Snackbar } from 'react-native-paper';
@@ -21,6 +22,7 @@ function getMonthLabel(date) {
 }
 
 export default function BudgetsScreen({ route, navigation }) {
+  const { isDarkMode, theme } = useTheme();
   const dispatch = useAppDispatch();
   const { show, hide } = usePageLoader();
   // Redux state
