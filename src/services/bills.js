@@ -134,8 +134,8 @@ export async function removeTransactionFromBill(billId, transactionId) {
 export async function getBillLinkedTransactions(billId) {
   try {
     const res = await executeSql(
-      `SELECT t.*, s.name as source_name, c.name as category_name,
-              c.icon as category_icon, c.color as category_color
+      `SELECT t.*, s.name as source_name, s.color as source_color, s.icon as source_icon,
+              c.name as category_name, c.icon as category_icon, c.color as category_color
        FROM bill_linked_transactions blt
        JOIN transactions t ON t.id = blt.transaction_id
        LEFT JOIN sources s ON s.id = t.source_id
@@ -169,12 +169,17 @@ export async function getBillLinkedTransactions(billId) {
         const tx = transactions.find((t) => t.id == link.transaction_id);
         if (!tx) return null;
 
+        const src = sources.find((s) => s.id == tx.source_id);
+        const cat = categories.find((c) => c.id == tx.category_id);
+
         return {
           ...tx,
-          source_name: sources.find((s) => s.id == tx.source_id)?.name,
-          category_name: categories.find((c) => c.id == tx.category_id)?.name,
-          category_icon: categories.find((c) => c.id == tx.category_id)?.icon,
-          category_color: categories.find((c) => c.id == tx.category_id)?.color,
+          source_name: src?.name,
+          source_color: src?.color,
+          source_icon: src?.icon,
+          category_name: cat?.name,
+          category_icon: cat?.icon,
+          category_color: cat?.color,
         };
       })
       .filter(Boolean)

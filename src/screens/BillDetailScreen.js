@@ -6,6 +6,7 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   Modal,
   ActivityIndicator,
   Alert,
@@ -105,8 +106,8 @@ function formatRecurrenceType(type, isRecurring = true) {
   }
 }
 
-function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
-  const { theme } = useTheme();
+function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink, onEdit }) {
+  const { theme, isDarkMode } = useTheme();
   return (
     <View style={[styles.sectionCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
       <View style={styles.sectionHeaderRow}>
@@ -142,57 +143,86 @@ function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
         linkedTxs.map((tx) => {
           const sourceWords = (tx.source_name || "BANK").trim().split(" ");
           const line1 = sourceWords[0]?.slice(0, 5)?.toUpperCase() || "BANK";
-          const line2 = sourceWords[1]?.slice(0, 5)?.toUpperCase() || "";
+          const avatarColor = tx.category_color || tx.source_color || "#006a61";
+          const avatarIcon = tx.category_icon || tx.source_icon;
 
           return (
-            <View key={tx.id} style={styles.linkedTxItem}>
-              {/* Bank Chip / Avatar */}
-              <View style={styles.bankChip}>
-                <Text style={styles.bankChipTop}>{line1}</Text>
-                {line2 ? <Text style={styles.bankChipBottom}>{line2}</Text> : null}
-              </View>
-
-              {/* Details */}
-              <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
-                  <Text numberOfLines={1} style={[styles.txTitle, { color: theme.textPrimary }]}>
-                    {tx.notes || "Payment Transaction"}
-                  </Text>
-                  <View style={styles.verifiedTag}>
-                    <Text style={styles.verifiedTagText}>Verified</Text>
-                  </View>
-                </View>
-
-                <View style={styles.txMetaRow}>
-                  <Text style={styles.txDateText}>
-                    {tx.date
-                      ? new Date(tx.date).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric"
-                      })
-                      : "—"}
-                  </Text>
-                  <Text style={styles.txBullet}>•</Text>
-                  <View style={styles.txIdBadge}>
-                    <Text style={styles.txIdBadgeText}>
-                      TXN-{tx.id ? String(tx.id).padStart(4, "0") : "AUTO"}
+            <View key={tx.id} style={[styles.linkedTxItem, { backgroundColor: isDarkMode ? theme.cardBg : "#ffffff", borderColor: theme.border }]}>
+              {/* Left Side: Clickable to Edit */}
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => onEdit && onEdit(tx)}
+                style={{ flex: 1, flexDirection: "row", alignItems: "center" }}
+                accessibilityRole="button"
+                accessibilityLabel={`Edit transaction ${tx.notes || "Payment"}`}>
+                {/* Dynamic Avatar */}
+                <View style={[styles.txAvatarWrap, { backgroundColor: `${avatarColor}18` }]}>
+                  {avatarIcon ? (
+                    <MaterialCommunityIcons
+                      name={avatarIcon}
+                      size={20}
+                      color={avatarColor}
+                    />
+                  ) : (
+                    <Text style={[styles.txAvatarText, { color: avatarColor }]}>
+                      {line1.slice(0, 3)}
                     </Text>
-                  </View>
+                  )}
                 </View>
 
-                <Text style={[styles.txAmountText, { color: theme.textPrimary }]}>
-                  {formatCurrency(tx.amount)}
-                </Text>
-              </View>
+                {/* Details */}
+                <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
+                    <Text numberOfLines={1} style={[styles.txTitle, { color: theme.textPrimary }]}>
+                      {tx.notes || "Payment Transaction"}
+                    </Text>
+                    <View style={styles.verifiedTag}>
+                      <Text style={styles.verifiedTagText}>Verified</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.txMetaRow}>
+                    <Text style={styles.txDateText}>
+                      {tx.date
+                        ? new Date(tx.date).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "—"}
+                    </Text>
+                    {tx.source_name ? (
+                      <>
+                        <Text style={styles.txBullet}>•</Text>
+                        <View style={[styles.sourceBadge, { backgroundColor: isDarkMode ? "#1e293b" : "#f1f5f9" }]}>
+                          <Text numberOfLines={1} style={[styles.sourceBadgeText, { color: theme.textSecondary }]}>
+                            {tx.source_name}
+                          </Text>
+                        </View>
+                      </>
+                    ) : null}
+                    <Text style={styles.txBullet}>•</Text>
+                    <View style={[styles.txIdBadge, { backgroundColor: isDarkMode ? "#334155" : "#e2e8f0" }]}>
+                      <Text style={[styles.txIdBadgeText, { color: isDarkMode ? "#cbd5e1" : "#475569" }]}>
+                        TXN-{tx.id ? String(tx.id).padStart(4, "0") : "AUTO"}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={[styles.txAmountText, { color: theme.textPrimary }]}>
+                    {formatCurrency(tx.amount)}
+                  </Text>
+                </View>
+              </TouchableOpacity>
 
               {/* Unlink Action */}
               {onUnlink && (
                 <TouchableOpacity
-                  aria-label="Unlink transaction"
+                  accessibilityRole="button"
+                  accessibilityLabel="Unlink transaction"
                   onPress={() => onUnlink(tx)}
                   activeOpacity={0.7}
-                  style={styles.unlinkBtn}>
+                  style={[styles.unlinkBtn, { backgroundColor: isDarkMode ? "#1e293b" : "#ffffff", borderColor: isDarkMode ? "#475569" : "#fecdd3" }]}>
                   <MaterialCommunityIcons
                     name="link-variant-off"
                     size={17}
@@ -441,6 +471,8 @@ export default function BillDetailScreen({ route, navigation }) {
   const [isMarkingPaid, setIsMarkingPaid] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
+  const [unlinkingTx, setUnlinkingTx] = useState(null);
+  const [unlinking, setUnlinking] = useState(false);
   const { visible: loaderVisible, show: showPageLoader, hide: hidePageLoader } = usePageLoader();
   const dispatch = useAppDispatch();
   const reduxSummary = useBillsSummary();
@@ -760,18 +792,29 @@ export default function BillDetailScreen({ route, navigation }) {
     }
   }
 
-  async function handleUnlinkTransaction(tx) {
-    if (!selectedOcc) return;
+  async function handleConfirmUnlink() {
+    if (!unlinkingTx || !selectedOcc) return;
     try {
-      showPageLoader();
-      await removeTransactionFromBill(selectedOcc.id, tx.id);
+      setUnlinking(true);
+      await removeTransactionFromBill(selectedOcc.id, unlinkingTx.id);
+      setUnlinkingTx(null);
       await refreshSelectedOccurrence();
       await load(selectedOcc.id);
+      setToastMsg("Transaction unlinked successfully");
+      setToastVisible(true);
     } catch (e) {
       console.error("[BillDetail] Unlink transaction failed:", e);
+      Alert.alert("Error", "Could not unlink transaction.");
     } finally {
-      hidePageLoader();
+      setUnlinking(false);
     }
+  }
+
+  function handleEditTransaction(tx) {
+    navigation.navigate("TransactionAdd", {
+      isEdit: true,
+      transaction: tx,
+    });
   }
 
   async function handleSelectOccurrence(occ) {
@@ -1101,7 +1144,8 @@ export default function BillDetailScreen({ route, navigation }) {
         <LinkedTransactionsCard
           linkedTxs={linkedTxs}
           onAddMore={() => setShowLinkModal(true)}
-          onUnlink={handleUnlinkTransaction}
+          onUnlink={(tx) => setUnlinkingTx(tx)}
+          onEdit={handleEditTransaction}
         />
 
         {/* ── 3. Series Overview Section ────────────────────────────────────── */}
@@ -1325,6 +1369,164 @@ export default function BillDetailScreen({ route, navigation }) {
           onLink={handleLinkTransaction}
           onClose={() => setShowLinkModal(false)}
         />
+
+        {/* ── Unlink Transaction Confirmation Modal ──────────────────────── */}
+        <Modal
+          visible={Boolean(unlinkingTx)}
+          transparent
+          animationType="fade"
+          statusBarTranslucent
+          onRequestClose={() => {
+            if (!unlinking) setUnlinkingTx(null);
+          }}>
+          <View style={styles.unlinkModalOverlay}>
+            <Pressable
+              style={styles.unlinkModalBackdrop}
+              onPress={() => {
+                if (!unlinking) setUnlinkingTx(null);
+              }}
+            />
+            <View
+              style={[
+                styles.unlinkModalCard,
+                {
+                  backgroundColor: theme.cardBg,
+                  borderColor: theme.border,
+                  borderWidth: isDarkMode ? 1 : 0,
+                },
+              ]}>
+              {/* Top danger badge */}
+              <View style={styles.unlinkIconCircle}>
+                <MaterialCommunityIcons
+                  name="link-variant-off"
+                  size={28}
+                  color="#EF4444"
+                />
+              </View>
+
+              {/* Title & Subtitle */}
+              <Text style={[styles.unlinkModalTitle, { color: theme.textPrimary }]}>
+                Unlink Transaction?
+              </Text>
+              <Text style={[styles.unlinkModalSubtitle, { color: theme.textSecondary }]}>
+                Are you sure you want to remove this linked transaction from the bill?
+              </Text>
+
+              {/* Transaction Preview Card */}
+              {unlinkingTx && (
+                <View
+                  style={[
+                    styles.unlinkTxPreview,
+                    {
+                      backgroundColor: isDarkMode ? "#1E293B" : "#F8FAFC",
+                      borderColor: theme.border,
+                    },
+                  ]}>
+                  <View
+                    style={[
+                      styles.unlinkTxIconWrap,
+                      {
+                        backgroundColor: `${unlinkingTx.category_color || unlinkingTx.source_color || "#006a61"}18`,
+                      },
+                    ]}>
+                    <MaterialCommunityIcons
+                      name={unlinkingTx.category_icon || unlinkingTx.source_icon || "cash"}
+                      size={20}
+                      color={unlinkingTx.category_color || unlinkingTx.source_color || "#006a61"}
+                    />
+                  </View>
+                  <View style={{ flex: 1, marginRight: 10 }}>
+                    <Text
+                      style={[styles.unlinkTxPreviewName, { color: theme.textPrimary }]}
+                      numberOfLines={1}>
+                      {unlinkingTx.notes || "Payment Transaction"}
+                    </Text>
+                    <Text style={[styles.unlinkTxPreviewSub, { color: theme.textSecondary }]}>
+                      {unlinkingTx.date
+                        ? new Date(unlinkingTx.date).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "—"}
+                      {unlinkingTx.source_name ? ` • ${unlinkingTx.source_name}` : ""}
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: "flex-end" }}>
+                    <Text
+                      style={[styles.unlinkTxPreviewAmount, { color: theme.textPrimary }]}>
+                      <CurrencyText amount={Number(unlinkingTx.amount || 0)} />
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Warning Note Pill */}
+              <View
+                style={[
+                  styles.unlinkWarningBox,
+                  {
+                    backgroundColor: isDarkMode ? "rgba(217, 119, 6, 0.12)" : "#FFFBEB",
+                    borderColor: isDarkMode ? "rgba(245, 158, 11, 0.28)" : "#FDE68A",
+                  },
+                ]}>
+                <MaterialCommunityIcons
+                  name="alert-circle-outline"
+                  size={18}
+                  color="#D97706"
+                  style={{ marginRight: 8, marginTop: 1 }}
+                />
+                <Text
+                  style={[
+                    styles.unlinkWarningText,
+                    { color: isDarkMode ? "#FBBF24" : "#92400E" },
+                  ]}>
+                  Unlinking will recalculate the bill's paid amount. If total paid drops below the due amount, the bill will return to unpaid/pending status.
+                </Text>
+              </View>
+
+              {/* Action Buttons Row */}
+              <View style={styles.unlinkActionRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.unlinkCancelBtn,
+                    { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" },
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => setUnlinkingTx(null)}
+                  disabled={unlinking}>
+                  <Text
+                    style={[
+                      styles.unlinkCancelBtnText,
+                      { color: isDarkMode ? "#F3F4F6" : "#475569" },
+                    ]}>
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.unlinkConfirmBtn}
+                  activeOpacity={0.8}
+                  onPress={handleConfirmUnlink}
+                  disabled={unlinking}>
+                  {unlinking ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons
+                        name="link-variant-off"
+                        size={16}
+                        color="#FFFFFF"
+                        style={{ marginRight: 6 }}
+                      />
+                      <Text style={styles.unlinkConfirmBtnText}>Unlink</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
 
       {/* ── 5. Stitch Bottom Action Dock ──────────────────────────────────── */}
@@ -1985,6 +2187,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
+  txAvatarWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  txAvatarText: {
+    fontSize: 11,
+    fontWeight: "800",
+    fontFamily: "Plus Jakarta Sans",
+  },
+  sourceBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    maxWidth: 90,
+  },
+  sourceBadgeText: {
+    fontSize: 9.5,
+    fontWeight: "700",
+    fontFamily: "Inter",
+  },
   bankChip: {
     width: 44,
     height: 44,
@@ -2074,6 +2299,140 @@ const styles = StyleSheet.create({
     borderColor: "#fecdd3",
     alignItems: "center",
     justifyContent: "center",
+  },
+  unlinkModalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    backgroundColor: "rgba(15, 23, 42, 0.65)",
+  },
+  unlinkModalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  unlinkModalCard: {
+    width: "100%",
+    maxWidth: 360,
+    borderRadius: 24,
+    padding: 22,
+    alignItems: "center",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 24,
+  },
+  unlinkIconCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FEE2E2",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  unlinkModalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 6,
+    textAlign: "center",
+    fontFamily: "Plus Jakarta Sans",
+  },
+  unlinkModalSubtitle: {
+    fontSize: 13,
+    textAlign: "center",
+    lineHeight: 18,
+    marginBottom: 16,
+    paddingHorizontal: 4,
+    fontFamily: "Inter",
+  },
+  unlinkTxPreview: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 14,
+    width: "100%",
+  },
+  unlinkTxIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  unlinkTxPreviewName: {
+    fontSize: 13.5,
+    fontWeight: "700",
+    fontFamily: "Inter",
+  },
+  unlinkTxPreviewSub: {
+    fontSize: 11,
+    marginTop: 2,
+    fontFamily: "Inter",
+  },
+  unlinkTxPreviewAmount: {
+    fontSize: 13.5,
+    fontWeight: "800",
+    fontFamily: "Plus Jakarta Sans",
+  },
+  unlinkWarningBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 18,
+    width: "100%",
+  },
+  unlinkWarningText: {
+    fontSize: 12,
+    fontWeight: "600",
+    flex: 1,
+    lineHeight: 17,
+    fontFamily: "Inter",
+  },
+  unlinkActionRow: {
+    flexDirection: "row",
+    width: "100%",
+    gap: 10,
+  },
+  unlinkCancelBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unlinkCancelBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    fontFamily: "Inter",
+  },
+  unlinkConfirmBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: "#EF4444",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#EF4444",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  unlinkConfirmBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    fontFamily: "Inter",
   },
   emptyLinkedCard: {
     paddingVertical: 24,
