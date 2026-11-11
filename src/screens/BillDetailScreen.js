@@ -1102,20 +1102,17 @@ export default function BillDetailScreen({ route, navigation }) {
     );
   }
 
-  const handleJumpToOccurrence = useCallback(
-    (targetOcc) => {
-      if (!targetOcc || !series || series.length === 0) return;
-      const targetIdx = series.findIndex((o) => Number(o.id) === Number(targetOcc.id));
-      if (targetIdx !== -1) {
-        const itemsToShow = 5;
-        const idealStart = Math.max(0, Math.min(series.length - itemsToShow, targetIdx - Math.floor(itemsToShow / 2)));
-        const newOffset = Math.max(0, series.length - itemsToShow - idealStart);
-        setChartOffset(newOffset);
-      }
-      handleSelectOccurrence(targetOcc);
-    },
-    [series]
-  );
+  function handleJumpToOccurrence(targetOcc) {
+    if (!targetOcc || !series || series.length === 0) return;
+    const targetIdx = series.findIndex((o) => Number(o.id) === Number(targetOcc.id));
+    if (targetIdx !== -1) {
+      const itemsToShow = 5;
+      const idealStart = Math.max(0, Math.min(series.length - itemsToShow, targetIdx - Math.floor(itemsToShow / 2)));
+      const newOffset = Math.max(0, series.length - itemsToShow - idealStart);
+      setChartOffset(newOffset);
+    }
+    handleSelectOccurrence(targetOcc);
+  }
 
   const handleShareBill = async () => {
     try {
