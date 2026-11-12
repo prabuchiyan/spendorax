@@ -405,7 +405,7 @@ export async function syncBillPaymentStatus(billId) {
         `UPDATE bills
          SET status = ?, is_paid = 0, paid_at = NULL, linked_transaction_id = ?, updated_at = ?
          WHERE id = ?`,
-        [BILL_STATUS.PENDING, primaryTxId, now, billId]
+        ["partially_paid", primaryTxId, now, billId]
       );
     }
 
@@ -1638,7 +1638,26 @@ export async function createBill(fields) {
 export async function getBillById(id) {
   const res = await executeSql(`SELECT * FROM bills WHERE id = ?`, [id]);
   if (!res.rows.length) return null;
-  return normalizeBill(res.rows.item(0));
+  const bill = normalizeBill(res.rows.item(0));
+  if (!bill) return null;
+  try {
+    const linkedTxs = await getBillLinkedTransactions(id);
+    const paidAmount = calcBillPaidAmount(linkedTxs);
+    const billAmount = Number(bill.amount || 0);
+    const isCompletelyPaid = billAmount > 0 ? paidAmount >= billAmount : paidAmount > 0;
+    const isPartiallyPaid = paidAmount > 0 && !isCompletelyPaid;
+    return {
+      ...bill,
+      paid_amount: paidAmount,
+      total_paid: paidAmount,
+      remaining_amount: Math.max(0, billAmount - paidAmount),
+      is_partially_paid: isPartiallyPaid,
+      is_completely_paid: isCompletelyPaid,
+      status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? "partially_paid" : bill.status),
+    };
+  } catch (e) {
+    return bill;
+  }
 }
 
 // ─── getBillSeries ────────────────────────────────────────────────────────────
@@ -1721,7 +1740,18 @@ export async function getBillSeries(templateId) {
         );
         return sum + Number(tx?.amount || 0);
       }, 0);
-      return { ...bill, paid_amount: paidAmount };
+      const billAmount = Number(bill.amount || 0);
+      const isCompletelyPaid = billAmount > 0 ? paidAmount >= billAmount : paidAmount > 0;
+      const isPartiallyPaid = paidAmount > 0 && !isCompletelyPaid;
+      return {
+        ...bill,
+        paid_amount: paidAmount,
+        total_paid: paidAmount,
+        remaining_amount: Math.max(0, billAmount - paidAmount),
+        is_partially_paid: isPartiallyPaid,
+        is_completely_paid: isCompletelyPaid,
+        status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? "partially_paid" : bill.status),
+      };
     });
 
     return enriched.sort((a, b) =>
@@ -1773,7 +1803,18 @@ export async function getBillSeries(templateId) {
       );
       return sum + Number(tx?.amount || 0);
     }, 0);
-    return { ...bill, paid_amount: paidAmount };
+    const billAmount = Number(bill.amount || 0);
+    const isCompletelyPaid = billAmount > 0 ? paidAmount >= billAmount : paidAmount > 0;
+    const isPartiallyPaid = paidAmount > 0 && !isCompletelyPaid;
+    return {
+      ...bill,
+      paid_amount: paidAmount,
+      total_paid: paidAmount,
+      remaining_amount: Math.max(0, billAmount - paidAmount),
+      is_partially_paid: isPartiallyPaid,
+      is_completely_paid: isCompletelyPaid,
+      status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? "partially_paid" : bill.status),
+    };
   });
 
   return enriched.sort((a, b) =>
@@ -3246,62 +3287,11 @@ async function ensureRecurringOccurrenceUniqueIndex() {
 
 // ─── linkAdditionalTransaction ────────────────────────────────────────────────
 export async function linkAdditionalTransaction(billId, transactionId) {
-  const now = nowIso();
-
-  const billDebug = await executeSql(`SELECT * FROM bills WHERE id = ?`, [
-    billId,
-  ]);
-
-  console.log(
-    "[linkAdditionalTransaction] BILL:",
-    billDebug.rows.length ? billDebug.rows.item(0) : "BILL NOT FOUND",
-  );
-
-  const statementDebug = await executeSql(
-    `SELECT * FROM credit_card_statements`,
-    [],
-  );
-
-  for (let i = 0; i < statementDebug.rows.length; i++) {
-    console.log(
-      "[linkAdditionalTransaction] STATEMENT:",
-      statementDebug.rows.item(i),
-    );
-  }
-
+  if (!billId || !transactionId) return;
   await addTransactionToBill(billId, transactionId);
-
-  await executeSql(
-    `UPDATE bills
-     SET
-       status = ?,
-       is_paid = 1,
-       paid_at = ?,
-       linked_transaction_id = ?,
-       updated_at = ?
-     WHERE id = ?`,
-    [BILL_STATUS.PAID, now, transactionId, now, billId],
-  );
-
-  const relatedBills = await executeSql(`SELECT * FROM bills`, []);
-
-  for (let i = 0; i < relatedBills.rows.length; i++) {
-    const b = relatedBills.rows.item(i);
-
-    if (
-      Number(b.id) === 103 ||
-      Number(b.id) === 172 ||
-      Number(b.parent_bill_id) === 103 ||
-      Number(b.parent_bill_id) === 172
-    ) {
-      console.log("[DEBUG] BILL ID:", b.id);
-      console.log("[DEBUG] BILL PARENT:", b.parent_bill_id);
-      console.log("[DEBUG] BILL STATUS:", b.status);
-      console.log("[DEBUG] BILL DUE:", b.due_date);
-    }
-  }
-
+  await syncBillPaymentStatus(billId);
   emitBillsChanged();
+  emit("transactionsChanged");
 }
 
 // ─── getTransactionsForBillLink ───────────────────────────────────────────────

@@ -39,6 +39,7 @@ import { getCategories } from "../services/categories";
 import { getSources } from "../services/sources";
 import ConfirmDialog from "../components/ConfirmDialog";
 import SkipBillModal from "../components/SkipBillModal";
+import UnskipBillModal from "../components/UnskipBillModal";
 import BillForm from "../components/BillForm";
 import CurrencyText from "../components/CurrencyText";
 import {
@@ -410,25 +411,30 @@ function YearQuickJumpModal({
                     const monthName = date.toLocaleDateString("en-IN", {
                       month: "short",
                     });
-                    const isPaid = occ.status === BILL_STATUS.PAID;
+                    const isPaid = occ.status === BILL_STATUS.PAID || Number(occ.is_paid) === 1 || (Number(occ.amount || 0) > 0 && Number(occ.paid_amount || 0) >= Number(occ.amount || 0));
+                    const isPartiallyPaid = !isPaid && (occ.status === "partially_paid" || occ.is_partially_paid || (Number(occ.paid_amount || 0) > 0 && Number(occ.paid_amount || 0) < Number(occ.amount || 0)));
                     const isSkipped = occ.status === BILL_STATUS.SKIPPED;
                     const isCurrentOcc =
                       activeOccurrenceId != null && Number(occ.id) === Number(activeOccurrenceId);
 
-                    const statusColor = isPaid ? "#10b981" : isSkipped ? "#94a3b8" : "#f59e0b";
-                    const statusLabel = isPaid ? "Paid" : isSkipped ? "Skipped" : "Due";
+                    const statusColor = isPaid ? "#10b981" : isPartiallyPaid ? "#3b82f6" : isSkipped ? "#94a3b8" : "#f59e0b";
+                    const statusLabel = isPaid ? "Paid" : isPartiallyPaid ? "Partial" : isSkipped ? "Skipped" : "Due";
 
                     const cardBorderColor = isCurrentOcc
                       ? "#006a61"
                       : isPaid
                         ? (isDarkMode ? "#065f46" : "#a7f3d0")
-                        : isSkipped
-                          ? (isDarkMode ? "#475569" : "#cbd5e1")
-                          : (isDarkMode ? "#334155" : theme.border);
+                        : isPartiallyPaid
+                          ? (isDarkMode ? "#1d4ed8" : "#93c5fd")
+                          : isSkipped
+                            ? (isDarkMode ? "#475569" : "#cbd5e1")
+                            : (isDarkMode ? "#334155" : theme.border);
 
                     const cardBgColor = isCurrentOcc
                       ? (isDarkMode ? "rgba(0, 106, 97, 0.25)" : "rgba(0, 106, 97, 0.08)")
-                      : (isDarkMode ? "#1e293b" : "#f8faff");
+                      : isPartiallyPaid
+                        ? (isDarkMode ? "rgba(37, 99, 235, 0.15)" : "#eff6ff")
+                        : (isDarkMode ? "#1e293b" : "#f8faff");
 
                     return (
                       <TouchableOpacity
@@ -742,6 +748,9 @@ export default function BillDetailScreen({ route, navigation }) {
   const [confirmAction, setConfirmAction] = useState(null);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showSkipModal, setShowSkipModal] = useState(false);
+  const [showUnskipModal, setShowUnskipModal] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
+  const [isUnskipping, setIsUnskipping] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState(null);
   const [showPaymentSourcePicker, setShowPaymentSourcePicker] = useState(false);
   const [paymentSources, setPaymentSources] = useState([]);
@@ -952,10 +961,13 @@ export default function BillDetailScreen({ route, navigation }) {
           null;
       }
       if (!occ && occurrenceId) {
-        occ =
-          s.find((o) => Number(o.id) === Number(occurrenceId)) ||
-          s.find((o) => String(o.id) === String(occurrenceId)) ||
-          null;
+        const matchesTemplateOnly = s.length > 1 && Number(occurrenceId) === Number(templateId);
+        if (!matchesTemplateOnly) {
+          occ =
+            s.find((o) => Number(o.id) === Number(occurrenceId)) ||
+            s.find((o) => String(o.id) === String(occurrenceId)) ||
+            null;
+        }
       }
       if (!occ && rawBill?.parent_bill_id) {
         occ =
@@ -964,20 +976,47 @@ export default function BillDetailScreen({ route, navigation }) {
           null;
       }
       if (!occ) {
+        // Smart occurrence selection:
+        // Current month or previous unpaid month by default.
+        // Rule: If both previous month and current month are unpaid, current month defaults.
         const now = new Date();
-        occ =
-          s.find((o) => {
-            if (!o.due_date) return false;
-            const d = new Date(o.due_date);
-            return (
-              d.getFullYear() === now.getFullYear() &&
-              d.getMonth() === now.getMonth() &&
-              o.status !== BILL_STATUS.PAID &&
-              o.status !== BILL_STATUS.SKIPPED
-            );
-          }) ||
-          s[s.length - 1] ||
-          null;
+        const curYear = now.getFullYear();
+        const curMonth = now.getMonth();
+        const curMonthStr = `${curYear}-${String(curMonth + 1).padStart(2, "0")}`;
+
+        const isUnpaid = (o) =>
+          o &&
+          o.status !== BILL_STATUS.PAID &&
+          o.status !== BILL_STATUS.SKIPPED &&
+          Number(o.is_paid) !== 1 &&
+          !o.is_completely_paid;
+
+        const currentMonthOcc = s.find((o) => {
+          if (!o.due_date) return false;
+          return String(o.due_date).slice(0, 7) === curMonthStr;
+        });
+
+        const prevUnpaidOccs = s.filter((o) => {
+          if (!o.due_date) return false;
+          return String(o.due_date).slice(0, 7) < curMonthStr && isUnpaid(o);
+        });
+
+        if (currentMonthOcc && isUnpaid(currentMonthOcc)) {
+          // Both previous and current unpaid -> current month defaults
+          occ = currentMonthOcc;
+        } else if (prevUnpaidOccs.length > 0) {
+          // Current month is settled (or missing), but previous unpaid exists
+          occ = prevUnpaidOccs[prevUnpaidOccs.length - 1];
+        } else if (currentMonthOcc) {
+          // Current month exists (even if settled) and no previous unpaid exists
+          occ = currentMonthOcc;
+        } else {
+          // Next upcoming occurrence or latest
+          const upcoming = s.find(
+            (o) => o.due_date && String(o.due_date).slice(0, 7) > curMonthStr
+          );
+          occ = upcoming || s[s.length - 1] || null;
+        }
       }
       setSelectedOcc(occ);
       selectedOccRef.current = occ;
@@ -1079,16 +1118,22 @@ export default function BillDetailScreen({ route, navigation }) {
   };
 
   async function handleUnskip() {
-    if (!selectedOcc) return;
+    const targetBill = selectedOcc || activeBill;
+    if (!targetBill) return;
     try {
-      showPageLoader();
-      await unskipBill(selectedOcc.id);
+      setIsUnskipping(true);
+      await unskipBill(targetBill.id);
       await refreshSelectedOccurrence();
-      await load(selectedOcc.id);
+      await load(targetBill.id, targetBill.due_date);
+      setShowUnskipModal(false);
+      const monthYear = getBillMonthYear(targetBill);
+      setToastMsg(`Bill reactivated for ${monthYear}`);
+      setToastVisible(true);
     } catch (e) {
       console.error("[BillDetail] Unskip failed:", e);
+      Alert.alert("Error", "Unable to unskip this bill occurrence.");
     } finally {
-      hidePageLoader();
+      setIsUnskipping(false);
     }
   }
 
@@ -1207,9 +1252,25 @@ export default function BillDetailScreen({ route, navigation }) {
   // ── derived values ────────────────────────────────────────────────────────
   const activeBill = selectedOcc || bill;
   const display = getBillDisplayStatus(activeBill);
-  const isPaidOrSkipped =
-    activeBill.status === BILL_STATUS.PAID ||
-    activeBill.status === BILL_STATUS.SKIPPED;
+  const isFullyPaid =
+    display?.label === "Paid" ||
+    activeBill?.status === BILL_STATUS.PAID ||
+    Number(activeBill?.is_paid) === 1 ||
+    Boolean(activeBill?.is_completely_paid);
+  const isPartiallyPaid =
+    !isFullyPaid &&
+    (display?.label === "Partially Paid" ||
+      activeBill?.status === "partially_paid" ||
+      Boolean(activeBill?.is_partially_paid) ||
+      (Number(activeBill?.paid_amount || 0) > 0 &&
+        Number(activeBill?.paid_amount || 0) < Number(activeBill?.amount || 0)));
+  const isSkipped = activeBill?.status === BILL_STATUS.SKIPPED;
+  const isPaidOrSkipped = isFullyPaid || isSkipped;
+
+  const paidAmount = Number(activeBill?.paid_amount ?? activeBill?.total_paid ?? 0);
+  const billAmount = Number(activeBill?.amount || 0);
+  const remainingAmount = Math.max(0, billAmount - paidAmount);
+  const isAnyLoading = isMarkingPaid || isSkipping || isUnskipping;
 
   const isPayable = (() => {
     if (isPaidOrSkipped) return false;
@@ -1341,19 +1402,41 @@ export default function BillDetailScreen({ route, navigation }) {
               styles.heroStatusPill,
               isPaidOrSkipped
                 ? (activeBill.status === BILL_STATUS.SKIPPED ? styles.heroStatusPillSkipped : styles.heroStatusPillPaid)
-                : (display?.label?.toLowerCase().includes("overdue") ? styles.heroStatusPillOverdue : styles.heroStatusPillActive)
+                : (isPartiallyPaid
+                    ? styles.heroStatusPillPartiallyPaid
+                    : (display?.label?.toLowerCase().includes("overdue") ? styles.heroStatusPillOverdue : styles.heroStatusPillActive))
             ]}>
               <MaterialCommunityIcons
-                name={isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "skip-next" : "check") : (display?.label?.toLowerCase().includes("overdue") ? "alert-circle-outline" : "clock-outline")}
+                name={
+                  isPaidOrSkipped
+                    ? (activeBill.status === BILL_STATUS.SKIPPED ? "skip-next" : "check")
+                    : (isPartiallyPaid
+                        ? "progress-check"
+                        : (display?.label?.toLowerCase().includes("overdue") ? "alert-circle-outline" : "clock-outline"))
+                }
                 size={12}
-                color={isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "#f59e0b" : "#34d399") : (display?.label?.toLowerCase().includes("overdue") ? "#fb7185" : "#38bdf8")}
+                color={
+                  isPaidOrSkipped
+                    ? (activeBill.status === BILL_STATUS.SKIPPED ? "#f59e0b" : "#34d399")
+                    : (isPartiallyPaid
+                        ? "#60a5fa"
+                        : (display?.label?.toLowerCase().includes("overdue") ? "#fb7185" : "#38bdf8"))
+                }
                 style={{ marginRight: 4 }}
               />
               <Text numberOfLines={1} style={[
                 styles.heroStatusPillText,
-                { color: isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "#fde68a" : "#6ee7b7") : (display?.label?.toLowerCase().includes("overdue") ? "#fda4af" : "#bae6fd") }
+                {
+                  color: isPaidOrSkipped
+                    ? (activeBill.status === BILL_STATUS.SKIPPED ? "#fde68a" : "#6ee7b7")
+                    : (isPartiallyPaid
+                        ? "#93c5fd"
+                        : (display?.label?.toLowerCase().includes("overdue") ? "#fda4af" : "#bae6fd"))
+                }
               ]}>
-                {activeBill.status === BILL_STATUS.SKIPPED ? "Skipped" : (display?.label || "Active")}
+                {activeBill.status === BILL_STATUS.SKIPPED
+                  ? "Skipped"
+                  : (isPartiallyPaid ? "Partially Paid" : (display?.label || "Active"))}
               </Text>
             </View>
           </View>
@@ -1394,21 +1477,21 @@ export default function BillDetailScreen({ route, navigation }) {
                   ? (activeBill.status === BILL_STATUS.SKIPPED
                     ? { backgroundColor: "rgba(245, 158, 11, 0.2)", borderColor: "rgba(251, 191, 36, 0.3)" }
                     : { backgroundColor: "rgba(16, 185, 129, 0.2)", borderColor: "rgba(52, 211, 153, 0.3)" })
-                  : (Number(activeBill.paid_amount || 0) > 0
+                  : (isPartiallyPaid
                     ? { backgroundColor: "rgba(59, 130, 246, 0.2)", borderColor: "rgba(96, 165, 250, 0.3)" }
                     : { backgroundColor: "rgba(245, 158, 11, 0.2)", borderColor: "rgba(251, 191, 36, 0.3)" })
               ]}>
                 <MaterialCommunityIcons
-                  name={isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "skip-next" : "check-circle") : (Number(activeBill.paid_amount || 0) > 0 ? "progress-check" : "clock-outline")}
+                  name={isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "skip-next" : "check-circle") : (isPartiallyPaid ? "progress-check" : "clock-outline")}
                   size={11}
-                  color={isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "#fbbf24" : "#34d399") : (Number(activeBill.paid_amount || 0) > 0 ? "#60a5fa" : "#fbbf24")}
+                  color={isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "#fbbf24" : "#34d399") : (isPartiallyPaid ? "#60a5fa" : "#fbbf24")}
                   style={{ marginRight: 3 }}
                 />
                 <Text numberOfLines={1} style={[
                   styles.heroSettledBadgeText,
-                  { color: isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "#fde68a" : "#6ee7b7") : (Number(activeBill.paid_amount || 0) > 0 ? "#93c5fd" : "#fde68a") }
+                  { color: isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "#fde68a" : "#6ee7b7") : (isPartiallyPaid ? "#93c5fd" : "#fde68a") }
                 ]}>
-                  {isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "Skipped" : "Fully Settled") : (Number(activeBill.paid_amount || 0) > 0 ? "Partially Paid" : "Pending")}
+                  {isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "Skipped" : "Fully Settled") : (isPartiallyPaid ? "Partially Paid" : "Pending")}
                 </Text>
               </View>
             </View>
@@ -1693,24 +1776,33 @@ export default function BillDetailScreen({ route, navigation }) {
         <SkipBillModal
           visible={showSkipModal}
           bill={activeBill}
-          onCancel={() => setShowSkipModal(false)}
+          loading={isSkipping}
+          onCancel={() => !isSkipping && setShowSkipModal(false)}
           onConfirm={async () => {
             try {
-              showPageLoader();
+              setIsSkipping(true);
               await skipBill(activeBill.id);
               await refreshSelectedOccurrence();
               await load(activeBill.id, activeBill.due_date);
               const monthYear = getBillMonthYear(activeBill);
               setToastMsg(`Bill skipped for ${monthYear}`);
               setToastVisible(true);
+              setShowSkipModal(false);
             } catch (e) {
               console.error("[BillDetail] Skip failed:", e);
               Alert.alert("Error", "Unable to skip this bill occurrence.");
             } finally {
-              setShowSkipModal(false);
-              hidePageLoader();
+              setIsSkipping(false);
             }
           }}
+        />
+
+        <UnskipBillModal
+          visible={showUnskipModal}
+          bill={activeBill}
+          loading={isUnskipping}
+          onCancel={() => !isUnskipping && setShowUnskipModal(false)}
+          onConfirm={handleUnskip}
         />
 
         <LinkTransactionModal
@@ -1896,10 +1988,10 @@ export default function BillDetailScreen({ route, navigation }) {
           <TouchableOpacity
             style={[
               styles.primaryPayButton,
-              isMarkingPaid && { opacity: 0.85 }
+              isAnyLoading && { opacity: 0.6 }
             ]}
             onPress={handleMarkPaid}
-            disabled={isMarkingPaid}
+            disabled={isAnyLoading}
             activeOpacity={0.8}>
             {isMarkingPaid ? (
               <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 8 }} />
@@ -1911,7 +2003,9 @@ export default function BillDetailScreen({ route, navigation }) {
                 style={{ marginRight: 6 }}
               />
             )}
-            <Text style={styles.primaryPayText}>Mark as Paid</Text>
+            <Text style={styles.primaryPayText}>
+              {isPartiallyPaid ? `Pay Remaining (${formatCurrency(remainingAmount)})` : "Mark as Paid"}
+            </Text>
           </TouchableOpacity>
         )}
 
@@ -1921,23 +2015,31 @@ export default function BillDetailScreen({ route, navigation }) {
         ]}>
           {activeBill.status === BILL_STATUS.SKIPPED ? (
             <TouchableOpacity
-              style={styles.dockActionButton}
-              onPress={handleUnskip}
-              disabled={isMarkingPaid}
+              style={[styles.dockActionButton, isAnyLoading && { opacity: 0.6 }]}
+              onPress={() => setShowUnskipModal(true)}
+              disabled={isAnyLoading}
               activeOpacity={0.7}>
               <View style={[styles.dockIconCircle, { backgroundColor: "#eff6ff", borderColor: "#bfdbfe" }]}>
-                <MaterialCommunityIcons name="undo" color="#2563eb" size={18} />
+                {isUnskipping ? (
+                  <ActivityIndicator size="small" color="#2563eb" />
+                ) : (
+                  <MaterialCommunityIcons name="undo" color="#2563eb" size={18} />
+                )}
               </View>
               <Text style={styles.dockActionLabel}>Unskip</Text>
             </TouchableOpacity>
           ) : !isPaidOrSkipped ? (
             <TouchableOpacity
-              style={styles.dockActionButton}
+              style={[styles.dockActionButton, isAnyLoading && { opacity: 0.6 }]}
               onPress={() => setShowSkipModal(true)}
-              disabled={isMarkingPaid}
+              disabled={isAnyLoading}
               activeOpacity={0.7}>
               <View style={[styles.dockIconCircle, { backgroundColor: "#fef3c7", borderColor: "#fde68a" }]}>
-                <MaterialCommunityIcons name="skip-next" color="#d97706" size={18} />
+                {isSkipping ? (
+                  <ActivityIndicator size="small" color="#d97706" />
+                ) : (
+                  <MaterialCommunityIcons name="skip-next" color="#d97706" size={18} />
+                )}
               </View>
               <Text style={styles.dockActionLabel}>Skip</Text>
             </TouchableOpacity>
@@ -1945,8 +2047,9 @@ export default function BillDetailScreen({ route, navigation }) {
 
           {/* Link Option */}
           <TouchableOpacity
-            style={styles.dockActionButton}
+            style={[styles.dockActionButton, isAnyLoading && { opacity: 0.5 }]}
             onPress={() => setShowLinkModal(true)}
+            disabled={isAnyLoading}
             activeOpacity={0.7}>
             <View style={[styles.dockIconCircle, { backgroundColor: "#f0fdfa", borderColor: "#ccfbf1" }]}>
               <MaterialCommunityIcons name="link-variant" color="#006a61" size={19} />
@@ -1957,12 +2060,13 @@ export default function BillDetailScreen({ route, navigation }) {
           {/* Edit Option */}
           {!isCreditCardBill(activeBill) && (
             <TouchableOpacity
-              style={styles.dockActionButton}
+              style={[styles.dockActionButton, isAnyLoading && { opacity: 0.5 }]}
               onPress={() => {
                 const targetOcc = selectedOcc || bill;
                 selectedOccRef.current = targetOcc;
                 navigation.navigate("BillOccurrenceEdit", { occurrence: targetOcc, bill });
               }}
+              disabled={isAnyLoading}
               activeOpacity={0.7}>
               <View style={[styles.dockIconCircle, { backgroundColor: "#f1f5f9", borderColor: "#e2e8f0" }]}>
                 <MaterialCommunityIcons name="pencil-outline" color="#475569" size={18} />
@@ -1973,11 +2077,12 @@ export default function BillDetailScreen({ route, navigation }) {
 
           {/* Delete Option */}
           <TouchableOpacity
-            style={styles.dockActionButton}
+            style={[styles.dockActionButton, isAnyLoading && { opacity: 0.5 }]}
             onPress={() => {
               setConfirmAction("delete_occ");
               setConfirmVisible(true);
             }}
+            disabled={isAnyLoading}
             activeOpacity={0.7}>
             <View style={[styles.dockIconCircle, { backgroundColor: "#fff1f2", borderColor: "#fecdd3" }]}>
               <MaterialCommunityIcons name="trash-can-outline" color="#e11d48" size={18} />
@@ -2336,6 +2441,10 @@ const styles = StyleSheet.create({
   heroStatusPillPaid: {
     backgroundColor: "rgba(16, 185, 129, 0.15)",
     borderColor: "rgba(52, 211, 153, 0.3)",
+  },
+  heroStatusPillPartiallyPaid: {
+    backgroundColor: "rgba(59, 130, 246, 0.2)",
+    borderColor: "rgba(96, 165, 250, 0.4)",
   },
   heroStatusPillSkipped: {
     backgroundColor: "rgba(245, 158, 11, 0.15)",

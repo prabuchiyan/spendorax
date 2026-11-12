@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
   TouchableWithoutFeedback,
+  InteractionManager,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -96,6 +97,7 @@ export default function BillsScreen({ navigation }) {
   const [confirmAction, setConfirmAction] = useState("delete");
   const [skipModalVisible, setSkipModalVisible] = useState(false);
   const [skipTarget, setSkipTarget] = useState(null);
+  const [isSkipping, setIsSkipping] = useState(false);
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [showPaymentSourcePicker, setShowPaymentSourcePicker] = useState(false);
@@ -162,7 +164,15 @@ export default function BillsScreen({ navigation }) {
 
   useFocusEffect(
     useCallback(() => {
-      load();
+      let active = true;
+      InteractionManager.runAfterInteractions(() => {
+        if (active) {
+          load();
+        }
+      });
+      return () => {
+        active = false;
+      };
     }, [dispatch, statusFilter, categoryFilter, sortBy]),
   );
 
@@ -340,7 +350,7 @@ export default function BillsScreen({ navigation }) {
   function openDetail(bill) {
     navigation.navigate("BillDetail", {
       billId: bill._templateId || bill.id,
-      occurrenceId: bill._isRecurringSeries ? bill.id : undefined,
+      occurrenceId: bill._displayOccurrenceId || (bill._isRecurringSeries ? bill.id : undefined),
     });
   }
 
@@ -1353,20 +1363,25 @@ export default function BillsScreen({ navigation }) {
       <SkipBillModal
         visible={skipModalVisible}
         bill={skipTarget}
+        loading={isSkipping}
         onCancel={() => {
+          if (isSkipping) return;
           setSkipModalVisible(false);
           setSkipTarget(null);
         }}
         onConfirm={async () => {
-          if (!skipTarget?.id) return;
+          if (!skipTarget?.id || isSkipping) return;
           try {
+            setIsSkipping(true);
             await skipBill(skipTarget.id);
+            await load();
             setSkipModalVisible(false);
             setSkipTarget(null);
-            await load();
           } catch (error) {
             console.error("[BillsScreen] Skip failed:", error);
             Alert.alert("Error", "Unable to skip this bill.");
+          } finally {
+            setIsSkipping(false);
           }
         }}
       />

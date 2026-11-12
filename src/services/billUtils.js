@@ -139,31 +139,38 @@ export function getBillDisplayStatus(bill) {
     };
   }
   const status = String(bill.status || bill.payment_status || "").toLowerCase();
-  // PAID
-  if (status === "paid") {
+  const paidAmount = Number(bill.paid_amount || bill.total_paid || 0);
+  const amount = Number(bill.amount || 0);
+
+  // SKIPPED
+  if (status === "skipped") {
     return {
-      label: "Paid",
-      color: "#3F8F6B",
+      label: "Skipped",
+      color: "#718078",
     };
   }
+
   // PARTIALLY PAID
   if (
     status === "partially_paid" ||
     bill.is_partially_paid ||
-    (Number(bill.paid_amount || 0) > 0 &&
-      Number(bill.amount || 0) > 0 &&
-      Number(bill.paid_amount || 0) < Number(bill.amount || 0))
+    (paidAmount > 0 && amount > 0 && paidAmount < amount)
   ) {
     return {
       label: "Partially Paid",
       color: "#3B82F6",
     };
   }
-  // SKIPPED
-  if (status === "skipped") {
+
+  // PAID
+  if (
+    status === "paid" ||
+    Number(bill.is_paid) === 1 ||
+    (amount > 0 && paidAmount >= amount)
+  ) {
     return {
-      label: "Skipped",
-      color: "#718078",
+      label: "Paid",
+      color: "#3F8F6B",
     };
   }
   if (!bill.due_date) {
