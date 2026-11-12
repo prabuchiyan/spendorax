@@ -1644,7 +1644,10 @@ export async function getBillById(id) {
     const linkedTxs = await getBillLinkedTransactions(id);
     const paidAmount = calcBillPaidAmount(linkedTxs);
     const billAmount = Number(bill.amount || 0);
-    const isCompletelyPaid = billAmount > 0 ? paidAmount >= billAmount : paidAmount > 0;
+    const isCompletelyPaid =
+      (billAmount > 0 ? paidAmount >= billAmount : paidAmount > 0) ||
+      bill.status === BILL_STATUS.PAID ||
+      Number(bill.is_paid) === 1;
     const isPartiallyPaid = paidAmount > 0 && !isCompletelyPaid;
     return {
       ...bill,
@@ -1741,7 +1744,10 @@ export async function getBillSeries(templateId) {
         return sum + Number(tx?.amount || 0);
       }, 0);
       const billAmount = Number(bill.amount || 0);
-      const isCompletelyPaid = billAmount > 0 ? paidAmount >= billAmount : paidAmount > 0;
+      const isCompletelyPaid =
+      (billAmount > 0 ? paidAmount >= billAmount : paidAmount > 0) ||
+      bill.status === BILL_STATUS.PAID ||
+      Number(bill.is_paid) === 1;
       const isPartiallyPaid = paidAmount > 0 && !isCompletelyPaid;
       return {
         ...bill,
@@ -1804,7 +1810,10 @@ export async function getBillSeries(templateId) {
       return sum + Number(tx?.amount || 0);
     }, 0);
     const billAmount = Number(bill.amount || 0);
-    const isCompletelyPaid = billAmount > 0 ? paidAmount >= billAmount : paidAmount > 0;
+    const isCompletelyPaid =
+      (billAmount > 0 ? paidAmount >= billAmount : paidAmount > 0) ||
+      bill.status === BILL_STATUS.PAID ||
+      Number(bill.is_paid) === 1;
     const isPartiallyPaid = paidAmount > 0 && !isCompletelyPaid;
     return {
       ...bill,

@@ -969,13 +969,7 @@ export default function BillDetailScreen({ route, navigation }) {
             null;
         }
       }
-      if (!occ && rawBill?.parent_bill_id) {
-        occ =
-          s.find((o) => Number(o.id) === Number(rawId)) ||
-          s.find((o) => String(o.id) === String(rawId)) ||
-          null;
-      }
-      if (!occ) {
+      if (!occ && s.length > 1) {
         // Smart occurrence selection:
         // Current month or previous unpaid month by default.
         // Rule: If both previous month and current month are unpaid, current month defaults.
@@ -991,14 +985,16 @@ export default function BillDetailScreen({ route, navigation }) {
           Number(o.is_paid) !== 1 &&
           !o.is_completely_paid;
 
+        const getDateStr = (o) => o?.due_date || o?.statement_date || o?.occurrence_date || "";
+
         const currentMonthOcc = s.find((o) => {
-          if (!o.due_date) return false;
-          return String(o.due_date).slice(0, 7) === curMonthStr;
+          const ds = getDateStr(o);
+          return ds && ds.slice(0, 7) === curMonthStr;
         });
 
         const prevUnpaidOccs = s.filter((o) => {
-          if (!o.due_date) return false;
-          return String(o.due_date).slice(0, 7) < curMonthStr && isUnpaid(o);
+          const ds = getDateStr(o);
+          return ds && ds.slice(0, 7) < curMonthStr && isUnpaid(o);
         });
 
         if (currentMonthOcc && isUnpaid(currentMonthOcc)) {
@@ -1012,11 +1008,22 @@ export default function BillDetailScreen({ route, navigation }) {
           occ = currentMonthOcc;
         } else {
           // Next upcoming occurrence or latest
-          const upcoming = s.find(
-            (o) => o.due_date && String(o.due_date).slice(0, 7) > curMonthStr
-          );
-          occ = upcoming || s[s.length - 1] || null;
+          const upcoming = s.find((o) => {
+            const ds = getDateStr(o);
+            return ds && ds.slice(0, 7) > curMonthStr;
+          });
+          const rawChildMatch = rawBill?.parent_bill_id
+            ? s.find((o) => Number(o.id) === Number(rawId))
+            : null;
+          occ = upcoming || rawChildMatch || s[s.length - 1] || null;
         }
+      }
+      if (!occ) {
+        occ =
+          (rawBill?.parent_bill_id && s.find((o) => Number(o.id) === Number(rawId))) ||
+          s[s.length - 1] ||
+          s[0] ||
+          null;
       }
       setSelectedOcc(occ);
       selectedOccRef.current = occ;

@@ -348,8 +348,21 @@ export default function BillsScreen({ navigation }) {
   // ── navigation ─────────────────────────────────────────────────────────────
   // ISSUE 1: navigate to template id so detail page shows the full series.
   function openDetail(bill) {
+    const isStatement =
+      bill._isCreditCardStatement === true ||
+      (typeof bill.notes === "string" && bill.notes.startsWith("Statement "));
+    const parentId = bill.parent_bill_id || bill._templateId;
+
+    if (isStatement && parentId) {
+      navigation.navigate("BillDetail", {
+        billId: parentId,
+        occurrenceId: bill.id,
+      });
+      return;
+    }
+
     navigation.navigate("BillDetail", {
-      billId: bill._templateId || bill.id,
+      billId: bill._templateId || bill.parent_bill_id || bill.id,
       occurrenceId: bill._displayOccurrenceId || (bill._isRecurringSeries ? bill.id : undefined),
     });
   }
@@ -500,11 +513,7 @@ export default function BillsScreen({ navigation }) {
             bill={item}
             category={categoriesMap[item.category_id]}
             onPress={() => {
-              if (item.children && item.children.length > 0) {
-                openDetail(item.children[0]);
-              } else {
-                openDetail(item);
-              }
+              openDetail(item);
             }}
             onMarkPaid={() => {
               handleMarkPaid(item);
