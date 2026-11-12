@@ -944,6 +944,8 @@ export async function updateCreditCardStatement(statementId, fields) {
   const newFees = fields.fees != null ? Number(fields.fees) : Number(statement.fees || 0);
   const newInterest = fields.interest != null ? Number(fields.interest) : Number(statement.interest || 0);
   const newRefunds = fields.refunds != null ? Number(fields.refunds) : Number(statement.refunds || 0);
+  const newStatementDate = fields.statement_date != null ? String(fields.statement_date).slice(0, 10) : statement.statement_date;
+  const newDueDate = fields.due_date != null ? String(fields.due_date).slice(0, 10) : statement.due_date;
   
   // Calculate new closing balance: Total Amount Due generated for cycle
   const purchases = Number(statement.purchases || 0);
@@ -967,20 +969,28 @@ export async function updateCreditCardStatement(statementId, fields) {
 
   await executeSql(
     `UPDATE credit_card_statements 
-     SET opening_balance = ?, fees = ?, interest = ?, refunds = ?, closing_balance = ?, minimum_due = ?, status = ?, is_generated = 0
+     SET opening_balance = ?, fees = ?, interest = ?, refunds = ?, closing_balance = ?, minimum_due = ?, status = ?, is_generated = 0, statement_date = ?, due_date = ?
      WHERE id = ?`,
-    [newOpeningBalance, newFees, newInterest, newRefunds, closingBalance, minimumDue, newStatus, statementId]
+    [newOpeningBalance, newFees, newInterest, newRefunds, closingBalance, minimumDue, newStatus, newStatementDate, newDueDate, statementId]
   );
   
   // Also update the linked bill amount and sync payment status
   if (statement.bill_id) {
-    const billRes = await executeSql(`SELECT status, is_paid, deleted_at FROM bills WHERE id = ?`, [statement.bill_id]);
+    const billRes = await executeSql(`SELECT status, is_paid, deleted_at, notes FROM bills WHERE id = ?`, [statement.bill_id]);
     if (billRes.rows.length > 0) {
       const bill = billRes.rows.item(0);
       if (!bill.deleted_at) {
+        let updatedNotes = bill.notes;
+        if (fields.statement_date && statement.statement_date) {
+          const oldDateStr = String(statement.statement_date).slice(0, 10);
+          const newDateStr = String(fields.statement_date).slice(0, 10);
+          if (updatedNotes && updatedNotes.includes(`Statement ${oldDateStr}`)) {
+            updatedNotes = updatedNotes.replace(`Statement ${oldDateStr}`, `Statement ${newDateStr}`);
+          }
+        }
         await executeSql(
-          `UPDATE bills SET amount = ? WHERE id = ?`,
-          [closingBalance, statement.bill_id]
+          `UPDATE bills SET amount = ?, notes = ? WHERE id = ?`,
+          [closingBalance, updatedNotes, statement.bill_id]
         );
       }
       await syncBillPaymentStatus(statement.bill_id);

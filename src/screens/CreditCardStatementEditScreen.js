@@ -5,17 +5,21 @@ import {
     ScrollView,
     KeyboardAvoidingView,
     Platform,
-    Alert
+    Alert,
+    TouchableOpacity,
 } from 'react-native';
 import { TextInput, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { updateCreditCardStatement } from '../services/creditCards';
 import events from '../services/events';
 import { useTheme } from '../context/ThemeContext';
+import MuiDateTimePicker from '../components/MuiDateTimePicker';
 
 export default function CreditCardStatementEditScreen({ route, navigation }) {
   const { isDarkMode, theme } = useTheme();
     const { editData } = route.params || {};
+    const [statementDate, setStatementDate] = useState(editData?.statement_date ? String(editData.statement_date).slice(0, 10) : '');
+    const [showDatePicker, setShowDatePicker] = useState(false);
     const [openingBalance, setOpeningBalance] = useState('0');
     const [fees, setFees] = useState('0');
     const [interest, setInterest] = useState('0');
@@ -24,6 +28,9 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
 
     useEffect(() => {
         if (editData) {
+            if (editData.statement_date) {
+                setStatementDate(String(editData.statement_date).slice(0, 10));
+            }
             setOpeningBalance(editData.opening_balance != null ? String(editData.opening_balance) : '0');
             setFees(editData.fees != null ? String(editData.fees) : '0');
             setInterest(editData.interest != null ? String(editData.interest) : '0');
@@ -54,7 +61,8 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
                 opening_balance: parseVal(openingBalance),
                 fees: parseVal(fees),
                 interest: parseVal(interest),
-                refunds: parseVal(refunds)
+                refunds: parseVal(refunds),
+                statement_date: statementDate || undefined,
             };
 
             if (editData && editData.id) {
@@ -125,6 +133,36 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
 
                 {/* ── FORM ── */}
                 <View style={{ paddingHorizontal: 24, flex: 1 }}>
+
+                    {/* ── STATEMENT DATE ── */}
+                    <View style={{ marginBottom: 20 }}>
+                        <Text style={{ fontSize: 13, color: theme.textSecondary, fontWeight: "700", marginBottom: 8, marginLeft: 4 }}>
+                            STATEMENT DATE
+                        </Text>
+                        <TouchableOpacity
+                            activeOpacity={0.7}
+                            onPress={() => setShowDatePicker(true)}
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                backgroundColor: theme.inputBg,
+                                borderWidth: 1,
+                                borderColor: theme.border,
+                                borderRadius: 8,
+                                paddingHorizontal: 16,
+                                paddingVertical: 14,
+                            }}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <MaterialCommunityIcons name="calendar" size={20} color={themeColor} style={{ marginRight: 10 }} />
+                                <Text style={{ fontSize: 16, fontWeight: '600', color: theme.textPrimary }}>
+                                    {statementDate ? new Date(statementDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Select Date'}
+                                </Text>
+                            </View>
+                            <MaterialCommunityIcons name="pencil" size={16} color={themeColor} />
+                        </TouchableOpacity>
+                    </View>
 
                     {/* ── OPENING BALANCE ── */}
                     <View style={{ marginBottom: 20 }}>
@@ -281,6 +319,20 @@ export default function CreditCardStatementEditScreen({ route, navigation }) {
                     </Button>
                 </View>
             </ScrollView>
+
+            <MuiDateTimePicker
+                visible={showDatePicker}
+                initialDate={statementDate ? new Date(statementDate) : new Date()}
+                hideTime={true}
+                onClose={() => setShowDatePicker(false)}
+                onSelect={(d) => {
+                    const yyyy = d.getFullYear();
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    setStatementDate(`${yyyy}-${mm}-${dd}`);
+                    setShowDatePicker(false);
+                }}
+            />
         </KeyboardAvoidingView>
     );
 }

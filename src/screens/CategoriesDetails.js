@@ -142,10 +142,15 @@ export default function CategoriesDetails({ route, navigation }) {
   }, [categoryName, navigation]);
 
 
+  const isExcludedFromSpend = (tx) => {
+    return tx?.is_counted === 0 || tx?.is_counted === '0' || tx?.is_counted === false;
+  };
+
   const groupData = (data, currentPeriod, offset) => {
     const map = {};
 
     data.forEach((tx) => {
+      if (isExcludedFromSpend(tx)) return;
       const key = getPeriodKey(tx.date, currentPeriod);
       if (key) {
         map[key] = (map[key] || 0) + Number(tx.amount || 0);
@@ -319,7 +324,7 @@ export default function CategoriesDetails({ route, navigation }) {
       sort((a, b) => b.sortVal - a.sortVal).
       map((group) => {
         const dailyTotal = group.data.reduce(
-          (sum, item) => sum + Number(item.amount || 0),
+          (sum, item) => (isExcludedFromSpend(item) ? sum : sum + Number(item.amount || 0)),
           0
         );
         return {

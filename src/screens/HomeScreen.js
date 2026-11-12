@@ -365,6 +365,7 @@ function BudgetDonut({
 
   function fmt(value) {
     return `₹${Number(value || 0).toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
   }
@@ -1336,7 +1337,7 @@ export default function HomeScreen({ navigation }) {
                           }}
                         >
                           {balanceVisible
-                            ? `₹${limit.toLocaleString("en-IN")}`
+                            ? `₹${limit.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                             : "••••••"}
                         </Text>
                       </View>
@@ -1384,7 +1385,7 @@ export default function HomeScreen({ navigation }) {
                           }}
                         >
                           {balanceVisible
-                            ? `₹${spent.toLocaleString("en-IN")}`
+                            ? `₹${spent.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                             : "••••••"}
                         </Text>
                       </View>
@@ -1436,7 +1437,7 @@ export default function HomeScreen({ navigation }) {
                           }}
                         >
                           {balanceVisible
-                            ? `₹${Math.abs(remaining).toLocaleString("en-IN")}`
+                            ? `₹${Math.abs(remaining).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                             : "••••••"}
                         </Text>
                       </View>
@@ -1533,7 +1534,7 @@ export default function HomeScreen({ navigation }) {
                         >
                           You have exceeded this month's budget by{" "}
                           {balanceVisible
-                            ? `₹${Math.abs(remaining).toLocaleString("en-IN")}`
+                            ? `₹${Math.abs(remaining).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                             : "••••••"}
                           .
                         </Text>
@@ -1789,9 +1790,13 @@ export default function HomeScreen({ navigation }) {
                           }}
                         >
                           {balanceVisible
-                            ? `₹${spent.toLocaleString(
-                              "en-IN",
-                            )} of ₹${budgetAmount.toLocaleString("en-IN")}`
+                            ? `₹${spent.toLocaleString("en-IN", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })} of ₹${budgetAmount.toLocaleString("en-IN", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}`
                             : "•••••• of ••••••"}
                         </Text>
 
@@ -1851,10 +1856,14 @@ export default function HomeScreen({ navigation }) {
                         >
                           {balanceVisible
                             ? remaining >= 0
-                              ? `₹${remaining.toLocaleString("en-IN")} left`
-                              : `₹${Math.abs(remaining).toLocaleString(
-                                "en-IN",
-                              )} over`
+                              ? `₹${remaining.toLocaleString("en-IN", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })} left`
+                              : `₹${Math.abs(remaining).toLocaleString("en-IN", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })} over`
                             : "••••••"}
                         </Text>
                       </View>
@@ -2533,7 +2542,10 @@ export default function HomeScreen({ navigation }) {
                       }}
                     >
                       {balanceVisible
-                        ? `₹${amount.toLocaleString("en-IN")}`
+                        ? `₹${amount.toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}`
                         : "••••••"}
                     </Text>
 

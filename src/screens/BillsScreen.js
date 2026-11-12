@@ -33,6 +33,7 @@ import BillCalendarView from "../components/BillCalendarView";
 import BillForm from "../components/BillForm";
 import ConfirmDialog from "../components/ConfirmDialog";
 import SkipBillModal from "../components/SkipBillModal";
+import DeleteBillModal from "../components/DeleteBillModal";
 import { Colors, Spacing } from "../components/Theme";
 import { useTheme } from "../context/ThemeContext";
 import { BILL_STATUS } from "../services/billUtils";
@@ -98,6 +99,7 @@ export default function BillsScreen({ navigation }) {
   const [skipModalVisible, setSkipModalVisible] = useState(false);
   const [skipTarget, setSkipTarget] = useState(null);
   const [isSkipping, setIsSkipping] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [showPaymentSourcePicker, setShowPaymentSourcePicker] = useState(false);
@@ -1338,13 +1340,12 @@ export default function BillsScreen({ navigation }) {
         </View>
       </Modal>
 
-      <ConfirmDialog
+      <DeleteBillModal
         visible={confirmVisible}
-        title="Delete Bill?"
-        message={confirmMessage}
-        confirmLabel="Delete Bill"
-        cancelLabel="Cancel"
+        bill={confirmTarget}
+        loading={isDeleting}
         onCancel={() => {
+          if (isDeleting) return;
           setConfirmVisible(false);
           setConfirmTarget(null);
         }}
@@ -1356,15 +1357,16 @@ export default function BillsScreen({ navigation }) {
           }
 
           try {
+            setIsDeleting(true);
             await deleteBill(confirmTarget.id);
             setConfirmVisible(false);
             setConfirmTarget(null);
             await load();
           } catch (error) {
             console.error("[BillsScreen] delete action failed:", error);
-            setConfirmVisible(false);
-            setConfirmTarget(null);
             Alert.alert("Error", "Unable to delete this bill.");
+          } finally {
+            setIsDeleting(false);
           }
         }}
       />

@@ -31,7 +31,10 @@ export default function BottomStatsBar({
         <Text style={[styles.label, { color: theme.textSecondary }]}>Balance</Text>
         <Text style={[styles.value, { color: theme.textPrimary }]}>
           {balanceVisible
-            ? `₹${Number(totalBalance).toLocaleString('en-IN')}`
+            ? `₹${Number(totalBalance || 0).toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`
             : '••••••'}
         </Text>
       </TouchableOpacity>
@@ -44,7 +47,10 @@ export default function BottomStatsBar({
       >
         <Text style={[styles.value, { color: '#FF9800' }]}>
           {balanceVisible
-            ? `₹${Number(billsTotal || 0).toLocaleString('en-IN')}`
+            ? `₹${Number(billsTotal || 0).toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`
             : '••••••'}
         </Text>
         <Text style={[styles.subLabel, { color: theme.textSecondary }]}>
@@ -61,7 +67,10 @@ export default function BottomStatsBar({
         <Text style={[styles.label, { color: theme.textSecondary }]}>Spend</Text>
         <Text style={[styles.value, { color: '#E46A6A' }]}>
           {balanceVisible
-            ? `₹${Number(totalMonthlySpend).toLocaleString('en-IN')}`
+            ? `₹${Number(totalMonthlySpend || 0).toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`
             : '••••••'}
         </Text>
       </TouchableOpacity>
