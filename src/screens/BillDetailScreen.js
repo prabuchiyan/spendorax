@@ -245,6 +245,7 @@ function YearQuickJumpModal({
   availableYears = [],
   yearGroups = {},
   activeYear,
+  activeOccurrenceId,
   onSelectOccurrence,
 }) {
   const { theme, isDarkMode } = useTheme();
@@ -287,7 +288,7 @@ function YearQuickJumpModal({
           {/* Header */}
           <View style={styles.jumpModalHeader}>
             <View style={styles.jumpIconCircle}>
-              <MaterialCommunityIcons name="calendar-clock" size={26} color="#006a61" />
+              <MaterialCommunityIcons name="calendar-clock" size={24} color="#006a61" />
             </View>
             <Text style={[styles.jumpModalTitle, { color: theme.textPrimary }]}>
               Jump to Period
@@ -368,7 +369,7 @@ function YearQuickJumpModal({
                         onPress={() => setSelectedYear(yr)}
                         style={[
                           styles.yearGridBtn,
-                          isFewYears ? { flex: 1 } : { width: "22.5%" },
+                          isFewYears ? { flex: 1 } : { width: "23%" },
                           {
                             backgroundColor: isSelected
                               ? "#006a61"
@@ -411,6 +412,23 @@ function YearQuickJumpModal({
                     });
                     const isPaid = occ.status === BILL_STATUS.PAID;
                     const isSkipped = occ.status === BILL_STATUS.SKIPPED;
+                    const isCurrentOcc =
+                      activeOccurrenceId != null && Number(occ.id) === Number(activeOccurrenceId);
+
+                    const statusColor = isPaid ? "#10b981" : isSkipped ? "#94a3b8" : "#f59e0b";
+                    const statusLabel = isPaid ? "Paid" : isSkipped ? "Skipped" : "Due";
+
+                    const cardBorderColor = isCurrentOcc
+                      ? "#006a61"
+                      : isPaid
+                        ? (isDarkMode ? "#065f46" : "#a7f3d0")
+                        : isSkipped
+                          ? (isDarkMode ? "#475569" : "#cbd5e1")
+                          : (isDarkMode ? "#334155" : theme.border);
+
+                    const cardBgColor = isCurrentOcc
+                      ? (isDarkMode ? "rgba(0, 106, 97, 0.25)" : "rgba(0, 106, 97, 0.08)")
+                      : (isDarkMode ? "#1e293b" : "#f8faff");
 
                     return (
                       <TouchableOpacity
@@ -421,34 +439,58 @@ function YearQuickJumpModal({
                           onClose();
                         }}
                         style={[
-                          styles.monthChipBtn,
+                          styles.cycleCardBtn,
                           {
-                            backgroundColor: isDarkMode ? "#1e293b" : "#f8faff",
-                            borderColor: isPaid
-                              ? "#10b981"
-                              : isSkipped
-                                ? "#94a3b8"
-                                : theme.border,
+                            backgroundColor: cardBgColor,
+                            borderColor: cardBorderColor,
+                            borderWidth: isCurrentOcc ? 1.5 : 1,
                           },
                         ]}>
-                        <View
-                          style={[
-                            styles.monthStatusDot,
-                            {
-                              backgroundColor: isPaid
-                                ? "#10b981"
-                                : isSkipped
-                                  ? "#94a3b8"
-                                  : "#f59e0b",
-                            },
-                          ]}
-                        />
-                        <Text style={[styles.monthChipText, { color: theme.textPrimary }]} numberOfLines={1}>
-                          {monthName}
-                        </Text>
-                        <Text style={[styles.monthChipAmount, { color: theme.textSecondary }]} numberOfLines={1}>
-                          {formatCurrency(occ.amount)}
-                        </Text>
+                        <View style={styles.cycleCardHeader}>
+                          <View style={styles.cycleCardHeaderLeft}>
+                            <View
+                              style={[
+                                styles.monthStatusDot,
+                                { backgroundColor: statusColor },
+                              ]}
+                            />
+                            <Text
+                              style={[
+                                styles.cycleMonthText,
+                                {
+                                  color: isCurrentOcc ? "#006a61" : theme.textPrimary,
+                                  fontWeight: isCurrentOcc ? "800" : "700",
+                                },
+                              ]}
+                              numberOfLines={1}>
+                              {monthName}
+                            </Text>
+                          </View>
+                          {isCurrentOcc ? (
+                            <View style={styles.cycleCurrentBadge}>
+                              <Text style={styles.cycleCurrentBadgeText}>Active</Text>
+                            </View>
+                          ) : isPaid ? (
+                            <MaterialCommunityIcons name="check-circle" size={13} color="#10b981" />
+                          ) : null}
+                        </View>
+                        <View style={styles.cycleCardFooter}>
+                          <Text
+                            style={[
+                              styles.cycleAmountText,
+                              { color: isCurrentOcc ? (isDarkMode ? "#2dd4bf" : "#006a61") : theme.textPrimary },
+                            ]}
+                            numberOfLines={1}>
+                            {formatCurrency(occ.amount)}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.cycleStatusText,
+                              { color: statusColor },
+                            ]}>
+                            {statusLabel}
+                          </Text>
+                        </View>
                       </TouchableOpacity>
                     );
                   })}
@@ -1843,6 +1885,7 @@ export default function BillDetailScreen({ route, navigation }) {
           availableYears={availableYears}
           yearGroups={yearGroups}
           activeYear={activeBill?.due_date ? new Date(activeBill.due_date).getFullYear() : availableYears[0]}
+          activeOccurrenceId={activeBill?.id}
           onSelectOccurrence={handleJumpToOccurrence}
         />
       </ScrollView>
@@ -2770,10 +2813,12 @@ const styles = StyleSheet.create({
   },
   jumpModalCard: {
     width: "100%",
-    maxWidth: 380,
-    maxHeight: "85%",
+    maxWidth: 400,
+    maxHeight: "84%",
     borderRadius: 24,
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 16,
     alignItems: "center",
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 12 },
@@ -2783,26 +2828,26 @@ const styles = StyleSheet.create({
   },
   jumpModalHeader: {
     alignItems: "center",
-    marginBottom: 14,
+    marginBottom: 12,
     width: "100%",
   },
   jumpIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: "rgba(0, 106, 97, 0.12)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   jumpModalTitle: {
-    fontSize: 17,
+    fontSize: 16.5,
     fontWeight: "800",
     fontFamily: "Plus Jakarta Sans",
-    marginBottom: 4,
+    marginBottom: 3,
   },
   jumpModalSubtitle: {
-    fontSize: 12.5,
+    fontSize: 12,
     fontFamily: "Inter",
     textAlign: "center",
   },
@@ -2818,28 +2863,28 @@ const styles = StyleSheet.create({
   },
   jumpShortcutsRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: 8,
     width: "100%",
-    marginBottom: 14,
+    marginBottom: 12,
   },
   jumpShortcutBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 9,
+    paddingVertical: 8,
     paddingHorizontal: 8,
     borderRadius: 12,
     borderWidth: 1,
   },
   jumpShortcutText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: "700",
     fontFamily: "Inter",
   },
   jumpSectionWrap: {
     width: "100%",
-    marginBottom: 14,
+    marginBottom: 12,
   },
   jumpSectionLabel: {
     fontSize: 10,
@@ -2847,24 +2892,24 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     fontFamily: "Inter",
     alignSelf: "flex-start",
-    marginBottom: 8,
+    marginBottom: 7,
   },
   jumpYearGrid: {
     width: "100%",
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 6,
   },
   yearGridBtn: {
-    height: 38,
-    borderRadius: 12,
+    height: 36,
+    borderRadius: 10,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 4,
   },
   yearGridBtnText: {
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: "800",
     fontFamily: "Plus Jakarta Sans",
   },
@@ -2872,18 +2917,28 @@ const styles = StyleSheet.create({
     width: "100%",
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
-    paddingVertical: 4,
+    justifyContent: "space-between",
+    rowGap: 8,
+    paddingVertical: 2,
   },
-  monthChipBtn: {
-    flexDirection: "row",
-    alignItems: "center",
+  cycleCardBtn: {
+    width: "48.5%",
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
-    minWidth: "29%",
-    flexGrow: 1,
+  },
+  cycleCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  cycleCardHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    marginRight: 4,
   },
   monthStatusDot: {
     width: 6,
@@ -2891,28 +2946,54 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     marginRight: 6,
   },
-  monthChipText: {
+  cycleMonthText: {
     fontSize: 12,
     fontWeight: "700",
     fontFamily: "Inter",
-    marginRight: 6,
   },
-  monthChipAmount: {
-    fontSize: 11,
-    fontWeight: "600",
+  cycleCurrentBadge: {
+    backgroundColor: "#006a61",
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  cycleCurrentBadgeText: {
+    color: "#ffffff",
+    fontSize: 9,
+    fontWeight: "800",
     fontFamily: "Inter",
-    marginLeft: "auto",
+    letterSpacing: 0.3,
+  },
+  cycleCardFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 5,
+    width: "100%",
+  },
+  cycleAmountText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    fontFamily: "Inter",
+    flex: 1,
+    marginRight: 4,
+  },
+  cycleStatusText: {
+    fontSize: 10,
+    fontWeight: "700",
+    fontFamily: "Inter",
+    textTransform: "capitalize",
   },
   jumpCloseBtn: {
     width: "100%",
-    height: 44,
-    borderRadius: 14,
+    height: 42,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 12,
+    marginTop: 10,
   },
   jumpCloseBtnText: {
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: "700",
     fontFamily: "Inter",
   },
