@@ -3294,7 +3294,7 @@ async function _ensureNextOccurrence(templateId) {
   // ---------------------------------------------------------
   // CREATE ONLY THIS ONE OCCURRENCE
   // ---------------------------------------------------------
-  await _insertBill({
+  const newBillId = await _insertBill({
     name: template.name,
     amount: template.amount,
     due_date: nextDueDate,
@@ -3315,8 +3315,40 @@ async function _ensureNextOccurrence(templateId) {
     parent_bill_id: templateId,
   });
 
+  // Trigger Bill Generated Notification if enabled
+  try {
+    const { isNotificationEnabled } = require('../database/notifications');
+    const enabled = await isNotificationEnabled('BILL_GENERATED');
+    if (enabled && newBillId) {
+      const Notifications = require('expo-notifications');
+      const formattedAmount = Number(template.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const dueDateFormatted = nextDueDate ? new Date(nextDueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : nextDueDate;
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `📋 New Bill Generated • ${template.name}`,
+          body: `Amount: ₹${formattedAmount} | Due Date: ${dueDateFormatted}\nAdded to your schedule. Tap to view details.`,
+          data: { screen: 'BillDetail', billId: newBillId, type: 'BILL_GENERATED' },
+          sound: true,
+          channelId: 'bills_channel'
+        },
+        trigger: null // Deliver immediately
+      });
+    }
+  } catch (notifErr) {
+    console.warn('Failed to notify bill generation', notifErr);
+  }
+
+  // Also sync bill notifications so the due reminder is scheduled
+  try {
+    const { syncBillNotifications } = require('./notificationService');
+    await syncBillNotifications();
+  } catch (syncErr) {
+    console.warn('Failed to sync bill notifications after occurrence creation', syncErr);
+  }
+
   console.log("[RecurringScheduler] Created next occurrence:", {
     templateId,
+    newBillId,
     dueDate: nextDueDate,
     today,
     daysUntilDue: daysBetween(today, nextDueDate),

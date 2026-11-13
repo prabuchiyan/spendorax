@@ -116,6 +116,8 @@ export async function createLoan(loan) {
 
   try {
     events.emit("loansChanged", { action: "create", id: loanId });
+    const { syncLoanEmiNotifications } = require('./notificationService');
+    await syncLoanEmiNotifications();
   } catch (e) {}
   return loanId;
 }
@@ -135,6 +137,8 @@ export async function updateLoan(id, fields) {
   );
   try {
     events.emit("loansChanged", { action: "update", id, fields });
+    const { syncLoanEmiNotifications } = require('./notificationService');
+    await syncLoanEmiNotifications();
   } catch (e) {}
 }
 
@@ -261,6 +265,8 @@ export async function deleteLoan(loanId) {
         action: "delete",
         id: loanId,
       });
+      const { syncLoanEmiNotifications } = require('./notificationService');
+      await syncLoanEmiNotifications();
     } catch (e) {}
 
     return true;
@@ -400,6 +406,8 @@ export async function recordPayment({
   } catch (e) {}
   try {
     events.emit("loansChanged", { action: "update", id: loanId });
+    const { syncLoanEmiNotifications } = require('./notificationService');
+    await syncLoanEmiNotifications();
   } catch (e) {}
 
   return pRes.insertId;
@@ -538,6 +546,8 @@ export async function recordPrepayment({
   } catch (e) {}
   try {
     events.emit("loansChanged", { action: "update", id: loanId });
+    const { syncLoanEmiNotifications } = require('./notificationService');
+    await syncLoanEmiNotifications();
   } catch (e) {}
 
   return pRes.insertId;
@@ -654,6 +664,8 @@ export async function forecloseLoan({
   } catch (e) {}
   try {
     events.emit("loansChanged", { action: "update", id: loanId });
+    const { syncLoanEmiNotifications } = require('./notificationService');
+    await syncLoanEmiNotifications();
   } catch (e) {}
 
   return pRes.insertId;
@@ -745,6 +757,8 @@ export async function recordAdvance({
   } catch (e) {}
   try {
     events.emit("loansChanged", { action: "update", id: loanId });
+    const { syncLoanEmiNotifications } = require('./notificationService');
+    await syncLoanEmiNotifications();
   } catch (e) {}
 
   return pRes.insertId;

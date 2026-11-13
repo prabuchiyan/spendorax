@@ -769,8 +769,8 @@ async function processCycle(
       statement_start, statement_end, statement_date, due_date,
       opening_balance, purchases, refunds, fees, interest,
       payments, closing_balance, minimum_due,
-      is_generated, generated_at, status, created_at
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))`,
+      is_generated, generated_at, status, is_notified, created_at
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))`,
     [
       card.id,
       billId,
@@ -789,6 +789,7 @@ async function processCycle(
       1,
       ts,
       stmtStatus,
+      0
     ]
   );
 
@@ -809,20 +810,42 @@ async function processCycle(
     closing_balance: closingBalance,
     minimum_due: minimumDue,
     status: "generated",
+    is_notified: 0,
   });
 
   try {
-    const Notifications = require('expo-notifications');
-    const formattedAmount = Number(closingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'Statement Generated',
-        body: `Your ${card.name} statement for ${formattedAmount} is ready.`,
-        data: { screen: 'BillDetail', billId: billId },
-        sound: true
-      },
-      trigger: null // Deliver immediately
-    });
+    const { isNotificationEnabled } = require('../database/notifications');
+    const enabled = await isNotificationEnabled('STATEMENT_GENERATED');
+    if (enabled && closingBalance > 0) {
+      const Notifications = require('expo-notifications');
+      const formattedAmount = Number(closingBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const formattedMinDue = Number(minimumDue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const dueDateFormatted = dueDateStr ? new Date(dueDateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : dueDateStr;
+
+      const title = `💳 Statement Generated • ${card.name}`;
+      const body = `Amount Due: ₹${formattedAmount} | Due: ${dueDateFormatted}\nMin Due: ₹${formattedMinDue} • Tap to view statement breakdown & pay.`;
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title,
+          body,
+          data: {
+            screen: 'CreditCardStatementDetail',
+            statementId: stmtRes.insertId,
+            id: stmtRes.insertId,
+            cardId: card.id,
+            type: 'STATEMENT_GENERATED'
+          },
+          sound: true,
+          channelId: 'statements_channel'
+        },
+        trigger: null // Deliver immediately
+      });
+
+      await executeSql(`UPDATE credit_card_statements SET is_notified = 1 WHERE id = ?`, [stmtRes.insertId]);
+      const stmtInArr = allStatements.find(s => s.id === stmtRes.insertId);
+      if (stmtInArr) stmtInArr.is_notified = 1;
+    }
   } catch (e) {
     console.warn('Failed to notify statement generation', e);
   }

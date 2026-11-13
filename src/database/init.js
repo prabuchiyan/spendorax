@@ -148,8 +148,15 @@ export async function initDB() {
     is_generated INTEGER DEFAULT 1,
     generated_at TEXT,
     status TEXT,
+    is_notified INTEGER DEFAULT 0,
     created_at TEXT DEFAULT(datetime('now'))
 );`);
+
+    try {
+      await executeSql(`ALTER TABLE credit_card_statements ADD COLUMN is_notified INTEGER DEFAULT 0`);
+    } catch (e) {
+      // Column already exists
+    }
 
     await executeSql(`CREATE TABLE IF NOT EXISTS credit_card_payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

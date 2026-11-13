@@ -20,11 +20,44 @@ import {
 import {
   scheduleNotification,
   cancelNotification,
-  requestPermission
+  requestPermission,
+  syncBillNotifications,
+  syncLoanEmiNotifications
 } from
   "../services/notificationService";
 
 const TYPE_META = {
+  STATEMENT_GENERATED: {
+    icon: "credit-card-check-outline",
+    color: "#2563EB",
+    bg: "#DBEAFE",
+    label: "Statement Generated Alert",
+    description: "Instant notification whenever a credit card statement is ready.",
+    isInstant: true,
+  },
+  BILL_GENERATED: {
+    icon: "file-plus-outline",
+    color: "#0D9488",
+    bg: "#CCFBF1",
+    label: "New Bill Generated Alert",
+    description: "Instant notification whenever a recurring bill occurrence is scheduled.",
+    isInstant: true,
+  },
+  BILL_DUE: {
+    icon: "file-document-alert-outline",
+    color: "#DC2626",
+    bg: "#FEE2E2",
+    label: "Bill Due Reminder",
+    description:
+      "Alerts you before and on the day your bills are due."
+  },
+  LOAN_EMI: {
+    icon: "bank-outline",
+    color: "#059669",
+    bg: "#D1FAE5",
+    label: "Loan EMI Reminder",
+    description: "Alerts you before and on your EMI due day for each active loan."
+  },
   DAILY_SPEND: {
     icon: "calendar-check-outline",
     color: "#7C3AED",
@@ -38,21 +71,6 @@ const TYPE_META = {
     bg: "#FED7AA",
     label: "Missed Expense Alert",
     description: "Notifies if you didn't record any expense yesterday."
-  },
-  BILL_DUE: {
-    icon: "file-document-alert-outline",
-    color: "#DC2626",
-    bg: "#FEE2E2",
-    label: "Bill Due Reminder",
-    description:
-      "Alerts you before bills are due based on reminder days set per bill."
-  },
-  LOAN_EMI: {
-    icon: "bank-outline",
-    color: "#2563EB",
-    bg: "#DBEAFE",
-    label: "Loan EMI Reminder",
-    description: "Reminds you on your EMI due day for each active loan."
   }
 };
 
@@ -101,28 +119,39 @@ export default function NotificationSettingsScreen() {
 
     setSaving(notification.id);
     try {
-      if (newEnabled === 1) {
-        const identifier = await scheduleNotification({
-          id: notification.id,
-          title: notification.title,
-          body: notification.body,
-          hour: notification.hour,
-          minute: notification.minute,
-          payload: notification.payload
-        });
-        // Save enabled + identifier, hour/minute stay unchanged
-        await updateNotification(notification.id, {
-          enabled: 1,
-          notification_identifier: identifier
-        });
+      if (notification.type === 'BILL_DUE') {
+        await updateNotification(notification.id, { enabled: newEnabled });
+        await syncBillNotifications();
+      } else if (notification.type === 'LOAN_EMI') {
+        await updateNotification(notification.id, { enabled: newEnabled });
+        await syncLoanEmiNotifications();
+      } else if (notification.type === 'STATEMENT_GENERATED' || notification.type === 'BILL_GENERATED') {
+        await updateNotification(notification.id, { enabled: newEnabled });
       } else {
-        if (notification.notification_identifier) {
-          await cancelNotification(notification.notification_identifier);
+        // DAILY_SPEND / YESTERDAY_SPEND repeating OS triggers
+        if (newEnabled === 1) {
+          const identifier = await scheduleNotification({
+            id: notification.id,
+            title: notification.title,
+            body: notification.body,
+            hour: notification.hour,
+            minute: notification.minute,
+            payload: notification.payload,
+            channelId: 'daily_reminders_channel'
+          });
+          await updateNotification(notification.id, {
+            enabled: 1,
+            notification_identifier: identifier
+          });
+        } else {
+          if (notification.notification_identifier) {
+            await cancelNotification(notification.notification_identifier);
+          }
+          await updateNotification(notification.id, {
+            enabled: 0,
+            notification_identifier: null
+          });
         }
-        await updateNotification(notification.id, {
-          enabled: 0,
-          notification_identifier: null
-        });
       }
 
       await load();
@@ -153,26 +182,34 @@ export default function NotificationSettingsScreen() {
 
     setSaving(notification.id);
     try {
-      if (notification.enabled) {
-        // Schedule with new time, get back new identifier
-        const identifier = await scheduleNotification({
-          id: notification.id,
-          title: notification.title,
-          body: notification.body,
-          hour,
-          minute,
-          payload: notification.payload
-        });
-
-        // Save hour, minute AND new identifier together atomically
-        await updateNotification(notification.id, {
-          hour,
-          minute,
-          notification_identifier: identifier
-        });
-      } else {
-        // Not enabled — just save the time preference for when it gets enabled
+      if (notification.type === 'BILL_DUE') {
         await updateNotification(notification.id, { hour, minute });
+        await syncBillNotifications();
+      } else if (notification.type === 'LOAN_EMI') {
+        await updateNotification(notification.id, { hour, minute });
+        await syncLoanEmiNotifications();
+      } else if (notification.type === 'STATEMENT_GENERATED' || notification.type === 'BILL_GENERATED') {
+        await updateNotification(notification.id, { hour, minute });
+      } else {
+        // DAILY_SPEND / YESTERDAY_SPEND
+        if (notification.enabled) {
+          const identifier = await scheduleNotification({
+            id: notification.id,
+            title: notification.title,
+            body: notification.body,
+            hour,
+            minute,
+            payload: notification.payload,
+            channelId: 'daily_reminders_channel'
+          });
+          await updateNotification(notification.id, {
+            hour,
+            minute,
+            notification_identifier: identifier
+          });
+        } else {
+          await updateNotification(notification.id, { hour, minute });
+        }
       }
 
       setShowTimePicker(false);
@@ -244,8 +281,8 @@ export default function NotificationSettingsScreen() {
 
               </View>
 
-              {/* Time row — only shown when enabled */}
-              {isEnabled &&
+              {/* Time row — only shown when enabled and not an instant event type */}
+              {isEnabled && !meta.isInstant &&
                 <TouchableOpacity
                   style={[styles.timeRow, { borderColor: meta.color + "40", backgroundColor: theme.cardBg }]}
                   onPress={() => openTimePicker(notification)}
