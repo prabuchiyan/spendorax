@@ -9,6 +9,7 @@ import { Menu, Portal } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {
   formatDueDate,
+  formatCurrency,
 } from '../services/billUtils';
 import CurrencyText from './CurrencyText';
 import { useTheme } from '../context/ThemeContext';
@@ -58,6 +59,12 @@ function BillCard({
       paidBadgeBorder: "rgba(45, 212, 191, 0.3)",
       paidBadgeText: "#5eead4",
 
+      // Partially Paid
+      partialLeftBorder: "#3b82f6",
+      partialBadgeBg: "rgba(59, 130, 246, 0.2)",
+      partialBadgeBorder: "rgba(59, 130, 246, 0.4)",
+      partialBadgeText: "#60a5fa",
+
       // Pending
       pendingLeftBorder: "#fbbf24",
       pendingBadgeBg: "rgba(69, 26, 3, 0.4)",
@@ -97,6 +104,12 @@ function BillCard({
       paidBadgeBorder: "#a7f3d0",
       paidBadgeText: "#006a61",
 
+      // Partially Paid
+      partialLeftBorder: "#2563eb",
+      partialBadgeBg: "#eff6ff",
+      partialBadgeBorder: "#bfdbfe",
+      partialBadgeText: "#2563eb",
+
       // Pending
       pendingLeftBorder: "#c76c00",
       pendingBadgeBg: "#ffedd5",
@@ -112,9 +125,22 @@ function BillCard({
       skippedBadgeText: "#64748b",
     };
 
+  const roundedPaid = Math.round(Number(bill.paid_amount || bill.total_paid || 0) * 100);
+  const roundedAmount = Math.round(Number(bill.amount || 0) * 100);
+  const remainingAmount = Math.max(0, Math.round(roundedAmount - roundedPaid) / 100);
+
   const status = bill.status || 'pending';
-  const isPaid = status === 'paid';
-  const isOverdue = status === 'overdue';
+  const isPaid =
+    status === 'paid' ||
+    Number(bill.is_paid) === 1 ||
+    Boolean(bill.is_completely_paid) ||
+    (roundedAmount > 0 && roundedPaid >= roundedAmount);
+  const isPartiallyPaid =
+    !isPaid &&
+    (status === 'partially_paid' ||
+      Boolean(bill.is_partially_paid) ||
+      (roundedPaid > 0 && roundedPaid < roundedAmount));
+  const isOverdue = !isPaid && !isPartiallyPaid && status === 'overdue';
   const isSkipped = status === 'skipped';
 
   let statusConfig = {
@@ -146,6 +172,16 @@ function BillCard({
       label: "• PAID",
       icon: "check-circle",
       iconColor: theme.paidBadgeText,
+    };
+  } else if (isPartiallyPaid) {
+    statusConfig = {
+      leftBorder: theme.partialLeftBorder,
+      badgeBg: theme.partialBadgeBg,
+      badgeBorder: theme.partialBadgeBorder,
+      badgeText: theme.partialBadgeText,
+      label: "• PARTIAL",
+      icon: "progress-clock",
+      iconColor: theme.partialBadgeText,
     };
   } else if (isSkipped) {
     statusConfig = {
@@ -273,8 +309,13 @@ function BillCard({
                 },
               ]}
             >
-              <CurrencyText amount={bill.amount} />
+              <CurrencyText amount={isPartiallyPaid && bill.remaining_amount != null ? bill.remaining_amount : (isPartiallyPaid ? remainingAmount : bill.amount)} />
             </Text>
+            {isPartiallyPaid ? (
+              <Text style={{ fontSize: 10, color: theme.textMuted, textAlign: 'right', marginTop: 1 }}>
+                left of {formatCurrency(bill.amount)}
+              </Text>
+            ) : null}
 
             <View style={{ position: 'relative', zIndex: 10, marginLeft: 2 }}>
               {menuVisible && (

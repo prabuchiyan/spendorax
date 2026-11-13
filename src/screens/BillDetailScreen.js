@@ -411,8 +411,10 @@ function YearQuickJumpModal({
                     const monthName = date.toLocaleDateString("en-IN", {
                       month: "short",
                     });
-                    const isPaid = occ.status === BILL_STATUS.PAID || Number(occ.is_paid) === 1 || (Number(occ.amount || 0) > 0 && Number(occ.paid_amount || 0) >= Number(occ.amount || 0));
-                    const isPartiallyPaid = !isPaid && (occ.status === "partially_paid" || occ.is_partially_paid || (Number(occ.paid_amount || 0) > 0 && Number(occ.paid_amount || 0) < Number(occ.amount || 0)));
+                    const occAmount = Math.round(Number(occ.amount || 0) * 100);
+                    const occPaid = Math.round(Number(occ.paid_amount || 0) * 100);
+                    const isPaid = occ.status === BILL_STATUS.PAID || Number(occ.is_paid) === 1 || Boolean(occ.is_completely_paid) || (occAmount > 0 && occPaid >= occAmount);
+                    const isPartiallyPaid = !isPaid && (occ.status === "partially_paid" || occ.is_partially_paid || (occPaid > 0 && occPaid < occAmount));
                     const isSkipped = occ.status === BILL_STATUS.SKIPPED;
                     const isCurrentOcc =
                       activeOccurrenceId != null && Number(occ.id) === Number(activeOccurrenceId);
@@ -487,7 +489,7 @@ function YearQuickJumpModal({
                               { color: isCurrentOcc ? (isDarkMode ? "#2dd4bf" : "#006a61") : theme.textPrimary },
                             ]}
                             numberOfLines={1}>
-                            {formatCurrency(occ.amount)}
+                            {formatCurrency(isPartiallyPaid && occ.remaining_amount != null ? occ.remaining_amount : occ.amount)}
                           </Text>
                           <Text
                             style={[
@@ -1258,25 +1260,27 @@ export default function BillDetailScreen({ route, navigation }) {
 
   // ── derived values ────────────────────────────────────────────────────────
   const activeBill = selectedOcc || bill;
+  const paidAmount = Number(activeBill?.paid_amount ?? activeBill?.total_paid ?? 0);
+  const billAmount = Number(activeBill?.amount || 0);
+  const roundedPaid = Math.round(paidAmount * 100);
+  const roundedAmount = Math.round(billAmount * 100);
+  const remainingAmount = Math.max(0, Math.round(roundedAmount - roundedPaid) / 100);
+
   const display = getBillDisplayStatus(activeBill);
   const isFullyPaid =
     display?.label === "Paid" ||
     activeBill?.status === BILL_STATUS.PAID ||
     Number(activeBill?.is_paid) === 1 ||
-    Boolean(activeBill?.is_completely_paid);
+    Boolean(activeBill?.is_completely_paid) ||
+    (roundedAmount > 0 && roundedPaid >= roundedAmount);
   const isPartiallyPaid =
     !isFullyPaid &&
     (display?.label === "Partially Paid" ||
       activeBill?.status === "partially_paid" ||
       Boolean(activeBill?.is_partially_paid) ||
-      (Number(activeBill?.paid_amount || 0) > 0 &&
-        Number(activeBill?.paid_amount || 0) < Number(activeBill?.amount || 0)));
+      (roundedPaid > 0 && roundedPaid < roundedAmount));
   const isSkipped = activeBill?.status === BILL_STATUS.SKIPPED;
   const isPaidOrSkipped = isFullyPaid || isSkipped;
-
-  const paidAmount = Number(activeBill?.paid_amount ?? activeBill?.total_paid ?? 0);
-  const billAmount = Number(activeBill?.amount || 0);
-  const remainingAmount = Math.max(0, billAmount - paidAmount);
   const isAnyLoading = isMarkingPaid || isSkipping || isUnskipping;
 
   const isPayable = (() => {
@@ -1457,14 +1461,18 @@ export default function BillDetailScreen({ route, navigation }) {
           <View style={styles.heroAmountBox}>
             {/* Due Amount Panel */}
             <View style={styles.heroAmountCol}>
-              <Text style={styles.heroAmountLabel}>DUE AMOUNT</Text>
+              <Text style={styles.heroAmountLabel}>
+                {isFullyPaid || isPartiallyPaid ? "REMAINING DUE" : "DUE AMOUNT"}
+              </Text>
               <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.heroAmountValueDue}>
-                <CurrencyText amount={activeBill.amount} />
+                <CurrencyText amount={isFullyPaid ? 0 : (isPartiallyPaid ? remainingAmount : activeBill.amount)} />
               </Text>
               <View style={styles.heroAmountSubRow}>
                 <MaterialCommunityIcons name="calendar-outline" size={12} color="#94a3b8" />
                 <Text numberOfLines={1} style={styles.heroAmountSubText}>
-                  Due {formatDueDate(activeBill.due_date)}
+                  {isFullyPaid || isPartiallyPaid
+                    ? `Total ${formatCurrency(activeBill.amount)}`
+                    : `Due ${formatDueDate(activeBill.due_date)}`}
                 </Text>
               </View>
             </View>

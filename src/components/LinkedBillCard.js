@@ -220,6 +220,9 @@ export default function LinkedBillCard({
           const display = isDeleted
             ? { label: 'Deleted', color: '#EF4444' }
             : getBillDisplayStatus(bill);
+          const bPaid = Math.round(Number(bill.paid_amount || 0) * 100);
+          const bAmount = Math.round(Number(bill.amount || 0) * 100);
+          const isBillPartiallyPaid = !bill.is_completely_paid && (bill.is_partially_paid || (bPaid > 0 && bPaid < bAmount));
 
           return (
             <View
@@ -270,7 +273,7 @@ export default function LinkedBillCard({
                   <Text style={[styles.billSub, { color: theme.textSecondary }]}>
                     {isDeleted
                       ? `Due ${formatDueDate(bill.due_date)}  ·  Deleted Bill`
-                      : bill.is_partially_paid || (Number(bill.paid_amount || 0) > 0 && Number(bill.paid_amount || 0) < Number(bill.amount || 0))
+                      : isBillPartiallyPaid
                       ? `Due ${formatDueDate(bill.due_date)}  ·  ₹${Number(bill.paid_amount || 0).toLocaleString()} of ₹${Number(bill.amount || 0).toLocaleString()} paid`
                       : `Due ${formatDueDate(bill.due_date)}${
                           bill.linked_tx_count > 1

@@ -124,8 +124,25 @@ export function computeBillStatus(bill, today = todayStr()) {
   if (!bill) return BILL_STATUS.PENDING;
   if (bill.deleted_at) return null;
   if (bill.status === BILL_STATUS.SKIPPED) return BILL_STATUS.SKIPPED;
-  if (bill.status === BILL_STATUS.PAID || Number(bill.is_paid) === 1)
+  const paidAmount = Number(bill.paid_amount || bill.total_paid || 0);
+  const amount = Number(bill.amount || 0);
+  const roundedPaid = Math.round(paidAmount * 100);
+  const roundedAmount = Math.round(amount * 100);
+  if (
+    bill.status === BILL_STATUS.PAID ||
+    Number(bill.is_paid) === 1 ||
+    Boolean(bill.is_completely_paid) ||
+    (roundedAmount > 0 && roundedPaid >= roundedAmount)
+  ) {
     return BILL_STATUS.PAID;
+  }
+  if (
+    bill.status === "partially_paid" ||
+    Boolean(bill.is_partially_paid) ||
+    (roundedPaid > 0 && roundedPaid < roundedAmount)
+  ) {
+    return "partially_paid";
+  }
   if (bill.due_date && bill.due_date.slice(0, 10) < today)
     return BILL_STATUS.OVERDUE;
   return BILL_STATUS.PENDING;
@@ -141,6 +158,8 @@ export function getBillDisplayStatus(bill) {
   const status = String(bill.status || bill.payment_status || "").toLowerCase();
   const paidAmount = Number(bill.paid_amount || bill.total_paid || 0);
   const amount = Number(bill.amount || 0);
+  const roundedPaid = Math.round(paidAmount * 100);
+  const roundedAmount = Math.round(amount * 100);
 
   // SKIPPED
   if (status === "skipped") {
@@ -150,27 +169,29 @@ export function getBillDisplayStatus(bill) {
     };
   }
 
+  const isCompletelyPaid =
+    status === "paid" ||
+    Number(bill.is_paid) === 1 ||
+    Boolean(bill.is_completely_paid) ||
+    (roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0);
+
+  // PAID (evaluated before partially_paid to avoid stale DB flags)
+  if (isCompletelyPaid) {
+    return {
+      label: "Paid",
+      color: "#3F8F6B",
+    };
+  }
+
   // PARTIALLY PAID
   if (
     status === "partially_paid" ||
     bill.is_partially_paid ||
-    (paidAmount > 0 && amount > 0 && paidAmount < amount)
+    (roundedPaid > 0 && roundedPaid < roundedAmount)
   ) {
     return {
       label: "Partially Paid",
       color: "#3B82F6",
-    };
-  }
-
-  // PAID
-  if (
-    status === "paid" ||
-    Number(bill.is_paid) === 1 ||
-    (amount > 0 && paidAmount >= amount)
-  ) {
-    return {
-      label: "Paid",
-      color: "#3F8F6B",
     };
   }
   if (!bill.due_date) {

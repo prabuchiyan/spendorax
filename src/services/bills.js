@@ -126,6 +126,7 @@ export async function removeTransactionFromBill(billId, transactionId) {
        WHERE id = ?`,
       [remaining[0].transaction_id, billId],
     );
+    await syncBillPaymentStatus(billId);
   }
 
   emitBillsChanged();
@@ -200,7 +201,7 @@ export function calcBillPaidAmount(linkedTxs) {
     }
     total += Number(tx.amount || 0);
   }
-  return total;
+  return Math.round(total * 100) / 100;
 }
 
 async function enrichBillsWithPaymentInfo(billsList) {
@@ -233,9 +234,14 @@ async function enrichBillsWithPaymentInfo(billsList) {
       }
       const totalPaid = calcBillPaidAmount(txsForBill);
       const billAmount = Number(bill.amount || 0);
-      const isCompletelyPaid = billAmount > 0 ? totalPaid >= billAmount : totalPaid > 0;
-      const isPartiallyPaid = totalPaid > 0 && !isCompletelyPaid;
-      const remainingAmount = Math.max(0, billAmount - totalPaid);
+      const roundedPaid = Math.round(totalPaid * 100);
+      const roundedAmount = Math.round(billAmount * 100);
+      const isCompletelyPaid =
+        (roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0) ||
+        bill.status === BILL_STATUS.PAID ||
+        Number(bill.is_paid) === 1;
+      const isPartiallyPaid = roundedPaid > 0 && !isCompletelyPaid;
+      const remainingAmount = Math.max(0, Math.round(roundedAmount - roundedPaid) / 100);
 
       return {
         ...bill,
@@ -245,6 +251,8 @@ async function enrichBillsWithPaymentInfo(billsList) {
         is_partially_paid: isPartiallyPaid,
         is_completely_paid: isCompletelyPaid,
         linked_tx_count: txsForBill.length,
+        status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? BILL_STATUS.PARTIALLY_PAID : bill.status),
+        is_paid: isCompletelyPaid ? 1 : (isPartiallyPaid ? 0 : bill.is_paid),
       };
     }).filter(Boolean);
   } catch (e) {
@@ -345,7 +353,9 @@ export async function syncBillPaymentStatus(billId) {
   const linkedTxs = await getBillLinkedTransactions(billId);
   const totalPaid = calcBillPaidAmount(linkedTxs);
   const billAmount = Number(bill.amount || 0);
-  const isFullyPaid = billAmount > 0 ? totalPaid >= billAmount : totalPaid > 0;
+  const roundedPaid = Math.round(totalPaid * 100);
+  const roundedAmount = Math.round(billAmount * 100);
+  const isFullyPaid = roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0;
 
   if (linkedTxs.length === 0) {
     if (!bill.deleted_at) {
@@ -900,9 +910,14 @@ export async function getAvailableBillsForTransactionLink(transactionId) {
 
       const totalPaid = calcBillPaidAmount(txsForBill);
       const billAmount = Number(b.amount || 0);
-      const isCompletelyPaid = billAmount > 0 && totalPaid >= billAmount;
-      const isPartiallyPaid = totalPaid > 0 && !isCompletelyPaid;
-      const remainingAmount = Math.max(0, billAmount - totalPaid);
+      const roundedPaid = Math.round(totalPaid * 100);
+      const roundedAmount = Math.round(billAmount * 100);
+      const isCompletelyPaid =
+        (roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0) ||
+        b.status === BILL_STATUS.PAID ||
+        Number(b.is_paid) === 1;
+      const isPartiallyPaid = roundedPaid > 0 && !isCompletelyPaid;
+      const remainingAmount = Math.max(0, Math.round(roundedAmount - roundedPaid) / 100);
 
       candidateBills.push({
         ...b,
@@ -1644,19 +1659,22 @@ export async function getBillById(id) {
     const linkedTxs = await getBillLinkedTransactions(id);
     const paidAmount = calcBillPaidAmount(linkedTxs);
     const billAmount = Number(bill.amount || 0);
+    const roundedPaid = Math.round(paidAmount * 100);
+    const roundedAmount = Math.round(billAmount * 100);
     const isCompletelyPaid =
-      (billAmount > 0 ? paidAmount >= billAmount : paidAmount > 0) ||
+      (roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0) ||
       bill.status === BILL_STATUS.PAID ||
       Number(bill.is_paid) === 1;
-    const isPartiallyPaid = paidAmount > 0 && !isCompletelyPaid;
+    const isPartiallyPaid = roundedPaid > 0 && !isCompletelyPaid;
     return {
       ...bill,
       paid_amount: paidAmount,
       total_paid: paidAmount,
-      remaining_amount: Math.max(0, billAmount - paidAmount),
+      remaining_amount: Math.max(0, Math.round(roundedAmount - roundedPaid) / 100),
       is_partially_paid: isPartiallyPaid,
       is_completely_paid: isCompletelyPaid,
       status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? "partially_paid" : bill.status),
+      is_paid: isCompletelyPaid ? 1 : (isPartiallyPaid ? 0 : bill.is_paid),
     };
   } catch (e) {
     return bill;
@@ -1737,26 +1755,27 @@ export async function getBillSeries(templateId) {
       const billLinks = links.filter(
         (l) => Number(l.bill_id) === Number(bill.id),
       );
-      const paidAmount = billLinks.reduce((sum, link) => {
-        const tx = transactions.find(
-          (t) => Number(t.id) === Number(link.transaction_id),
-        );
-        return sum + Number(tx?.amount || 0);
-      }, 0);
+      const billTxs = billLinks
+        .map((l) => transactions.find((t) => Number(t.id) === Number(l.transaction_id)))
+        .filter(Boolean);
+      const paidAmount = calcBillPaidAmount(billTxs);
       const billAmount = Number(bill.amount || 0);
+      const roundedPaid = Math.round(paidAmount * 100);
+      const roundedAmount = Math.round(billAmount * 100);
       const isCompletelyPaid =
-      (billAmount > 0 ? paidAmount >= billAmount : paidAmount > 0) ||
-      bill.status === BILL_STATUS.PAID ||
-      Number(bill.is_paid) === 1;
-      const isPartiallyPaid = paidAmount > 0 && !isCompletelyPaid;
+        (roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0) ||
+        bill.status === BILL_STATUS.PAID ||
+        Number(bill.is_paid) === 1;
+      const isPartiallyPaid = roundedPaid > 0 && !isCompletelyPaid;
       return {
         ...bill,
         paid_amount: paidAmount,
         total_paid: paidAmount,
-        remaining_amount: Math.max(0, billAmount - paidAmount),
+        remaining_amount: Math.max(0, Math.round(roundedAmount - roundedPaid) / 100),
         is_partially_paid: isPartiallyPaid,
         is_completely_paid: isCompletelyPaid,
         status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? "partially_paid" : bill.status),
+        is_paid: isCompletelyPaid ? 1 : (isPartiallyPaid ? 0 : bill.is_paid),
       };
     });
 
@@ -1803,26 +1822,27 @@ export async function getBillSeries(templateId) {
     const billLinks = links.filter(
       (l) => Number(l.bill_id) === Number(bill.id),
     );
-    const paidAmount = billLinks.reduce((sum, link) => {
-      const tx = transactions.find(
-        (t) => Number(t.id) === Number(link.transaction_id),
-      );
-      return sum + Number(tx?.amount || 0);
-    }, 0);
+    const billTxs = billLinks
+      .map((l) => transactions.find((t) => Number(t.id) === Number(l.transaction_id)))
+      .filter(Boolean);
+    const paidAmount = calcBillPaidAmount(billTxs);
     const billAmount = Number(bill.amount || 0);
+    const roundedPaid = Math.round(paidAmount * 100);
+    const roundedAmount = Math.round(billAmount * 100);
     const isCompletelyPaid =
-      (billAmount > 0 ? paidAmount >= billAmount : paidAmount > 0) ||
+      (roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0) ||
       bill.status === BILL_STATUS.PAID ||
       Number(bill.is_paid) === 1;
-    const isPartiallyPaid = paidAmount > 0 && !isCompletelyPaid;
+    const isPartiallyPaid = roundedPaid > 0 && !isCompletelyPaid;
     return {
       ...bill,
       paid_amount: paidAmount,
       total_paid: paidAmount,
-      remaining_amount: Math.max(0, billAmount - paidAmount),
+      remaining_amount: Math.max(0, Math.round(roundedAmount - roundedPaid) / 100),
       is_partially_paid: isPartiallyPaid,
       is_completely_paid: isCompletelyPaid,
       status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? "partially_paid" : bill.status),
+      is_paid: isCompletelyPaid ? 1 : (isPartiallyPaid ? 0 : bill.is_paid),
     };
   });
 
@@ -1885,13 +1905,28 @@ export async function getBillSeriesMultiple(templateIds) {
         const billLinks = links.filter(
           (l) => Number(l.bill_id) === Number(bill.id),
         );
-        const paidAmount = billLinks.reduce((sum, link) => {
-          const tx = transactions.find(
-            (t) => Number(t.id) === Number(link.transaction_id),
-          );
-          return sum + Number(tx?.amount || 0);
-        }, 0);
-        return { ...bill, paid_amount: paidAmount };
+        const billTxs = billLinks
+          .map((l) => transactions.find((t) => Number(t.id) === Number(l.transaction_id)))
+          .filter(Boolean);
+        const paidAmount = calcBillPaidAmount(billTxs);
+        const billAmount = Number(bill.amount || 0);
+        const roundedPaid = Math.round(paidAmount * 100);
+        const roundedAmount = Math.round(billAmount * 100);
+        const isCompletelyPaid =
+          (roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0) ||
+          bill.status === BILL_STATUS.PAID ||
+          Number(bill.is_paid) === 1;
+        const isPartiallyPaid = roundedPaid > 0 && !isCompletelyPaid;
+        return {
+          ...bill,
+          paid_amount: paidAmount,
+          total_paid: paidAmount,
+          remaining_amount: Math.max(0, Math.round(roundedAmount - roundedPaid) / 100),
+          is_partially_paid: isPartiallyPaid,
+          is_completely_paid: isCompletelyPaid,
+          status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? "partially_paid" : bill.status),
+          is_paid: isCompletelyPaid ? 1 : (isPartiallyPaid ? 0 : bill.is_paid),
+        };
       });
     } else {
       const dedupedChildren = deduplicateSeriesChildren(allChildren, template);
@@ -1917,13 +1952,28 @@ export async function getBillSeriesMultiple(templateIds) {
         const billLinks = links.filter(
           (l) => Number(l.bill_id) === Number(bill.id),
         );
-        const paidAmount = billLinks.reduce((sum, link) => {
-          const tx = transactions.find(
-            (t) => Number(t.id) === Number(link.transaction_id),
-          );
-          return sum + Number(tx?.amount || 0);
-        }, 0);
-        return { ...bill, paid_amount: paidAmount };
+        const billTxs = billLinks
+          .map((l) => transactions.find((t) => Number(t.id) === Number(l.transaction_id)))
+          .filter(Boolean);
+        const paidAmount = calcBillPaidAmount(billTxs);
+        const billAmount = Number(bill.amount || 0);
+        const roundedPaid = Math.round(paidAmount * 100);
+        const roundedAmount = Math.round(billAmount * 100);
+        const isCompletelyPaid =
+          (roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0) ||
+          bill.status === BILL_STATUS.PAID ||
+          Number(bill.is_paid) === 1;
+        const isPartiallyPaid = roundedPaid > 0 && !isCompletelyPaid;
+        return {
+          ...bill,
+          paid_amount: paidAmount,
+          total_paid: paidAmount,
+          remaining_amount: Math.max(0, Math.round(roundedAmount - roundedPaid) / 100),
+          is_partially_paid: isPartiallyPaid,
+          is_completely_paid: isCompletelyPaid,
+          status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? "partially_paid" : bill.status),
+          is_paid: isCompletelyPaid ? 1 : (isPartiallyPaid ? 0 : bill.is_paid),
+        };
       });
     }
 
