@@ -130,10 +130,20 @@ export default function NotificationSettingsScreen() {
       } else {
         // DAILY_SPEND / YESTERDAY_SPEND repeating OS triggers
         if (newEnabled === 1) {
+          let title = notification.title;
+          let body = notification.body;
+          if (notification.type === 'DAILY_SPEND') {
+            title = '📝 Daily Expense Check-in';
+            body = "Spent anything today? Take 15 seconds to log your expenses and keep your budget in check 🎯";
+          } else if (notification.type === 'YESTERDAY_SPEND') {
+            title = '⚠️ Missed Expense Alert';
+            body = "No expenses logged for yesterday. Forgot to record a spend or had a zero-spend day? Tap to review 📊";
+          }
+
           const identifier = await scheduleNotification({
             id: notification.id,
-            title: notification.title,
-            body: notification.body,
+            title,
+            body,
             hour: notification.hour,
             minute: notification.minute,
             payload: notification.payload,
@@ -141,6 +151,8 @@ export default function NotificationSettingsScreen() {
           });
           await updateNotification(notification.id, {
             enabled: 1,
+            title,
+            body,
             notification_identifier: identifier
           });
         } else {
@@ -192,11 +204,21 @@ export default function NotificationSettingsScreen() {
         await updateNotification(notification.id, { hour, minute });
       } else {
         // DAILY_SPEND / YESTERDAY_SPEND
+        let title = notification.title;
+        let body = notification.body;
+        if (notification.type === 'DAILY_SPEND') {
+          title = '📝 Daily Expense Check-in';
+          body = "Spent anything today? Take 15 seconds to log your expenses and keep your budget in check 🎯";
+        } else if (notification.type === 'YESTERDAY_SPEND') {
+          title = '⚠️ Missed Expense Alert';
+          body = "No expenses logged for yesterday. Forgot to record a spend or had a zero-spend day? Tap to review 📊";
+        }
+
         if (notification.enabled) {
           const identifier = await scheduleNotification({
             id: notification.id,
-            title: notification.title,
-            body: notification.body,
+            title,
+            body,
             hour,
             minute,
             payload: notification.payload,
@@ -205,10 +227,12 @@ export default function NotificationSettingsScreen() {
           await updateNotification(notification.id, {
             hour,
             minute,
+            title,
+            body,
             notification_identifier: identifier
           });
         } else {
-          await updateNotification(notification.id, { hour, minute });
+          await updateNotification(notification.id, { hour, minute, title, body });
         }
       }
 

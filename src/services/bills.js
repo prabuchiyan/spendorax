@@ -527,7 +527,7 @@ export async function getTransferInfoForTransaction(transactionId) {
         const s = sources.find((x) => Number(x.id) === Number(creditItem.source_id));
         if (s) creditSourceName = s.name;
       }
-    } catch (e) {}
+    } catch (e) { }
 
     return {
       isTransfer: true,
@@ -554,7 +554,7 @@ export async function getBillsForTransaction(transactionId, includeDeleted = tru
   try {
     try {
       await cleanupDuplicateTransferBillLinks();
-    } catch (cleanErr) {}
+    } catch (cleanErr) { }
     // Resolve all transaction IDs in the transfer group if this is a transfer
     let txIds = [transactionId];
     try {
@@ -646,7 +646,7 @@ export async function getBillsForTransaction(transactionId, includeDeleted = tru
             if (gIds.length > 0) txIds = gIds;
           }
         }
-      } catch (err) {}
+      } catch (err) { }
 
       const allBillsRes = await executeSql(
         includeDeleted ? `SELECT * FROM bills` : `SELECT * FROM bills WHERE deleted_at IS NULL`,
@@ -3317,22 +3317,25 @@ async function _ensureNextOccurrence(templateId) {
 
   // Trigger Bill Generated Notification if enabled
   try {
-    const { isNotificationEnabled } = require('../database/notifications');
-    const enabled = await isNotificationEnabled('BILL_GENERATED');
-    if (enabled && newBillId) {
-      const Notifications = require('expo-notifications');
-      const formattedAmount = Number(template.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const dueDateFormatted = nextDueDate ? new Date(nextDueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : nextDueDate;
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: `📋 New Bill Generated • ${template.name}`,
-          body: `Amount: ₹${formattedAmount} | Due Date: ${dueDateFormatted}\nAdded to your schedule. Tap to view details.`,
-          data: { screen: 'BillDetail', billId: newBillId, type: 'BILL_GENERATED' },
-          sound: true,
-          channelId: 'bills_channel'
-        },
-        trigger: null // Deliver immediately
-      });
+    const { Platform } = require('react-native');
+    if (Platform.OS !== 'web') {
+      const { isNotificationEnabled } = require('../database/notifications');
+      const enabled = await isNotificationEnabled('BILL_GENERATED');
+      if (enabled && newBillId) {
+        const Notifications = require('expo-notifications');
+        const formattedAmount = Number(template.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const dueDateFormatted = nextDueDate ? new Date(nextDueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : nextDueDate;
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `📋 New Bill Generated • ${template.name}`,
+            body: `Amount: ₹${formattedAmount} | Due Date: ${dueDateFormatted}\nAdded to your schedule. Tap to view details.`,
+            data: { screen: 'BillDetail', billId: newBillId, type: 'BILL_GENERATED' },
+            sound: true,
+            channelId: 'bills_channel'
+          },
+          trigger: null // Deliver immediately
+        });
+      }
     }
   } catch (notifErr) {
     console.warn('Failed to notify bill generation', notifErr);
@@ -3425,9 +3428,9 @@ export async function getTransactionsForBillLink(bill) {
       // Fetch all bills in the series and filter in JS (WebSQLite doesn't support complex WHERE or OR)
       const resChildren = await executeSql(`SELECT * FROM bills WHERE parent_bill_id = ?`, [parentId]);
       const resParent = await executeSql(`SELECT * FROM bills WHERE id = ?`, [parentId]);
-      
+
       const allRows = [...rowsToArray(resChildren), ...rowsToArray(resParent)];
-      
+
       // Deduplicate in case a bill matches both (e.g. parent_bill_id = id which shouldn't happen, but just safe)
       const uniqueRowsMap = new Map();
       allRows.forEach(row => {
@@ -3448,16 +3451,16 @@ export async function getTransactionsForBillLink(bill) {
     if (parentId) {
       // Find the most recent PAID bill before this one
       const prevPaidBills = allSeriesBills
-        .filter(b => 
-          b.due_date && 
-          String(b.due_date).slice(0, 10) < currentDueDate && 
+        .filter(b =>
+          b.due_date &&
+          String(b.due_date).slice(0, 10) < currentDueDate &&
           (Number(b.is_paid) === 1 || String(b.status).toLowerCase() === 'paid')
         )
         .sort((a, b) => String(b.due_date).localeCompare(String(a.due_date)));
 
       if (prevPaidBills.length > 0) {
         previousBill = prevPaidBills[0];
-        
+
         let startDate = previousBill.paid_at
           ? String(previousBill.paid_at).slice(0, 10)
           : String(previousBill.due_date).slice(0, 10);
@@ -3467,7 +3470,7 @@ export async function getTransactionsForBillLink(bill) {
         if (startDate > currentDueDate) {
           startDate = String(previousBill.due_date).slice(0, 10);
         }
-        
+
         // The transaction for this previous bill was already accounted for on `startDate`,
         // so we must fetch transactions starting from the DAY AFTER it was paid.
         const startObj = new Date(`${startDate}T00:00:00`);
@@ -3488,10 +3491,10 @@ export async function getTransactionsForBillLink(bill) {
         const prevAnyBills = allSeriesBills
           .filter(b => b.due_date && String(b.due_date).slice(0, 10) < currentDueDate)
           .sort((a, b) => String(a.due_date).localeCompare(String(b.due_date))); // ASCENDING sort
-          
+
         if (prevAnyBills.length > 0) {
           previousBill = prevAnyBills[0]; // Oldest bill
-          
+
           const startObj = new Date(`${String(previousBill.due_date).slice(0, 10)}T00:00:00`);
           startObj.setDate(startObj.getDate() + 1);
           filterStartDate = `${startObj.getFullYear()}-${String(startObj.getMonth() + 1).padStart(2, "0")}-${String(startObj.getDate()).padStart(2, "0")}`;
@@ -3716,7 +3719,7 @@ export async function updateBill(id, fields) {
   const dueDateChanged =
     fields.due_date !== undefined &&
     String(fields.due_date).slice(0, 10) !==
-      String(existing.due_date || "").slice(0, 10);
+    String(existing.due_date || "").slice(0, 10);
 
   const recurrenceTypeChanged =
     fields.recurrence_type !== undefined &&
@@ -3725,12 +3728,12 @@ export async function updateBill(id, fields) {
   const recurrenceIntervalChanged =
     fields.recurrence_interval !== undefined &&
     Number(fields.recurrence_interval || 1) !==
-      Number(existing.recurrence_interval || 1);
+    Number(existing.recurrence_interval || 1);
 
   const recurrenceEndDateChanged =
     fields.recurrence_end_date !== undefined &&
     String(fields.recurrence_end_date || "").slice(0, 10) !==
-      String(existing.recurrence_end_date || "").slice(0, 10);
+    String(existing.recurrence_end_date || "").slice(0, 10);
 
   const recurrenceEnabledChanged =
     fields.is_recurring !== undefined &&
@@ -4101,7 +4104,7 @@ export async function updateBill(id, fields) {
 
 export async function softDeleteBillOccurrence(billId, isTemplate, occurrenceDate) {
   if (!billId) throw new Error("Bill ID is required.");
-  
+
   const now = nowIso();
 
   if (isTemplate) {
@@ -4116,7 +4119,7 @@ export async function softDeleteBillOccurrence(billId, isTemplate, occurrenceDat
         [Number(billId), occurrenceKey, now]
       );
     }
-    
+
     // Advance template due date to the next occurrence so the deleted one no longer shows up
     await _ensureNextOccurrence(billId);
   } else {

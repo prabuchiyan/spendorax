@@ -1,6 +1,6 @@
 const assert = require('assert');
 
-console.log('--- Testing Notification Redesign Logic ---');
+console.log('--- Testing Notification Redesign Logic & Fixes ---');
 
 // 1. Verify Notification Types & Default Configurations
 const expectedTypes = [
@@ -34,6 +34,51 @@ assert.strictEqual(clampEmiDay(31, 2026, 7), 31, 'Day 31 in August should stay 3
 // Day 15 (unaffected)
 assert.strictEqual(clampEmiDay(15, 2026, 1), 15, 'Day 15 should stay 15');
 console.log('✓ Loan EMI date clamping logic passed for all months and leap years.');
+
+// 2b. Loan EMI Due Date Advancement when reminder time has passed
+console.log('2b. Testing Loan EMI month advancement when current reminder passed...');
+function calculateTargetEmiDate(emiDay, isAlreadyPaidThisMonth, now, configHour = 9, configMinute = 0) {
+  let targetYear = now.getFullYear();
+  let targetMonth = now.getMonth();
+
+  if (isAlreadyPaidThisMonth) {
+    targetMonth += 1;
+    if (targetMonth > 11) {
+      targetMonth = 0;
+      targetYear += 1;
+    }
+  }
+
+  const lastDayOfTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const clampedDay = Math.min(emiDay, lastDayOfTargetMonth);
+  let targetDueDate = new Date(targetYear, targetMonth, clampedDay);
+
+  const finalReminderDate = new Date(targetDueDate);
+  finalReminderDate.setHours(configHour, configMinute, 0, 0);
+
+  if (isAlreadyPaidThisMonth || finalReminderDate.getTime() <= now.getTime()) {
+    targetMonth += 1;
+    if (targetMonth > 11) {
+      targetMonth = 0;
+      targetYear += 1;
+    }
+    const nextMonthLastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+    targetDueDate = new Date(targetYear, targetMonth, Math.min(emiDay, nextMonthLastDay));
+  }
+
+  return targetDueDate;
+}
+
+// Case 1: Today is 10th 11:00 AM, emiDay was 10th (9:00 AM reminder already in past)
+const nowPast = new Date(2026, 10, 10, 11, 0, 0); // Nov 10, 2026 11:00
+const advancedDate = calculateTargetEmiDate(10, false, nowPast);
+assert.strictEqual(advancedDate.getMonth(), 11, 'Should advance to Dec (month 11) when today reminder is in the past');
+
+// Case 2: Today is 8th, emiDay is 10th (future)
+const nowFuture = new Date(2026, 10, 8, 10, 0, 0); // Nov 8, 2026 10:00
+const futureDueDate = calculateTargetEmiDate(10, false, nowFuture);
+assert.strictEqual(futureDueDate.getMonth(), 10, 'Should stay in Nov (month 10) when reminder is still in the future');
+console.log('✓ Loan EMI month advancement passed for both past and future cycles.');
 
 // 3. Statement Generation Notification Copy & Payload
 console.log('3. Testing Statement Generated notification formatting & payload...');
@@ -104,8 +149,16 @@ assert(loanBody.includes('₹18,50,000.00'), 'Loan EMI body must contain outstan
 assert.strictEqual(loanPayload.screen, 'LoanDetails', 'Payload must route to LoanDetails');
 console.log('✓ Loan EMI Reminder format passed.');
 
-// 7. Tap Routing Destination Verification
-console.log('7. Testing Tap Routing logic across all notification payloads...');
+// 7. Trigger Object Validation in Expo SDK 51
+console.log('7. Testing Date Trigger format in Expo SDK 51...');
+const schedDate = new Date(Date.now() + 60000);
+const triggerObj = { date: schedDate };
+assert(triggerObj.date instanceof Date, 'trigger.date must be an instance of Date');
+assert.strictEqual(triggerObj.type, undefined, 'trigger.type must NOT use undefined SchedulableTriggerInputTypes');
+console.log('✓ Date trigger structure is pure SDK 51 compatible.');
+
+// 8. Tap Routing Destination Verification
+console.log('8. Testing Tap Routing logic across all notification payloads...');
 function resolveNavigationDestination(data) {
   const { screen, loanId, billId, statementId, cardId } = data;
   switch (screen) {

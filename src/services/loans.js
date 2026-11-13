@@ -890,6 +890,8 @@ export async function recordTopUp({
       action: "update",
       id: loanId,
     });
+    const { syncLoanEmiNotifications } = require('./notificationService');
+    await syncLoanEmiNotifications();
   } catch (e) {}
 
   return pRes.insertId;
@@ -1282,6 +1284,8 @@ export async function unlinkTransactionFromLoan(transactionId) {
       loanId,
     });
     events.emit("loansChanged", { action: "update", id: loanId });
+    const { syncLoanEmiNotifications } = require('./notificationService');
+    await syncLoanEmiNotifications();
   } catch (e) {
     console.warn(e);
   }

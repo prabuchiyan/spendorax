@@ -88,7 +88,7 @@ export async function scheduleNotification({ id, title, body, hour, minute, payl
         await Notifications.cancelScheduledNotificationAsync(oldIdentifier);
       }
     }
-  } catch (e) {}
+  } catch (e) { }
 
   // Expo SDK 51 fires one minute early — compensate
   const adjustedMinute = (minute + 1) % 60;
@@ -99,8 +99,8 @@ export async function scheduleNotification({ id, title, body, hour, minute, payl
       title,
       body,
       data: payload ?
-      typeof payload === 'string' ? JSON.parse(payload) : payload :
-      {},
+        typeof payload === 'string' ? JSON.parse(payload) : payload :
+        {},
       sound: true,
       channelId: channelId || 'daily_reminders_channel'
     },
@@ -137,7 +137,7 @@ export async function cancelByType(type) {
   for (let i = 0; i < res.rows.length; i++) {
     const identifier = res.rows.item(i).notification_identifier;
     if (identifier) {
-      try {await Notifications.cancelScheduledNotificationAsync(identifier);} catch (e) {}
+      try { await Notifications.cancelScheduledNotificationAsync(identifier); } catch (e) { }
     }
   }
 }
@@ -168,8 +168,8 @@ export async function rescheduleAll() {
       // Expo SDK 51 fires one minute early — compensate with +1
       const adjustedMinute = (n.minute + 1) % 60;
       const adjustedHour = n.minute + 1 >= 60 ?
-      (n.hour + 1) % 24 :
-      n.hour;
+        (n.hour + 1) % 24 :
+        n.hour;
 
       let channelId = 'daily_reminders_channel';
       let title = n.title;
@@ -188,10 +188,10 @@ export async function rescheduleAll() {
           title,
           body,
           data: n.payload ?
-          typeof n.payload === 'string' ?
-          JSON.parse(n.payload) :
-          n.payload :
-          {},
+            typeof n.payload === 'string' ?
+              JSON.parse(n.payload) :
+              n.payload :
+            {},
           sound: true,
           channelId
         },
@@ -249,20 +249,20 @@ export async function checkBillDue() {
 
   const rows = [];
   const todayObj = new Date(today);
-  
+
   for (let i = 0; i < res.rows.length; i++) {
     const bill = res.rows.item(i);
     if (!bill.due_date) continue;
-    
+
     const dueDate = new Date(bill.due_date.substring(0, 10));
-    const reminderDays = bill.reminder_days_before !== null && bill.reminder_days_before !== undefined 
-      ? Number(bill.reminder_days_before) 
+    const reminderDays = bill.reminder_days_before !== null && bill.reminder_days_before !== undefined
+      ? Number(bill.reminder_days_before)
       : 2;
-      
+
     // Calculate the trigger date (due_date - reminder_days_before)
     const triggerDate = new Date(dueDate);
     triggerDate.setDate(triggerDate.getDate() - reminderDays);
-    
+
     // Check if today is between triggerDate and dueDate (inclusive)
     if (todayObj >= triggerDate && todayObj <= dueDate) {
       rows.push(bill);
@@ -296,7 +296,7 @@ export async function checkLoanEmi() {
 // Register tap handler — call once on app start
 // ─────────────────────────────────────────
 export function registerNotificationListener(navigationRef) {
-  if (Platform.OS === 'web') return () => {}; // no-op on web
+  if (Platform.OS === 'web') return () => { }; // no-op on web
 
   const sub = Notifications.addNotificationResponseReceivedListener((response) => {
     const data = response.notification.request.content.data;
@@ -387,13 +387,13 @@ export async function syncBillNotifications() {
     const res = await executeSql(
       `SELECT notification_identifier FROM notifications WHERE type = ?`, ['SPECIFIC_BILL_DUE']
     );
-    
+
     for (let i = 0; i < res.rows.length; i++) {
       const identifier = res.rows.item(i).notification_identifier;
       if (identifier) {
         try {
           await Notifications.cancelScheduledNotificationAsync(identifier);
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
@@ -420,17 +420,17 @@ export async function syncBillNotifications() {
       const bill = billsRes.rows.item(i);
       if (!bill.due_date) continue;
 
-      const dueDate = new Date(bill.due_date);
-      dueDate.setHours(0, 0, 0, 0);
+      const billDueDateStr = String(bill.due_date || '').slice(0, 10);
+      const dueDate = new Date(`${billDueDateStr}T00:00:00`);
 
       // Is it a credit card bill?
       const stmtRes = await executeSql(`SELECT id FROM credit_card_statements WHERE bill_id = ?`, [bill.id]);
       const isCreditCard = stmtRes.rows.length > 0;
 
       let reminderDays = isCreditCard ? 5 : (bill.reminder_days_before != null ? Number(bill.reminder_days_before) : 2);
-      
+
       const daysToSchedule = Array.from(new Set([reminderDays, 0]));
-      
+
       for (let d of daysToSchedule) {
         const scheduleDate = new Date(dueDate);
         scheduleDate.setDate(scheduleDate.getDate() - d);
@@ -440,19 +440,19 @@ export async function syncBillNotifications() {
         if (scheduleDate.getTime() > new Date().getTime()) {
           const dayWord = d === 0 ? 'Today' : (d === 1 ? 'Tomorrow' : `in ${d} days`);
           const title = `🔔 Bill Due ${dayWord} • ${bill.name}`;
-          
+
           let accountName = '';
           if (bill.source_id) {
             try {
               const sRes = await executeSql(`SELECT name FROM sources WHERE id = ?`, [bill.source_id]);
               if (sRes.rows.length > 0) accountName = ` (${sRes.rows.item(0).name})`;
-            } catch (e) {}
+            } catch (e) { }
           }
 
           const formattedAmount = Number(bill.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
           const dueDateFormatted = dueDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
           const body = `Amount: ₹${formattedAmount} | Due: ${dueDateFormatted}${accountName}\nTap to mark as paid or view details.`;
-          
+
           try {
             const identifier = await Notifications.scheduleNotificationAsync({
               content: {
@@ -463,7 +463,6 @@ export async function syncBillNotifications() {
                 channelId: 'bills_channel'
               },
               trigger: {
-                type: Notifications.SchedulableTriggerInputTypes.DATE,
                 date: scheduleDate
               }
             });
@@ -502,7 +501,7 @@ export async function syncLoanEmiNotifications() {
       if (identifier) {
         try {
           await Notifications.cancelScheduledNotificationAsync(identifier);
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
@@ -540,7 +539,7 @@ export async function syncLoanEmiNotifications() {
         );
         const paidThisMonth = payRes.rows.length > 0 ? Number(payRes.rows.item(0).total_paid || 0) : 0;
         isAlreadyPaidThisMonth = paidThisMonth >= (Number(loan.emi_amount || 0) * 0.9);
-      } catch (e) {}
+      } catch (e) { }
 
       // Calculate target year and month
       let targetYear = currentYear;
@@ -560,8 +559,12 @@ export async function syncLoanEmiNotifications() {
       const clampedDay = Math.min(emiDay, lastDayOfTargetMonth);
       let targetDueDate = new Date(targetYear, targetMonth, clampedDay);
 
-      // If not paid, but due date for this month has already passed by more than 1 day, roll over to next month
-      if (!isAlreadyPaidThisMonth && targetDueDate.getTime() < now.getTime() - (24 * 60 * 60 * 1000)) {
+      // Check if the final reminder time for this targetDueDate (day 0 at configHour:configMinute) is already in the past
+      const finalReminderDate = new Date(targetDueDate);
+      finalReminderDate.setHours(configHour, configMinute, 0, 0);
+
+      // If already paid or the reminder window has passed, advance to next month
+      if (isAlreadyPaidThisMonth || finalReminderDate.getTime() <= now.getTime()) {
         targetMonth += 1;
         if (targetMonth > 11) {
           targetMonth = 0;
@@ -596,7 +599,6 @@ export async function syncLoanEmiNotifications() {
                 channelId: 'loans_channel'
               },
               trigger: {
-                type: Notifications.SchedulableTriggerInputTypes.DATE,
                 date: scheduleDate
               }
             });

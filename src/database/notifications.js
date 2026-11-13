@@ -22,16 +22,16 @@ export async function createNotificationsTable() {
     const defaults = [
         {
             type: 'DAILY_SPEND',
-            title: 'Daily Expense Reminder',
-            body: "Don't forget to record today's expenses!",
+            title: '📝 Daily Expense Check-in',
+            body: "Spent anything today? Take 15 seconds to log your expenses and keep your budget in check 🎯",
             hour: 21,
             minute: 0,
             payload: JSON.stringify({ screen: 'TransactionAdd', type: 'DAILY_SPEND' }),
         },
         {
             type: 'YESTERDAY_SPEND',
-            title: 'Yesterday Spend Check',
-            body: "Did you forget to log yesterday's expenses?",
+            title: '⚠️ Missed Expense Alert',
+            body: "No expenses logged for yesterday. Forgot to record a spend or had a zero-spend day? Tap to review 📊",
             hour: 9,
             minute: 0,
             payload: JSON.stringify({ screen: 'Transactions', type: 'YESTERDAY_SPEND' }),
