@@ -274,11 +274,10 @@ export default function LinkedBillCard({
                     {isDeleted
                       ? `Due ${formatDueDate(bill.due_date)}  ·  Deleted Bill`
                       : isBillPartiallyPaid
-                      ? `Due ${formatDueDate(bill.due_date)}  ·  ₹${Number(bill.paid_amount || 0).toLocaleString()} of ₹${Number(bill.amount || 0).toLocaleString()} paid`
-                      : `Due ${formatDueDate(bill.due_date)}${
-                          bill.linked_tx_count > 1
-                            ? `  ·  ${bill.linked_tx_count} payments linked`
-                            : bill.is_recurring
+                        ? `Due ${formatDueDate(bill.due_date)}  ·  ₹${Number(bill.paid_amount || 0).toLocaleString()} of ₹${Number(bill.amount || 0).toLocaleString()} paid`
+                        : `Due ${formatDueDate(bill.due_date)}${bill.linked_tx_count > 1
+                          ? `  ·  ${bill.linked_tx_count} payments linked`
+                          : bill.is_recurring
                             ? `  ·  ${bill.recurrence_type}`
                             : ''
                         }`}
@@ -628,10 +627,10 @@ export default function LinkedBillCard({
                           {item.is_partially_paid
                             ? ` · ₹${Number(item.total_paid || 0).toLocaleString()} of ₹${Number(item.amount || 0).toLocaleString()} paid`
                             : item.is_completely_paid
-                            ? ' · Fully Settled'
-                            : item.is_recurring
-                            ? ` · ${item.recurrence_type}`
-                            : ''}
+                              ? ' · Fully Settled'
+                              : item.is_recurring
+                                ? ` · ${item.recurrence_type}`
+                                : ''}
                         </Text>
                       </View>
                       <View
