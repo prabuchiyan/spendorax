@@ -16,7 +16,7 @@ import { useTheme } from '../context/ThemeContext';
 import MuiDateTimePicker from '../components/MuiDateTimePicker';
 
 export default function CreditCardStatementEditScreen({ route, navigation }) {
-  const { isDarkMode, theme } = useTheme();
+    const { isDarkMode, theme } = useTheme();
     const { editData } = route.params || {};
     const [statementDate, setStatementDate] = useState(editData?.statement_date ? String(editData.statement_date).slice(0, 10) : '');
     const [showDatePicker, setShowDatePicker] = useState(false);

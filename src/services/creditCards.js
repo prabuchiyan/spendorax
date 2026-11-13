@@ -274,7 +274,7 @@ export async function getCreditCardById(id) {
   if (res.rows.length === 0) return null;
 
   const row = res.rows.item(0);
-  
+
   if (row.source_id) {
     const srcRes = await executeSql(
       `SELECT name, type, is_active FROM sources WHERE id = ? LIMIT 1`,
@@ -380,8 +380,8 @@ export async function resolveCreditCardForBill(bill) {
   // 3. Match by payment_bill_id
   const parentKey = Number(
     bill.parent_bill_id ||
-      bill._templateId ||
-      (typeof bill.id === "number" ? bill.id : null),
+    bill._templateId ||
+    (typeof bill.id === "number" ? bill.id : null),
   );
   if (parentKey && Number.isFinite(parentKey) && parentKey > 0) {
     const cardByParent = cards.find(
@@ -627,21 +627,21 @@ export async function getCreditCardStatementById(statementId) {
   let billIsPaid = 0;
   let derivedStatus = statement.status;
   if (statement.bill_id) {
-      const billRes = await executeSql(
-          `SELECT status, is_paid
+    const billRes = await executeSql(
+      `SELECT status, is_paid
            FROM bills
            WHERE id = ?`,
-          [statement.bill_id]
-      );
-      if (billRes.rows.length > 0) {
-          const bill = billRes.rows.item(0);
-          billStatus = bill.status;
-          billIsPaid = bill.is_paid;
-          
-          if (billIsPaid === 1 || String(billStatus).toLowerCase() === 'paid') {
-              derivedStatus = 'paid';
-          }
+      [statement.bill_id]
+    );
+    if (billRes.rows.length > 0) {
+      const bill = billRes.rows.item(0);
+      billStatus = bill.status;
+      billIsPaid = bill.is_paid;
+
+      if (billIsPaid === 1 || String(billStatus).toLowerCase() === 'paid') {
+        derivedStatus = 'paid';
       }
+    }
   }
 
   return {
@@ -675,11 +675,11 @@ export async function getStatementTransactions(sourceId, startDate, endDate) {
   for (let i = 0; i < res.rows.length; i++) {
     const item = res.rows.item(i);
     if (!item.date) continue;
-    
+
     // Some dates might be stored as YYYY-MM-DD, others as ISO string.
     const d = String(item.date).slice(0, 10);
     const itemTime = new Date(item.date).getTime();
-    
+
     // Filter between start and end (inclusive) - support both string comparison (scheduler style) and timestamp range
     if ((d >= startStr && d <= endStr) || (itemTime >= start && itemTime <= end)) {
       rows.push(item);
@@ -690,60 +690,60 @@ export async function getStatementTransactions(sourceId, startDate, endDate) {
 
 
 export async function getAllCreditCardStatements() {
-    const cardsRes = await executeSql(
-        `SELECT id, name, color, currency, source_id FROM credit_cards`,
-        []
-    );
-    const cardsMap = {};
-    for (let i = 0; i < cardsRes.rows.length; i++) {
-        const c = cardsRes.rows.item(i);
-        cardsMap[c.id] = c;
-    }
+  const cardsRes = await executeSql(
+    `SELECT id, name, color, currency, source_id FROM credit_cards`,
+    []
+  );
+  const cardsMap = {};
+  for (let i = 0; i < cardsRes.rows.length; i++) {
+    const c = cardsRes.rows.item(i);
+    cardsMap[c.id] = c;
+  }
 
-    const res = await executeSql(
-        `SELECT *
+  const res = await executeSql(
+    `SELECT *
          FROM credit_card_statements
          ORDER BY statement_date DESC`,
-        []
-    );
-    const rows = [];
-    for (let i = 0; i < res.rows.length; i++) {
-        const statement = res.rows.item(i);
-        let billStatus = null;
-        let billIsPaid = 0;
-        if (statement.bill_id) {
-            const billRes = await executeSql(
-                `SELECT status, is_paid
+    []
+  );
+  const rows = [];
+  for (let i = 0; i < res.rows.length; i++) {
+    const statement = res.rows.item(i);
+    let billStatus = null;
+    let billIsPaid = 0;
+    if (statement.bill_id) {
+      const billRes = await executeSql(
+        `SELECT status, is_paid
                  FROM bills
                  WHERE id = ?`,
-                [statement.bill_id]
-            );
-            if (billRes.rows.length > 0) {
-                const bill = billRes.rows.item(0);
-                billStatus = bill.status;
-                billIsPaid = bill.is_paid;
-            }
-        }
-        
-        const card = cardsMap[statement.card_id] || {};
-
-        let derivedStatus = statement.status;
-        if (billIsPaid === 1 || String(billStatus).toLowerCase() === 'paid') {
-            derivedStatus = 'paid';
-        }
-
-        rows.push({
-            ...statement,
-            status: derivedStatus,
-            card_name: card.name,
-            card_color: card.color,
-            card_currency: card.currency,
-            source_id: card.source_id,
-            bill_status: billStatus,
-            bill_is_paid: billIsPaid,
-        });
+        [statement.bill_id]
+      );
+      if (billRes.rows.length > 0) {
+        const bill = billRes.rows.item(0);
+        billStatus = bill.status;
+        billIsPaid = bill.is_paid;
+      }
     }
-    return rows;
+
+    const card = cardsMap[statement.card_id] || {};
+
+    let derivedStatus = statement.status;
+    if (billIsPaid === 1 || String(billStatus).toLowerCase() === 'paid') {
+      derivedStatus = 'paid';
+    }
+
+    rows.push({
+      ...statement,
+      status: derivedStatus,
+      card_name: card.name,
+      card_color: card.color,
+      card_currency: card.currency,
+      source_id: card.source_id,
+      bill_status: billStatus,
+      bill_is_paid: billIsPaid,
+    });
+  }
+  return rows;
 }
 
 export async function deleteCreditCardStatement(statementId) {
@@ -946,11 +946,11 @@ export async function updateCreditCardStatement(statementId, fields) {
   const newRefunds = fields.refunds != null ? Number(fields.refunds) : Number(statement.refunds || 0);
   const newStatementDate = fields.statement_date != null ? String(fields.statement_date).slice(0, 10) : statement.statement_date;
   const newDueDate = fields.due_date != null ? String(fields.due_date).slice(0, 10) : statement.due_date;
-  
+
   // Calculate new closing balance: Total Amount Due generated for cycle
   const purchases = Number(statement.purchases || 0);
   const closingBalance = Math.max(0, newOpeningBalance + purchases + newFees + newInterest - newRefunds);
-  
+
   // Need to get card for minimum_due
   let minimumDue = statement.minimum_due;
   const cardRes = await executeSql(`SELECT minimum_due_percent FROM credit_cards WHERE id = ?`, [statement.card_id]);
@@ -973,7 +973,7 @@ export async function updateCreditCardStatement(statementId, fields) {
      WHERE id = ?`,
     [newOpeningBalance, newFees, newInterest, newRefunds, closingBalance, minimumDue, newStatus, newStatementDate, newDueDate, statementId]
   );
-  
+
   // Also update the linked bill amount and sync payment status
   if (statement.bill_id) {
     const billRes = await executeSql(`SELECT status, is_paid, deleted_at, notes FROM bills WHERE id = ?`, [statement.bill_id]);

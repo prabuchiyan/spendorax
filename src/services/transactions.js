@@ -73,7 +73,7 @@ export async function createTransaction(tx) {
 
   try {
     events.emit("transactionsChanged", { action: "create", id: res.insertId });
-  } catch (e) {}
+  } catch (e) { }
   await refreshCreditCardBySource(source_id || null);
   return res.insertId;
 }
@@ -529,12 +529,12 @@ export async function deleteTransaction(id) {
         action: "delete",
         id: txId,
       });
-    } catch (e) {}
+    } catch (e) { }
   }
 
   try {
     events.emit("billsChanged");
-  } catch (e) {}
+  } catch (e) { }
 
   await refreshCreditCardBySource(existingTx?.source_id || null);
 
@@ -567,7 +567,7 @@ export async function updateTransaction(id, fields) {
   await executeSql(sql, vals);
   try {
     events.emit("transactionsChanged", { action: "update", id, fields });
-  } catch (e) {}
+  } catch (e) { }
 
   await refreshCreditCardBySource(existingTx?.source_id || null);
   if (
@@ -775,9 +775,9 @@ export async function getSourceTransactionBalances() {
         balanceMap[sourceId] = 0;
       }
       const type = String(row.type || "").toLowerCase();
-      if (type === "income") {
+      if (type === "income" || type === "credit") {
         balanceMap[sourceId] += amount;
-      } else if (type === "expense") {
+      } else if (type === "expense" || type === "debit") {
         balanceMap[sourceId] -= amount;
       }
     }
@@ -793,23 +793,23 @@ export async function getHomeExpenseTransactions(referenceDate = new Date()) {
   try {
     const year = referenceDate.getFullYear();
     const month = referenceDate.getMonth();
-    
+
     // Create local bounds for the current month
     const startObj = new Date(year, month, 1, 0, 0, 0, 0);
     const endObj = new Date(year, month + 1, 0, 23, 59, 59, 999);
-    
+
     // Convert to ISO strings for correct DB matching against stored UTC strings
     const startDateStr = startObj.toISOString();
     const endDateStr = endObj.toISOString();
 
     let res;
     if (Platform.OS === 'web') {
-        res = await executeSql(
-          `SELECT * FROM transactions WHERE type = 'expense' AND transfer_group_id IS NULL`
-        );
+      res = await executeSql(
+        `SELECT * FROM transactions WHERE type = 'expense' AND transfer_group_id IS NULL`
+      );
     } else {
-        res = await executeSql(
-          `
+      res = await executeSql(
+        `
           SELECT *
           FROM transactions
           WHERE type = 'expense'
@@ -819,29 +819,29 @@ export async function getHomeExpenseTransactions(referenceDate = new Date()) {
             AND REPLACE(date, ' ', 'T') <= ?
           ORDER BY REPLACE(date, ' ', 'T') DESC, id DESC
           `,
-          [startDateStr, endDateStr]
-        );
+        [startDateStr, endDateStr]
+      );
     }
 
     const rows = [];
     for (let i = 0; i < res.rows.length; i++) {
-        const row = res.rows.item(i);
-        if (Platform.OS === 'web') {
-            if (row.is_counted !== null && row.is_counted !== undefined && Number(row.is_counted) === 0) continue;
-            const txDateStr = String(row.date || "").replace(" ", "T");
-            if (txDateStr < startDateStr || txDateStr > endDateStr) continue;
-        }
-        rows.push(row);
+      const row = res.rows.item(i);
+      if (Platform.OS === 'web') {
+        if (row.is_counted !== null && row.is_counted !== undefined && Number(row.is_counted) === 0) continue;
+        const txDateStr = String(row.date || "").replace(" ", "T");
+        if (txDateStr < startDateStr || txDateStr > endDateStr) continue;
+      }
+      rows.push(row);
     }
-    
+
     if (Platform.OS === 'web') {
-        rows.sort((a, b) => {
-            const dA = (a.date || "").replace(" ", "T");
-            const dB = (b.date || "").replace(" ", "T");
-            if (dA > dB) return -1;
-            if (dA < dB) return 1;
-            return b.id - a.id;
-        });
+      rows.sort((a, b) => {
+        const dA = (a.date || "").replace(" ", "T");
+        const dB = (b.date || "").replace(" ", "T");
+        if (dA > dB) return -1;
+        if (dA < dB) return 1;
+        return b.id - a.id;
+      });
     }
 
     return rows;
@@ -1052,15 +1052,15 @@ export async function getTransactionDates() {
 export async function getAvailableMonths() {
   try {
     if (Platform.OS === "web") {
-        const res = await executeSql("SELECT date FROM transactions WHERE date IS NOT NULL");
-        const months = new Set();
-        for(let i=0; i<res.rows.length; i++) {
-            const d = res.rows.item(i).date;
-            if(d) {
-                months.add(d.substring(0,7));
-            }
+      const res = await executeSql("SELECT date FROM transactions WHERE date IS NOT NULL");
+      const months = new Set();
+      for (let i = 0; i < res.rows.length; i++) {
+        const d = res.rows.item(i).date;
+        if (d) {
+          months.add(d.substring(0, 7));
         }
-        return Array.from(months).sort().reverse();
+      }
+      return Array.from(months).sort().reverse();
     }
     const query = `
       SELECT DISTINCT SUBSTR(date, 1, 7) as monthYear 
@@ -1070,20 +1070,20 @@ export async function getAvailableMonths() {
     `;
     const res = await executeSql(query);
     const months = [];
-    for(let i = 0; i < res.rows.length; i++) {
-      if(res.rows.item(i).monthYear) {
-         months.push(res.rows.item(i).monthYear);
+    for (let i = 0; i < res.rows.length; i++) {
+      if (res.rows.item(i).monthYear) {
+        months.push(res.rows.item(i).monthYear);
       }
     }
     return months;
-  } catch(e) {
+  } catch (e) {
     return [];
   }
 }
 
 export async function getAdvancedSearchTransactions(params) {
   const { amount, note, type, exactDate, month, year, startDate, endDate } = params;
-  
+
   try {
     if (Platform.OS === 'web') {
       const res = await executeSql("SELECT * FROM transactions");
@@ -1204,7 +1204,7 @@ export async function getAdvancedSearchTransactions(params) {
       conditions.push(`amount = ?`);
       queryParams.push(Number(amount));
     }
-    
+
     if (note && note.trim() !== '') {
       conditions.push(`LOWER(notes) = LOWER(?)`);
       queryParams.push(note.trim());
@@ -1237,12 +1237,12 @@ export async function getAdvancedSearchTransactions(params) {
     query += ` ORDER BY REPLACE(date, ' ', 'T') DESC, id DESC LIMIT 5000`;
 
     const res = await executeSql(query, queryParams);
-    
+
     const rawTransactions = [];
     for (let i = 0; i < res.rows.length; i++) {
       rawTransactions.push(res.rows.item(i));
     }
-    
+
     return rawTransactions;
 
   } catch (error) {

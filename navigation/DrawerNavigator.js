@@ -39,6 +39,25 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
   const activeRouteName = state.routeNames[state.index];
   const { balanceVisible, toggleBalance } = useBalanceVisibility();
   const { isDarkMode, toggleDarkMode, theme } = useTheme();
+  const navigatingRef = React.useRef(false);
+
+  const handleNavigate = React.useCallback((targetRoute) => {
+    if (navigatingRef.current) return;
+
+    if (activeRouteName === targetRoute) {
+      navigation.closeDrawer();
+      return;
+    }
+
+    navigatingRef.current = true;
+    navigation.closeDrawer();
+
+    // Give drawer animation (180ms) time to fully close before mounting new screen
+    setTimeout(() => {
+      navigation.navigate(targetRoute);
+      navigatingRef.current = false;
+    }, 220);
+  }, [activeRouteName, navigation]);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.drawerBg }}>
@@ -61,15 +80,7 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
             <TouchableOpacity
               key={item.name}
               activeOpacity={0.7}
-              onPress={() => {
-                navigation.closeDrawer();
-                if (!isActive) {
-                  // Use InteractionManager so React Native waits for the drawer animation to completely finish
-                  InteractionManager.runAfterInteractions(() => {
-                    navigation.navigate(item.name);
-                  });
-                }
-              }}
+              onPress={() => handleNavigate(item.name)}
               style={[styles.drawerItem, isActive && styles.drawerItemActive]}
             >
               <MaterialCommunityIcons
@@ -123,12 +134,7 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
 
         <TouchableOpacity
           style={styles.footerButton}
-          onPress={() => {
-            navigation.closeDrawer();
-            InteractionManager.runAfterInteractions(() => {
-              navigation.navigate('NotificationSettings');
-            });
-          }}
+          onPress={() => handleNavigate('NotificationSettings')}
         >
           <MaterialCommunityIcons name="bell-outline" size={18} color={theme.textSecondary} style={{ marginRight: 10 }} />
           <Text style={[styles.footerText, { color: theme.drawerText }]}>Notifications</Text>
@@ -136,12 +142,7 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
 
         <TouchableOpacity
           style={styles.footerButton}
-          onPress={() => {
-            navigation.closeDrawer();
-            InteractionManager.runAfterInteractions(() => {
-              navigation.navigate('SecuritySettings');
-            });
-          }}
+          onPress={() => handleNavigate('SecuritySettings')}
         >
           <MaterialCommunityIcons name="security" size={18} color={theme.textSecondary} style={{ marginRight: 10 }} />
           <Text style={[styles.footerText, { color: theme.drawerText }]}>Security</Text>
@@ -149,12 +150,7 @@ const CustomDrawerContent = React.memo(function CustomDrawerContent(props) {
 
         <TouchableOpacity
           style={styles.footerButton}
-          onPress={() => {
-            navigation.closeDrawer();
-            InteractionManager.runAfterInteractions(() => {
-              navigation.navigate('Backup');
-            });
-          }}
+          onPress={() => handleNavigate('Backup')}
         >
           <Feather name="settings" size={18} color={theme.textSecondary} style={{ marginRight: 10 }} />
           <Text style={[styles.footerText, { color: theme.drawerText }]}>Settings & Backup</Text>

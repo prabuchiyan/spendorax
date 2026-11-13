@@ -5,13 +5,14 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  StyleSheet
+  StyleSheet,
+  InteractionManager
 } from
   'react-native';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { Searchbar } from 'react-native-paper';
 import { getSources, deleteSource } from '../services/sources';
-import { getTransactions } from '../services/transactions';
+import { getSourceTransactionBalances } from '../services/transactions';
 import Card from '../components/Card';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useTheme } from '../context/ThemeContext';
@@ -36,51 +37,40 @@ export default function SourcesScreen({ route, navigation }) {
   const { balanceVisible } = useBalanceVisibility();
 
   async function load() {
-    const sources = await getSources(true);
-    const transactions = await getTransactions(1000000, 'Yes');
+    try {
+      const sources = await getSources(true);
+      const balanceMap = await getSourceTransactionBalances();
 
-    const balanceMap = transactions.reduce((acc, txn) => {
-      const amt = Number(txn.amount || 0);
-      const sourceId = txn.source_id || txn.sourceId;
+      const updated = sources.map((s) => {
+        const id = String(s.id);
 
-      if (!sourceId) return acc;
+        const balance =
+          Number(s.initial_balance || 0) +
+          Number(balanceMap[id] || 0);
 
-      if (!acc[sourceId]) {
-        acc[sourceId] = 0;
-      }
+        return {
+          ...s,
+          balance
+        };
+      });
 
-      if (txn.type === 'income' || txn.type === 'credit') {
-        acc[sourceId] += amt;
-      } else if (txn.type === 'expense' || txn.type === 'debit') {
-        acc[sourceId] -= amt;
-      }
-
-      return acc;
-    }, {});
-
-    const updated = sources.map((s) => {
-      const id = s.id;
-
-      const balance =
-        Number(s.initial_balance || 0) +
-        Number(balanceMap[id] || 0);
-
-      return {
-        ...s,
-        balance
-      };
-    });
-
-    dispatch(setSources(updated));
+      dispatch(setSources(updated));
+    } catch (e) {
+      console.warn('SourcesScreen load error:', e);
+    }
   }
-
-  useEffect(() => {
-    load();
-  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      load();
+      let active = true;
+      InteractionManager.runAfterInteractions(() => {
+        if (active) {
+          load();
+        }
+      });
+      return () => {
+        active = false;
+      };
     }, [])
   );
 
