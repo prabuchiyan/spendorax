@@ -152,6 +152,21 @@ export async function generateBackupData() {
       notifications = [];
     }
 
+    // Auto Backup settings preference
+    let autoBackupSettings = null;
+    try {
+      const { getAutomaticBackupConfig } = require('./automaticBackupService');
+      const cfg = await getAutomaticBackupConfig();
+      if (cfg) {
+        autoBackupSettings = {
+          enabled: cfg.enabled || false,
+          backupTime: cfg.backupTime || '23:00'
+        };
+      }
+    } catch (e) {
+      autoBackupSettings = null;
+    }
+
     const backupData = {
       version: BACKUP_VERSION,
       timestamp: new Date().toISOString(),
@@ -169,7 +184,8 @@ export async function generateBackupData() {
         credit_cards: creditCards,
         credit_card_statements: creditCardStatements,
         credit_card_payments: creditCardPayments,
-        notifications
+        notifications,
+        auto_backup_settings: autoBackupSettings
       }
     };
 
@@ -347,6 +363,7 @@ export async function pickBackupFile() {
       backupData.data.notifications ??= backupData.data.notification_settings ?? [];
       backupData.data.category_budgets ??= backupData.data.categoryBudgets ?? [];
       backupData.data.categoryBudgets ??= backupData.data.category_budgets ?? [];
+      backupData.data.auto_backup_settings ??= null;
 
       return backupData;
     }
@@ -1861,6 +1878,23 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         await syncBillNotifications();
       } catch (e) {
         console.warn('Failed to reschedule notifications after restore', e);
+      }
+    }
+
+    // Restore auto backup preferences if present
+    if (backupData.data && backupData.data.auto_backup_settings) {
+      try {
+        const { getAutomaticBackupConfig, setAutomaticBackupConfig } = require('./automaticBackupService');
+        const currentCfg = await getAutomaticBackupConfig();
+        const incoming = backupData.data.auto_backup_settings;
+        const mergedCfg = {
+          ...currentCfg,
+          backupTime: incoming.backupTime || currentCfg.backupTime || '23:00',
+          enabled: incoming.enabled ? (Platform.OS === 'android' ? !!currentCfg.directoryUri : true) : false
+        };
+        await setAutomaticBackupConfig(mergedCfg);
+      } catch (e) {
+        console.warn('Failed to restore auto backup settings:', e);
       }
     }
 

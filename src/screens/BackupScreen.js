@@ -54,38 +54,97 @@ export default function BackupScreen() {
     setAutoStatus(status);
   }
 
-  async function toggleAutoBackup(newValue) {
-    if (newValue && Platform.OS === 'android') {
-      try {
-        Alert.alert(
-          "Select Backup Folder",
-          "Please create or select a specific folder (e.g., 'Spendorax') inside your Documents.\n\nNote: Android prevents saving directly to the root 'Downloads' folder.",
-          [
-            { text: "Cancel", style: "cancel", onPress: () => setAutoConfig({ ...autoConfig, enabled: false }) },
-            {
-              text: "Choose Folder",
-              onPress: async () => {
+  async function promptSelectFolder() {
+    try {
+      Alert.alert(
+        "Select Backup Folder",
+        "Please create or select a folder (e.g., 'SpendoraX') inside your Documents folder to store automatic backups.\n\nNote: Android prevents saving directly to the root 'Downloads' folder.",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+            onPress: () => {
+              if (!autoConfig.directoryUri) {
+                setAutoConfig(prev => ({ ...prev, enabled: false }));
+              }
+            }
+          },
+          {
+            text: "Choose Folder",
+            onPress: async () => {
+              try {
                 const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
                 if (!permissions.granted) {
                   Alert.alert("Permission Required", "You must select a folder to save automatic backups.");
-                  setAutoConfig({ ...autoConfig, enabled: false });
+                  if (!autoConfig.directoryUri) {
+                    setAutoConfig(prev => ({ ...prev, enabled: false }));
+                  }
                   return;
                 }
                 const newConfig = { ...autoConfig, enabled: true, directoryUri: permissions.directoryUri };
                 setAutoConfig(newConfig);
                 await setAutomaticBackupConfig(newConfig);
+                await loadAutoBackupSettings();
+              } catch (err) {
+                Alert.alert("Error", "Could not request folder permissions.");
+                if (!autoConfig.directoryUri) {
+                  setAutoConfig(prev => ({ ...prev, enabled: false }));
+                }
               }
             }
-          ]
-        );
-      } catch (e) {
-        Alert.alert("Error", "Could not request folder permissions.");
-        console.error(e);
+          }
+        ]
+      );
+    } catch (e) {
+      Alert.alert("Error", "Could not request folder permissions.");
+      console.error(e);
+    }
+  }
+
+  function getFolderDisplayName(uri) {
+    if (!uri) return 'Not selected';
+    try {
+      const decoded = decodeURIComponent(uri);
+      const colonIndex = decoded.lastIndexOf(':');
+      if (colonIndex !== -1) {
+        const pathPart = decoded.substring(colonIndex + 1);
+        const segments = pathPart.split('/').filter(Boolean);
+        return segments.length > 0 ? segments.slice(-2).join('/') : pathPart;
       }
+      const slashSegments = decoded.split('/').filter(Boolean);
+      return slashSegments.length > 0 ? slashSegments[slashSegments.length - 1] : 'Selected folder';
+    } catch (e) {
+      return 'Selected folder';
+    }
+  }
+
+  async function toggleAutoBackup(newValue) {
+    if (newValue && Platform.OS === 'android') {
+      let isUriValid = false;
+      if (autoConfig.directoryUri) {
+        try {
+          await FileSystem.StorageAccessFramework.readDirectoryAsync(autoConfig.directoryUri);
+          isUriValid = true;
+        } catch (e) {
+          isUriValid = false;
+        }
+      }
+
+      if (isUriValid) {
+        const newConfig = { ...autoConfig, enabled: true };
+        setAutoConfig(newConfig);
+        await setAutomaticBackupConfig(newConfig);
+        await loadAutoBackupSettings();
+        return;
+      }
+
+      // Not configured or permission lost: prompt to select/create folder
+      await promptSelectFolder();
     } else {
       const newConfig = { ...autoConfig, enabled: newValue };
       setAutoConfig(newConfig);
       await setAutomaticBackupConfig(newConfig);
+      await loadAutoBackupSettings();
     }
   }
 
@@ -190,6 +249,7 @@ export default function BackupScreen() {
       );
 
       setBackupData(null);
+      await loadAutoBackupSettings();
     } catch (error) {
       setLoading(false);
 
@@ -381,7 +441,9 @@ export default function BackupScreen() {
               <MaterialCommunityIcons name="calendar-clock" size={24} color={Colors.primary} /> Automatic Backup
             </Title>
             <Paragraph style={[styles.description, { color: theme.textSecondary }]}>
-              Automatically backup your data every day to your device's Download folder.
+              {Platform.OS === 'android'
+                ? "Automatically back up your data daily to your selected folder."
+                : "Automatically back up your data daily to your device's Documents folder."}
             </Paragraph>
 
             <View style={styles.rowItem}>
@@ -392,6 +454,24 @@ export default function BackupScreen() {
                 color={Colors.primary}
               />
             </View>
+
+            {Platform.OS === 'android' && (
+              <>
+                <Divider style={{ marginVertical: 8, backgroundColor: theme.border }} />
+                <TouchableRipple onPress={promptSelectFolder} disabled={!autoConfig.enabled}>
+                  <View style={[styles.rowItem, { opacity: autoConfig.enabled ? 1 : 0.5 }]}>
+                    <Text style={[styles.rowLabel, { color: theme.textPrimary }]}>Backup Folder</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={[styles.timeValue, { maxWidth: 170 }]} numberOfLines={1}>
+                        {getFolderDisplayName(autoConfig.directoryUri)}
+                      </Text>
+                      <MaterialCommunityIcons name="chevron-right" size={20} color={Colors.muted} />
+                    </View>
+                  </View>
+                </TouchableRipple>
+              </>
+            )}
+
             <Divider style={{ marginVertical: 8, backgroundColor: theme.border }} />
 
             <TouchableRipple onPress={() => setShowTimePicker(true)} disabled={!autoConfig.enabled}>
