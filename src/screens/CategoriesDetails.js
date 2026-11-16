@@ -17,7 +17,7 @@ import { Colors, Spacing } from '../components/Theme';
 import { Feather } from '@expo/vector-icons';
 import ContextualFAB from '../components/ContextualFAB';
 import { useFocusEffect } from '@react-navigation/native';
-import ConfirmDialog from '../components/ConfirmDialog';
+import CommonBottomSheetModal from '../components/CommonBottomSheetModal';
 import { Chip } from 'react-native-paper';
 const screenWidth = Dimensions.get('window').width;
 import PremiumRoundedBarChart from '../components/PremiumRoundedBarChart';
@@ -581,13 +581,24 @@ export default function CategoriesDetails({ route, navigation }) {
         </View>
       }
 
-      <ConfirmDialog
+      <CommonBottomSheetModal
         visible={confirmVisible}
-        title="Delete Transaction"
-        message="Are you sure?"
-        onCancel={() => setConfirmVisible(false)}
+        type="danger"
+        title="Delete Transaction?"
+        subtitle="Are you sure you want to permanently delete this transaction?"
+        confirmLabel="Delete Transaction"
+        cancelLabel="Keep Transaction"
+        loading={loading}
+        warnings={[
+          { title: 'Permanent Removal', text: 'The transaction will be permanently removed from records.' },
+          { title: 'Balances Recalculated', text: 'Associated account balances and spending metrics will update automatically.' },
+          { title: 'Cannot Be Undone', text: 'This transaction deletion cannot be reversed.' },
+        ]}
+        onCancel={() => {
+          if (!loading) setConfirmVisible(false);
+        }}
         onConfirm={handleDeleteConfirm}
-        loading={loading} />
+      />
 
 
       <ContextualFAB

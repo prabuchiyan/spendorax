@@ -8,7 +8,7 @@ import { getCategories } from '../services/categories';
 import events from '../services/events';
 import Card from '../components/Card';
 import { Spacing } from '../components/Theme';
-import ConfirmDialog from '../components/ConfirmDialog';
+import CommonBottomSheetModal from '../components/CommonBottomSheetModal';
 import ContextualFAB from '../components/ContextualFAB';
 import CopyBudgetModal from '../components/CopyBudgetModal';
 import { usePageLoader } from '../context/PageLoaderContext';
@@ -42,6 +42,7 @@ export default function BudgetsScreen({ route, navigation }) {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
   const [deletingBudgetId, setDeletingBudgetId] = useState(null);
+  const [isDeletingBudget, setIsDeletingBudget] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -278,7 +279,8 @@ export default function BudgetsScreen({ route, navigation }) {
   }
 
   async function confirmDeleteCategoryBudget() {
-    if (deletingBudgetId) {
+    if (deletingBudgetId && !isDeletingBudget) {
+      setIsDeletingBudget(true);
       show({ message: 'Deleting budget...' });
       try {
         await deleteCategoryBudget(deletingBudgetId);
@@ -288,6 +290,7 @@ export default function BudgetsScreen({ route, navigation }) {
         setConfirmVisible(false);
         setDeletingBudgetId(null);
       } finally {
+        setIsDeletingBudget(false);
         hide();
       }
     }
@@ -1190,15 +1193,26 @@ export default function BudgetsScreen({ route, navigation }) {
 
       }
 
-      <ConfirmDialog
+      <CommonBottomSheetModal
         visible={confirmVisible}
-        title="Delete Budget"
-        message={confirmMessage}
+        type="danger"
+        title="Delete Budget?"
+        subtitle="Are you sure you want to delete this monthly category budget?"
+        confirmLabel="Delete Budget"
+        cancelLabel="Keep Budget"
+        loading={isDeletingBudget}
+        warnings={[
+          { title: 'Budget Removed', text: 'Category spending limit will be removed for this month.' },
+          { title: 'Expenses Safe', text: 'All recorded transactions and expenses remain intact.' },
+          { title: 'Cannot Be Undone', text: 'This action cannot be reversed.' },
+        ]}
         onCancel={() => {
+          if (isDeletingBudget) return;
           setConfirmVisible(false);
           setDeletingBudgetId(null);
         }}
-        onConfirm={confirmDeleteCategoryBudget} />
+        onConfirm={confirmDeleteCategoryBudget}
+      />
 
       <CopyBudgetModal
         visible={showCopyModal}
