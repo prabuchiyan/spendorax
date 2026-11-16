@@ -748,6 +748,7 @@ export default function BillDetailScreen({ route, navigation }) {
   const [editing, setEditing] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
+  const [isDeletingOcc, setIsDeletingOcc] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showSkipModal, setShowSkipModal] = useState(false);
   const [showUnskipModal, setShowUnskipModal] = useState(false);
@@ -1767,17 +1768,22 @@ export default function BillDetailScreen({ route, navigation }) {
           subtitle={`Are you sure you want to delete the occurrence for ${activeBill ? formatDueDate(activeBill.due_date) : ""}?`}
           confirmLabel="Delete Occurrence"
           cancelLabel="Keep Bill"
+          loading={isDeletingOcc}
           warnings={[
             { title: 'Occurrence Removed', text: `This occurrence for ${activeBill ? formatDueDate(activeBill.due_date) : ""} will be removed.` },
             { title: 'Schedule Intact', text: 'Other recurring cycles will remain unaffected.' },
             { title: 'Cannot Be Undone', text: 'This bill occurrence will not be recreated.' },
           ]}
           onCancel={() => {
-            setConfirmVisible(false);
-            setConfirmAction(null);
+            if (!isDeletingOcc) {
+              setConfirmVisible(false);
+              setConfirmAction(null);
+            }
           }}
           onConfirm={async () => {
+            if (isDeletingOcc) return;
             try {
+              setIsDeletingOcc(true);
               showPageLoader();
               if (confirmAction === "delete_occ") {
                 const isTemplate = activeBill.id === bill?.id && bill?.is_recurring;
@@ -1788,6 +1794,7 @@ export default function BillDetailScreen({ route, navigation }) {
             } catch (e) {
               console.error("[BillDetail] Action failed:", e);
             } finally {
+              setIsDeletingOcc(false);
               setConfirmVisible(false);
               setConfirmAction(null);
               hidePageLoader();
@@ -2666,130 +2673,6 @@ const styles = StyleSheet.create({
   },
   unlinkModalBackdrop: {
     ...StyleSheet.absoluteFillObject,
-  },
-  unlinkModalCard: {
-    width: "100%",
-    maxWidth: 360,
-    borderRadius: 24,
-    padding: 22,
-    alignItems: "center",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
-    elevation: 24,
-  },
-  unlinkIconCircle: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: "#FEF2F2",
-    borderWidth: 1,
-    borderColor: "#FEE2E2",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 14,
-  },
-  unlinkModalTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    marginBottom: 6,
-    textAlign: "center",
-    fontFamily: "Plus Jakarta Sans",
-  },
-  unlinkModalSubtitle: {
-    fontSize: 13,
-    textAlign: "center",
-    lineHeight: 18,
-    marginBottom: 16,
-    paddingHorizontal: 4,
-    fontFamily: "Inter",
-  },
-  unlinkTxPreview: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 12,
-    marginBottom: 14,
-    width: "100%",
-  },
-  unlinkTxIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  unlinkTxPreviewName: {
-    fontSize: 13.5,
-    fontWeight: "700",
-    fontFamily: "Inter",
-  },
-  unlinkTxPreviewSub: {
-    fontSize: 11,
-    marginTop: 2,
-    fontFamily: "Inter",
-  },
-  unlinkTxPreviewAmount: {
-    fontSize: 13.5,
-    fontWeight: "800",
-    fontFamily: "Plus Jakarta Sans",
-  },
-  unlinkWarningBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 18,
-    width: "100%",
-  },
-  unlinkWarningText: {
-    fontSize: 12,
-    fontWeight: "600",
-    flex: 1,
-    lineHeight: 17,
-    fontFamily: "Inter",
-  },
-  unlinkActionRow: {
-    flexDirection: "row",
-    width: "100%",
-    gap: 10,
-  },
-  unlinkCancelBtn: {
-    flex: 1,
-    height: 46,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  unlinkCancelBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    fontFamily: "Inter",
-  },
-  unlinkConfirmBtn: {
-    flex: 1,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: "#EF4444",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#EF4444",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  unlinkConfirmBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    fontFamily: "Inter",
   },
 
   /* ── Year Quick-Jump Styles ───────────────────────────────────────── */

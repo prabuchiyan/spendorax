@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -31,8 +31,11 @@ export default function CommonBottomSheetModal({
   confirmIcon,
 }) {
   const { isDarkMode } = useTheme();
+  const [internalLoading, setInternalLoading] = useState(false);
 
-  if (!visible && !loading) return null;
+  const isLoading = loading || internalLoading;
+
+  if (!visible && !isLoading) return null;
 
   // Theming & Colors based on type
   const isDanger = type === 'danger';
@@ -86,11 +89,15 @@ export default function CommonBottomSheetModal({
       ? 'rgba(239, 68, 68, 0.12)'
       : isWarning
       ? 'rgba(217, 119, 6, 0.12)'
+      : isSuccess
+      ? 'rgba(16, 185, 129, 0.12)'
       : 'rgba(37, 99, 235, 0.12)'
     : isDanger
     ? '#FEF2F2'
     : isWarning
     ? '#FFFBEB'
+    : isSuccess
+    ? '#ECFDF5'
     : '#EFF6FF';
 
   const noticeBoxBorder = isDarkMode
@@ -98,11 +105,15 @@ export default function CommonBottomSheetModal({
       ? 'rgba(239, 68, 68, 0.28)'
       : isWarning
       ? 'rgba(245, 158, 11, 0.28)'
+      : isSuccess
+      ? 'rgba(16, 185, 129, 0.28)'
       : 'rgba(59, 130, 246, 0.28)'
     : isDanger
     ? '#FECACA'
     : isWarning
     ? '#FDE68A'
+    : isSuccess
+    ? '#A7F3D0'
     : '#BFDBFE';
 
   const noticeTitleColor = isDarkMode
@@ -110,11 +121,15 @@ export default function CommonBottomSheetModal({
       ? '#F87171'
       : isWarning
       ? '#FBBF24'
+      : isSuccess
+      ? '#34D399'
       : '#60A5FA'
     : isDanger
     ? '#B91C1C'
     : isWarning
     ? '#B45309'
+    : isSuccess
+    ? '#047857'
     : '#1D4ED8';
 
   const iconCircleBg = isDarkMode
@@ -122,11 +137,15 @@ export default function CommonBottomSheetModal({
       ? 'rgba(239, 68, 68, 0.2)'
       : isWarning
       ? 'rgba(217, 119, 6, 0.2)'
+      : isSuccess
+      ? 'rgba(16, 185, 129, 0.2)'
       : 'rgba(37, 99, 235, 0.2)'
     : isDanger
     ? '#FEE2E2'
     : isWarning
     ? '#FEF3C7'
+    : isSuccess
+    ? '#D1FAE5'
     : '#DBEAFE';
 
   const iconCircleBorder = isDarkMode
@@ -134,12 +153,29 @@ export default function CommonBottomSheetModal({
       ? 'rgba(239, 68, 68, 0.35)'
       : isWarning
       ? 'rgba(245, 158, 11, 0.35)'
+      : isSuccess
+      ? 'rgba(16, 185, 129, 0.35)'
       : 'rgba(59, 130, 246, 0.35)'
     : isDanger
     ? '#FECACA'
     : isWarning
     ? '#FDE68A'
+    : isSuccess
+    ? '#A7F3D0'
     : '#BFDBFE';
+
+  const handleConfirmPress = async () => {
+    if (isLoading) return;
+    try {
+      const res = onConfirm?.();
+      if (res && typeof res.then === 'function') {
+        setInternalLoading(true);
+        await res;
+      }
+    } finally {
+      setInternalLoading(false);
+    }
+  };
 
   // Format warnings if provided
   const warningItems = Array.isArray(warnings) ? warnings : [];
@@ -151,13 +187,13 @@ export default function CommonBottomSheetModal({
       animationType="fade"
       statusBarTranslucent
       onRequestClose={() => {
-        if (!loading) onCancel?.();
+        if (!isLoading) onCancel?.();
       }}>
       <View style={styles.overlay}>
         <Pressable
           style={styles.backdrop}
           onPress={() => {
-            if (!loading) onCancel?.();
+            if (!isLoading) onCancel?.();
           }}
         />
 
@@ -234,6 +270,8 @@ export default function CommonBottomSheetModal({
                         ? 'alert-octagon-outline'
                         : isWarning
                         ? 'alert-circle-outline'
+                        : isSuccess
+                        ? 'check-circle-outline'
                         : 'information-outline'
                     }
                     size={18}
@@ -255,6 +293,12 @@ export default function CommonBottomSheetModal({
                     const wText = isObj ? w.text : String(w);
                     const wIcon = isObj ? w.icon : null;
                     const wBulletColor = isObj && w.color ? w.color : accentColor;
+                    const isHex = typeof wBulletColor === 'string' && wBulletColor.startsWith('#');
+                    const bulletBg = isHex
+                      ? `${wBulletColor}20`
+                      : isDarkMode
+                      ? 'rgba(255, 255, 255, 0.1)'
+                      : 'rgba(0, 0, 0, 0.06)';
 
                     return (
                       <View key={index} style={styles.noticeItem}>
@@ -262,9 +306,7 @@ export default function CommonBottomSheetModal({
                           style={[
                             styles.noticeIconBullet,
                             {
-                              backgroundColor: isDarkMode
-                                ? `${wBulletColor}20`
-                                : `${wBulletColor}15`,
+                              backgroundColor: bulletBg,
                             },
                           ]}>
                           <MaterialCommunityIcons
@@ -274,7 +316,9 @@ export default function CommonBottomSheetModal({
                                 ? 'close-circle-outline'
                                 : isWarning
                                 ? 'alert-circle-outline'
-                                : 'check-circle-outline')
+                                : isSuccess
+                                ? 'check-circle-outline'
+                                : 'information-outline')
                             }
                             size={15}
                             color={wBulletColor}
@@ -318,7 +362,7 @@ export default function CommonBottomSheetModal({
                     borderColor: cardBorder,
                   },
                 ]}
-                disabled={loading}
+                disabled={isLoading}
                 activeOpacity={0.7}
                 onPress={onCancel}>
                 <Text style={[styles.cancelBtnText, { color: textColor }]}>
@@ -330,12 +374,12 @@ export default function CommonBottomSheetModal({
                 style={[
                   styles.confirmBtn,
                   { backgroundColor: accentColor },
-                  loading && { opacity: 0.75 },
+                  isLoading && { opacity: 0.75 },
                 ]}
-                disabled={loading}
+                disabled={isLoading}
                 activeOpacity={0.8}
-                onPress={onConfirm}>
-                {loading ? (
+                onPress={handleConfirmPress}>
+                {isLoading ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <View style={styles.confirmBtnContent}>

@@ -11,7 +11,7 @@ const code = fs.readFileSync(modalPath, 'utf8');
 assert(code.includes('export default function CommonBottomSheetModal'), 'Exports CommonBottomSheetModal');
 assert(code.includes('ActivityIndicator'), 'Includes ActivityIndicator loader');
 assert(code.includes('sheetHandle'), 'Includes sheetHandle for bottom sheet design');
-assert(code.includes('disabled={loading}'), 'Disables buttons when loading');
+assert(code.includes('disabled={isLoading}') || code.includes('disabled={loading}'), 'Disables buttons when loading');
 console.log('✓ Task 1 test passed');
 
 console.log('Testing Task 2: Budget & Category Screens...');
@@ -77,3 +77,13 @@ task5Files.forEach(file => {
   babel.transformFileSync(file, { presets: ['babel-preset-expo'] });
   console.log(`✓ Task 5 verified syntax: ${file}`);
 });
+
+console.log('Testing Fix Pass: Reviewer Findings...');
+const billDetailCode = fs.readFileSync('src/screens/BillDetailScreen.js', 'utf8');
+assert(billDetailCode.includes('isDeletingOcc'), 'BillDetailScreen should track isDeletingOcc state');
+assert(billDetailCode.includes('loading={isDeletingOcc}'), 'BillDetailScreen should pass loading={isDeletingOcc} to CommonBottomSheetModal');
+
+const modalCode = fs.readFileSync('src/components/CommonBottomSheetModal.js', 'utf8');
+assert(modalCode.includes('isSuccess'), 'CommonBottomSheetModal should support isSuccess in color palettes');
+assert(modalCode.includes('internalLoading'), 'CommonBottomSheetModal should support internalLoading for async onConfirm');
+console.log('✓ Fix pass assertions verified');
