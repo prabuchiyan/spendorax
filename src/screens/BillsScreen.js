@@ -354,8 +354,29 @@ export default function BillsScreen({ navigation }) {
       });
     });
     // RETURN NORMAL BILLS + CREDIT-CARD PARENTS
-    return [...normalBills, ...groupedCreditCards];
-  }, [items, search, preferredOccurrences]);
+    const allDisplayBills = [...normalBills, ...groupedCreditCards];
+    if (!statusFilter || statusFilter === "all") {
+      return allDisplayBills;
+    }
+    const todayStrNow = now.toISOString().slice(0, 10);
+    return allDisplayBills.filter((bill) => {
+      const status = bill.status || "pending";
+      const isPaid =
+        status === "paid" ||
+        Number(bill.is_paid) === 1 ||
+        Boolean(bill.is_completely_paid);
+      const isSkipped = status === "skipped";
+      const isDueDatePast = Boolean(
+        bill.due_date && String(bill.due_date).slice(0, 10) < todayStrNow,
+      );
+      const isOverdue = !isPaid && !isSkipped && (status === "overdue" || isDueDatePast);
+
+      if (statusFilter === BILL_STATUS.OVERDUE) return isOverdue;
+      if (statusFilter === BILL_STATUS.PAID) return isPaid;
+      if (statusFilter === BILL_STATUS.PENDING) return !isPaid && !isSkipped && !isOverdue;
+      return status === statusFilter;
+    });
+  }, [items, search, preferredOccurrences, statusFilter]);
 
   const filteredCategories = useMemo(() => {
     if (!categorySearch.trim()) return categories;
@@ -945,6 +966,7 @@ export default function BillsScreen({ navigation }) {
       {summary?.overdueCount > 0 && (
         <TouchableOpacity
           activeOpacity={0.85}
+          onPress={() => setStatusFilter(BILL_STATUS.OVERDUE)}
           style={{
             flexDirection: "row",
             alignItems: "center",
@@ -1035,13 +1057,22 @@ export default function BillsScreen({ navigation }) {
 
     filteredItems.forEach(bill => {
       const status = bill.status || 'pending';
+      const isPaid =
+        status === 'paid' ||
+        Number(bill.is_paid) === 1 ||
+        Boolean(bill.is_completely_paid);
+      const isSkipped = status === 'skipped';
+      const isDueDatePast = Boolean(
+        bill.due_date && String(bill.due_date).slice(0, 10) < nowStr
+      );
+      const isOverdue = !isPaid && !isSkipped && (status === 'overdue' || isDueDatePast);
       const isInactive = bill.recurrence_end_date && bill.recurrence_end_date < nowStr;
 
       if (isInactive) {
         groups.inactive.push(bill);
-      } else if (status === 'overdue') {
+      } else if (isOverdue) {
         groups.urgent.push(bill);
-      } else if (status === 'paid' || status === 'skipped') {
+      } else if (isPaid || isSkipped) {
         groups.settled.push(bill);
       } else {
         const dueDate = new Date(bill.due_date || now);

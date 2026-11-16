@@ -34,7 +34,8 @@ export function addRecurrence(dateStr, type) {
   let d = day;
   let interval = 1;
 
-  switch (type) {
+  const upperType = String(type || "").trim().toUpperCase();
+  switch (upperType) {
     case "MONTHLY": interval = 1; break;
     case "BI_MONTHLY": interval = 2; break;
     case "QUARTERLY": interval = 3; break;
@@ -378,7 +379,11 @@ export function getPreferredBillOccurrence(bill, allBills) {
   });
 
   if (previousPending) {
-    return previousPending;
+    const computedStatus = computeBillStatus(previousPending, todayString);
+    return {
+      ...previousPending,
+      status: computedStatus || previousPending.status,
+    };
   }
 
   const upcoming = occurrences

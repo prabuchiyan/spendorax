@@ -1917,6 +1917,7 @@ export async function getBillSeriesMultiple(templateIds) {
           bill.status === BILL_STATUS.PAID ||
           Number(bill.is_paid) === 1;
         const isPartiallyPaid = roundedPaid > 0 && !isCompletelyPaid;
+        const computed = computeBillStatus(bill, todayStr());
         return {
           ...bill,
           paid_amount: paidAmount,
@@ -1924,7 +1925,7 @@ export async function getBillSeriesMultiple(templateIds) {
           remaining_amount: Math.max(0, Math.round(roundedAmount - roundedPaid) / 100),
           is_partially_paid: isPartiallyPaid,
           is_completely_paid: isCompletelyPaid,
-          status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? "partially_paid" : bill.status),
+          status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? "partially_paid" : (computed || bill.status)),
           is_paid: isCompletelyPaid ? 1 : (isPartiallyPaid ? 0 : bill.is_paid),
         };
       });
@@ -1964,6 +1965,7 @@ export async function getBillSeriesMultiple(templateIds) {
           bill.status === BILL_STATUS.PAID ||
           Number(bill.is_paid) === 1;
         const isPartiallyPaid = roundedPaid > 0 && !isCompletelyPaid;
+        const computed = computeBillStatus(bill, todayStr());
         return {
           ...bill,
           paid_amount: paidAmount,
@@ -1971,7 +1973,7 @@ export async function getBillSeriesMultiple(templateIds) {
           remaining_amount: Math.max(0, Math.round(roundedAmount - roundedPaid) / 100),
           is_partially_paid: isPartiallyPaid,
           is_completely_paid: isCompletelyPaid,
-          status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? "partially_paid" : bill.status),
+          status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? "partially_paid" : (computed || bill.status)),
           is_paid: isCompletelyPaid ? 1 : (isPartiallyPaid ? 0 : bill.is_paid),
         };
       });
@@ -2259,16 +2261,53 @@ export async function getBillsForCurrentMonth(options = {}) {
     // ----------------------------------------------------------
 
     if (!thisMonthDate) {
-      const n = normalizeBill(template);
+      const allBills = allRaw;
+      const seriesOccurrences = allBills
+        .filter(
+          (b) =>
+            (Number(b.parent_bill_id) === Number(template.id) ||
+              Number(b.id) === Number(template.id)) &&
+            !b.deleted_at,
+        )
+        .map(normalizeBill)
+        .filter(Boolean);
 
-      if (n) {
+      const overdueOccurrence = seriesOccurrences
+        .filter((b) => {
+          const isPaid =
+            b.status === BILL_STATUS.PAID ||
+            Number(b.is_paid) === 1 ||
+            Boolean(b.is_completely_paid);
+          const isSkipped = b.status === BILL_STATUS.SKIPPED;
+          return (
+            !isPaid &&
+            !isSkipped &&
+            b.due_date &&
+            b.due_date.slice(0, 10) < today
+          );
+        })
+        .sort((a, b) => (b.due_date || "").localeCompare(a.due_date || ""))[0];
+
+      if (overdueOccurrence) {
         result.push({
-          ...n,
-
+          ...overdueOccurrence,
+          status: BILL_STATUS.OVERDUE,
           _templateId: template.id,
-
           _isRecurringSeries: true,
         });
+      } else {
+        const upcomingOccurrence = seriesOccurrences
+          .filter((b) => b.due_date && b.due_date.slice(0, 10) >= today)
+          .sort((a, b) => (a.due_date || "").localeCompare(b.due_date || ""))[0];
+
+        const target = upcomingOccurrence || normalizeBill(template);
+        if (target) {
+          result.push({
+            ...target,
+            _templateId: template.id,
+            _isRecurringSeries: true,
+          });
+        }
       }
 
       continue;
@@ -2508,7 +2547,19 @@ export async function getBillsForCurrentMonth(options = {}) {
   // FILTERS
   // ============================================================
 
-  let filtered = enrichedResult.filter(Boolean);
+  let filtered = enrichedResult.filter(Boolean).map((bill) => {
+    const isPaid =
+      bill.status === BILL_STATUS.PAID ||
+      Number(bill.is_paid) === 1 ||
+      Boolean(bill.is_completely_paid);
+    if (isPaid) return { ...bill, status: BILL_STATUS.PAID, is_paid: 1 };
+    if (bill.status === BILL_STATUS.SKIPPED) return bill;
+    const computed = computeBillStatus(bill, today);
+    return {
+      ...bill,
+      status: computed || bill.status,
+    };
+  });
 
   if (options.status && options.status !== "all") {
     const statuses = Array.isArray(options.status)
@@ -2744,9 +2795,15 @@ export async function syncBillStatuses() {
   const rawBills = await fetchAllBillsRaw();
   const rows = await enrichBillsWithPaymentInfo(rawBills);
   for (const bill of rows) {
-    // Recurring templates are definitions, not payable instances
+    // Recurring templates with active children are definitions; but if a template has no child rows,
+    // the template row itself represents the occurrence for its due date.
     if (!bill.parent_bill_id && Number(bill.is_recurring) === 1) {
-      continue;
+      const hasChildren = rawBills.some(
+        (r) => Number(r.parent_bill_id) === Number(bill.id) && !r.deleted_at,
+      );
+      if (hasChildren) {
+        continue;
+      }
     }
     // Respect manually skipped status
     if (bill.status === BILL_STATUS.SKIPPED) {
