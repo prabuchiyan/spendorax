@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { getCreditCards, deleteCreditCard } from "../services/creditCards";
-import ConfirmDialog from "../components/ConfirmDialog";
+import CommonBottomSheetModal from "../components/CommonBottomSheetModal";
 import ContextualFAB from "../components/ContextualFAB";
 import { Colors, Spacing } from "../components/Theme";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
@@ -24,6 +24,7 @@ export default function CreditCardsScreen({ navigation }) {
   const cards = useCreditCards() || [];
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmTargetId, setConfirmTargetId] = useState(null);
+  const [isDeletingCard, setIsDeletingCard] = useState(false);
   const { balanceVisible } = useBalanceVisibility();
 
   const load = async () => {
@@ -38,10 +39,17 @@ export default function CreditCardsScreen({ navigation }) {
   );
 
   const handleDelete = async () => {
-    await deleteCreditCard(confirmTargetId);
-    setConfirmVisible(false);
-    setConfirmTargetId(null);
-    load();
+    if (confirmTargetId && !isDeletingCard) {
+      try {
+        setIsDeletingCard(true);
+        await deleteCreditCard(confirmTargetId);
+        setConfirmVisible(false);
+        setConfirmTargetId(null);
+        await load();
+      } finally {
+        setIsDeletingCard(false);
+      }
+    }
   };
 
   const totals = cards.reduce(
@@ -297,11 +305,22 @@ export default function CreditCardsScreen({ navigation }) {
         }}
       />
 
-      <ConfirmDialog
+      <CommonBottomSheetModal
         visible={confirmVisible}
-        title="Delete Credit Card"
-        message="Archive this credit card? Transactions will remain intact."
-        onCancel={() => setConfirmVisible(false)}
+        type="danger"
+        title="Archive Credit Card?"
+        subtitle="Are you sure you want to archive this credit card?"
+        confirmLabel="Archive Card"
+        cancelLabel="Keep Card"
+        loading={isDeletingCard}
+        warnings={[
+          { title: 'Card Inactive', text: 'Card will be removed from your active credit card list.' },
+          { title: 'History Preserved', text: 'All past statements, bills, and transactions remain intact.' },
+          { title: 'Cannot Be Undone', text: 'Active tracking for this credit card will cease.' },
+        ]}
+        onCancel={() => {
+          if (!isDeletingCard) setConfirmVisible(false);
+        }}
         onConfirm={handleDelete}
       />
 

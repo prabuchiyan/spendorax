@@ -14,7 +14,7 @@ import { Searchbar } from 'react-native-paper';
 import { getSources, deleteSource } from '../services/sources';
 import { getSourceTransactionBalances } from '../services/transactions';
 import Card from '../components/Card';
-import ConfirmDialog from '../components/ConfirmDialog';
+import CommonBottomSheetModal from '../components/CommonBottomSheetModal';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../components/Theme';
 import ContextualFAB from '../components/ContextualFAB';
@@ -33,6 +33,7 @@ export default function SourcesScreen({ route, navigation }) {
   const [showModal, setShowModal] = useState(false);
   const [editSource, setEditSource] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isDeletingSource, setIsDeletingSource] = useState(false);
 
   const { balanceVisible } = useBalanceVisibility();
 
@@ -452,22 +453,38 @@ export default function SourcesScreen({ route, navigation }) {
       {/* =====================================================
            DELETE CONFIRMATION
         ====================================================== */}
-      <ConfirmDialog
+      <CommonBottomSheetModal
         visible={confirmVisible}
-        title="Delete Account"
-        message="Are you sure?"
+        type="danger"
+        title="Delete Account?"
+        subtitle="Are you sure you want to delete this payment account?"
+        confirmLabel="Delete Account"
+        cancelLabel="Keep Account"
+        loading={isDeletingSource}
+        warnings={[
+          { title: 'Account Removed', text: 'This payment account will be permanently deleted.' },
+          { title: 'Transactions Safe', text: 'Past transactions linked to this account remain in your history.' },
+          { title: 'Cannot Be Undone', text: 'This account cannot be restored once deleted.' },
+        ]}
         onCancel={() => {
-          setConfirmVisible(false);
-          setConfirmTargetId(null);
+          if (!isDeletingSource) {
+            setConfirmVisible(false);
+            setConfirmTargetId(null);
+          }
         }}
         onConfirm={async () => {
-          if (confirmTargetId) {
-            await remove(confirmTargetId);
+          if (confirmTargetId && !isDeletingSource) {
+            try {
+              setIsDeletingSource(true);
+              await remove(confirmTargetId);
+              setConfirmVisible(false);
+              setConfirmTargetId(null);
+            } finally {
+              setIsDeletingSource(false);
+            }
           }
-
-          setConfirmVisible(false);
-          setConfirmTargetId(null);
-        }} />
+        }}
+      />
 
 
 

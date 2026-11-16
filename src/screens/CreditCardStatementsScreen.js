@@ -19,6 +19,7 @@ import { setStatements } from '../redux/slices/creditCardSlice';
 import { formatCurrency } from "../utils/numberUtils";
 import { useTheme } from "../context/ThemeContext";
 import MuiDateTimePicker from "../components/MuiDateTimePicker";
+import CommonBottomSheetModal from "../components/CommonBottomSheetModal";
 
 function formatDate(value) {
   if (!value) return "-";
@@ -341,57 +342,27 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
         />
       )}
 
-      <Modal
+      <CommonBottomSheetModal
         visible={!!regenerateTarget}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
+        type="info"
+        icon="refresh"
+        title="Regenerate Statement?"
+        subtitle={regenerateTarget ? `Statement from ${formatDate(regenerateTarget.statement_date)} for ${regenerateTarget.card_name || 'Credit Card'}` : ''}
+        confirmLabel="Regenerate"
+        cancelLabel="Cancel"
+        confirmIcon="refresh"
+        loading={regenerating}
+        warningTitle="Statement Recalculation Notice"
+        warnings={[
+          { title: 'Recalculate Statement', text: 'Recalculates total dues and balances from latest transactions.' },
+          { title: 'Payments Safe', text: 'Bills already marked as paid will remain paid.' },
+          { title: 'Automatic Sync', text: 'Linked expenses and statement totals will sync immediately.' },
+        ]}
+        onCancel={() => {
           if (!regenerating) setRegenerateTarget(null);
         }}
-      >
-        <View style={styles.regenerateOverlay}>
-          <View style={[styles.regenerateModal, { backgroundColor: theme.cardBg, borderColor: theme.border, borderWidth: theme.isDark ? 1 : 0 }]}>
-            <View style={styles.regenerateIconCircle}>
-              <MaterialCommunityIcons
-                name="refresh"
-                size={40}
-                color="#4B7CF3"
-              />
-            </View>
-
-            <Text style={[styles.regenerateTitle, { color: theme.textPrimary }]}>Regenerate Statement?</Text>
-
-            <Text style={[styles.regenerateMessage, { color: theme.textSecondary }]}>
-              Are you sure you want to regenerate the statement from <Text style={{ fontWeight: '800' }}>{regenerateTarget ? formatDate(regenerateTarget.statement_date) : ""}</Text> for <Text style={{ fontWeight: '800' }}>{regenerateTarget?.card_name || "Credit Card"}</Text>?
-            </Text>
-
-            <Text style={styles.regenerateWarning}>
-              This will recalculate the statement based on your latest transactions. Paid bills will remain paid.
-            </Text>
-
-            <View style={styles.regenerateModalActions}>
-              <TouchableOpacity
-                disabled={regenerating}
-                onPress={() => setRegenerateTarget(null)}
-                style={styles.cancelRegenerateButton}
-              >
-                <Text style={[styles.cancelRegenerateText, { color: theme.textSecondary }]}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                disabled={regenerating}
-                onPress={confirmRegenerateStatement}
-                style={styles.confirmRegenerateButton}
-              >
-                <Feather name="refresh-cw" size={16} color="#FFF" style={{ marginRight: 6 }} />
-                <Text style={styles.confirmRegenerateText}>
-                  {regenerating ? "Regenerating..." : "Regenerate"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onConfirm={confirmRegenerateStatement}
+      />
 
       <MuiDateTimePicker
         visible={datePickerVisible}
