@@ -698,13 +698,12 @@ export default function HomeScreen({ navigation }) {
         ) {
           return {
             ...bill,
-            due_date: preferred.due_date,
-            status: preferred.status,
-            amount: preferred.amount,
-            _noDueDate: preferred._noDueDate === true,
+            ...preferred,
+            _noDueDate: preferred._noDueDate === true || !preferred.due_date,
             _templateId: bill._templateId || templateId,
             _displayOccurrenceId: preferred.id,
             _displayOccurrence: preferred,
+            _isRecurringSeries: true,
           };
         }
         return bill;

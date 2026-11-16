@@ -140,8 +140,13 @@ function BillCard({
     (status === 'partially_paid' ||
       Boolean(bill.is_partially_paid) ||
       (roundedPaid > 0 && roundedPaid < roundedAmount));
-  const isOverdue = !isPaid && !isPartiallyPaid && status === 'overdue';
   const isSkipped = status === 'skipped';
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const isDueDatePast = Boolean(
+    bill.due_date && String(bill.due_date).slice(0, 10) < today,
+  );
+  const isOverdue = !isPaid && !isPartiallyPaid && !isSkipped && (status === 'overdue' || isDueDatePast);
 
   let statusConfig = {
     leftBorder: theme.pendingLeftBorder,
@@ -438,7 +443,7 @@ function BillCard({
                 style={{ marginLeft: 3 }}
               />
             </TouchableOpacity>
-          ) : !isPaid && typeof onMarkPaid === 'function' ? (
+          ) : !isPaid && !isSkipped && typeof onMarkPaid === 'function' ? (
             <TouchableOpacity
               onPress={() => onMarkPaid(bill)}
               activeOpacity={0.8}

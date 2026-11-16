@@ -191,16 +191,14 @@ export default function BillsScreen({ navigation }) {
       ) {
         return {
           ...bill,
-          // Display the preferred recurring occurrence.
-          due_date: preferred.due_date,
-          status: preferred.status,
-          amount: preferred.amount,
+          ...preferred,
           // Preserve the no-due-date state.
-          _noDueDate: preferred._noDueDate === true,
+          _noDueDate: preferred._noDueDate === true || !preferred.due_date,
           // Preserve the recurring template identity.
           _templateId: bill._templateId || templateId,
           _displayOccurrenceId: preferred.id,
           _displayOccurrence: preferred,
+          _isRecurringSeries: true,
         };
       }
       return bill;
@@ -310,12 +308,31 @@ export default function BillsScreen({ navigation }) {
       );
       const latestDisplayStatement =
         displayStatements[displayStatements.length - 1];
+      const todayString = now.toISOString().slice(0, 10);
+      const allStatementsPaid = displayStatements.every(
+        (s) => s.status === BILL_STATUS.PAID || Number(s.is_paid) === 1 || Boolean(s.is_completely_paid),
+      );
+      const anyStatementOverdue = displayStatements.some(
+        (s) =>
+          s.status !== BILL_STATUS.PAID &&
+          Number(s.is_paid) !== 1 &&
+          (s.status === BILL_STATUS.OVERDUE || (s.due_date && s.due_date.slice(0, 10) < todayString)),
+      );
+      const ccStatus = allStatementsPaid
+        ? BILL_STATUS.PAID
+        : anyStatementOverdue
+        ? BILL_STATUS.OVERDUE
+        : BILL_STATUS.PENDING;
+
       // BUILD CREDIT-CARD PARENT
       groupedCreditCards.push({
         ...latestDisplayStatement,
         id: `cc-${parentId}`,
         parent_bill_id: parentId,
         name: latestDisplayStatement.name || "Credit Card",
+        status: ccStatus,
+        is_paid: allStatementsPaid ? 1 : 0,
+        is_completely_paid: allStatementsPaid,
         // Amount is ONLY for the current/displayed statement.
         amount: totalAmount,
         // ALL ACTUAL STATEMENTS

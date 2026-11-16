@@ -2499,17 +2499,26 @@ export async function getBillsForCurrentMonth(options = {}) {
   }
 
   // ============================================================
+  // ENRICH WITH PAYMENT INFO & STATUS
+  // ============================================================
+
+  const enrichedResult = await enrichBillsWithPaymentInfo(result.filter(Boolean));
+
+  // ============================================================
   // FILTERS
   // ============================================================
 
-  let filtered = result.filter(Boolean);
+  let filtered = enrichedResult.filter(Boolean);
 
   if (options.status && options.status !== "all") {
     const statuses = Array.isArray(options.status)
       ? options.status
       : [options.status];
 
-    filtered = filtered.filter((bill) => statuses.includes(bill.status));
+    filtered = filtered.filter((bill) => {
+      const computed = computeBillStatus(bill, today);
+      return statuses.includes(bill.status) || statuses.includes(computed);
+    });
   }
 
   if (options.category_id) {
@@ -2732,18 +2741,26 @@ export async function healDuplicateBills() {
 export async function syncBillStatuses() {
   await healDuplicateBills();
   const today = todayStr();
-  const rows = await fetchAllBillsRaw();
+  const rawBills = await fetchAllBillsRaw();
+  const rows = await enrichBillsWithPaymentInfo(rawBills);
   for (const bill of rows) {
-    const status = computeBillStatus(bill, today);
-    if (
-      status !== bill.status &&
-      status !== BILL_STATUS.SKIPPED &&
-      status !== BILL_STATUS.PAID
-    ) {
+    // Recurring templates are definitions, not payable instances
+    if (!bill.parent_bill_id && Number(bill.is_recurring) === 1) {
+      continue;
+    }
+    // Respect manually skipped status
+    if (bill.status === BILL_STATUS.SKIPPED) {
+      continue;
+    }
+    const computedStatus = computeBillStatus(bill, today);
+    if (computedStatus && computedStatus !== bill.status) {
+      const isPaid = computedStatus === BILL_STATUS.PAID ? 1 : (bill.is_paid || 0);
       await executeSql(
-        `UPDATE bills SET status = ?, updated_at = ? WHERE id = ?`,
-        [status, nowIso(), bill.id],
+        `UPDATE bills SET status = ?, is_paid = ?, updated_at = ? WHERE id = ?`,
+        [computedStatus, isPaid, nowIso(), bill.id],
       );
+      bill.status = computedStatus;
+      bill.is_paid = isPaid;
     }
   }
 }
@@ -2810,25 +2827,10 @@ export async function getBillsSummary() {
   const mk = monthKey(year, month);
   const todayDate = new Date();
 
-  // Hide Credit Card template bills from all dashboard statistics.
-  // Only the generated statement (child) bill should be counted.
-  const rows = (await fetchAllBillsRaw()).map(normalizeBill).filter(Boolean);
+  // Load the active, current-month bills with payment enrichment (templates and CC templates excluded)
+  const activeBills = await getBillsForCurrentMonth({ status: null, category_id: null });
 
-  const active = rows.filter((b) => {
-    // We now include SKIPPED bills in active so they can be counted as "paid" in the progress bar.
-
-    const isCreditCardTemplate =
-      !b.parent_bill_id &&
-      b.is_recurring &&
-      typeof b.notes === "string" &&
-      b.notes.startsWith("Recurring payment template for");
-
-    return !isCreditCardTemplate;
-  });
-
-  const dedupedActive = deduplicateBillsForSummary(active);
-
-  const thisMonth = dedupedActive.filter((b) => {
+  const thisMonth = activeBills.filter((b) => {
     if (!b.due_date) return false;
     const d = new Date(b.due_date.slice(0, 10));
     return d.getFullYear() === year && d.getMonth() === month;
@@ -2839,60 +2841,54 @@ export async function getBillsSummary() {
     0,
   );
   const totalPaid = thisMonth
-    .filter((b) => b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED)
+    .filter((b) => b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED || Number(b.is_paid) === 1)
     .reduce((s, b) => s + Number(b.amount || 0), 0);
-  const paidCount = thisMonth.filter((b) => b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED).length;
-  const overdueAmount = dedupedActive
-    .filter((b) => b.status === BILL_STATUS.OVERDUE)
-    .reduce((s, b) => s + Number(b.amount || 0), 0);
-  const overdueCount = dedupedActive.filter(
-    (b) => b.status === BILL_STATUS.OVERDUE,
+  const paidCount = thisMonth.filter(
+    (b) => b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED || Number(b.is_paid) === 1,
   ).length;
 
-  const upcoming7 = dedupedActive
+  const overdueBills = activeBills.filter((b) => {
+    if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED || Number(b.is_paid) === 1)
+      return false;
+    return b.status === BILL_STATUS.OVERDUE || (b.due_date && b.due_date.slice(0, 10) < today);
+  });
+  const overdueAmount = overdueBills.reduce((s, b) => s + Number(b.amount || 0), 0);
+  const overdueCount = overdueBills.length;
+
+  const upcoming7 = activeBills
     .filter((b) => {
-      if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED)
+      if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED || Number(b.is_paid) === 1)
         return false;
       const days = daysBetween(today, b.due_date);
       return days !== null && days >= 0 && days <= 7;
     })
     .reduce((s, b) => s + Number(b.amount || 0), 0);
 
-  const upcoming3 = dedupedActive.filter((b) => {
-    if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED)
+  const upcoming3 = activeBills.filter((b) => {
+    if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED || Number(b.is_paid) === 1)
       return false;
     const days = daysBetween(today, b.due_date);
     return days !== null && days >= 0 && days <= 3;
   });
 
-  const inThisCalMonth = (b) => {
-    if (!b.due_date) return false;
-    const d = new Date(b.due_date);
-    return (
-      !isNaN(d.getTime()) &&
-      d.getMonth() === todayDate.getMonth() &&
-      d.getFullYear() === todayDate.getFullYear()
-    );
-  };
-
-  const dueThisMonthCount = dedupedActive.filter(
+  const dueThisMonthCount = thisMonth.filter(
     (b) =>
       b.status !== BILL_STATUS.PAID &&
       b.status !== BILL_STATUS.SKIPPED &&
-      inThisCalMonth(b),
+      Number(b.is_paid) !== 1,
   ).length;
 
-  const dueThisMonthAmount = dedupedActive
+  const dueThisMonthAmount = thisMonth
     .filter(
       (b) =>
         b.status !== BILL_STATUS.PAID &&
         b.status !== BILL_STATUS.SKIPPED &&
-        inThisCalMonth(b),
+        Number(b.is_paid) !== 1,
     )
     .reduce((s, b) => s + Number(b.amount || 0), 0);
 
-  const upcomingAndPendingDueAmt = dedupedActive
-    .filter((b) => !b.is_paid && b.status !== BILL_STATUS.SKIPPED && inThisCalMonth(b))
+  const upcomingAndPendingDueAmt = thisMonth
+    .filter((b) => !b.is_paid && b.status !== BILL_STATUS.PAID && b.status !== BILL_STATUS.SKIPPED)
     .reduce(
       (acc, b) => {
         acc.totalAmount += Number(b.amount || 0);
@@ -2913,7 +2909,7 @@ export async function getBillsSummary() {
     upcoming3Count: upcoming3.length,
     dueThisMonthCount,
     dueThisMonthAmount,
-    pendingCount: dedupedActive.filter((b) => b.status === BILL_STATUS.PENDING).length,
+    pendingCount: activeBills.filter((b) => b.status === BILL_STATUS.PENDING && (!b.due_date || b.due_date.slice(0, 10) >= today)).length,
     upcomingAndPendingDueAmt,
   };
 }

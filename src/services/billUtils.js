@@ -363,30 +363,10 @@ export function getPreferredBillOccurrence(bill, allBills) {
     row.due_date.startsWith(currentMonthPrefix),
   );
 
+  // If an occurrence exists for the current month, always return it.
+  // This ensures paid or active bills for the current month remain accurately visible.
   if (currentMonthBill) {
-    if (
-      currentMonthBill.status !== "paid" &&
-      currentMonthBill.status !== "skipped"
-    ) {
-      return currentMonthBill;
-    }
-
-    const previousPending = occurrences.find((row) => {
-      return (
-        row.due_date < currentMonthBill.due_date &&
-        row.status !== "paid" &&
-        row.status !== "skipped"
-      );
-    });
-
-    if (previousPending) {
-      return previousPending;
-    }
-
-    const upcoming = occurrences
-      .filter((row) => row.due_date > currentMonthBill.due_date)
-      .sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
-    return upcoming || currentMonthBill;
+    return currentMonthBill;
   }
 
   const previousPending = occurrences.find((row) => {
