@@ -24,6 +24,7 @@ import { Colors } from './Theme';
 import { useTheme } from '../context/ThemeContext';
 import { formatDueDate, getBillDisplayStatus } from '../services/billUtils';
 import CurrencyText from './CurrencyText';
+import CommonBottomSheetModal from './CommonBottomSheetModal';
 
 export default function LinkedBillCard({
   transactionId,
@@ -323,137 +324,39 @@ export default function LinkedBillCard({
         })
       )}
 
-      {/* Premium Unlink Confirmation Modal */}
-      <Modal
+      {/* Common Unlink Confirmation Modal */}
+      <CommonBottomSheetModal
         visible={!!unlinkingBill}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={() => {
+        type="warning"
+        icon="link-variant-off"
+        title={unlinkingBill?.is_deleted || unlinkingBill?.deleted_at ? 'Unlink Deleted Bill?' : 'Unlink Bill?'}
+        subtitle={
+          unlinkingBill?.is_deleted || unlinkingBill?.deleted_at
+            ? 'This bill was previously deleted. Unlinking will remove the link from this transaction.'
+            : 'Are you sure you want to unlink this bill? The bill will be returned to pending status.'
+        }
+        confirmLabel="Unlink"
+        cancelLabel="Cancel"
+        confirmIcon="link-variant-off"
+        loading={unlinking}
+        warningTitle="Unlink Action Warning"
+        warnings={[
+          {
+            title: 'Transaction Link Cleared',
+            text: unlinkingBill?.is_deleted || unlinkingBill?.deleted_at
+              ? 'Transaction link will be cleared from this record.'
+              : 'Bill will revert to unpaid status and statement amounts will update.',
+          },
+          {
+            title: 'Expense Kept',
+            text: 'The payment transaction will remain in your history.',
+          },
+        ]}
+        onCancel={() => {
           if (!unlinking) setUnlinkingBill(null);
         }}
-      >
-        <Pressable
-          style={styles.unlinkModalOverlay}
-          onPress={() => {
-            if (!unlinking) setUnlinkingBill(null);
-          }}
-        >
-          <Pressable
-            style={[styles.unlinkModalCard, { backgroundColor: theme.cardBg, borderColor: theme.border, borderWidth: theme.isDark ? 1 : 0 }]}
-            onPress={(e) => {
-              if (e && e.stopPropagation) e.stopPropagation();
-            }}
-          >
-            {/* Top decorative danger badge */}
-            <View style={styles.unlinkIconCircle}>
-              <MaterialCommunityIcons
-                name="link-variant-off"
-                size={28}
-                color="#EF4444"
-              />
-            </View>
-
-            {/* Title & Subtitle */}
-            <Text style={[styles.unlinkModalTitle, { color: theme.textPrimary }]}>
-              {unlinkingBill?.is_deleted || unlinkingBill?.deleted_at
-                ? 'Unlink Deleted Bill?'
-                : 'Unlink Bill?'}
-            </Text>
-
-            <Text style={[styles.unlinkModalSubtitle, { color: theme.textSecondary }]}>
-              {unlinkingBill?.is_deleted || unlinkingBill?.deleted_at
-                ? 'This bill was previously deleted. Unlinking will remove the link from this transaction.'
-                : 'Are you sure you want to unlink this bill? The bill will be returned to pending status.'}
-            </Text>
-
-            {/* Bill Details Preview Card */}
-            {unlinkingBill && (
-              <View style={[styles.unlinkBillPreview, { backgroundColor: theme.bg, borderColor: theme.border }]}>
-                <View style={styles.unlinkBillIconWrap}>
-                  <MaterialCommunityIcons
-                    name={
-                      unlinkingBill.notes?.startsWith('Statement ')
-                        ? 'credit-card-outline'
-                        : 'file-document-outline'
-                    }
-                    size={20}
-                    color="#EF4444"
-                  />
-                </View>
-                <View style={{ flex: 1, marginRight: 10 }}>
-                  <Text style={[styles.unlinkBillPreviewName, { color: theme.textPrimary }]} numberOfLines={1}>
-                    {unlinkingBill.name}
-                  </Text>
-                  <Text style={[styles.unlinkBillPreviewSub, { color: theme.textSecondary }]}>
-                    {unlinkingBill.due_date
-                      ? `Due ${formatDueDate(unlinkingBill.due_date)}`
-                      : 'No due date'}
-                  </Text>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={[styles.unlinkBillPreviewAmount, { color: theme.textPrimary }]}>
-                    <CurrencyText amount={Number(unlinkingBill.amount || 0)} />
-                  </Text>
-                  {unlinkingBill.is_deleted || unlinkingBill.deleted_at ? (
-                    <View style={styles.unlinkDeletedTag}>
-                      <Text style={styles.unlinkDeletedTagText}>Deleted</Text>
-                    </View>
-                  ) : null}
-                </View>
-              </View>
-            )}
-
-            {/* Warning Note Pill */}
-            <View style={styles.unlinkWarningBox}>
-              <MaterialCommunityIcons
-                name="alert-circle-outline"
-                size={16}
-                color="#D97706"
-                style={{ marginRight: 6 }}
-              />
-              <Text style={styles.unlinkWarningText}>
-                {unlinkingBill?.is_deleted || unlinkingBill?.deleted_at
-                  ? 'Transaction link will be cleared.'
-                  : 'Bill will be marked as unpaid & statements will sync.'}
-              </Text>
-            </View>
-
-            {/* Action Buttons Row */}
-            <View style={styles.unlinkActionRow}>
-              <TouchableOpacity
-                style={[styles.unlinkCancelBtn, { backgroundColor: theme.isDark ? '#334155' : '#F1F5F9' }]}
-                activeOpacity={0.7}
-                onPress={() => setUnlinkingBill(null)}
-                disabled={unlinking}
-              >
-                <Text style={[styles.unlinkCancelBtnText, { color: theme.isDark ? '#F3F4F6' : '#475569' }]}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.unlinkConfirmBtn}
-                activeOpacity={0.8}
-                onPress={handleConfirmUnlink}
-                disabled={unlinking}
-              >
-                {unlinking ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <>
-                    <MaterialCommunityIcons
-                      name="link-variant-off"
-                      size={16}
-                      color="#FFFFFF"
-                      style={{ marginRight: 6 }}
-                    />
-                    <Text style={styles.unlinkConfirmBtnText}>Unlink</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        onConfirm={handleConfirmUnlink}
+      />
 
       {/* Link Bill Modal */}
       <Modal

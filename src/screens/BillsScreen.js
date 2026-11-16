@@ -31,7 +31,6 @@ import BillSummaryBar from "../components/BillSummaryBar";
 import BillCard from "../components/BillCard";
 import BillCalendarView from "../components/BillCalendarView";
 import BillForm from "../components/BillForm";
-import ConfirmDialog from "../components/ConfirmDialog";
 import SkipBillModal from "../components/SkipBillModal";
 import DeleteBillModal from "../components/DeleteBillModal";
 import { Colors, Spacing } from "../components/Theme";

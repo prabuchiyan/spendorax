@@ -37,7 +37,7 @@ import {
 } from "../services/bills";
 import { getCategories } from "../services/categories";
 import { getSources } from "../services/sources";
-import ConfirmDialog from "../components/ConfirmDialog";
+import CommonBottomSheetModal from "../components/CommonBottomSheetModal";
 import SkipBillModal from "../components/SkipBillModal";
 import UnskipBillModal from "../components/UnskipBillModal";
 import BillForm from "../components/BillForm";
@@ -1760,11 +1760,18 @@ export default function BillDetailScreen({ route, navigation }) {
         </View>
 
         {/* Dialogs */}
-        <ConfirmDialog
+        <CommonBottomSheetModal
           visible={confirmVisible}
-          title="Delete Occurrence"
-          message={`Delete the occurrence for ${formatDueDate(activeBill.due_date)}? It won't be recreated.`}
-          confirmLabel="Delete"
+          type="danger"
+          title="Delete Occurrence?"
+          subtitle={`Are you sure you want to delete the occurrence for ${activeBill ? formatDueDate(activeBill.due_date) : ""}?`}
+          confirmLabel="Delete Occurrence"
+          cancelLabel="Keep Bill"
+          warnings={[
+            { title: 'Occurrence Removed', text: `This occurrence for ${activeBill ? formatDueDate(activeBill.due_date) : ""} will be removed.` },
+            { title: 'Schedule Intact', text: 'Other recurring cycles will remain unaffected.' },
+            { title: 'Cannot Be Undone', text: 'This bill occurrence will not be recreated.' },
+          ]}
           onCancel={() => {
             setConfirmVisible(false);
             setConfirmAction(null);
@@ -1828,162 +1835,27 @@ export default function BillDetailScreen({ route, navigation }) {
         />
 
         {/* ── Unlink Transaction Confirmation Modal ──────────────────────── */}
-        <Modal
+        <CommonBottomSheetModal
           visible={Boolean(unlinkingTx)}
-          transparent
-          animationType="fade"
-          statusBarTranslucent
-          onRequestClose={() => {
+          type="warning"
+          icon="link-variant-off"
+          title="Unlink Transaction?"
+          subtitle="Are you sure you want to remove this linked transaction from the bill?"
+          confirmLabel="Unlink"
+          cancelLabel="Cancel"
+          confirmIcon="link-variant-off"
+          loading={unlinking}
+          warningTitle="Unlinking Notice"
+          warnings={[
+            { title: 'Transaction Unlinked', text: 'This transaction will be disconnected from the bill.' },
+            { title: 'Bill Status Updated', text: 'Unlinking recalculates paid amount; bill may return to unpaid/pending dues.' },
+            { title: 'Expense Kept', text: 'The expense transaction itself remains in your account records.' },
+          ]}
+          onCancel={() => {
             if (!unlinking) setUnlinkingTx(null);
-          }}>
-          <View style={styles.unlinkModalOverlay}>
-            <Pressable
-              style={styles.unlinkModalBackdrop}
-              onPress={() => {
-                if (!unlinking) setUnlinkingTx(null);
-              }}
-            />
-            <View
-              style={[
-                styles.unlinkModalCard,
-                {
-                  backgroundColor: theme.cardBg,
-                  borderColor: theme.border,
-                  borderWidth: isDarkMode ? 1 : 0,
-                },
-              ]}>
-              {/* Top danger badge */}
-              <View style={styles.unlinkIconCircle}>
-                <MaterialCommunityIcons
-                  name="link-variant-off"
-                  size={28}
-                  color="#EF4444"
-                />
-              </View>
-
-              {/* Title & Subtitle */}
-              <Text style={[styles.unlinkModalTitle, { color: theme.textPrimary }]}>
-                Unlink Transaction?
-              </Text>
-              <Text style={[styles.unlinkModalSubtitle, { color: theme.textSecondary }]}>
-                Are you sure you want to remove this linked transaction from the bill?
-              </Text>
-
-              {/* Transaction Preview Card */}
-              {unlinkingTx && (
-                <View
-                  style={[
-                    styles.unlinkTxPreview,
-                    {
-                      backgroundColor: isDarkMode ? "#1E293B" : "#F8FAFC",
-                      borderColor: theme.border,
-                    },
-                  ]}>
-                  <View
-                    style={[
-                      styles.unlinkTxIconWrap,
-                      {
-                        backgroundColor: `${unlinkingTx.category_color || unlinkingTx.source_color || "#006a61"}18`,
-                      },
-                    ]}>
-                    <MaterialCommunityIcons
-                      name={unlinkingTx.category_icon || unlinkingTx.source_icon || "cash"}
-                      size={20}
-                      color={unlinkingTx.category_color || unlinkingTx.source_color || "#006a61"}
-                    />
-                  </View>
-                  <View style={{ flex: 1, marginRight: 10 }}>
-                    <Text
-                      style={[styles.unlinkTxPreviewName, { color: theme.textPrimary }]}
-                      numberOfLines={1}>
-                      {unlinkingTx.notes || "Payment Transaction"}
-                    </Text>
-                    <Text style={[styles.unlinkTxPreviewSub, { color: theme.textSecondary }]}>
-                      {unlinkingTx.date
-                        ? new Date(unlinkingTx.date).toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })
-                        : "—"}
-                      {unlinkingTx.source_name ? ` • ${unlinkingTx.source_name}` : ""}
-                    </Text>
-                  </View>
-                  <View style={{ alignItems: "flex-end" }}>
-                    <Text
-                      style={[styles.unlinkTxPreviewAmount, { color: theme.textPrimary }]}>
-                      <CurrencyText amount={Number(unlinkingTx.amount || 0)} />
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {/* Warning Note Pill */}
-              <View
-                style={[
-                  styles.unlinkWarningBox,
-                  {
-                    backgroundColor: isDarkMode ? "rgba(217, 119, 6, 0.12)" : "#FFFBEB",
-                    borderColor: isDarkMode ? "rgba(245, 158, 11, 0.28)" : "#FDE68A",
-                  },
-                ]}>
-                <MaterialCommunityIcons
-                  name="alert-circle-outline"
-                  size={18}
-                  color="#D97706"
-                  style={{ marginRight: 8, marginTop: 1 }}
-                />
-                <Text
-                  style={[
-                    styles.unlinkWarningText,
-                    { color: isDarkMode ? "#FBBF24" : "#92400E" },
-                  ]}>
-                  Unlinking will recalculate the bill's paid amount. If total paid drops below the due amount, the bill will return to unpaid/pending status.
-                </Text>
-              </View>
-
-              {/* Action Buttons Row */}
-              <View style={styles.unlinkActionRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.unlinkCancelBtn,
-                    { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" },
-                  ]}
-                  activeOpacity={0.7}
-                  onPress={() => setUnlinkingTx(null)}
-                  disabled={unlinking}>
-                  <Text
-                    style={[
-                      styles.unlinkCancelBtnText,
-                      { color: isDarkMode ? "#F3F4F6" : "#475569" },
-                    ]}>
-                    Cancel
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.unlinkConfirmBtn}
-                  activeOpacity={0.8}
-                  onPress={handleConfirmUnlink}
-                  disabled={unlinking}>
-                  {unlinking ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <>
-                      <MaterialCommunityIcons
-                        name="link-variant-off"
-                        size={16}
-                        color="#FFFFFF"
-                        style={{ marginRight: 6 }}
-                      />
-                      <Text style={styles.unlinkConfirmBtnText}>Unlink</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
+          }}
+          onConfirm={handleConfirmUnlink}
+        />
 
         <YearQuickJumpModal
           visible={showYearJumpModal}

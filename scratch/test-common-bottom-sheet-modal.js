@@ -60,3 +60,20 @@ task4Files.forEach(file => {
   babel.transformFileSync(file, { presets: ['babel-preset-expo'] });
   console.log(`✓ Task 4 verified: ${file}`);
 });
+
+console.log('Testing Task 5: BillDetail, LinkedBillCard, ExitModal, and removal of ConfirmDialog...');
+const task5Files = [
+  'src/screens/BillDetailScreen.js',
+  'src/components/LinkedBillCard.js',
+  'src/components/ExitConfirmationModal.js',
+  'src/screens/BillsScreen.js',
+];
+
+assert(!fs.existsSync('src/components/ConfirmDialog.js'), 'ConfirmDialog.js should be deleted');
+
+task5Files.forEach(file => {
+  const code = fs.readFileSync(file, 'utf8');
+  assert(!code.includes("import ConfirmDialog from"), `${file} should not import ConfirmDialog`);
+  babel.transformFileSync(file, { presets: ['babel-preset-expo'] });
+  console.log(`✓ Task 5 verified syntax: ${file}`);
+});
