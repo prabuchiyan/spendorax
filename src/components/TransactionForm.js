@@ -37,7 +37,7 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import CategoryCreateScreen from "../screens/CategoryCreateScreen";
 import SourceCreateScreen from "../screens/SourceCreateScreen";
-import ConfirmDialog from "./ConfirmDialog";
+import CommonBottomSheetModal from "./CommonBottomSheetModal";
 import MuiDateTimePicker from "./MuiDateTimePicker";
 import { Feather } from "@expo/vector-icons";
 import LinkedBillCard from "./LinkedBillCard";
@@ -2707,25 +2707,42 @@ export default function TransactionForm({
         onClose={() => setShowDateTimePicker(false)}
       />
 
-      <ConfirmDialog
+      <CommonBottomSheetModal
         visible={confirmVisible}
-        title="Delete Transaction"
-        message={`Delete this ${type} transaction?`}
-        onCancel={() => setConfirmVisible(false)}
-        onConfirm={handleDelete}
+        type="danger"
+        title="Delete Transaction?"
+        subtitle={`Are you sure you want to remove this ${type} transaction?`}
+        confirmLabel="Delete Transaction"
+        cancelLabel="Keep Transaction"
         loading={submitting}
+        warnings={[
+          { title: 'Permanent Removal', text: 'Transaction will be permanently removed from account records.' },
+          { title: 'Balance Restored', text: 'Account balances and category monthly totals will update.' },
+          { title: 'Cannot Be Undone', text: 'This transaction cannot be recovered once deleted.' },
+        ]}
+        onCancel={() => {
+          if (!submitting) setConfirmVisible(false);
+        }}
+        onConfirm={handleDelete}
       />
 
-      <ConfirmDialog
+      <CommonBottomSheetModal
         visible={showUnsavedDialog}
-        title="Discard changes?"
-        message={
+        type="warning"
+        icon="alert-circle-outline"
+        title="Discard Changes?"
+        subtitle={
           isEdit
-            ? "You've made changes that haven't been saved yet. If you go back now, your edits will be lost."
-            : "You've started adding a transaction. If you go back now, your progress will be lost."
+            ? "You've made changes that haven't been saved yet."
+            : "You've started adding a new transaction."
         }
         confirmLabel="Discard"
         cancelLabel="Keep Editing"
+        warningTitle="Unsaved Progress Notice"
+        warnings={[
+          { title: 'Edits Lost', text: 'If you leave now, all your unsaved modifications will be lost.' },
+          { title: 'Keep Editing', text: 'Tap "Keep Editing" to continue working on this transaction.' },
+        ]}
         onCancel={() => setShowUnsavedDialog(false)}
         onConfirm={() => {
           setShowUnsavedDialog(false);
