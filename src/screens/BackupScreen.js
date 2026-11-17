@@ -54,38 +54,97 @@ export default function BackupScreen() {
     setAutoStatus(status);
   }
 
-  async function toggleAutoBackup(newValue) {
-    if (newValue && Platform.OS === 'android') {
-      try {
-        Alert.alert(
-          "Select Backup Folder",
-          "Please create or select a specific folder (e.g., 'Spendorax') inside your Documents.\n\nNote: Android prevents saving directly to the root 'Downloads' folder.",
-          [
-            { text: "Cancel", style: "cancel", onPress: () => setAutoConfig({ ...autoConfig, enabled: false }) },
-            {
-              text: "Choose Folder",
-              onPress: async () => {
+  async function promptSelectFolder() {
+    try {
+      Alert.alert(
+        "Select Backup Folder",
+        "Please create or select a folder (e.g., 'SpendoraX') inside your Documents folder to store automatic backups.\n\nNote: Android prevents saving directly to the root 'Downloads' folder.",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+            onPress: () => {
+              if (!autoConfig.directoryUri) {
+                setAutoConfig(prev => ({ ...prev, enabled: false }));
+              }
+            }
+          },
+          {
+            text: "Choose Folder",
+            onPress: async () => {
+              try {
                 const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
                 if (!permissions.granted) {
                   Alert.alert("Permission Required", "You must select a folder to save automatic backups.");
-                  setAutoConfig({ ...autoConfig, enabled: false });
+                  if (!autoConfig.directoryUri) {
+                    setAutoConfig(prev => ({ ...prev, enabled: false }));
+                  }
                   return;
                 }
                 const newConfig = { ...autoConfig, enabled: true, directoryUri: permissions.directoryUri };
                 setAutoConfig(newConfig);
                 await setAutomaticBackupConfig(newConfig);
+                await loadAutoBackupSettings();
+              } catch (err) {
+                Alert.alert("Error", "Could not request folder permissions.");
+                if (!autoConfig.directoryUri) {
+                  setAutoConfig(prev => ({ ...prev, enabled: false }));
+                }
               }
             }
-          ]
-        );
-      } catch (e) {
-        Alert.alert("Error", "Could not request folder permissions.");
-        console.error(e);
+          }
+        ]
+      );
+    } catch (e) {
+      Alert.alert("Error", "Could not request folder permissions.");
+      console.error(e);
+    }
+  }
+
+  function getFolderDisplayName(uri) {
+    if (!uri) return 'Not selected';
+    try {
+      const decoded = decodeURIComponent(uri);
+      const colonIndex = decoded.lastIndexOf(':');
+      if (colonIndex !== -1) {
+        const pathPart = decoded.substring(colonIndex + 1);
+        const segments = pathPart.split('/').filter(Boolean);
+        return segments.length > 0 ? segments.slice(-2).join('/') : pathPart;
       }
+      const slashSegments = decoded.split('/').filter(Boolean);
+      return slashSegments.length > 0 ? slashSegments[slashSegments.length - 1] : 'Selected folder';
+    } catch (e) {
+      return 'Selected folder';
+    }
+  }
+
+  async function toggleAutoBackup(newValue) {
+    if (newValue && Platform.OS === 'android') {
+      let isUriValid = false;
+      if (autoConfig.directoryUri) {
+        try {
+          await FileSystem.StorageAccessFramework.readDirectoryAsync(autoConfig.directoryUri);
+          isUriValid = true;
+        } catch (e) {
+          isUriValid = false;
+        }
+      }
+
+      if (isUriValid) {
+        const newConfig = { ...autoConfig, enabled: true };
+        setAutoConfig(newConfig);
+        await setAutomaticBackupConfig(newConfig);
+        await loadAutoBackupSettings();
+        return;
+      }
+
+      // Not configured or permission lost: prompt to select/create folder
+      await promptSelectFolder();
     } else {
       const newConfig = { ...autoConfig, enabled: newValue };
       setAutoConfig(newConfig);
       await setAutomaticBackupConfig(newConfig);
+      await loadAutoBackupSettings();
     }
   }
 
@@ -190,6 +249,7 @@ export default function BackupScreen() {
       );
 
       setBackupData(null);
+      await loadAutoBackupSettings();
     } catch (error) {
       setLoading(false);
 
@@ -205,36 +265,139 @@ export default function BackupScreen() {
 
   const renderStats = (data) => {
     if (!data || !data.data) return null;
-    const { transactions, categories, sources, budgets, bills, loans, loan_payments } = data.data;
+    const {
+      transactions = [],
+      categories = [],
+      sources = [],
+      budgets = [],
+      category_budgets = [],
+      categoryBudgets = [],
+      bills = [],
+      bill_deleted_occurrences = [],
+      loans = [],
+      loan_payments = [],
+      credit_cards = [],
+      credit_card_statements = [],
+      credit_card_payments = []
+    } = data.data;
+
+    const catBudgetsCount = category_budgets.length || categoryBudgets.length;
+    const dividerColor = theme.border || (isDarkMode ? '#333' : '#e0e0e0');
+    const countStyle = { color: theme.textSecondary, alignSelf: 'center', fontWeight: '600' };
+
     return (
-      <View style={styles.statsContainer}>
-        <List.Item title="Transactions" right={() => <Text>{transactions.length}</Text>} />
-        <Divider />
-        <List.Item title="Categories" right={() => <Text>{categories.length}</Text>} />
-        <Divider />
-        <List.Item title="Sources" right={() => <Text>{sources.length}</Text>} />
-        <Divider />
-        <List.Item title="Budgets" right={() => <Text>{budgets.length}</Text>} />
-        <Divider />
-        <List.Item title="Bills" right={() => <Text>{bills.length}</Text>} />
-        <Divider />
-        <List.Item title="Loans" right={() => <Text>{loans.length}</Text>} />
-        <Divider />
-        <List.Item title="Loan payments" right={() => <Text>{loan_payments.length}</Text>} />
+      <View style={[styles.statsContainer, { backgroundColor: isDarkMode ? (theme.surfaceVariant || '#1E232A') : '#f8f8f8' }]}>
+        <List.Item
+          title="Transactions"
+          titleStyle={{ color: theme.textPrimary }}
+          right={() => <Text style={countStyle}>{transactions.length}</Text>}
+        />
+        <Divider style={{ backgroundColor: dividerColor }} />
+        <List.Item
+          title="Categories"
+          titleStyle={{ color: theme.textPrimary }}
+          right={() => <Text style={countStyle}>{categories.length}</Text>}
+        />
+        <Divider style={{ backgroundColor: dividerColor }} />
+        <List.Item
+          title="Sources"
+          titleStyle={{ color: theme.textPrimary }}
+          right={() => <Text style={countStyle}>{sources.length}</Text>}
+        />
+        <Divider style={{ backgroundColor: dividerColor }} />
+        <List.Item
+          title="Budgets"
+          titleStyle={{ color: theme.textPrimary }}
+          right={() => <Text style={countStyle}>{budgets.length}</Text>}
+        />
+        {catBudgetsCount > 0 && (
+          <>
+            <Divider style={{ backgroundColor: dividerColor }} />
+            <List.Item
+              title="Category Budgets"
+              titleStyle={{ color: theme.textPrimary }}
+              right={() => <Text style={countStyle}>{catBudgetsCount}</Text>}
+            />
+          </>
+        )}
+        <Divider style={{ backgroundColor: dividerColor }} />
+        <List.Item
+          title="Bills"
+          titleStyle={{ color: theme.textPrimary }}
+          right={() => <Text style={countStyle}>{bills.length}</Text>}
+        />
+        {bill_deleted_occurrences.length > 0 && (
+          <>
+            <Divider style={{ backgroundColor: dividerColor }} />
+            <List.Item
+              title="Bill Deleted Occurrences"
+              titleStyle={{ color: theme.textPrimary }}
+              right={() => <Text style={countStyle}>{bill_deleted_occurrences.length}</Text>}
+            />
+          </>
+        )}
+        <Divider style={{ backgroundColor: dividerColor }} />
+        <List.Item
+          title="Loans"
+          titleStyle={{ color: theme.textPrimary }}
+          right={() => <Text style={countStyle}>{loans.length}</Text>}
+        />
+        <Divider style={{ backgroundColor: dividerColor }} />
+        <List.Item
+          title="Loan payments"
+          titleStyle={{ color: theme.textPrimary }}
+          right={() => <Text style={countStyle}>{loan_payments.length}</Text>}
+        />
+        {credit_cards.length > 0 && (
+          <>
+            <Divider style={{ backgroundColor: dividerColor }} />
+            <List.Item
+              title="Credit Cards"
+              titleStyle={{ color: theme.textPrimary }}
+              right={() => <Text style={countStyle}>{credit_cards.length}</Text>}
+            />
+          </>
+        )}
+        {credit_card_statements.length > 0 && (
+          <>
+            <Divider style={{ backgroundColor: dividerColor }} />
+            <List.Item
+              title="Credit Card Statements"
+              titleStyle={{ color: theme.textPrimary }}
+              right={() => <Text style={countStyle}>{credit_card_statements.length}</Text>}
+            />
+          </>
+        )}
+        {credit_card_payments.length > 0 && (
+          <>
+            <Divider style={{ backgroundColor: dividerColor }} />
+            <List.Item
+              title="Credit Card Payments"
+              titleStyle={{ color: theme.textPrimary }}
+              right={() => <Text style={countStyle}>{credit_card_payments.length}</Text>}
+            />
+          </>
+        )}
       </View>
     );
+  };
+
+  const cardDynamicStyle = {
+    backgroundColor: theme.cardBg,
+    borderColor: theme.border,
+    borderWidth: isDarkMode ? 1 : 0
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
       <ScrollView contentContainerStyle={{ padding: Spacing.xs }}>
-        <Card style={styles.card}>
+        <Card style={[styles.card, cardDynamicStyle]}>
           <Card.Content>
-            <Title style={styles.cardTitle}>
+            <Title style={[styles.cardTitle, { color: theme.textPrimary }]}>
               <MaterialCommunityIcons name="cloud-upload" size={24} color={Colors.primary} /> Export Data
             </Title>
-            <Paragraph style={styles.description}>
-              Create a backup of all your transactions, categories, sources, budgets, bills, loans, and loan payments.
+            <Paragraph style={[styles.description, { color: theme.textSecondary }]}>
+              Create a backup of all your transactions, categories, sources, budgets, category budgets, bills, loans, and credit cards.
             </Paragraph>
             <Button
               mode="contained"
@@ -252,12 +415,12 @@ export default function BackupScreen() {
           </Card.Content>
         </Card>
 
-        <Card style={styles.card}>
+        <Card style={[styles.card, cardDynamicStyle]}>
           <Card.Content>
-            <Title style={styles.cardTitle}>
+            <Title style={[styles.cardTitle, { color: theme.textPrimary }]}>
               <MaterialCommunityIcons name="cloud-download" size={24} color={Colors.accent} /> Import Data
             </Title>
-            <Paragraph style={styles.description}>
+            <Paragraph style={[styles.description, { color: theme.textSecondary }]}>
               Restore your data from a previously saved backup file.
             </Paragraph>
             <Button
@@ -272,28 +435,48 @@ export default function BackupScreen() {
           </Card.Content>
         </Card>
 
-        <Card style={styles.card}>
+        <Card style={[styles.card, cardDynamicStyle]}>
           <Card.Content>
-            <Title style={styles.cardTitle}>
+            <Title style={[styles.cardTitle, { color: theme.textPrimary }]}>
               <MaterialCommunityIcons name="calendar-clock" size={24} color={Colors.primary} /> Automatic Backup
             </Title>
-            <Paragraph style={styles.description}>
-              Automatically backup your data every day to your device's Download folder.
+            <Paragraph style={[styles.description, { color: theme.textSecondary }]}>
+              {Platform.OS === 'android'
+                ? "Automatically back up your data daily to your selected folder."
+                : "Automatically back up your data daily to your device's Documents folder."}
             </Paragraph>
 
             <View style={styles.rowItem}>
-              <Text style={styles.rowLabel}>Enable Automatic Backup</Text>
+              <Text style={[styles.rowLabel, { color: theme.textPrimary }]}>Enable Automatic Backup</Text>
               <Switch
                 value={autoConfig.enabled}
                 onValueChange={toggleAutoBackup}
                 color={Colors.primary}
               />
             </View>
-            <Divider style={{ marginVertical: 8 }} />
+
+            {Platform.OS === 'android' && (
+              <>
+                <Divider style={{ marginVertical: 8, backgroundColor: theme.border }} />
+                <TouchableRipple onPress={promptSelectFolder} disabled={!autoConfig.enabled}>
+                  <View style={[styles.rowItem, { opacity: autoConfig.enabled ? 1 : 0.5 }]}>
+                    <Text style={[styles.rowLabel, { color: theme.textPrimary }]}>Backup Folder</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={[styles.timeValue, { maxWidth: 170 }]} numberOfLines={1}>
+                        {getFolderDisplayName(autoConfig.directoryUri)}
+                      </Text>
+                      <MaterialCommunityIcons name="chevron-right" size={20} color={Colors.muted} />
+                    </View>
+                  </View>
+                </TouchableRipple>
+              </>
+            )}
+
+            <Divider style={{ marginVertical: 8, backgroundColor: theme.border }} />
 
             <TouchableRipple onPress={() => setShowTimePicker(true)} disabled={!autoConfig.enabled}>
               <View style={[styles.rowItem, { opacity: autoConfig.enabled ? 1 : 0.5 }]}>
-                <Text style={styles.rowLabel}>Backup Time</Text>
+                <Text style={[styles.rowLabel, { color: theme.textPrimary }]}>Backup Time</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Text style={styles.timeValue}>{formatTime(autoConfig.backupTime)}</Text>
                   <MaterialCommunityIcons name="chevron-right" size={20} color={Colors.muted} />
@@ -332,14 +515,16 @@ export default function BackupScreen() {
 
       {/* Preview Dialog */}
       <Portal>
-        <Dialog visible={showPreview} onDismiss={() => setShowPreview(false)} style={styles.dialog}>
-          <Dialog.Title>Backup Content Preview</Dialog.Title>
+        <Dialog visible={showPreview} onDismiss={() => setShowPreview(false)} style={[styles.dialog, { backgroundColor: theme.cardBg }]}>
+          <Dialog.Title style={{ color: theme.textPrimary }}>Backup Content Preview</Dialog.Title>
           <Dialog.Content>
-            <Paragraph>Backup Date: {backupData ? new Date(backupData.timestamp).toLocaleString() : ''}</Paragraph>
-            <Divider style={{ marginVertical: 8 }} />
-            {renderStats(backupData)}
-            <Divider style={{ marginVertical: 8 }} />
-            <Text style={styles.warning}>Choose restore mode:</Text>
+            <Paragraph style={{ color: theme.textSecondary }}>Backup Date: {backupData ? new Date(backupData.timestamp).toLocaleString() : ''}</Paragraph>
+            <Divider style={{ marginVertical: 8, backgroundColor: theme.border }} />
+            <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={true}>
+              {renderStats(backupData)}
+            </ScrollView>
+            <Divider style={{ marginVertical: 8, backgroundColor: theme.border }} />
+            <Text style={[styles.warning, { color: theme.textPrimary }]}>Choose restore mode:</Text>
           </Dialog.Content>
           <Dialog.Actions style={styles.dialogActions}>
             <Button
@@ -358,10 +543,10 @@ export default function BackupScreen() {
         </Dialog>
 
         {/* Final Confirmation Dialog */}
-        <Dialog visible={showConfirmRestore} onDismiss={() => setShowConfirmRestore(false)}>
-          <Dialog.Title>Confirm Restore</Dialog.Title>
+        <Dialog visible={showConfirmRestore} onDismiss={() => setShowConfirmRestore(false)} style={{ backgroundColor: theme.cardBg, borderRadius: 16 }}>
+          <Dialog.Title style={{ color: theme.textPrimary }}>Confirm Restore</Dialog.Title>
           <Dialog.Content>
-            <Paragraph>
+            <Paragraph style={{ color: theme.textSecondary }}>
               {restoreMode === 'replace'
                 ? 'WARNING: This will CLEAR ALL your current data and replace it with the backup content. This action CANNOT be undone.'
                 : 'This will add all records from the backup to your current data. Duplicates will be skipped.'}
@@ -377,7 +562,7 @@ export default function BackupScreen() {
       </Portal>
 
       {loading && (
-        <Surface style={styles.loadingOverlay} elevation={4}>
+        <Surface style={[styles.loadingOverlay, { backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.85)' }]} elevation={4}>
           <ActivityIndicator size="large" color={Colors.primary} style={{ marginBottom: 15 }} />
           <Text style={{ fontSize: 16, fontWeight: '700', marginBottom: 10, color: Colors.primary }}>
             {progressMessage || 'Processing Backup...'}
@@ -440,7 +625,6 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     fontSize: 16,
-    color: '#333',
   },
   timeValue: {
     fontSize: 16,
@@ -449,7 +633,6 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   statsContainer: {
-    backgroundColor: '#f8f8f8',
     borderRadius: 8,
     overflow: 'hidden',
   },
@@ -460,7 +643,6 @@ const styles = StyleSheet.create({
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,

@@ -117,6 +117,10 @@ export const useFilteredTransactions = () => {
   return useSelector((state) => state.transaction.filteredTransactions);
 };
 
+export const useSearchFilter = () => {
+  return useSelector((state) => state.transaction.searchFilter);
+};
+
 export const useTransactionLoading = () => {
   return useSelector((state) => state.transaction.isLoading);
 };

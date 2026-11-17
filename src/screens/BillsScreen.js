@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
   TouchableWithoutFeedback,
+  InteractionManager,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -23,6 +24,7 @@ import {
   markBillPaid,
   skipBill,
   deleteBill,
+  softDeleteBillOccurrence,
 } from "../services/bills";
 import { getCategories } from "../services/categories";
 import { getPreferredBillOccurrence } from "../services/billUtils";
@@ -30,8 +32,8 @@ import BillSummaryBar from "../components/BillSummaryBar";
 import BillCard from "../components/BillCard";
 import BillCalendarView from "../components/BillCalendarView";
 import BillForm from "../components/BillForm";
-import ConfirmDialog from "../components/ConfirmDialog";
 import SkipBillModal from "../components/SkipBillModal";
+import DeleteBillModal from "../components/DeleteBillModal";
 import { Colors, Spacing } from "../components/Theme";
 import { useTheme } from "../context/ThemeContext";
 import { BILL_STATUS } from "../services/billUtils";
@@ -96,6 +98,8 @@ export default function BillsScreen({ navigation }) {
   const [confirmAction, setConfirmAction] = useState("delete");
   const [skipModalVisible, setSkipModalVisible] = useState(false);
   const [skipTarget, setSkipTarget] = useState(null);
+  const [isSkipping, setIsSkipping] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [showPaymentSourcePicker, setShowPaymentSourcePicker] = useState(false);
@@ -162,7 +166,15 @@ export default function BillsScreen({ navigation }) {
 
   useFocusEffect(
     useCallback(() => {
-      load();
+      let active = true;
+      InteractionManager.runAfterInteractions(() => {
+        if (active) {
+          load();
+        }
+      });
+      return () => {
+        active = false;
+      };
     }, [dispatch, statusFilter, categoryFilter, sortBy]),
   );
 
@@ -179,16 +191,14 @@ export default function BillsScreen({ navigation }) {
       ) {
         return {
           ...bill,
-          // Display the preferred recurring occurrence.
-          due_date: preferred.due_date,
-          status: preferred.status,
-          amount: preferred.amount,
+          ...preferred,
           // Preserve the no-due-date state.
-          _noDueDate: preferred._noDueDate === true,
+          _noDueDate: preferred._noDueDate === true || !preferred.due_date,
           // Preserve the recurring template identity.
           _templateId: bill._templateId || templateId,
           _displayOccurrenceId: preferred.id,
           _displayOccurrence: preferred,
+          _isRecurringSeries: true,
         };
       }
       return bill;
@@ -298,12 +308,31 @@ export default function BillsScreen({ navigation }) {
       );
       const latestDisplayStatement =
         displayStatements[displayStatements.length - 1];
+      const todayString = now.toISOString().slice(0, 10);
+      const allStatementsPaid = displayStatements.every(
+        (s) => s.status === BILL_STATUS.PAID || Number(s.is_paid) === 1 || Boolean(s.is_completely_paid),
+      );
+      const anyStatementOverdue = displayStatements.some(
+        (s) =>
+          s.status !== BILL_STATUS.PAID &&
+          Number(s.is_paid) !== 1 &&
+          (s.status === BILL_STATUS.OVERDUE || (s.due_date && s.due_date.slice(0, 10) < todayString)),
+      );
+      const ccStatus = allStatementsPaid
+        ? BILL_STATUS.PAID
+        : anyStatementOverdue
+        ? BILL_STATUS.OVERDUE
+        : BILL_STATUS.PENDING;
+
       // BUILD CREDIT-CARD PARENT
       groupedCreditCards.push({
         ...latestDisplayStatement,
         id: `cc-${parentId}`,
         parent_bill_id: parentId,
         name: latestDisplayStatement.name || "Credit Card",
+        status: ccStatus,
+        is_paid: allStatementsPaid ? 1 : 0,
+        is_completely_paid: allStatementsPaid,
         // Amount is ONLY for the current/displayed statement.
         amount: totalAmount,
         // ALL ACTUAL STATEMENTS
@@ -325,8 +354,29 @@ export default function BillsScreen({ navigation }) {
       });
     });
     // RETURN NORMAL BILLS + CREDIT-CARD PARENTS
-    return [...normalBills, ...groupedCreditCards];
-  }, [items, search, preferredOccurrences]);
+    const allDisplayBills = [...normalBills, ...groupedCreditCards];
+    if (!statusFilter || statusFilter === "all") {
+      return allDisplayBills;
+    }
+    const todayStrNow = now.toISOString().slice(0, 10);
+    return allDisplayBills.filter((bill) => {
+      const status = bill.status || "pending";
+      const isPaid =
+        status === "paid" ||
+        Number(bill.is_paid) === 1 ||
+        Boolean(bill.is_completely_paid);
+      const isSkipped = status === "skipped";
+      const isDueDatePast = Boolean(
+        bill.due_date && String(bill.due_date).slice(0, 10) < todayStrNow,
+      );
+      const isOverdue = !isPaid && !isSkipped && (status === "overdue" || isDueDatePast);
+
+      if (statusFilter === BILL_STATUS.OVERDUE) return isOverdue;
+      if (statusFilter === BILL_STATUS.PAID) return isPaid;
+      if (statusFilter === BILL_STATUS.PENDING) return !isPaid && !isSkipped && !isOverdue;
+      return status === statusFilter;
+    });
+  }, [items, search, preferredOccurrences, statusFilter]);
 
   const filteredCategories = useMemo(() => {
     if (!categorySearch.trim()) return categories;
@@ -338,9 +388,22 @@ export default function BillsScreen({ navigation }) {
   // ── navigation ─────────────────────────────────────────────────────────────
   // ISSUE 1: navigate to template id so detail page shows the full series.
   function openDetail(bill) {
+    const isStatement =
+      bill._isCreditCardStatement === true ||
+      (typeof bill.notes === "string" && bill.notes.startsWith("Statement "));
+    const parentId = bill.parent_bill_id || bill._templateId;
+
+    if (isStatement && parentId) {
+      navigation.navigate("BillDetail", {
+        billId: parentId,
+        occurrenceId: bill.id,
+      });
+      return;
+    }
+
     navigation.navigate("BillDetail", {
-      billId: bill._templateId || bill.id,
-      occurrenceId: bill._isRecurringSeries ? bill.id : undefined,
+      billId: bill._templateId || bill.parent_bill_id || bill.id,
+      occurrenceId: bill._displayOccurrenceId || (bill._isRecurringSeries ? bill.id : undefined),
     });
   }
 
@@ -490,11 +553,7 @@ export default function BillsScreen({ navigation }) {
             bill={item}
             category={categoriesMap[item.category_id]}
             onPress={() => {
-              if (item.children && item.children.length > 0) {
-                openDetail(item.children[0]);
-              } else {
-                openDetail(item);
-              }
+              openDetail(item);
             }}
             onMarkPaid={() => {
               handleMarkPaid(item);
@@ -907,6 +966,7 @@ export default function BillsScreen({ navigation }) {
       {summary?.overdueCount > 0 && (
         <TouchableOpacity
           activeOpacity={0.85}
+          onPress={() => setStatusFilter(BILL_STATUS.OVERDUE)}
           style={{
             flexDirection: "row",
             alignItems: "center",
@@ -997,13 +1057,22 @@ export default function BillsScreen({ navigation }) {
 
     filteredItems.forEach(bill => {
       const status = bill.status || 'pending';
+      const isPaid =
+        status === 'paid' ||
+        Number(bill.is_paid) === 1 ||
+        Boolean(bill.is_completely_paid);
+      const isSkipped = status === 'skipped';
+      const isDueDatePast = Boolean(
+        bill.due_date && String(bill.due_date).slice(0, 10) < nowStr
+      );
+      const isOverdue = !isPaid && !isSkipped && (status === 'overdue' || isDueDatePast);
       const isInactive = bill.recurrence_end_date && bill.recurrence_end_date < nowStr;
 
       if (isInactive) {
         groups.inactive.push(bill);
-      } else if (status === 'overdue') {
+      } else if (isOverdue) {
         groups.urgent.push(bill);
-      } else if (status === 'paid' || status === 'skipped') {
+      } else if (isPaid || isSkipped) {
         groups.settled.push(bill);
       } else {
         const dueDate = new Date(bill.due_date || now);
@@ -1319,13 +1388,12 @@ export default function BillsScreen({ navigation }) {
         </View>
       </Modal>
 
-      <ConfirmDialog
+      <DeleteBillModal
         visible={confirmVisible}
-        title="Delete Bill?"
-        message={confirmMessage}
-        confirmLabel="Delete Bill"
-        cancelLabel="Cancel"
+        bill={confirmTarget}
+        loading={isDeleting}
         onCancel={() => {
+          if (isDeleting) return;
           setConfirmVisible(false);
           setConfirmTarget(null);
         }}
@@ -1337,15 +1405,21 @@ export default function BillsScreen({ navigation }) {
           }
 
           try {
-            await deleteBill(confirmTarget.id);
+            setIsDeleting(true);
+            const isRecurringOcc = Boolean(confirmTarget.parent_bill_id);
+            if (isRecurringOcc) {
+              await softDeleteBillOccurrence(confirmTarget.id, false, confirmTarget.due_date);
+            } else {
+              await deleteBill(confirmTarget.id);
+            }
             setConfirmVisible(false);
             setConfirmTarget(null);
             await load();
           } catch (error) {
             console.error("[BillsScreen] delete action failed:", error);
-            setConfirmVisible(false);
-            setConfirmTarget(null);
             Alert.alert("Error", "Unable to delete this bill.");
+          } finally {
+            setIsDeleting(false);
           }
         }}
       />
@@ -1353,20 +1427,25 @@ export default function BillsScreen({ navigation }) {
       <SkipBillModal
         visible={skipModalVisible}
         bill={skipTarget}
+        loading={isSkipping}
         onCancel={() => {
+          if (isSkipping) return;
           setSkipModalVisible(false);
           setSkipTarget(null);
         }}
         onConfirm={async () => {
-          if (!skipTarget?.id) return;
+          if (!skipTarget?.id || isSkipping) return;
           try {
+            setIsSkipping(true);
             await skipBill(skipTarget.id);
+            await load();
             setSkipModalVisible(false);
             setSkipTarget(null);
-            await load();
           } catch (error) {
             console.error("[BillsScreen] Skip failed:", error);
             Alert.alert("Error", "Unable to skip this bill.");
+          } finally {
+            setIsSkipping(false);
           }
         }}
       />

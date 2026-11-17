@@ -18,7 +18,7 @@ import {
 } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import MuiDateTimePicker from "../components/MuiDateTimePicker";
-import ConfirmDialog from "../components/ConfirmDialog";
+import CommonBottomSheetModal from "../components/CommonBottomSheetModal";
 import {
   createLoan,
   getLoanById,
@@ -1495,14 +1495,23 @@ export default function LoanFormScreen({ navigation, route }) {
           DELETE CONFIRMATION
       ===================================================== */}
 
-      <ConfirmDialog
+      <CommonBottomSheetModal
         visible={showConfirmDelete}
+        type="danger"
         title={`Delete ${cfg.label}?`}
-        message={`This will permanently delete this ${cfg.label.toLowerCase()}, all payments, and all linked transactions. This cannot be undone.`}
+        subtitle={`Are you sure you want to permanently delete this ${cfg.label.toLowerCase()}?`}
         confirmLabel={`Delete ${cfg.label}`}
         cancelLabel="Cancel"
+        loading={deleting}
+        warnings={[
+          { title: `${cfg.label} Removed`, text: `All ${cfg.label.toLowerCase()} terms, schedules, and details will be permanently deleted.` },
+          { title: 'Payments Cleared', text: 'All recorded payments and linked transactions will be unlinked.' },
+          { title: 'Cannot Be Undone', text: 'This action cannot be reversed.' },
+        ]}
+        onCancel={() => {
+          if (!deleting) setShowConfirmDelete(false);
+        }}
         onConfirm={confirmDelete}
-        onCancel={() => !deleting && setShowConfirmDelete(false)}
       />
 
       {/* =====================================================

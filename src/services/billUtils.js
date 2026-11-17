@@ -34,7 +34,8 @@ export function addRecurrence(dateStr, type) {
   let d = day;
   let interval = 1;
 
-  switch (type) {
+  const upperType = String(type || "").trim().toUpperCase();
+  switch (upperType) {
     case "MONTHLY": interval = 1; break;
     case "BI_MONTHLY": interval = 2; break;
     case "QUARTERLY": interval = 3; break;
@@ -124,8 +125,25 @@ export function computeBillStatus(bill, today = todayStr()) {
   if (!bill) return BILL_STATUS.PENDING;
   if (bill.deleted_at) return null;
   if (bill.status === BILL_STATUS.SKIPPED) return BILL_STATUS.SKIPPED;
-  if (bill.status === BILL_STATUS.PAID || Number(bill.is_paid) === 1)
+  const paidAmount = Number(bill.paid_amount || bill.total_paid || 0);
+  const amount = Number(bill.amount || 0);
+  const roundedPaid = Math.round(paidAmount * 100);
+  const roundedAmount = Math.round(amount * 100);
+  if (
+    bill.status === BILL_STATUS.PAID ||
+    Number(bill.is_paid) === 1 ||
+    Boolean(bill.is_completely_paid) ||
+    (roundedAmount > 0 && roundedPaid >= roundedAmount)
+  ) {
     return BILL_STATUS.PAID;
+  }
+  if (
+    bill.status === "partially_paid" ||
+    Boolean(bill.is_partially_paid) ||
+    (roundedPaid > 0 && roundedPaid < roundedAmount)
+  ) {
+    return "partially_paid";
+  }
   if (bill.due_date && bill.due_date.slice(0, 10) < today)
     return BILL_STATUS.OVERDUE;
   return BILL_STATUS.PENDING;
@@ -139,31 +157,42 @@ export function getBillDisplayStatus(bill) {
     };
   }
   const status = String(bill.status || bill.payment_status || "").toLowerCase();
-  // PAID
-  if (status === "paid") {
-    return {
-      label: "Paid",
-      color: "#3F8F6B",
-    };
-  }
-  // PARTIALLY PAID
-  if (
-    status === "partially_paid" ||
-    bill.is_partially_paid ||
-    (Number(bill.paid_amount || 0) > 0 &&
-      Number(bill.amount || 0) > 0 &&
-      Number(bill.paid_amount || 0) < Number(bill.amount || 0))
-  ) {
-    return {
-      label: "Partially Paid",
-      color: "#3B82F6",
-    };
-  }
+  const paidAmount = Number(bill.paid_amount || bill.total_paid || 0);
+  const amount = Number(bill.amount || 0);
+  const roundedPaid = Math.round(paidAmount * 100);
+  const roundedAmount = Math.round(amount * 100);
+
   // SKIPPED
   if (status === "skipped") {
     return {
       label: "Skipped",
       color: "#718078",
+    };
+  }
+
+  const isCompletelyPaid =
+    status === "paid" ||
+    Number(bill.is_paid) === 1 ||
+    Boolean(bill.is_completely_paid) ||
+    (roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0);
+
+  // PAID (evaluated before partially_paid to avoid stale DB flags)
+  if (isCompletelyPaid) {
+    return {
+      label: "Paid",
+      color: "#3F8F6B",
+    };
+  }
+
+  // PARTIALLY PAID
+  if (
+    status === "partially_paid" ||
+    bill.is_partially_paid ||
+    (roundedPaid > 0 && roundedPaid < roundedAmount)
+  ) {
+    return {
+      label: "Partially Paid",
+      color: "#3B82F6",
     };
   }
   if (!bill.due_date) {
@@ -335,30 +364,10 @@ export function getPreferredBillOccurrence(bill, allBills) {
     row.due_date.startsWith(currentMonthPrefix),
   );
 
+  // If an occurrence exists for the current month, always return it.
+  // This ensures paid or active bills for the current month remain accurately visible.
   if (currentMonthBill) {
-    if (
-      currentMonthBill.status !== "paid" &&
-      currentMonthBill.status !== "skipped"
-    ) {
-      return currentMonthBill;
-    }
-
-    const previousPending = occurrences.find((row) => {
-      return (
-        row.due_date < currentMonthBill.due_date &&
-        row.status !== "paid" &&
-        row.status !== "skipped"
-      );
-    });
-
-    if (previousPending) {
-      return previousPending;
-    }
-
-    const upcoming = occurrences
-      .filter((row) => row.due_date > currentMonthBill.due_date)
-      .sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
-    return upcoming || currentMonthBill;
+    return currentMonthBill;
   }
 
   const previousPending = occurrences.find((row) => {
@@ -370,7 +379,11 @@ export function getPreferredBillOccurrence(bill, allBills) {
   });
 
   if (previousPending) {
-    return previousPending;
+    const computedStatus = computeBillStatus(previousPending, todayString);
+    return {
+      ...previousPending,
+      status: computedStatus || previousPending.status,
+    };
   }
 
   const upcoming = occurrences

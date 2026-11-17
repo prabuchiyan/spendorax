@@ -7,9 +7,10 @@ import {
   StyleSheet,
   Alert,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { getAllCreditCardStatements } from "../services/creditCards";
+import { getAllCreditCardStatements, updateCreditCardStatement } from "../services/creditCards";
 import { regenerateCreditCardStatement, runCreditCardStatementScheduler } from "../services/creditCardScheduler";
 import Card from "../components/Card";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
@@ -17,6 +18,8 @@ import { useAppDispatch, useCreditCardStatements } from '../redux/hooks';
 import { setStatements } from '../redux/slices/creditCardSlice';
 import { formatCurrency } from "../utils/numberUtils";
 import { useTheme } from "../context/ThemeContext";
+import MuiDateTimePicker from "../components/MuiDateTimePicker";
+import CommonBottomSheetModal from "../components/CommonBottomSheetModal";
 
 function formatDate(value) {
   if (!value) return "-";
@@ -33,6 +36,10 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
   const statements = reduxStatements || [];
   const [regenerateTarget, setRegenerateTarget] = useState(null);
   const [regenerating, setRegenerating] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [datePickerTarget, setDatePickerTarget] = useState(null);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [updatingDate, setUpdatingDate] = useState(false);
 
   const filterStatements = useCallback((items) => {
     if (!items || items.length === 0) return [];
@@ -57,12 +64,49 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
 
   const load = async () => {
     try {
+      setLoading(true);
       await runCreditCardStatementScheduler();
+      const items = await getAllCreditCardStatements();
+      dispatch(setStatements(filterStatements(items)));
     } catch (e) {
       console.warn("[CreditCardStatements] Scheduler sync error:", e);
+      try {
+        const items = await getAllCreditCardStatements();
+        dispatch(setStatements(filterStatements(items)));
+      } catch (err) {
+        console.error("[CreditCardStatements] Fallback fetch error:", err);
+      }
+    } finally {
+      setLoading(false);
     }
-    const items = await getAllCreditCardStatements();
-    dispatch(setStatements(filterStatements(items)));
+  };
+
+  const handleOpenDatePicker = (statement) => {
+    setDatePickerTarget(statement);
+    setDatePickerVisible(true);
+  };
+
+  const handleSelectStatementDate = async (newDate) => {
+    if (!datePickerTarget || !newDate || updatingDate) return;
+    try {
+      setUpdatingDate(true);
+      setDatePickerVisible(false);
+      const yyyy = newDate.getFullYear();
+      const mm = String(newDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(newDate.getDate()).padStart(2, '0');
+      const newDateStr = `${yyyy}-${mm}-${dd}`;
+      await updateCreditCardStatement(datePickerTarget.id, {
+        statement_date: newDateStr,
+      });
+      await load();
+      Alert.alert("Success", "Statement date updated successfully.");
+    } catch (err) {
+      console.error("[CreditCardStatements] Update date error:", err);
+      Alert.alert("Error", err?.message || "Failed to update statement date.");
+    } finally {
+      setUpdatingDate(false);
+      setDatePickerTarget(null);
+    }
   };
 
   const handleRegenerateStatement = useCallback((statement) => {
@@ -157,166 +201,179 @@ export default function CreditCardStatementsScreen({ route, navigation }) {
         </View>
       </View>
 
-      <FlatList
-        data={statements}
-        keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconContainer}>
-              <MaterialCommunityIcons
-                name="file-document-outline"
-                size={42}
-                color="#A1A9B3"
-              />
+      {loading && statements.length === 0 ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4B7CF3" />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+            Loading credit card statements...
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={statements}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshing={loading}
+          onRefresh={load}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconContainer}>
+                <MaterialCommunityIcons
+                  name="file-document-outline"
+                  size={42}
+                  color="#A1A9B3"
+                />
+              </View>
+              <Text style={styles.emptyTitle}>No Statements Found</Text>
+              <Text style={styles.emptySubtitle}>You don't have any generated statements yet.</Text>
             </View>
-            <Text style={styles.emptyTitle}>No Statements Found</Text>
-            <Text style={styles.emptySubtitle}>You don't have any generated statements yet.</Text>
-          </View>
-        }
-        renderItem={({ item }) => {
-          const isPaid = isStatementPaid(item);
-          const paymentsMade = Number(item.payments || 0);
-          const remainingBal = Math.max(0, Number(item.closing_balance || 0) - paymentsMade);
-          const itemColor = item.card_color || '#4B7CF3';
+          }
+          renderItem={({ item }) => {
+            const isPaid = isStatementPaid(item);
+            const paymentsMade = Number(item.payments || 0);
+            const remainingBal = Math.max(0, Number(item.closing_balance || 0) - paymentsMade);
+            const itemColor = item.card_color || '#4B7CF3';
 
-          return (
-            <Card style={styles.statementCard}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() =>
-                  navigation.navigate("CreditCardStatementDetail", {
-                    statementId: item.id,
-                  })
-                }
-              >
-                <View style={[styles.cardHeader, { backgroundColor: theme.cardBg }]}>
-                  <View style={styles.cardHeaderLeft}>
-                    <View style={[styles.cardIconWrapper, { backgroundColor: `${itemColor}15` }]}>
-                      <MaterialCommunityIcons
-                        name="credit-card-outline"
-                        size={20}
-                        color={itemColor}
-                      />
+            return (
+              <Card style={styles.statementCard}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    navigation.navigate("CreditCardStatementDetail", {
+                      statementId: item.id,
+                    })
+                  }
+                >
+                  <View style={[styles.cardHeader, { backgroundColor: theme.cardBg }]}>
+                    <View style={styles.cardHeaderLeft}>
+                      <View style={[styles.cardIconWrapper, { backgroundColor: `${itemColor}15` }]}>
+                        <MaterialCommunityIcons
+                          name="credit-card-outline"
+                          size={20}
+                          color={itemColor}
+                        />
+                      </View>
+                      <View>
+                        <Text style={[styles.cardName, { color: theme.textPrimary }]}>{item.card_name || "Credit Card"}</Text>
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleOpenDatePicker(item);
+                          }}
+                          style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}
+                        >
+                          <Text style={styles.cardDate}>Generated on {formatDate(item.statement_date)}</Text>
+                          <MaterialCommunityIcons name="pencil" size={13} color="#4B7CF3" style={{ marginLeft: 4 }} />
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                    <View>
-                      <Text style={[styles.cardName, { color: theme.textPrimary }]}>{item.card_name || "Credit Card"}</Text>
-                      <Text style={styles.cardDate}>Generated on {formatDate(item.statement_date)}</Text>
-                    </View>
-                  </View>
 
-                  <View style={[styles.statusBadge, { backgroundColor: isPaid ? '#E8FDF0' : '#F0F5FF' }]}>
-                    <Text style={[styles.statusText, { color: isPaid ? '#10B981' : '#4B7CF3' }]}>
-                      {isPaid ? "PAID" : "DUE"}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.cardBody}>
-                  <View style={styles.detailRow}>
-                    <Feather name="calendar" size={14} color="#8A96A3" />
-                    <Text style={[styles.detailText, { color: theme.textSecondary }]}>
-                      Period: <Text style={[styles.detailValue, { color: theme.textPrimary }]}>{formatDate(item.statement_start)} – {formatDate(item.statement_end)}</Text>
-                    </Text>
-                  </View>
-
-                  <View style={styles.detailRow}>
-                    <Feather name="clock" size={14} color="#8A96A3" />
-                    <Text style={styles.detailText}>
-                      Due By: <Text style={[styles.detailValue, { color: isPaid ? '#10B981' : '#E46A6A' }]}>{formatDate(item.due_date)}</Text>
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={[styles.cardFooter, { backgroundColor: theme.isDark ? '#1E293B' : '#F8FAFC', borderTopColor: theme.border }]}>
-                  <View style={styles.footerBalanceBox}>
-                    <Text style={[styles.footerBalanceLabel, { color: theme.textSecondary }]}>Closing Balance</Text>
-                    <Text style={[styles.footerBalanceAmount, { color: theme.textPrimary }]}>{formatCurrency(item.closing_balance)}</Text>
-                    {paymentsMade > 0 && (
-                      <Text style={{ fontSize: 11, color: '#10B981', fontWeight: '700', marginTop: 4 }}>
-                        Paid: {formatCurrency(paymentsMade)}
+                    <View style={[styles.statusBadge, { backgroundColor: isPaid ? '#E8FDF0' : '#F0F5FF' }]}>
+                      <Text style={[styles.statusText, { color: isPaid ? '#10B981' : '#4B7CF3' }]}>
+                        {isPaid ? "PAID" : "DUE"}
                       </Text>
-                    )}
+                    </View>
                   </View>
 
-                  <View style={styles.footerActions}>
-                    <View style={styles.minDueBox}>
-                      <Text style={[styles.minDueLabel, { color: theme.textSecondary }]}>{isPaid ? 'Status' : 'Remaining Due'}</Text>
-                      <Text style={[styles.minDueAmount, isPaid && { color: '#10B981' }]}>
-                        {isPaid ? 'Fully Paid' : formatCurrency(remainingBal)}
+                  <View style={styles.cardBody}>
+                    <View style={styles.detailRow}>
+                      <Feather name="calendar" size={14} color="#8A96A3" />
+                      <Text style={[styles.detailText, { color: theme.textSecondary }]}>
+                        Period: <Text style={[styles.detailValue, { color: theme.textPrimary }]}>{formatDate(item.statement_start)} – {formatDate(item.statement_end)}</Text>
                       </Text>
                     </View>
 
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      style={styles.regenerateBtn}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleRegenerateStatement(item);
-                      }}
-                    >
-                      <Feather name="refresh-cw" size={16} color="#4B7CF3" />
-                    </TouchableOpacity>
+                    <View style={styles.detailRow}>
+                      <Feather name="clock" size={14} color="#8A96A3" />
+                      <Text style={styles.detailText}>
+                        Due By: <Text style={[styles.detailValue, { color: isPaid ? '#10B981' : '#E46A6A' }]}>{formatDate(item.due_date)}</Text>
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            </Card>
-          );
-        }}
-      />
 
-      <Modal
+                  <View style={[styles.cardFooter, { backgroundColor: theme.isDark ? '#1E293B' : '#F8FAFC', borderTopColor: theme.border }]}>
+                    <View style={styles.footerBalanceBox}>
+                      <Text style={[styles.footerBalanceLabel, { color: theme.textSecondary }]}>Closing Balance</Text>
+                      <Text style={[styles.footerBalanceAmount, { color: theme.textPrimary }]}>{formatCurrency(item.closing_balance)}</Text>
+                      {paymentsMade > 0 && (
+                        <Text style={{ fontSize: 11, color: '#10B981', fontWeight: '700', marginTop: 4 }}>
+                          Paid: {formatCurrency(paymentsMade)}
+                        </Text>
+                      )}
+                    </View>
+
+                    <View style={styles.footerActions}>
+                      <View style={styles.minDueBox}>
+                        <Text style={[styles.minDueLabel, { color: theme.textSecondary }]}>{isPaid ? 'Status' : 'Remaining Due'}</Text>
+                        <Text style={[styles.minDueAmount, isPaid && { color: '#10B981' }]}>
+                          {isPaid ? 'Fully Paid' : formatCurrency(remainingBal)}
+                        </Text>
+                      </View>
+
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        style={styles.editDateBtn}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleOpenDatePicker(item);
+                        }}
+                      >
+                        <MaterialCommunityIcons name="calendar-edit" size={16} color="#4B7CF3" />
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        style={styles.regenerateBtn}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleRegenerateStatement(item);
+                        }}
+                      >
+                        <Feather name="refresh-cw" size={16} color="#4B7CF3" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </Card>
+            );
+          }}
+        />
+      )}
+
+      <CommonBottomSheetModal
         visible={!!regenerateTarget}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
+        type="info"
+        icon="refresh"
+        title="Regenerate Statement?"
+        subtitle={regenerateTarget ? `Statement from ${formatDate(regenerateTarget.statement_date)} for ${regenerateTarget.card_name || 'Credit Card'}` : ''}
+        confirmLabel="Regenerate"
+        cancelLabel="Cancel"
+        confirmIcon="refresh"
+        loading={regenerating}
+        warningTitle="Statement Recalculation Notice"
+        warnings={[
+          { title: 'Recalculate Statement', text: 'Recalculates total dues and balances from latest transactions.' },
+          { title: 'Payments Safe', text: 'Bills already marked as paid will remain paid.' },
+          { title: 'Automatic Sync', text: 'Linked expenses and statement totals will sync immediately.' },
+        ]}
+        onCancel={() => {
           if (!regenerating) setRegenerateTarget(null);
         }}
-      >
-        <View style={styles.regenerateOverlay}>
-          <View style={[styles.regenerateModal, { backgroundColor: theme.cardBg, borderColor: theme.border, borderWidth: theme.isDark ? 1 : 0 }]}>
-            <View style={styles.regenerateIconCircle}>
-              <MaterialCommunityIcons
-                name="refresh"
-                size={40}
-                color="#4B7CF3"
-              />
-            </View>
+        onConfirm={confirmRegenerateStatement}
+      />
 
-            <Text style={[styles.regenerateTitle, { color: theme.textPrimary }]}>Regenerate Statement?</Text>
-
-            <Text style={[styles.regenerateMessage, { color: theme.textSecondary }]}>
-              Are you sure you want to regenerate the statement from <Text style={{ fontWeight: '800' }}>{regenerateTarget ? formatDate(regenerateTarget.statement_date) : ""}</Text> for <Text style={{ fontWeight: '800' }}>{regenerateTarget?.card_name || "Credit Card"}</Text>?
-            </Text>
-
-            <Text style={styles.regenerateWarning}>
-              This will recalculate the statement based on your latest transactions. Paid bills will remain paid.
-            </Text>
-
-            <View style={styles.regenerateModalActions}>
-              <TouchableOpacity
-                disabled={regenerating}
-                onPress={() => setRegenerateTarget(null)}
-                style={styles.cancelRegenerateButton}
-              >
-                <Text style={[styles.cancelRegenerateText, { color: theme.textSecondary }]}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                disabled={regenerating}
-                onPress={confirmRegenerateStatement}
-                style={styles.confirmRegenerateButton}
-              >
-                <Feather name="refresh-cw" size={16} color="#FFF" style={{ marginRight: 6 }} />
-                <Text style={styles.confirmRegenerateText}>
-                  {regenerating ? "Regenerating..." : "Regenerate"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <MuiDateTimePicker
+        visible={datePickerVisible}
+        initialDate={datePickerTarget?.statement_date ? new Date(datePickerTarget.statement_date) : new Date()}
+        hideTime={true}
+        onClose={() => {
+          setDatePickerVisible(false);
+          setDatePickerTarget(null);
+        }}
+        onSelect={handleSelectStatementDate}
+      />
     </View>
   );
 }
@@ -553,86 +610,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  regenerateOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  regenerateModal: {
-    width: '100%',
-    maxWidth: 380,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 24,
-    alignItems: 'center',
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-  },
-  regenerateIconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+  editDateBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#F0F5FF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginRight: 8,
   },
-  regenerateTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#0F172A',
-    marginBottom: 12,
-  },
-  regenerateMessage: {
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: 'center',
-    color: '#475569',
-    marginBottom: 12,
-  },
-  regenerateWarning: {
-    fontSize: 13,
-    lineHeight: 20,
-    textAlign: 'center',
-    color: '#64748B',
-    marginBottom: 24,
-    paddingHorizontal: 10,
-  },
-  regenerateModalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    width: '100%',
-  },
-  cancelRegenerateButton: {
+  loadingContainer: {
     flex: 1,
-    height: 48,
-    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F1F5F9',
+    paddingVertical: 60,
   },
-  cancelRegenerateText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#475569',
-  },
-  confirmRegenerateButton: {
-    flex: 1,
-    height: 48,
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#4B7CF3',
-  },
-  confirmRegenerateText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  loadingText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 12,
   },
 });

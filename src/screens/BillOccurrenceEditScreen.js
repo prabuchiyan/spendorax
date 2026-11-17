@@ -232,7 +232,17 @@ export default function BillOccurrenceEditScreen({ route, navigation }) {
 
                         <PaperButton
                             mode="outlined"
-                            onPress={() => navigation.goBack()}
+                            onPress={() => {
+                                if (navigation.canGoBack()) {
+                                    navigation.navigate({
+                                        name: 'BillDetail',
+                                        params: { occurrenceId: occurrence?.id, preservedDueDate: occurrence?.due_date },
+                                        merge: true,
+                                    });
+                                } else {
+                                    navigation.goBack();
+                                }
+                            }}
                             disabled={loading}
                             textColor="#64748B"
                             style={{ borderRadius: 16, paddingVertical: 4, borderColor: "#CBD5E1", marginBottom: 24 }}

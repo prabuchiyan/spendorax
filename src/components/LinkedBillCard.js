@@ -24,6 +24,7 @@ import { Colors } from './Theme';
 import { useTheme } from '../context/ThemeContext';
 import { formatDueDate, getBillDisplayStatus } from '../services/billUtils';
 import CurrencyText from './CurrencyText';
+import CommonBottomSheetModal from './CommonBottomSheetModal';
 
 export default function LinkedBillCard({
   transactionId,
@@ -220,6 +221,9 @@ export default function LinkedBillCard({
           const display = isDeleted
             ? { label: 'Deleted', color: '#EF4444' }
             : getBillDisplayStatus(bill);
+          const bPaid = Math.round(Number(bill.paid_amount || 0) * 100);
+          const bAmount = Math.round(Number(bill.amount || 0) * 100);
+          const isBillPartiallyPaid = !bill.is_completely_paid && (bill.is_partially_paid || (bPaid > 0 && bPaid < bAmount));
 
           return (
             <View
@@ -270,12 +274,11 @@ export default function LinkedBillCard({
                   <Text style={[styles.billSub, { color: theme.textSecondary }]}>
                     {isDeleted
                       ? `Due ${formatDueDate(bill.due_date)}  ·  Deleted Bill`
-                      : bill.is_partially_paid || (Number(bill.paid_amount || 0) > 0 && Number(bill.paid_amount || 0) < Number(bill.amount || 0))
-                      ? `Due ${formatDueDate(bill.due_date)}  ·  ₹${Number(bill.paid_amount || 0).toLocaleString()} of ₹${Number(bill.amount || 0).toLocaleString()} paid`
-                      : `Due ${formatDueDate(bill.due_date)}${
-                          bill.linked_tx_count > 1
-                            ? `  ·  ${bill.linked_tx_count} payments linked`
-                            : bill.is_recurring
+                      : isBillPartiallyPaid
+                        ? `Due ${formatDueDate(bill.due_date)}  ·  ₹${Number(bill.paid_amount || 0).toLocaleString()} of ₹${Number(bill.amount || 0).toLocaleString()} paid`
+                        : `Due ${formatDueDate(bill.due_date)}${bill.linked_tx_count > 1
+                          ? `  ·  ${bill.linked_tx_count} payments linked`
+                          : bill.is_recurring
                             ? `  ·  ${bill.recurrence_type}`
                             : ''
                         }`}
@@ -321,137 +324,39 @@ export default function LinkedBillCard({
         })
       )}
 
-      {/* Premium Unlink Confirmation Modal */}
-      <Modal
+      {/* Common Unlink Confirmation Modal */}
+      <CommonBottomSheetModal
         visible={!!unlinkingBill}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={() => {
+        type="warning"
+        icon="link-variant-off"
+        title={unlinkingBill?.is_deleted || unlinkingBill?.deleted_at ? 'Unlink Deleted Bill?' : 'Unlink Bill?'}
+        subtitle={
+          unlinkingBill?.is_deleted || unlinkingBill?.deleted_at
+            ? 'This bill was previously deleted. Unlinking will remove the link from this transaction.'
+            : 'Are you sure you want to unlink this bill? The bill will be returned to pending status.'
+        }
+        confirmLabel="Unlink"
+        cancelLabel="Cancel"
+        confirmIcon="link-variant-off"
+        loading={unlinking}
+        warningTitle="Unlink Action Warning"
+        warnings={[
+          {
+            title: 'Transaction Link Cleared',
+            text: unlinkingBill?.is_deleted || unlinkingBill?.deleted_at
+              ? 'Transaction link will be cleared from this record.'
+              : 'Bill will revert to unpaid status and statement amounts will update.',
+          },
+          {
+            title: 'Expense Kept',
+            text: 'The payment transaction will remain in your history.',
+          },
+        ]}
+        onCancel={() => {
           if (!unlinking) setUnlinkingBill(null);
         }}
-      >
-        <Pressable
-          style={styles.unlinkModalOverlay}
-          onPress={() => {
-            if (!unlinking) setUnlinkingBill(null);
-          }}
-        >
-          <Pressable
-            style={[styles.unlinkModalCard, { backgroundColor: theme.cardBg, borderColor: theme.border, borderWidth: theme.isDark ? 1 : 0 }]}
-            onPress={(e) => {
-              if (e && e.stopPropagation) e.stopPropagation();
-            }}
-          >
-            {/* Top decorative danger badge */}
-            <View style={styles.unlinkIconCircle}>
-              <MaterialCommunityIcons
-                name="link-variant-off"
-                size={28}
-                color="#EF4444"
-              />
-            </View>
-
-            {/* Title & Subtitle */}
-            <Text style={[styles.unlinkModalTitle, { color: theme.textPrimary }]}>
-              {unlinkingBill?.is_deleted || unlinkingBill?.deleted_at
-                ? 'Unlink Deleted Bill?'
-                : 'Unlink Bill?'}
-            </Text>
-
-            <Text style={[styles.unlinkModalSubtitle, { color: theme.textSecondary }]}>
-              {unlinkingBill?.is_deleted || unlinkingBill?.deleted_at
-                ? 'This bill was previously deleted. Unlinking will remove the link from this transaction.'
-                : 'Are you sure you want to unlink this bill? The bill will be returned to pending status.'}
-            </Text>
-
-            {/* Bill Details Preview Card */}
-            {unlinkingBill && (
-              <View style={[styles.unlinkBillPreview, { backgroundColor: theme.bg, borderColor: theme.border }]}>
-                <View style={styles.unlinkBillIconWrap}>
-                  <MaterialCommunityIcons
-                    name={
-                      unlinkingBill.notes?.startsWith('Statement ')
-                        ? 'credit-card-outline'
-                        : 'file-document-outline'
-                    }
-                    size={20}
-                    color="#EF4444"
-                  />
-                </View>
-                <View style={{ flex: 1, marginRight: 10 }}>
-                  <Text style={[styles.unlinkBillPreviewName, { color: theme.textPrimary }]} numberOfLines={1}>
-                    {unlinkingBill.name}
-                  </Text>
-                  <Text style={[styles.unlinkBillPreviewSub, { color: theme.textSecondary }]}>
-                    {unlinkingBill.due_date
-                      ? `Due ${formatDueDate(unlinkingBill.due_date)}`
-                      : 'No due date'}
-                  </Text>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={[styles.unlinkBillPreviewAmount, { color: theme.textPrimary }]}>
-                    <CurrencyText amount={Number(unlinkingBill.amount || 0)} />
-                  </Text>
-                  {unlinkingBill.is_deleted || unlinkingBill.deleted_at ? (
-                    <View style={styles.unlinkDeletedTag}>
-                      <Text style={styles.unlinkDeletedTagText}>Deleted</Text>
-                    </View>
-                  ) : null}
-                </View>
-              </View>
-            )}
-
-            {/* Warning Note Pill */}
-            <View style={styles.unlinkWarningBox}>
-              <MaterialCommunityIcons
-                name="alert-circle-outline"
-                size={16}
-                color="#D97706"
-                style={{ marginRight: 6 }}
-              />
-              <Text style={styles.unlinkWarningText}>
-                {unlinkingBill?.is_deleted || unlinkingBill?.deleted_at
-                  ? 'Transaction link will be cleared.'
-                  : 'Bill will be marked as unpaid & statements will sync.'}
-              </Text>
-            </View>
-
-            {/* Action Buttons Row */}
-            <View style={styles.unlinkActionRow}>
-              <TouchableOpacity
-                style={[styles.unlinkCancelBtn, { backgroundColor: theme.isDark ? '#334155' : '#F1F5F9' }]}
-                activeOpacity={0.7}
-                onPress={() => setUnlinkingBill(null)}
-                disabled={unlinking}
-              >
-                <Text style={[styles.unlinkCancelBtnText, { color: theme.isDark ? '#F3F4F6' : '#475569' }]}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.unlinkConfirmBtn}
-                activeOpacity={0.8}
-                onPress={handleConfirmUnlink}
-                disabled={unlinking}
-              >
-                {unlinking ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <>
-                    <MaterialCommunityIcons
-                      name="link-variant-off"
-                      size={16}
-                      color="#FFFFFF"
-                      style={{ marginRight: 6 }}
-                    />
-                    <Text style={styles.unlinkConfirmBtnText}>Unlink</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        onConfirm={handleConfirmUnlink}
+      />
 
       {/* Link Bill Modal */}
       <Modal
@@ -625,10 +530,10 @@ export default function LinkedBillCard({
                           {item.is_partially_paid
                             ? ` · ₹${Number(item.total_paid || 0).toLocaleString()} of ₹${Number(item.amount || 0).toLocaleString()} paid`
                             : item.is_completely_paid
-                            ? ' · Fully Settled'
-                            : item.is_recurring
-                            ? ` · ${item.recurrence_type}`
-                            : ''}
+                              ? ' · Fully Settled'
+                              : item.is_recurring
+                                ? ` · ${item.recurrence_type}`
+                                : ''}
                         </Text>
                       </View>
                       <View
@@ -1017,157 +922,5 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     color: '#64748B',
     marginTop: 1,
-  },
-
-  /* ── Unlink Confirmation Modal Styles ── */
-  unlinkModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 30,
-  },
-  unlinkModalCard: {
-    width: '100%',
-    maxWidth: 340,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 22,
-    alignItems: 'center',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
-    elevation: 24,
-  },
-  unlinkIconCircle: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FEE2E2',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  unlinkModalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  unlinkModalSubtitle: {
-    fontSize: 13,
-    color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 16,
-    paddingHorizontal: 4,
-  },
-  unlinkBillPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 12,
-    marginBottom: 14,
-    width: '100%',
-  },
-  unlinkBillIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: '#FEF2F2',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  unlinkBillPreviewName: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#1E293B',
-  },
-  unlinkBillPreviewSub: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  unlinkBillPreviewAmount: {
-    fontSize: 13.5,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  unlinkDeletedTag: {
-    backgroundColor: '#FEE2E2',
-    borderRadius: 6,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    marginTop: 3,
-  },
-  unlinkDeletedTagText: {
-    fontSize: 9.5,
-    fontWeight: '700',
-    color: '#DC2626',
-  },
-  unlinkWarningBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFBEB',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginBottom: 18,
-    width: '100%',
-  },
-  unlinkWarningText: {
-    fontSize: 11.5,
-    color: '#92400E',
-    fontWeight: '600',
-    flex: 1,
-    lineHeight: 16,
-  },
-  unlinkActionRow: {
-    flexDirection: 'row',
-    width: '100%',
-    gap: 10,
-  },
-  unlinkCancelBtn: {
-    flex: 1,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: '#F1F5F9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  unlinkCancelBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#475569',
-  },
-  unlinkConfirmBtn: {
-    flex: 1,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: '#EF4444',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  unlinkConfirmBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
 });

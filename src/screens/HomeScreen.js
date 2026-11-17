@@ -365,6 +365,7 @@ function BudgetDonut({
 
   function fmt(value) {
     return `₹${Number(value || 0).toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
   }
@@ -697,13 +698,12 @@ export default function HomeScreen({ navigation }) {
         ) {
           return {
             ...bill,
-            due_date: preferred.due_date,
-            status: preferred.status,
-            amount: preferred.amount,
-            _noDueDate: preferred._noDueDate === true,
+            ...preferred,
+            _noDueDate: preferred._noDueDate === true || !preferred.due_date,
             _templateId: bill._templateId || templateId,
             _displayOccurrenceId: preferred.id,
             _displayOccurrence: preferred,
+            _isRecurringSeries: true,
           };
         }
         return bill;
@@ -755,7 +755,10 @@ export default function HomeScreen({ navigation }) {
           bill.status || bill.payment_status || "",
         ).toLowerCase();
 
-        const isPaid = status === "paid";
+        const isPaid =
+          status === "paid" ||
+          Number(bill.is_paid) === 1 ||
+          Boolean(bill.is_completely_paid);
         const isSkipped = status === "skipped";
 
         const isOverdue = dueDateOnly < todayStart && !isPaid && !isSkipped;
@@ -782,8 +785,16 @@ export default function HomeScreen({ navigation }) {
         const statusB = String(
           b.status || b.payment_status || "",
         ).toLowerCase();
-        const isPaidA = statusA === "paid" || statusA === "skipped";
-        const isPaidB = statusB === "paid" || statusB === "skipped";
+        const isPaidA =
+          statusA === "paid" ||
+          statusA === "skipped" ||
+          Number(a.is_paid) === 1 ||
+          Boolean(a.is_completely_paid);
+        const isPaidB =
+          statusB === "paid" ||
+          statusB === "skipped" ||
+          Number(b.is_paid) === 1 ||
+          Boolean(b.is_completely_paid);
 
         if (isPaidA && !isPaidB) return 1;
         if (!isPaidA && isPaidB) return -1;
@@ -1116,8 +1127,16 @@ export default function HomeScreen({ navigation }) {
   const sortedBills = [...bills].sort((a, b) => {
     const statusA = String(a.status || a.payment_status || "").toLowerCase();
     const statusB = String(b.status || b.payment_status || "").toLowerCase();
-    const isPaidA = statusA === "paid" || statusA === "skipped";
-    const isPaidB = statusB === "paid" || statusB === "skipped";
+    const isPaidA =
+      statusA === "paid" ||
+      statusA === "skipped" ||
+      Number(a.is_paid) === 1 ||
+      Boolean(a.is_completely_paid);
+    const isPaidB =
+      statusB === "paid" ||
+      statusB === "skipped" ||
+      Number(b.is_paid) === 1 ||
+      Boolean(b.is_completely_paid);
 
     if (isPaidA && !isPaidB) return 1;
     if (!isPaidA && isPaidB) return -1;
@@ -1336,7 +1355,7 @@ export default function HomeScreen({ navigation }) {
                           }}
                         >
                           {balanceVisible
-                            ? `₹${limit.toLocaleString("en-IN")}`
+                            ? `₹${limit.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                             : "••••••"}
                         </Text>
                       </View>
@@ -1384,7 +1403,7 @@ export default function HomeScreen({ navigation }) {
                           }}
                         >
                           {balanceVisible
-                            ? `₹${spent.toLocaleString("en-IN")}`
+                            ? `₹${spent.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                             : "••••••"}
                         </Text>
                       </View>
@@ -1436,7 +1455,7 @@ export default function HomeScreen({ navigation }) {
                           }}
                         >
                           {balanceVisible
-                            ? `₹${Math.abs(remaining).toLocaleString("en-IN")}`
+                            ? `₹${Math.abs(remaining).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                             : "••••••"}
                         </Text>
                       </View>
@@ -1533,7 +1552,7 @@ export default function HomeScreen({ navigation }) {
                         >
                           You have exceeded this month's budget by{" "}
                           {balanceVisible
-                            ? `₹${Math.abs(remaining).toLocaleString("en-IN")}`
+                            ? `₹${Math.abs(remaining).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                             : "••••••"}
                           .
                         </Text>
@@ -1666,7 +1685,7 @@ export default function HomeScreen({ navigation }) {
               >
                 Category Budgets
               </Text>
-              
+
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => navigation.navigate("CategoryBudgetsDashboard")}
@@ -1789,9 +1808,13 @@ export default function HomeScreen({ navigation }) {
                           }}
                         >
                           {balanceVisible
-                            ? `₹${spent.toLocaleString(
-                              "en-IN",
-                            )} of ₹${budgetAmount.toLocaleString("en-IN")}`
+                            ? `₹${spent.toLocaleString("en-IN", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })} of ₹${budgetAmount.toLocaleString("en-IN", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}`
                             : "•••••• of ••••••"}
                         </Text>
 
@@ -1851,10 +1874,14 @@ export default function HomeScreen({ navigation }) {
                         >
                           {balanceVisible
                             ? remaining >= 0
-                              ? `₹${remaining.toLocaleString("en-IN")} left`
-                              : `₹${Math.abs(remaining).toLocaleString(
-                                "en-IN",
-                              )} over`
+                              ? `₹${remaining.toLocaleString("en-IN", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })} left`
+                              : `₹${Math.abs(remaining).toLocaleString("en-IN", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })} over`
                             : "••••••"}
                         </Text>
                       </View>
@@ -2533,7 +2560,10 @@ export default function HomeScreen({ navigation }) {
                       }}
                     >
                       {balanceVisible
-                        ? `₹${amount.toLocaleString("en-IN")}`
+                        ? `₹${amount.toLocaleString("en-IN", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}`
                         : "••••••"}
                     </Text>
 

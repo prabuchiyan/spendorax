@@ -22,16 +22,16 @@ export async function createNotificationsTable() {
     const defaults = [
         {
             type: 'DAILY_SPEND',
-            title: 'Daily Expense Reminder',
-            body: "Don't forget to record today's expenses!",
+            title: '📝 Daily Expense Check-in',
+            body: "Spent anything today? Take 15 seconds to log your expenses and keep your budget in check 🎯",
             hour: 21,
             minute: 0,
             payload: JSON.stringify({ screen: 'TransactionAdd', type: 'DAILY_SPEND' }),
         },
         {
             type: 'YESTERDAY_SPEND',
-            title: 'Yesterday Spend Check',
-            body: "Did you forget to log yesterday's expenses?",
+            title: '⚠️ Missed Expense Alert',
+            body: "No expenses logged for yesterday. Forgot to record a spend or had a zero-spend day? Tap to review 📊",
             hour: 9,
             minute: 0,
             payload: JSON.stringify({ screen: 'Transactions', type: 'YESTERDAY_SPEND' }),
@@ -51,6 +51,22 @@ export async function createNotificationsTable() {
             hour: 9,
             minute: 0,
             payload: JSON.stringify({ screen: 'Loans', type: 'LOAN_EMI' }),
+        },
+        {
+            type: 'STATEMENT_GENERATED',
+            title: 'Statement Generated Alert',
+            body: 'Notifies when a credit card statement is ready',
+            hour: 9,
+            minute: 0,
+            payload: JSON.stringify({ screen: 'CreditCardStatements', type: 'STATEMENT_GENERATED' }),
+        },
+        {
+            type: 'BILL_GENERATED',
+            title: 'New Bill Generated Alert',
+            body: 'Notifies when a recurring bill occurrence is scheduled',
+            hour: 9,
+            minute: 0,
+            payload: JSON.stringify({ screen: 'Bills', type: 'BILL_GENERATED' }),
         }
     ];
 
@@ -111,6 +127,11 @@ export async function getNotificationByType(type) {
     return res.rows.item(0);
 }
 
+export async function isNotificationEnabled(type) {
+    const row = await getNotificationByType(type);
+    return row ? Boolean(row.enabled) : false;
+}
+
 export async function updateNotification(id, fields) {
     const sets = [];
     const vals = [];
@@ -126,4 +147,4 @@ export async function updateNotification(id, fields) {
     );
 }
 
-export default { createNotificationsTable, getNotifications, getNotificationByType, updateNotification };
+export default { createNotificationsTable, getNotifications, getNotificationByType, isNotificationEnabled, updateNotification };

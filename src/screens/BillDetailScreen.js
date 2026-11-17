@@ -6,6 +6,7 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   Modal,
   ActivityIndicator,
   Alert,
@@ -36,8 +37,9 @@ import {
 } from "../services/bills";
 import { getCategories } from "../services/categories";
 import { getSources } from "../services/sources";
-import ConfirmDialog from "../components/ConfirmDialog";
+import CommonBottomSheetModal from "../components/CommonBottomSheetModal";
 import SkipBillModal from "../components/SkipBillModal";
+import UnskipBillModal from "../components/UnskipBillModal";
 import BillForm from "../components/BillForm";
 import CurrencyText from "../components/CurrencyText";
 import {
@@ -105,8 +107,8 @@ function formatRecurrenceType(type, isRecurring = true) {
   }
 }
 
-function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
-  const { theme } = useTheme();
+function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink, onEdit }) {
+  const { theme, isDarkMode } = useTheme();
   return (
     <View style={[styles.sectionCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
       <View style={styles.sectionHeaderRow}>
@@ -142,57 +144,86 @@ function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
         linkedTxs.map((tx) => {
           const sourceWords = (tx.source_name || "BANK").trim().split(" ");
           const line1 = sourceWords[0]?.slice(0, 5)?.toUpperCase() || "BANK";
-          const line2 = sourceWords[1]?.slice(0, 5)?.toUpperCase() || "";
+          const avatarColor = tx.category_color || tx.source_color || "#006a61";
+          const avatarIcon = tx.category_icon || tx.source_icon;
 
           return (
-            <View key={tx.id} style={styles.linkedTxItem}>
-              {/* Bank Chip / Avatar */}
-              <View style={styles.bankChip}>
-                <Text style={styles.bankChipTop}>{line1}</Text>
-                {line2 ? <Text style={styles.bankChipBottom}>{line2}</Text> : null}
-              </View>
-
-              {/* Details */}
-              <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
-                  <Text numberOfLines={1} style={[styles.txTitle, { color: theme.textPrimary }]}>
-                    {tx.notes || "Payment Transaction"}
-                  </Text>
-                  <View style={styles.verifiedTag}>
-                    <Text style={styles.verifiedTagText}>Verified</Text>
-                  </View>
-                </View>
-
-                <View style={styles.txMetaRow}>
-                  <Text style={styles.txDateText}>
-                    {tx.date
-                      ? new Date(tx.date).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric"
-                      })
-                      : "—"}
-                  </Text>
-                  <Text style={styles.txBullet}>•</Text>
-                  <View style={styles.txIdBadge}>
-                    <Text style={styles.txIdBadgeText}>
-                      TXN-{tx.id ? String(tx.id).padStart(4, "0") : "AUTO"}
+            <View key={tx.id} style={[styles.linkedTxItem, { backgroundColor: isDarkMode ? theme.cardBg : "#ffffff", borderColor: theme.border }]}>
+              {/* Left Side: Clickable to Edit */}
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => onEdit && onEdit(tx)}
+                style={{ flex: 1, flexDirection: "row", alignItems: "center" }}
+                accessibilityRole="button"
+                accessibilityLabel={`Edit transaction ${tx.notes || "Payment"}`}>
+                {/* Dynamic Avatar */}
+                <View style={[styles.txAvatarWrap, { backgroundColor: `${avatarColor}18` }]}>
+                  {avatarIcon ? (
+                    <MaterialCommunityIcons
+                      name={avatarIcon}
+                      size={20}
+                      color={avatarColor}
+                    />
+                  ) : (
+                    <Text style={[styles.txAvatarText, { color: avatarColor }]}>
+                      {line1.slice(0, 3)}
                     </Text>
-                  </View>
+                  )}
                 </View>
 
-                <Text style={[styles.txAmountText, { color: theme.textPrimary }]}>
-                  {formatCurrency(tx.amount)}
-                </Text>
-              </View>
+                {/* Details */}
+                <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
+                    <Text numberOfLines={1} style={[styles.txTitle, { color: theme.textPrimary }]}>
+                      {tx.notes || "Payment Transaction"}
+                    </Text>
+                    <View style={styles.verifiedTag}>
+                      <Text style={styles.verifiedTagText}>Verified</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.txMetaRow}>
+                    <Text style={styles.txDateText}>
+                      {tx.date
+                        ? new Date(tx.date).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })
+                        : "—"}
+                    </Text>
+                    {tx.source_name ? (
+                      <>
+                        <Text style={styles.txBullet}>•</Text>
+                        <View style={[styles.sourceBadge, { backgroundColor: isDarkMode ? "#1e293b" : "#f1f5f9" }]}>
+                          <Text numberOfLines={1} style={[styles.sourceBadgeText, { color: theme.textSecondary }]}>
+                            {tx.source_name}
+                          </Text>
+                        </View>
+                      </>
+                    ) : null}
+                    <Text style={styles.txBullet}>•</Text>
+                    <View style={[styles.txIdBadge, { backgroundColor: isDarkMode ? "#334155" : "#e2e8f0" }]}>
+                      <Text style={[styles.txIdBadgeText, { color: isDarkMode ? "#cbd5e1" : "#475569" }]}>
+                        TXN-{tx.id ? String(tx.id).padStart(4, "0") : "AUTO"}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={[styles.txAmountText, { color: theme.textPrimary }]}>
+                    {formatCurrency(tx.amount)}
+                  </Text>
+                </View>
+              </TouchableOpacity>
 
               {/* Unlink Action */}
               {onUnlink && (
                 <TouchableOpacity
-                  aria-label="Unlink transaction"
+                  accessibilityRole="button"
+                  accessibilityLabel="Unlink transaction"
                   onPress={() => onUnlink(tx)}
                   activeOpacity={0.7}
-                  style={styles.unlinkBtn}>
+                  style={[styles.unlinkBtn, { backgroundColor: isDarkMode ? "#1e293b" : "#ffffff", borderColor: isDarkMode ? "#475569" : "#fecdd3" }]}>
                   <MaterialCommunityIcons
                     name="link-variant-off"
                     size={17}
@@ -205,6 +236,292 @@ function LinkedTransactionsCard({ linkedTxs, onAddMore, onUnlink }) {
         })
       )}
     </View>
+  );
+}
+
+function YearQuickJumpModal({
+  visible,
+  onClose,
+  series = [],
+  availableYears = [],
+  yearGroups = {},
+  activeYear,
+  activeOccurrenceId,
+  onSelectOccurrence,
+}) {
+  const { theme, isDarkMode } = useTheme();
+  const [selectedYear, setSelectedYear] = useState(activeYear || availableYears[0]);
+
+  useEffect(() => {
+    if (visible) {
+      setSelectedYear(activeYear || availableYears[0]);
+    }
+  }, [visible, activeYear, availableYears]);
+
+  if (!visible) return null;
+
+  const oldestOcc = series && series.length > 0 ? series[0] : null;
+  const latestOcc = series && series.length > 0 ? series[series.length - 1] : null;
+  const oldestYear = oldestOcc?.due_date ? new Date(oldestOcc.due_date).getFullYear() : null;
+  const latestYear = latestOcc?.due_date ? new Date(latestOcc.due_date).getFullYear() : null;
+
+  const monthsInSelectedYear = selectedYear && yearGroups[selectedYear] ? yearGroups[selectedYear] : [];
+  const isFewYears = availableYears.length <= 4;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onClose}>
+      <View style={styles.unlinkModalOverlay}>
+        <Pressable style={styles.unlinkModalBackdrop} onPress={onClose} />
+        <View
+          style={[
+            styles.jumpModalCard,
+            {
+              backgroundColor: theme.cardBg,
+              borderColor: theme.border,
+              borderWidth: isDarkMode ? 1 : 0,
+            },
+          ]}>
+          {/* Header */}
+          <View style={styles.jumpModalHeader}>
+            <View style={styles.jumpIconCircle}>
+              <MaterialCommunityIcons name="calendar-clock" size={24} color="#006a61" />
+            </View>
+            <Text style={[styles.jumpModalTitle, { color: theme.textPrimary }]}>
+              Jump to Period
+            </Text>
+            <Text style={[styles.jumpModalSubtitle, { color: theme.textSecondary }]}>
+              Quickly navigate through {series.length} bill cycles
+            </Text>
+          </View>
+
+          {/* Scrollable Content */}
+          <ScrollView
+            style={styles.jumpModalScroll}
+            contentContainerStyle={styles.jumpModalScrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces={false}>
+            {/* Quick Shortcuts: Oldest & Latest */}
+            {series.length > 5 && (
+              <View style={styles.jumpShortcutsRow}>
+                {oldestOcc && (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      onSelectOccurrence(oldestOcc);
+                      onClose();
+                    }}
+                    style={[
+                      styles.jumpShortcutBtn,
+                      {
+                        backgroundColor: isDarkMode ? "#1e293b" : "#f1f5f9",
+                        borderColor: theme.border,
+                      },
+                    ]}>
+                    <MaterialCommunityIcons name="page-first" size={16} color="#006a61" style={{ marginRight: 4 }} />
+                    <Text style={[styles.jumpShortcutText, { color: theme.textPrimary }]} numberOfLines={1}>
+                      Oldest ({oldestYear})
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {latestOcc && (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      onSelectOccurrence(latestOcc);
+                      onClose();
+                    }}
+                    style={[
+                      styles.jumpShortcutBtn,
+                      {
+                        backgroundColor: isDarkMode ? "#1e293b" : "#f1f5f9",
+                        borderColor: theme.border,
+                      },
+                    ]}>
+                    <MaterialCommunityIcons name="page-last" size={16} color="#006a61" style={{ marginRight: 4 }} />
+                    <Text style={[styles.jumpShortcutText, { color: theme.textPrimary }]} numberOfLines={1}>
+                      Latest ({latestYear})
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            {/* Years Section */}
+            {availableYears.length > 0 && (
+              <View style={styles.jumpSectionWrap}>
+                <Text style={[styles.jumpSectionLabel, { color: theme.textSecondary }]}>
+                  SELECT YEAR ({availableYears.length})
+                </Text>
+
+                {/* Years Grid */}
+                <View style={styles.jumpYearGrid}>
+                  {availableYears.map((yr) => {
+                    const isSelected = Number(selectedYear) === Number(yr);
+                    return (
+                      <TouchableOpacity
+                        key={String(yr)}
+                        activeOpacity={0.7}
+                        onPress={() => setSelectedYear(yr)}
+                        style={[
+                          styles.yearGridBtn,
+                          isFewYears ? { flex: 1 } : { width: "23%" },
+                          {
+                            backgroundColor: isSelected
+                              ? "#006a61"
+                              : isDarkMode
+                                ? "#1e293b"
+                                : "#f8faff",
+                            borderColor: isSelected
+                              ? "#006a61"
+                              : isDarkMode
+                                ? "#334155"
+                                : "#e2ebf8",
+                          },
+                        ]}>
+                        <Text
+                          style={[
+                            styles.yearGridBtnText,
+                            { color: isSelected ? "#ffffff" : theme.textPrimary },
+                          ]}
+                          numberOfLines={1}>
+                          {yr}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {/* Months in Selected Year */}
+            {monthsInSelectedYear.length > 0 && (
+              <View style={styles.jumpSectionWrap}>
+                <Text style={[styles.jumpSectionLabel, { color: theme.textSecondary }]}>
+                  CYCLES IN {selectedYear} ({monthsInSelectedYear.length})
+                </Text>
+                <View style={styles.monthChipsGrid}>
+                  {monthsInSelectedYear.map((occ) => {
+                    const date = new Date(occ.due_date);
+                    const monthName = date.toLocaleDateString("en-IN", {
+                      month: "short",
+                    });
+                    const occAmount = Math.round(Number(occ.amount || 0) * 100);
+                    const occPaid = Math.round(Number(occ.paid_amount || 0) * 100);
+                    const isPaid = occ.status === BILL_STATUS.PAID || Number(occ.is_paid) === 1 || Boolean(occ.is_completely_paid) || (occAmount > 0 && occPaid >= occAmount);
+                    const isPartiallyPaid = !isPaid && (occ.status === "partially_paid" || occ.is_partially_paid || (occPaid > 0 && occPaid < occAmount));
+                    const isSkipped = occ.status === BILL_STATUS.SKIPPED;
+                    const isCurrentOcc =
+                      activeOccurrenceId != null && Number(occ.id) === Number(activeOccurrenceId);
+
+                    const statusColor = isPaid ? "#10b981" : isPartiallyPaid ? "#3b82f6" : isSkipped ? "#94a3b8" : "#f59e0b";
+                    const statusLabel = isPaid ? "Paid" : isPartiallyPaid ? "Partial" : isSkipped ? "Skipped" : "Due";
+
+                    const cardBorderColor = isCurrentOcc
+                      ? "#006a61"
+                      : isPaid
+                        ? (isDarkMode ? "#065f46" : "#a7f3d0")
+                        : isPartiallyPaid
+                          ? (isDarkMode ? "#1d4ed8" : "#93c5fd")
+                          : isSkipped
+                            ? (isDarkMode ? "#475569" : "#cbd5e1")
+                            : (isDarkMode ? "#334155" : theme.border);
+
+                    const cardBgColor = isCurrentOcc
+                      ? (isDarkMode ? "rgba(0, 106, 97, 0.25)" : "rgba(0, 106, 97, 0.08)")
+                      : isPartiallyPaid
+                        ? (isDarkMode ? "rgba(37, 99, 235, 0.15)" : "#eff6ff")
+                        : (isDarkMode ? "#1e293b" : "#f8faff");
+
+                    return (
+                      <TouchableOpacity
+                        key={String(occ.id)}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          onSelectOccurrence(occ);
+                          onClose();
+                        }}
+                        style={[
+                          styles.cycleCardBtn,
+                          {
+                            backgroundColor: cardBgColor,
+                            borderColor: cardBorderColor,
+                            borderWidth: isCurrentOcc ? 1.5 : 1,
+                          },
+                        ]}>
+                        <View style={styles.cycleCardHeader}>
+                          <View style={styles.cycleCardHeaderLeft}>
+                            <View
+                              style={[
+                                styles.monthStatusDot,
+                                { backgroundColor: statusColor },
+                              ]}
+                            />
+                            <Text
+                              style={[
+                                styles.cycleMonthText,
+                                {
+                                  color: isCurrentOcc ? "#006a61" : theme.textPrimary,
+                                  fontWeight: isCurrentOcc ? "800" : "700",
+                                },
+                              ]}
+                              numberOfLines={1}>
+                              {monthName}
+                            </Text>
+                          </View>
+                          {isCurrentOcc ? (
+                            <View style={styles.cycleCurrentBadge}>
+                              <Text style={styles.cycleCurrentBadgeText}>Active</Text>
+                            </View>
+                          ) : isPaid ? (
+                            <MaterialCommunityIcons name="check-circle" size={13} color="#10b981" />
+                          ) : null}
+                        </View>
+                        <View style={styles.cycleCardFooter}>
+                          <Text
+                            style={[
+                              styles.cycleAmountText,
+                              { color: isCurrentOcc ? (isDarkMode ? "#2dd4bf" : "#006a61") : theme.textPrimary },
+                            ]}
+                            numberOfLines={1}>
+                            {formatCurrency(isPartiallyPaid && occ.remaining_amount != null ? occ.remaining_amount : occ.amount)}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.cycleStatusText,
+                              { color: statusColor },
+                            ]}>
+                            {statusLabel}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+          </ScrollView>
+
+          {/* Close button */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={onClose}
+            style={[
+              styles.jumpCloseBtn,
+              { backgroundColor: isDarkMode ? "#334155" : "#f1f5f9" },
+            ]}>
+            <Text style={[styles.jumpCloseBtnText, { color: theme.textPrimary }]}>
+              Close
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -431,8 +748,12 @@ export default function BillDetailScreen({ route, navigation }) {
   const [editing, setEditing] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
+  const [isDeletingOcc, setIsDeletingOcc] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showSkipModal, setShowSkipModal] = useState(false);
+  const [showUnskipModal, setShowUnskipModal] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
+  const [isUnskipping, setIsUnskipping] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState(null);
   const [showPaymentSourcePicker, setShowPaymentSourcePicker] = useState(false);
   const [paymentSources, setPaymentSources] = useState([]);
@@ -441,6 +762,9 @@ export default function BillDetailScreen({ route, navigation }) {
   const [isMarkingPaid, setIsMarkingPaid] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
+  const [unlinkingTx, setUnlinkingTx] = useState(null);
+  const [unlinking, setUnlinking] = useState(false);
+  const [showYearJumpModal, setShowYearJumpModal] = useState(false);
   const { visible: loaderVisible, show: showPageLoader, hide: hidePageLoader } = usePageLoader();
   const dispatch = useAppDispatch();
   const reduxSummary = useBillsSummary();
@@ -495,6 +819,44 @@ export default function BillDetailScreen({ route, navigation }) {
     const start = Math.max(0, chartData.length - itemsToShow - chartOffset);
     return chartData.slice(start, start + itemsToShow);
   }, [chartData, chartOffset]);
+
+  const availableYears = useMemo(() => {
+    if (!series || series.length === 0) return [];
+    const yearSet = new Set();
+    series.forEach((occ) => {
+      if (occ.due_date) {
+        const y = new Date(occ.due_date).getFullYear();
+        if (!isNaN(y)) yearSet.add(y);
+      }
+    });
+    return Array.from(yearSet).sort((a, b) => b - a);
+  }, [series]);
+
+  const yearGroups = useMemo(() => {
+    const map = {};
+    (series || []).forEach((occ) => {
+      if (!occ.due_date) return;
+      const y = new Date(occ.due_date).getFullYear();
+      if (isNaN(y)) return;
+      if (!map[y]) map[y] = [];
+      map[y].push(occ);
+    });
+    return map;
+  }, [series]);
+
+  const visibleYearLabel = useMemo(() => {
+    if (!displayChartData || displayChartData.length === 0) return "";
+    const years = displayChartData
+      .map((item) => {
+        const occ = series.find((s) => Number(s.id) === Number(item.id));
+        return occ?.due_date ? new Date(occ.due_date).getFullYear() : null;
+      })
+      .filter((y) => y != null && !isNaN(y));
+    if (years.length === 0) return "";
+    const minYear = Math.min(...years);
+    const maxYear = Math.max(...years);
+    return minYear === maxYear ? String(minYear) : `${minYear}-${String(maxYear).slice(2)}`;
+  }, [displayChartData, series]);
 
   const totalDueAmount = useMemo(() => {
     return series.reduce((sum, b) => {
@@ -602,31 +964,68 @@ export default function BillDetailScreen({ route, navigation }) {
           null;
       }
       if (!occ && occurrenceId) {
-        occ =
-          s.find((o) => Number(o.id) === Number(occurrenceId)) ||
-          s.find((o) => String(o.id) === String(occurrenceId)) ||
-          null;
+        const matchesTemplateOnly = s.length > 1 && Number(occurrenceId) === Number(templateId);
+        if (!matchesTemplateOnly) {
+          occ =
+            s.find((o) => Number(o.id) === Number(occurrenceId)) ||
+            s.find((o) => String(o.id) === String(occurrenceId)) ||
+            null;
+        }
       }
-      if (!occ && rawBill?.parent_bill_id) {
-        occ =
-          s.find((o) => Number(o.id) === Number(rawId)) ||
-          s.find((o) => String(o.id) === String(rawId)) ||
-          null;
+      if (!occ && s.length > 1) {
+        // Smart occurrence selection:
+        // Current month or previous unpaid month by default.
+        // Rule: If both previous month and current month are unpaid, current month defaults.
+        const now = new Date();
+        const curYear = now.getFullYear();
+        const curMonth = now.getMonth();
+        const curMonthStr = `${curYear}-${String(curMonth + 1).padStart(2, "0")}`;
+
+        const isUnpaid = (o) =>
+          o &&
+          o.status !== BILL_STATUS.PAID &&
+          o.status !== BILL_STATUS.SKIPPED &&
+          Number(o.is_paid) !== 1 &&
+          !o.is_completely_paid;
+
+        const getDateStr = (o) => o?.due_date || o?.statement_date || o?.occurrence_date || "";
+
+        const currentMonthOcc = s.find((o) => {
+          const ds = getDateStr(o);
+          return ds && ds.slice(0, 7) === curMonthStr;
+        });
+
+        const prevUnpaidOccs = s.filter((o) => {
+          const ds = getDateStr(o);
+          return ds && ds.slice(0, 7) < curMonthStr && isUnpaid(o);
+        });
+
+        if (currentMonthOcc && isUnpaid(currentMonthOcc)) {
+          // Both previous and current unpaid -> current month defaults
+          occ = currentMonthOcc;
+        } else if (prevUnpaidOccs.length > 0) {
+          // Current month is settled (or missing), but previous unpaid exists
+          occ = prevUnpaidOccs[prevUnpaidOccs.length - 1];
+        } else if (currentMonthOcc) {
+          // Current month exists (even if settled) and no previous unpaid exists
+          occ = currentMonthOcc;
+        } else {
+          // Next upcoming occurrence or latest
+          const upcoming = s.find((o) => {
+            const ds = getDateStr(o);
+            return ds && ds.slice(0, 7) > curMonthStr;
+          });
+          const rawChildMatch = rawBill?.parent_bill_id
+            ? s.find((o) => Number(o.id) === Number(rawId))
+            : null;
+          occ = upcoming || rawChildMatch || s[s.length - 1] || null;
+        }
       }
       if (!occ) {
-        const now = new Date();
         occ =
-          s.find((o) => {
-            if (!o.due_date) return false;
-            const d = new Date(o.due_date);
-            return (
-              d.getFullYear() === now.getFullYear() &&
-              d.getMonth() === now.getMonth() &&
-              o.status !== BILL_STATUS.PAID &&
-              o.status !== BILL_STATUS.SKIPPED
-            );
-          }) ||
+          (rawBill?.parent_bill_id && s.find((o) => Number(o.id) === Number(rawId))) ||
           s[s.length - 1] ||
+          s[0] ||
           null;
       }
       setSelectedOcc(occ);
@@ -729,16 +1128,22 @@ export default function BillDetailScreen({ route, navigation }) {
   };
 
   async function handleUnskip() {
-    if (!selectedOcc) return;
+    const targetBill = selectedOcc || activeBill;
+    if (!targetBill) return;
     try {
-      showPageLoader();
-      await unskipBill(selectedOcc.id);
+      setIsUnskipping(true);
+      await unskipBill(targetBill.id);
       await refreshSelectedOccurrence();
-      await load(selectedOcc.id);
+      await load(targetBill.id, targetBill.due_date);
+      setShowUnskipModal(false);
+      const monthYear = getBillMonthYear(targetBill);
+      setToastMsg(`Bill reactivated for ${monthYear}`);
+      setToastVisible(true);
     } catch (e) {
       console.error("[BillDetail] Unskip failed:", e);
+      Alert.alert("Error", "Unable to unskip this bill occurrence.");
     } finally {
-      hidePageLoader();
+      setIsUnskipping(false);
     }
   }
 
@@ -760,18 +1165,29 @@ export default function BillDetailScreen({ route, navigation }) {
     }
   }
 
-  async function handleUnlinkTransaction(tx) {
-    if (!selectedOcc) return;
+  async function handleConfirmUnlink() {
+    if (!unlinkingTx || !selectedOcc) return;
     try {
-      showPageLoader();
-      await removeTransactionFromBill(selectedOcc.id, tx.id);
+      setUnlinking(true);
+      await removeTransactionFromBill(selectedOcc.id, unlinkingTx.id);
+      setUnlinkingTx(null);
       await refreshSelectedOccurrence();
       await load(selectedOcc.id);
+      setToastMsg("Transaction unlinked successfully");
+      setToastVisible(true);
     } catch (e) {
       console.error("[BillDetail] Unlink transaction failed:", e);
+      Alert.alert("Error", "Could not unlink transaction.");
     } finally {
-      hidePageLoader();
+      setUnlinking(false);
     }
+  }
+
+  function handleEditTransaction(tx) {
+    navigation.navigate("TransactionAdd", {
+      isEdit: true,
+      transaction: tx,
+    });
   }
 
   async function handleSelectOccurrence(occ) {
@@ -784,6 +1200,18 @@ export default function BillDetailScreen({ route, navigation }) {
         year: "2-digit"
       })
     );
+  }
+
+  function handleJumpToOccurrence(targetOcc) {
+    if (!targetOcc || !series || series.length === 0) return;
+    const targetIdx = series.findIndex((o) => Number(o.id) === Number(targetOcc.id));
+    if (targetIdx !== -1) {
+      const itemsToShow = 5;
+      const idealStart = Math.max(0, Math.min(series.length - itemsToShow, targetIdx - Math.floor(itemsToShow / 2)));
+      const newOffset = Math.max(0, series.length - itemsToShow - idealStart);
+      setChartOffset(newOffset);
+    }
+    handleSelectOccurrence(targetOcc);
   }
 
   const handleShareBill = async () => {
@@ -833,10 +1261,28 @@ export default function BillDetailScreen({ route, navigation }) {
 
   // ── derived values ────────────────────────────────────────────────────────
   const activeBill = selectedOcc || bill;
+  const paidAmount = Number(activeBill?.paid_amount ?? activeBill?.total_paid ?? 0);
+  const billAmount = Number(activeBill?.amount || 0);
+  const roundedPaid = Math.round(paidAmount * 100);
+  const roundedAmount = Math.round(billAmount * 100);
+  const remainingAmount = Math.max(0, Math.round(roundedAmount - roundedPaid) / 100);
+
   const display = getBillDisplayStatus(activeBill);
-  const isPaidOrSkipped =
-    activeBill.status === BILL_STATUS.PAID ||
-    activeBill.status === BILL_STATUS.SKIPPED;
+  const isFullyPaid =
+    display?.label === "Paid" ||
+    activeBill?.status === BILL_STATUS.PAID ||
+    Number(activeBill?.is_paid) === 1 ||
+    Boolean(activeBill?.is_completely_paid) ||
+    (roundedAmount > 0 && roundedPaid >= roundedAmount);
+  const isPartiallyPaid =
+    !isFullyPaid &&
+    (display?.label === "Partially Paid" ||
+      activeBill?.status === "partially_paid" ||
+      Boolean(activeBill?.is_partially_paid) ||
+      (roundedPaid > 0 && roundedPaid < roundedAmount));
+  const isSkipped = activeBill?.status === BILL_STATUS.SKIPPED;
+  const isPaidOrSkipped = isFullyPaid || isSkipped;
+  const isAnyLoading = isMarkingPaid || isSkipping || isUnskipping;
 
   const isPayable = (() => {
     if (isPaidOrSkipped) return false;
@@ -968,19 +1414,41 @@ export default function BillDetailScreen({ route, navigation }) {
               styles.heroStatusPill,
               isPaidOrSkipped
                 ? (activeBill.status === BILL_STATUS.SKIPPED ? styles.heroStatusPillSkipped : styles.heroStatusPillPaid)
-                : (display?.label?.toLowerCase().includes("overdue") ? styles.heroStatusPillOverdue : styles.heroStatusPillActive)
+                : (isPartiallyPaid
+                    ? styles.heroStatusPillPartiallyPaid
+                    : (display?.label?.toLowerCase().includes("overdue") ? styles.heroStatusPillOverdue : styles.heroStatusPillActive))
             ]}>
               <MaterialCommunityIcons
-                name={isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "skip-next" : "check") : (display?.label?.toLowerCase().includes("overdue") ? "alert-circle-outline" : "clock-outline")}
+                name={
+                  isPaidOrSkipped
+                    ? (activeBill.status === BILL_STATUS.SKIPPED ? "skip-next" : "check")
+                    : (isPartiallyPaid
+                        ? "progress-check"
+                        : (display?.label?.toLowerCase().includes("overdue") ? "alert-circle-outline" : "clock-outline"))
+                }
                 size={12}
-                color={isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "#f59e0b" : "#34d399") : (display?.label?.toLowerCase().includes("overdue") ? "#fb7185" : "#38bdf8")}
+                color={
+                  isPaidOrSkipped
+                    ? (activeBill.status === BILL_STATUS.SKIPPED ? "#f59e0b" : "#34d399")
+                    : (isPartiallyPaid
+                        ? "#60a5fa"
+                        : (display?.label?.toLowerCase().includes("overdue") ? "#fb7185" : "#38bdf8"))
+                }
                 style={{ marginRight: 4 }}
               />
               <Text numberOfLines={1} style={[
                 styles.heroStatusPillText,
-                { color: isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "#fde68a" : "#6ee7b7") : (display?.label?.toLowerCase().includes("overdue") ? "#fda4af" : "#bae6fd") }
+                {
+                  color: isPaidOrSkipped
+                    ? (activeBill.status === BILL_STATUS.SKIPPED ? "#fde68a" : "#6ee7b7")
+                    : (isPartiallyPaid
+                        ? "#93c5fd"
+                        : (display?.label?.toLowerCase().includes("overdue") ? "#fda4af" : "#bae6fd"))
+                }
               ]}>
-                {activeBill.status === BILL_STATUS.SKIPPED ? "Skipped" : (display?.label || "Active")}
+                {activeBill.status === BILL_STATUS.SKIPPED
+                  ? "Skipped"
+                  : (isPartiallyPaid ? "Partially Paid" : (display?.label || "Active"))}
               </Text>
             </View>
           </View>
@@ -994,14 +1462,18 @@ export default function BillDetailScreen({ route, navigation }) {
           <View style={styles.heroAmountBox}>
             {/* Due Amount Panel */}
             <View style={styles.heroAmountCol}>
-              <Text style={styles.heroAmountLabel}>DUE AMOUNT</Text>
+              <Text style={styles.heroAmountLabel}>
+                {isFullyPaid || isPartiallyPaid ? "REMAINING DUE" : "DUE AMOUNT"}
+              </Text>
               <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.heroAmountValueDue}>
-                <CurrencyText amount={activeBill.amount} />
+                <CurrencyText amount={isFullyPaid ? 0 : (isPartiallyPaid ? remainingAmount : activeBill.amount)} />
               </Text>
               <View style={styles.heroAmountSubRow}>
                 <MaterialCommunityIcons name="calendar-outline" size={12} color="#94a3b8" />
                 <Text numberOfLines={1} style={styles.heroAmountSubText}>
-                  Due {formatDueDate(activeBill.due_date)}
+                  {isFullyPaid || isPartiallyPaid
+                    ? `Total ${formatCurrency(activeBill.amount)}`
+                    : `Due ${formatDueDate(activeBill.due_date)}`}
                 </Text>
               </View>
             </View>
@@ -1019,23 +1491,23 @@ export default function BillDetailScreen({ route, navigation }) {
                 styles.heroSettledBadge,
                 isPaidOrSkipped
                   ? (activeBill.status === BILL_STATUS.SKIPPED
-                      ? { backgroundColor: "rgba(245, 158, 11, 0.2)", borderColor: "rgba(251, 191, 36, 0.3)" }
-                      : { backgroundColor: "rgba(16, 185, 129, 0.2)", borderColor: "rgba(52, 211, 153, 0.3)" })
-                  : (Number(activeBill.paid_amount || 0) > 0
+                    ? { backgroundColor: "rgba(245, 158, 11, 0.2)", borderColor: "rgba(251, 191, 36, 0.3)" }
+                    : { backgroundColor: "rgba(16, 185, 129, 0.2)", borderColor: "rgba(52, 211, 153, 0.3)" })
+                  : (isPartiallyPaid
                     ? { backgroundColor: "rgba(59, 130, 246, 0.2)", borderColor: "rgba(96, 165, 250, 0.3)" }
                     : { backgroundColor: "rgba(245, 158, 11, 0.2)", borderColor: "rgba(251, 191, 36, 0.3)" })
               ]}>
                 <MaterialCommunityIcons
-                  name={isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "skip-next" : "check-circle") : (Number(activeBill.paid_amount || 0) > 0 ? "progress-check" : "clock-outline")}
+                  name={isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "skip-next" : "check-circle") : (isPartiallyPaid ? "progress-check" : "clock-outline")}
                   size={11}
-                  color={isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "#fbbf24" : "#34d399") : (Number(activeBill.paid_amount || 0) > 0 ? "#60a5fa" : "#fbbf24")}
+                  color={isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "#fbbf24" : "#34d399") : (isPartiallyPaid ? "#60a5fa" : "#fbbf24")}
                   style={{ marginRight: 3 }}
                 />
                 <Text numberOfLines={1} style={[
                   styles.heroSettledBadgeText,
-                  { color: isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "#fde68a" : "#6ee7b7") : (Number(activeBill.paid_amount || 0) > 0 ? "#93c5fd" : "#fde68a") }
+                  { color: isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "#fde68a" : "#6ee7b7") : (isPartiallyPaid ? "#93c5fd" : "#fde68a") }
                 ]}>
-                  {isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "Skipped" : "Fully Settled") : (Number(activeBill.paid_amount || 0) > 0 ? "Partially Paid" : "Pending")}
+                  {isPaidOrSkipped ? (activeBill.status === BILL_STATUS.SKIPPED ? "Skipped" : "Fully Settled") : (isPartiallyPaid ? "Partially Paid" : "Pending")}
                 </Text>
               </View>
             </View>
@@ -1101,7 +1573,8 @@ export default function BillDetailScreen({ route, navigation }) {
         <LinkedTransactionsCard
           linkedTxs={linkedTxs}
           onAddMore={() => setShowLinkModal(true)}
-          onUnlink={handleUnlinkTransaction}
+          onUnlink={(tx) => setUnlinkingTx(tx)}
+          onEdit={handleEditTransaction}
         />
 
         {/* ── 3. Series Overview Section ────────────────────────────────────── */}
@@ -1186,11 +1659,31 @@ export default function BillDetailScreen({ route, navigation }) {
         {/* ── 4. Billing History Section ────────────────────────────────────── */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", flex: 1, marginRight: 8 }}>
               <Text style={styles.sectionTitle}>Billing History</Text>
               <View style={styles.countBadge}>
                 <Text style={styles.countBadgeText}>{series.length} Occurrences</Text>
               </View>
+
+              {/* Year Quick-Jump Pill */}
+              {availableYears.length > 0 && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setShowYearJumpModal(true)}
+                  style={[
+                    styles.yearJumpPill,
+                    {
+                      backgroundColor: isDarkMode ? "#1e293b" : "#f1f5f9",
+                      borderColor: theme.border,
+                    },
+                  ]}>
+                  <MaterialCommunityIcons name="calendar-search" size={13} color="#006a61" style={{ marginRight: 4 }} />
+                  <Text style={[styles.yearJumpPillText, { color: theme.textPrimary }]}>
+                    {visibleYearLabel ? visibleYearLabel : "Year"}
+                  </Text>
+                  <MaterialCommunityIcons name="chevron-down" size={14} color={theme.textSecondary} style={{ marginLeft: 2 }} />
+                </TouchableOpacity>
+              )}
             </View>
 
             <View style={{ flexDirection: "row" }}>
@@ -1268,17 +1761,29 @@ export default function BillDetailScreen({ route, navigation }) {
         </View>
 
         {/* Dialogs */}
-        <ConfirmDialog
+        <CommonBottomSheetModal
           visible={confirmVisible}
-          title="Delete Occurrence"
-          message={`Delete the occurrence for ${formatDueDate(activeBill.due_date)}? It won't be recreated.`}
-          confirmLabel="Delete"
+          type="danger"
+          title="Delete Occurrence?"
+          subtitle={`Are you sure you want to delete the occurrence for ${activeBill ? formatDueDate(activeBill.due_date) : ""}?`}
+          confirmLabel="Delete Occurrence"
+          cancelLabel="Keep Bill"
+          loading={isDeletingOcc}
+          warnings={[
+            { title: 'Occurrence Removed', text: `This occurrence for ${activeBill ? formatDueDate(activeBill.due_date) : ""} will be removed.` },
+            { title: 'Schedule Intact', text: 'Other recurring cycles will remain unaffected.' },
+            { title: 'Cannot Be Undone', text: 'This bill occurrence will not be recreated.' },
+          ]}
           onCancel={() => {
-            setConfirmVisible(false);
-            setConfirmAction(null);
+            if (!isDeletingOcc) {
+              setConfirmVisible(false);
+              setConfirmAction(null);
+            }
           }}
           onConfirm={async () => {
+            if (isDeletingOcc) return;
             try {
+              setIsDeletingOcc(true);
               showPageLoader();
               if (confirmAction === "delete_occ") {
                 const isTemplate = activeBill.id === bill?.id && bill?.is_recurring;
@@ -1289,6 +1794,7 @@ export default function BillDetailScreen({ route, navigation }) {
             } catch (e) {
               console.error("[BillDetail] Action failed:", e);
             } finally {
+              setIsDeletingOcc(false);
               setConfirmVisible(false);
               setConfirmAction(null);
               hidePageLoader();
@@ -1299,24 +1805,33 @@ export default function BillDetailScreen({ route, navigation }) {
         <SkipBillModal
           visible={showSkipModal}
           bill={activeBill}
-          onCancel={() => setShowSkipModal(false)}
+          loading={isSkipping}
+          onCancel={() => !isSkipping && setShowSkipModal(false)}
           onConfirm={async () => {
             try {
-              showPageLoader();
+              setIsSkipping(true);
               await skipBill(activeBill.id);
               await refreshSelectedOccurrence();
               await load(activeBill.id, activeBill.due_date);
               const monthYear = getBillMonthYear(activeBill);
               setToastMsg(`Bill skipped for ${monthYear}`);
               setToastVisible(true);
+              setShowSkipModal(false);
             } catch (e) {
               console.error("[BillDetail] Skip failed:", e);
               Alert.alert("Error", "Unable to skip this bill occurrence.");
             } finally {
-              setShowSkipModal(false);
-              hidePageLoader();
+              setIsSkipping(false);
             }
           }}
+        />
+
+        <UnskipBillModal
+          visible={showUnskipModal}
+          bill={activeBill}
+          loading={isUnskipping}
+          onCancel={() => !isUnskipping && setShowUnskipModal(false)}
+          onConfirm={handleUnskip}
         />
 
         <LinkTransactionModal
@@ -1324,6 +1839,40 @@ export default function BillDetailScreen({ route, navigation }) {
           bill={activeBill}
           onLink={handleLinkTransaction}
           onClose={() => setShowLinkModal(false)}
+        />
+
+        {/* ── Unlink Transaction Confirmation Modal ──────────────────────── */}
+        <CommonBottomSheetModal
+          visible={Boolean(unlinkingTx)}
+          type="warning"
+          icon="link-variant-off"
+          title="Unlink Transaction?"
+          subtitle="Are you sure you want to remove this linked transaction from the bill?"
+          confirmLabel="Unlink"
+          cancelLabel="Cancel"
+          confirmIcon="link-variant-off"
+          loading={unlinking}
+          warningTitle="Unlinking Notice"
+          warnings={[
+            { title: 'Transaction Unlinked', text: 'This transaction will be disconnected from the bill.' },
+            { title: 'Bill Status Updated', text: 'Unlinking recalculates paid amount; bill may return to unpaid/pending dues.' },
+            { title: 'Expense Kept', text: 'The expense transaction itself remains in your account records.' },
+          ]}
+          onCancel={() => {
+            if (!unlinking) setUnlinkingTx(null);
+          }}
+          onConfirm={handleConfirmUnlink}
+        />
+
+        <YearQuickJumpModal
+          visible={showYearJumpModal}
+          onClose={() => setShowYearJumpModal(false)}
+          series={series}
+          availableYears={availableYears}
+          yearGroups={yearGroups}
+          activeYear={activeBill?.due_date ? new Date(activeBill.due_date).getFullYear() : availableYears[0]}
+          activeOccurrenceId={activeBill?.id}
+          onSelectOccurrence={handleJumpToOccurrence}
         />
       </ScrollView>
 
@@ -1333,10 +1882,10 @@ export default function BillDetailScreen({ route, navigation }) {
           <TouchableOpacity
             style={[
               styles.primaryPayButton,
-              isMarkingPaid && { opacity: 0.85 }
+              isAnyLoading && { opacity: 0.6 }
             ]}
             onPress={handleMarkPaid}
-            disabled={isMarkingPaid}
+            disabled={isAnyLoading}
             activeOpacity={0.8}>
             {isMarkingPaid ? (
               <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 8 }} />
@@ -1348,7 +1897,9 @@ export default function BillDetailScreen({ route, navigation }) {
                 style={{ marginRight: 6 }}
               />
             )}
-            <Text style={styles.primaryPayText}>Mark as Paid</Text>
+            <Text style={styles.primaryPayText}>
+              {isPartiallyPaid ? `Pay Remaining (${formatCurrency(remainingAmount)})` : "Mark as Paid"}
+            </Text>
           </TouchableOpacity>
         )}
 
@@ -1358,23 +1909,31 @@ export default function BillDetailScreen({ route, navigation }) {
         ]}>
           {activeBill.status === BILL_STATUS.SKIPPED ? (
             <TouchableOpacity
-              style={styles.dockActionButton}
-              onPress={handleUnskip}
-              disabled={isMarkingPaid}
+              style={[styles.dockActionButton, isAnyLoading && { opacity: 0.6 }]}
+              onPress={() => setShowUnskipModal(true)}
+              disabled={isAnyLoading}
               activeOpacity={0.7}>
               <View style={[styles.dockIconCircle, { backgroundColor: "#eff6ff", borderColor: "#bfdbfe" }]}>
-                <MaterialCommunityIcons name="undo" color="#2563eb" size={18} />
+                {isUnskipping ? (
+                  <ActivityIndicator size="small" color="#2563eb" />
+                ) : (
+                  <MaterialCommunityIcons name="undo" color="#2563eb" size={18} />
+                )}
               </View>
               <Text style={styles.dockActionLabel}>Unskip</Text>
             </TouchableOpacity>
           ) : !isPaidOrSkipped ? (
             <TouchableOpacity
-              style={styles.dockActionButton}
+              style={[styles.dockActionButton, isAnyLoading && { opacity: 0.6 }]}
               onPress={() => setShowSkipModal(true)}
-              disabled={isMarkingPaid}
+              disabled={isAnyLoading}
               activeOpacity={0.7}>
               <View style={[styles.dockIconCircle, { backgroundColor: "#fef3c7", borderColor: "#fde68a" }]}>
-                <MaterialCommunityIcons name="skip-next" color="#d97706" size={18} />
+                {isSkipping ? (
+                  <ActivityIndicator size="small" color="#d97706" />
+                ) : (
+                  <MaterialCommunityIcons name="skip-next" color="#d97706" size={18} />
+                )}
               </View>
               <Text style={styles.dockActionLabel}>Skip</Text>
             </TouchableOpacity>
@@ -1382,8 +1941,9 @@ export default function BillDetailScreen({ route, navigation }) {
 
           {/* Link Option */}
           <TouchableOpacity
-            style={styles.dockActionButton}
+            style={[styles.dockActionButton, isAnyLoading && { opacity: 0.5 }]}
             onPress={() => setShowLinkModal(true)}
+            disabled={isAnyLoading}
             activeOpacity={0.7}>
             <View style={[styles.dockIconCircle, { backgroundColor: "#f0fdfa", borderColor: "#ccfbf1" }]}>
               <MaterialCommunityIcons name="link-variant" color="#006a61" size={19} />
@@ -1394,12 +1954,13 @@ export default function BillDetailScreen({ route, navigation }) {
           {/* Edit Option */}
           {!isCreditCardBill(activeBill) && (
             <TouchableOpacity
-              style={styles.dockActionButton}
+              style={[styles.dockActionButton, isAnyLoading && { opacity: 0.5 }]}
               onPress={() => {
                 const targetOcc = selectedOcc || bill;
                 selectedOccRef.current = targetOcc;
                 navigation.navigate("BillOccurrenceEdit", { occurrence: targetOcc, bill });
               }}
+              disabled={isAnyLoading}
               activeOpacity={0.7}>
               <View style={[styles.dockIconCircle, { backgroundColor: "#f1f5f9", borderColor: "#e2e8f0" }]}>
                 <MaterialCommunityIcons name="pencil-outline" color="#475569" size={18} />
@@ -1410,11 +1971,12 @@ export default function BillDetailScreen({ route, navigation }) {
 
           {/* Delete Option */}
           <TouchableOpacity
-            style={styles.dockActionButton}
+            style={[styles.dockActionButton, isAnyLoading && { opacity: 0.5 }]}
             onPress={() => {
               setConfirmAction("delete_occ");
               setConfirmVisible(true);
             }}
+            disabled={isAnyLoading}
             activeOpacity={0.7}>
             <View style={[styles.dockIconCircle, { backgroundColor: "#fff1f2", borderColor: "#fecdd3" }]}>
               <MaterialCommunityIcons name="trash-can-outline" color="#e11d48" size={18} />
@@ -1774,6 +2336,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(16, 185, 129, 0.15)",
     borderColor: "rgba(52, 211, 153, 0.3)",
   },
+  heroStatusPillPartiallyPaid: {
+    backgroundColor: "rgba(59, 130, 246, 0.2)",
+    borderColor: "rgba(96, 165, 250, 0.4)",
+  },
   heroStatusPillSkipped: {
     backgroundColor: "rgba(245, 158, 11, 0.15)",
     borderColor: "rgba(251, 191, 36, 0.3)",
@@ -1985,6 +2551,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
+  txAvatarWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  txAvatarText: {
+    fontSize: 11,
+    fontWeight: "800",
+    fontFamily: "Plus Jakarta Sans",
+  },
+  sourceBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    maxWidth: 90,
+  },
+  sourceBadgeText: {
+    fontSize: 9.5,
+    fontWeight: "700",
+    fontFamily: "Inter",
+  },
   bankChip: {
     width: 44,
     height: 44,
@@ -2074,6 +2663,218 @@ const styles = StyleSheet.create({
     borderColor: "#fecdd3",
     alignItems: "center",
     justifyContent: "center",
+  },
+  unlinkModalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    backgroundColor: "rgba(15, 23, 42, 0.65)",
+  },
+  unlinkModalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+
+  /* ── Year Quick-Jump Styles ───────────────────────────────────────── */
+  yearJumpPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginLeft: 6,
+  },
+  yearJumpPillText: {
+    fontSize: 11,
+    fontWeight: "700",
+    fontFamily: "Inter",
+  },
+  jumpModalCard: {
+    width: "100%",
+    maxWidth: 400,
+    maxHeight: "84%",
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 16,
+    alignItems: "center",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 24,
+  },
+  jumpModalHeader: {
+    alignItems: "center",
+    marginBottom: 12,
+    width: "100%",
+  },
+  jumpIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(0, 106, 97, 0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  jumpModalTitle: {
+    fontSize: 16.5,
+    fontWeight: "800",
+    fontFamily: "Plus Jakarta Sans",
+    marginBottom: 3,
+  },
+  jumpModalSubtitle: {
+    fontSize: 12,
+    fontFamily: "Inter",
+    textAlign: "center",
+  },
+  jumpModalScroll: {
+    width: "100%",
+    flexShrink: 1,
+    flexGrow: 0,
+  },
+  jumpModalScrollContent: {
+    width: "100%",
+    alignItems: "center",
+    paddingBottom: 4,
+  },
+  jumpShortcutsRow: {
+    flexDirection: "row",
+    gap: 8,
+    width: "100%",
+    marginBottom: 12,
+  },
+  jumpShortcutBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  jumpShortcutText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    fontFamily: "Inter",
+  },
+  jumpSectionWrap: {
+    width: "100%",
+    marginBottom: 12,
+  },
+  jumpSectionLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    fontFamily: "Inter",
+    alignSelf: "flex-start",
+    marginBottom: 7,
+  },
+  jumpYearGrid: {
+    width: "100%",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  yearGridBtn: {
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  yearGridBtnText: {
+    fontSize: 12,
+    fontWeight: "800",
+    fontFamily: "Plus Jakarta Sans",
+  },
+  monthChipsGrid: {
+    width: "100%",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 8,
+    paddingVertical: 2,
+  },
+  cycleCardBtn: {
+    width: "48.5%",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  cycleCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  cycleCardHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    marginRight: 4,
+  },
+  monthStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  cycleMonthText: {
+    fontSize: 12,
+    fontWeight: "700",
+    fontFamily: "Inter",
+  },
+  cycleCurrentBadge: {
+    backgroundColor: "#006a61",
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  cycleCurrentBadgeText: {
+    color: "#ffffff",
+    fontSize: 9,
+    fontWeight: "800",
+    fontFamily: "Inter",
+    letterSpacing: 0.3,
+  },
+  cycleCardFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 5,
+    width: "100%",
+  },
+  cycleAmountText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    fontFamily: "Inter",
+    flex: 1,
+    marginRight: 4,
+  },
+  cycleStatusText: {
+    fontSize: 10,
+    fontWeight: "700",
+    fontFamily: "Inter",
+    textTransform: "capitalize",
+  },
+  jumpCloseBtn: {
+    width: "100%",
+    height: 42,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  jumpCloseBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    fontFamily: "Inter",
   },
   emptyLinkedCard: {
     paddingVertical: 24,

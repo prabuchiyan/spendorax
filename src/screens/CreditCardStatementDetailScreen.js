@@ -273,7 +273,12 @@ export default function CreditCardStatementDetailScreen({ route, navigation }) {
         <View style={styles.footer}>
           <TouchableOpacity
             style={styles.payButton}
-            onPress={() => navigation.navigate("BillDetail", { billId: statement.bill_id })}
+            onPress={() =>
+              navigation.navigate("BillDetail", {
+                billId: statement.bill_id,
+                occurrenceId: statement.bill_id,
+              })
+            }
           >
             <Text style={styles.payButtonText}>View & Pay Bill</Text>
           </TouchableOpacity>

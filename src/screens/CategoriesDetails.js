@@ -17,7 +17,7 @@ import { Colors, Spacing } from '../components/Theme';
 import { Feather } from '@expo/vector-icons';
 import ContextualFAB from '../components/ContextualFAB';
 import { useFocusEffect } from '@react-navigation/native';
-import ConfirmDialog from '../components/ConfirmDialog';
+import CommonBottomSheetModal from '../components/CommonBottomSheetModal';
 import { Chip } from 'react-native-paper';
 const screenWidth = Dimensions.get('window').width;
 import PremiumRoundedBarChart from '../components/PremiumRoundedBarChart';
@@ -142,10 +142,15 @@ export default function CategoriesDetails({ route, navigation }) {
   }, [categoryName, navigation]);
 
 
+  const isExcludedFromSpend = (tx) => {
+    return tx?.is_counted === 0 || tx?.is_counted === '0' || tx?.is_counted === false;
+  };
+
   const groupData = (data, currentPeriod, offset) => {
     const map = {};
 
     data.forEach((tx) => {
+      if (isExcludedFromSpend(tx)) return;
       const key = getPeriodKey(tx.date, currentPeriod);
       if (key) {
         map[key] = (map[key] || 0) + Number(tx.amount || 0);
@@ -319,7 +324,7 @@ export default function CategoriesDetails({ route, navigation }) {
       sort((a, b) => b.sortVal - a.sortVal).
       map((group) => {
         const dailyTotal = group.data.reduce(
-          (sum, item) => sum + Number(item.amount || 0),
+          (sum, item) => (isExcludedFromSpend(item) ? sum : sum + Number(item.amount || 0)),
           0
         );
         return {
@@ -576,13 +581,24 @@ export default function CategoriesDetails({ route, navigation }) {
         </View>
       }
 
-      <ConfirmDialog
+      <CommonBottomSheetModal
         visible={confirmVisible}
-        title="Delete Transaction"
-        message="Are you sure?"
-        onCancel={() => setConfirmVisible(false)}
+        type="danger"
+        title="Delete Transaction?"
+        subtitle="Are you sure you want to permanently delete this transaction?"
+        confirmLabel="Delete Transaction"
+        cancelLabel="Keep Transaction"
+        loading={loading}
+        warnings={[
+          { title: 'Permanent Removal', text: 'The transaction will be permanently removed from records.' },
+          { title: 'Balances Recalculated', text: 'Associated account balances and spending metrics will update automatically.' },
+          { title: 'Cannot Be Undone', text: 'This transaction deletion cannot be reversed.' },
+        ]}
+        onCancel={() => {
+          if (!loading) setConfirmVisible(false);
+        }}
         onConfirm={handleDeleteConfirm}
-        loading={loading} />
+      />
 
 
       <ContextualFAB

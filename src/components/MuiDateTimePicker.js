@@ -4,7 +4,6 @@ import { View, Text, TouchableOpacity, Modal, StyleSheet, Animated, UIManager, P
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button } from 'react-native-paper';
 import Svg, { Line, Circle as SvgCircle } from 'react-native-svg';
-import { Colors } from './Theme';
 
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -134,16 +133,150 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
       displayTime = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
     }
 
+    const showTabs = !hideTime && !hideDate;
+    const isTodaySelected = date.getFullYear() === now.getFullYear() && 
+                            date.getMonth() === now.getMonth() && 
+                            date.getDate() === now.getDate();
+
     return (
-      <View style={styles.materialHeader}>
-        <Text style={styles.materialHeaderLabel}>
-          {tab === 'date' ? 'SELECT DATE' : 'SELECT TIME'}
-        </Text>
-        <Text style={styles.materialHeaderDate}>
-          {tab === 'date' 
-            ? `${WEEKDAYS_FULL[date.getDay()]}, ${MONTHS[date.getMonth()]} ${date.getDate()}`
-            : displayTime}
-        </Text>
+      <View style={[
+        styles.materialHeader, 
+        { 
+          backgroundColor: isDarkMode ? 'rgba(63, 143, 107, 0.12)' : 'rgba(63, 143, 107, 0.08)',
+          borderBottomColor: isDarkMode ? 'rgba(63, 143, 107, 0.22)' : 'rgba(63, 143, 107, 0.16)' 
+        }
+      ]}>
+        <View style={styles.headerTopRow}>
+          <View style={styles.headerLabelBadge}>
+            <MaterialCommunityIcons 
+              name={tab === 'date' ? "calendar-month-outline" : "clock-time-four-outline"} 
+              size={14} 
+              color={PRIMARY_COLOR} 
+              style={{ marginRight: 6 }}
+            />
+            <Text style={[styles.materialHeaderLabel, { color: PRIMARY_COLOR }]}>
+              {tab === 'date' ? 'SELECT DATE' : 'SELECT TIME'}
+            </Text>
+          </View>
+
+          <View style={styles.headerRightActions}>
+            {tab === 'date' && !isTodaySelected && !disableFutureDates && (
+              <TouchableOpacity
+                onPress={() => {
+                  triggerAnimation();
+                  const today = new Date();
+                  setDate(today);
+                  setViewMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+                  setDateMode('days');
+                }}
+                activeOpacity={0.7}
+                style={[
+                  styles.todayBadgeBtn,
+                  { 
+                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : '#FFFFFF',
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(63, 143, 107, 0.25)' 
+                  }
+                ]}
+              >
+                <MaterialCommunityIcons name="restore" size={12} color={PRIMARY_COLOR} style={{ marginRight: 3 }} />
+                <Text style={[styles.todayBadgeText, { color: PRIMARY_COLOR }]}>Today</Text>
+              </TouchableOpacity>
+            )}
+
+            {showTabs && (
+              <View style={[
+                styles.segmentedControl, 
+                { 
+                  backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+                  borderColor: isDarkMode ? '#334155' : 'rgba(63, 143, 107, 0.2)',
+                  borderWidth: 1,
+                }
+              ]}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    triggerAnimation();
+                    setTab('date');
+                    setDateMode('days');
+                  }}
+                  style={[
+                    styles.segmentBtn,
+                    tab === 'date' && [
+                      styles.segmentBtnActive, 
+                      { backgroundColor: isDarkMode ? '#334155' : `${PRIMARY_COLOR}16` }
+                    ]
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="calendar-month"
+                    size={14}
+                    color={tab === 'date' ? PRIMARY_COLOR : theme.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      { color: tab === 'date' ? PRIMARY_COLOR : theme.textSecondary },
+                      tab === 'date' && styles.segmentTextActive
+                    ]}
+                  >
+                    Date
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    triggerAnimation();
+                    setTab('time');
+                  }}
+                  style={[
+                    styles.segmentBtn,
+                    tab === 'time' && [
+                      styles.segmentBtnActive, 
+                      { backgroundColor: isDarkMode ? '#334155' : `${PRIMARY_COLOR}16` }
+                    ]
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="clock-outline"
+                    size={14}
+                    color={tab === 'time' ? PRIMARY_COLOR : theme.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      { color: tab === 'time' ? PRIMARY_COLOR : theme.textSecondary },
+                      tab === 'time' && styles.segmentTextActive
+                    ]}
+                  >
+                    Time
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.headerHeroRow}>
+          <Text style={[styles.materialHeaderDate, { color: theme.textPrimary }]}>
+            {tab === 'date'
+              ? `${WEEKDAYS_FULL[date.getDay()]}, ${MONTHS[date.getMonth()]} ${date.getDate()}`
+              : displayTime}
+          </Text>
+          {tab === 'date' && (
+            <View style={[
+              styles.yearTag, 
+              { 
+                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(63, 143, 107, 0.12)',
+                borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(63, 143, 107, 0.22)' 
+              }
+            ]}>
+              <Text style={[styles.yearTagText, { color: PRIMARY_COLOR }]}>
+                {date.getFullYear()}
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
     );
   };
@@ -151,6 +284,9 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
   const renderDate = () => {
     const isNextMonthDisabled = isMonthDisabled(viewMonth.getFullYear(), viewMonth.getMonth() + 1);
     const isPrevMonthDisabled = isMonthDisabled(viewMonth.getFullYear(), viewMonth.getMonth() - 1);
+
+    const isMonthPillActive = dateMode === 'months';
+    const isYearPillActive = dateMode === 'years';
 
     return (
       <View style={styles.dateContainer}>
@@ -163,10 +299,30 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
                 triggerAnimation();
                 setDateMode(dateMode === 'months' ? 'days' : 'months');
               }} 
-              style={[styles.headerBtn, dateMode === 'months' && styles.headerBtnActive]}
+              style={[
+                styles.headerPillBtn,
+                { 
+                  backgroundColor: isDarkMode 
+                    ? (isMonthPillActive ? `${PRIMARY_COLOR}25` : '#1E293B') 
+                    : (isMonthPillActive ? `${PRIMARY_COLOR}16` : '#FFFFFF'),
+                  borderColor: isMonthPillActive ? PRIMARY_COLOR : theme.border,
+                }
+              ]}
             >
-              <Text style={[styles.monthTitle, dateMode === 'months' && { color: PRIMARY_COLOR }]}>{FULL_MONTHS[viewMonth.getMonth()]}</Text>
-              <MaterialCommunityIcons name={dateMode === 'months' ? "menu-up" : "menu-down"} size={22} color={dateMode === 'months' ? PRIMARY_COLOR : Colors.text} />
+              <MaterialCommunityIcons 
+                name="calendar" 
+                size={15} 
+                color={isMonthPillActive ? PRIMARY_COLOR : theme.textSecondary} 
+                style={{ marginRight: 4 }}
+              />
+              <Text style={[styles.monthTitle, { color: isMonthPillActive ? PRIMARY_COLOR : theme.textPrimary }]}>
+                {FULL_MONTHS[viewMonth.getMonth()]}
+              </Text>
+              <MaterialCommunityIcons 
+                name={isMonthPillActive ? "chevron-up" : "chevron-down"} 
+                size={18} 
+                color={isMonthPillActive ? PRIMARY_COLOR : theme.textSecondary} 
+              />
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -176,12 +332,24 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
                 setYearPageStart(Math.floor(viewMonth.getFullYear() / 12) * 12);
                 setDateMode(dateMode === 'years' ? 'days' : 'years');
               }} 
-              style={[styles.headerBtn, dateMode === 'years' && styles.headerBtnActive]}
+              style={[
+                styles.headerPillBtn,
+                { 
+                  backgroundColor: isDarkMode 
+                    ? (isYearPillActive ? `${PRIMARY_COLOR}25` : '#1E293B') 
+                    : (isYearPillActive ? `${PRIMARY_COLOR}16` : '#FFFFFF'),
+                  borderColor: isYearPillActive ? PRIMARY_COLOR : theme.border,
+                }
+              ]}
             >
-              <Text style={[styles.monthTitle, dateMode === 'years' && { color: PRIMARY_COLOR }]}>
-                {dateMode === 'years' ? `${yearPageStart} - ${yearPageStart + 11}` : viewMonth.getFullYear()}
+              <Text style={[styles.monthTitle, { color: isYearPillActive ? PRIMARY_COLOR : theme.textPrimary }]}>
+                {viewMonth.getFullYear()}
               </Text>
-              <MaterialCommunityIcons name={dateMode === 'years' ? "menu-up" : "menu-down"} size={22} color={dateMode === 'years' ? PRIMARY_COLOR : Colors.text} />
+              <MaterialCommunityIcons 
+                name={isYearPillActive ? "chevron-up" : "chevron-down"} 
+                size={18} 
+                color={isYearPillActive ? PRIMARY_COLOR : theme.textSecondary} 
+              />
             </TouchableOpacity>
           </View>
 
@@ -190,17 +358,33 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
             <View style={styles.monthArrows}>
               <TouchableOpacity 
                 onPress={handlePrevMonth} 
-                style={[styles.arrowBtn, isPrevMonthDisabled && { opacity: 0.3 }]}
+                style={[
+                  styles.arrowBtn, 
+                  { 
+                    backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF', 
+                    borderColor: theme.border 
+                  },
+                  isPrevMonthDisabled && { opacity: 0.25 }
+                ]}
                 disabled={isPrevMonthDisabled}
+                activeOpacity={0.7}
               >
-                <MaterialCommunityIcons name="chevron-left" size={24} color={Colors.text} />
+                <MaterialCommunityIcons name="chevron-left" size={20} color={theme.textPrimary} />
               </TouchableOpacity>
               <TouchableOpacity 
                 onPress={handleNextMonth} 
-                style={[styles.arrowBtn, isNextMonthDisabled && { opacity: 0.3 }]}
+                style={[
+                  styles.arrowBtn, 
+                  { 
+                    backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF', 
+                    borderColor: theme.border 
+                  },
+                  isNextMonthDisabled && { opacity: 0.25 }
+                ]}
                 disabled={isNextMonthDisabled}
+                activeOpacity={0.7}
               >
-                <MaterialCommunityIcons name="chevron-right" size={24} color={Colors.text} />
+                <MaterialCommunityIcons name="chevron-right" size={20} color={theme.textPrimary} />
               </TouchableOpacity>
             </View>
           )}
@@ -219,6 +403,7 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
   const renderDaysGrid = () => {
     const startDay = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1).getDay();
     const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
+    const prevMonthDays = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 0).getDate();
     
     const isSameMonth = date.getFullYear() === viewMonth.getFullYear() && date.getMonth() === viewMonth.getMonth();
     const selectedDay = isSameMonth ? date.getDate() : null;
@@ -227,48 +412,103 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
     const todayDay = isTodayMonth ? now.getDate() : null;
 
     const cells = [];
+    
+    // Ghost days from previous month
     for (let i = 0; i < startDay; i++) {
-      cells.push(<View key={`empty-${i}`} style={styles.dayCell} />);
+      const ghostDay = prevMonthDays - startDay + 1 + i;
+      cells.push(
+        <View key={`prev-${i}`} style={styles.dayCell}>
+          <Text style={[styles.ghostDayText, { color: theme.textMuted }]}>
+            {ghostDay}
+          </Text>
+        </View>
+      );
     }
+
+    // Current month days
     for (let i = 1; i <= daysInMonth; i++) {
       const isSelected = selectedDay === i;
       const isToday = todayDay === i;
       const isFuture = isDateDisabled(viewMonth.getFullYear(), viewMonth.getMonth(), i);
+      const dayOfWeek = (startDay + i - 1) % 7;
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
       cells.push(
         <TouchableOpacity 
           key={`day-${i}`} 
           disabled={isFuture}
           onPress={() => handleDaySelect(i)}
+          activeOpacity={0.7}
           style={[
             styles.dayCell, 
             isSelected && styles.dayCellSelected,
-            isFuture && { opacity: 0.4 }
+            !isSelected && isToday && [
+              styles.dayCellToday,
+              { backgroundColor: `${PRIMARY_COLOR}14` }
+            ],
+            isFuture && { opacity: 0.3 }
           ]}
         >
           <Text style={[
-            styles.dayText, 
+            styles.dayText,
+            { color: isWeekend ? (isDarkMode ? '#CBD5E1' : '#475569') : theme.textPrimary },
+            !isSelected && isToday && { color: PRIMARY_COLOR, fontWeight: '800' },
             isSelected && styles.dayTextSelected, 
-            !isSelected && isToday && styles.dayTextToday,
-            isFuture && { color: '#9CA3AF' }
+            isFuture && { color: theme.textMuted }
           ]}>
             {i}
           </Text>
+          {!isSelected && isToday && (
+            <View style={[styles.todayIndicatorDot, { backgroundColor: PRIMARY_COLOR }]} />
+          )}
         </TouchableOpacity>
       );
     }
 
+    // Ghost days for next month to complete the grid structure
+    const totalCells = startDay + daysInMonth;
+    const trailingDays = totalCells <= 35 ? (35 - totalCells) : (42 - totalCells);
+    for (let i = 1; i <= trailingDays; i++) {
+      cells.push(
+        <View key={`next-${i}`} style={styles.dayCell}>
+          <Text style={[styles.ghostDayText, { color: theme.textMuted }]}>
+            {i}
+          </Text>
+        </View>
+      );
+    }
+
     return (
-      <>
-        <View style={styles.weekDays}>
-          {DAYS.map((d, i) => (
-            <Text key={i} style={styles.weekDayText}>{d}</Text>
-          ))}
+      <View style={[
+        styles.calendarCard, 
+        { 
+          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)',
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'
+        }
+      ]}>
+        <View style={[
+          styles.weekDaysRibbon, 
+          { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }
+        ]}>
+          {DAYS.map((d, i) => {
+            const isWeekend = i === 0 || i === 6;
+            return (
+              <Text 
+                key={i} 
+                style={[
+                  styles.weekDayText, 
+                  { color: isWeekend ? (isDarkMode ? '#F87171' : '#DC2626') : theme.textSecondary }
+                ]}
+              >
+                {d}
+              </Text>
+            );
+          })}
         </View>
         <View style={styles.daysGrid}>
           {cells}
         </View>
-      </>
+      </View>
     );
   };
 
@@ -287,13 +527,25 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
                 setViewMonth(new Date(viewMonth.getFullYear(), i, 1));
                 setDateMode('days');
               }}
+              activeOpacity={0.7}
               style={[
                 styles.gridItem, 
+                { 
+                  backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+                  borderColor: theme.border 
+                },
                 isSelected && styles.gridItemSelected,
-                isFuture && { opacity: 0.4 }
+                isFuture && { opacity: 0.3 }
               ]}
             >
-              <Text style={[styles.gridItemText, isSelected && styles.gridItemTextSelected]}>{m}</Text>
+              <Text style={[
+                styles.gridItemText, 
+                { color: theme.textPrimary },
+                isSelected && styles.gridItemTextSelected,
+                isFuture && { color: theme.textMuted }
+              ]}>
+                {m}
+              </Text>
             </TouchableOpacity>
           );
         })}
@@ -307,18 +559,49 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
       years.push(yearPageStart + i);
     }
     
+    const isPrevYearsDisabled = isYearDisabled(yearPageStart - 1);
     const isNextYearsDisabled = isYearDisabled(yearPageStart + 12);
     
     return (
-      <View style={styles.yearsWrapper}>
-        <TouchableOpacity 
-          onPress={handlePrevYears} 
-          disabled={isYearDisabled(yearPageStart - 1)}
-          style={[styles.sideArrowBtn, isYearDisabled(yearPageStart - 1) && { opacity: 0.2 }]}
-          activeOpacity={0.7}
-        >
-          <MaterialCommunityIcons name="chevron-left" size={32} color={PRIMARY_COLOR} />
-        </TouchableOpacity>
+      <View style={styles.yearsContainer}>
+        {/* Pagination Bar */}
+        <View style={[
+          styles.yearsHeaderBar,
+          {
+            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+            borderColor: theme.border,
+          }
+        ]}>
+          <TouchableOpacity 
+            onPress={handlePrevYears} 
+            disabled={isPrevYearsDisabled}
+            style={[
+              styles.arrowBtn, 
+              { backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF', borderColor: theme.border },
+              isPrevYearsDisabled && { opacity: 0.25 }
+            ]}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="chevron-left" size={20} color={theme.textPrimary} />
+          </TouchableOpacity>
+
+          <Text style={[styles.yearRangeTitle, { color: theme.textPrimary }]}>
+            {yearPageStart} – {yearPageStart + 11}
+          </Text>
+
+          <TouchableOpacity 
+            onPress={handleNextYears} 
+            disabled={isNextYearsDisabled}
+            activeOpacity={0.7}
+            style={[
+              styles.arrowBtn, 
+              { backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF', borderColor: theme.border },
+              isNextYearsDisabled && { opacity: 0.25 }
+            ]}
+          >
+            <MaterialCommunityIcons name="chevron-right" size={20} color={theme.textPrimary} />
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.gridContainerYears}>
           {years.map((y) => {
@@ -333,26 +616,29 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
                   setViewMonth(new Date(y, viewMonth.getMonth(), 1));
                   setDateMode('days');
                 }}
+                activeOpacity={0.7}
                 style={[
                   styles.gridItemYears, 
+                  { 
+                    backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+                    borderColor: theme.border 
+                  },
                   isSelected && styles.gridItemSelected,
                   isFuture && { opacity: 0.3 }
                 ]}
               >
-                <Text style={[styles.gridItemText, isSelected && styles.gridItemTextSelected]}>{y}</Text>
+                <Text style={[
+                  styles.gridItemText, 
+                  { color: theme.textPrimary },
+                  isSelected && styles.gridItemTextSelected,
+                  isFuture && { color: theme.textMuted }
+                ]}>
+                  {y}
+                </Text>
               </TouchableOpacity>
             );
           })}
         </View>
-
-        <TouchableOpacity 
-          onPress={handleNextYears} 
-          disabled={isNextYearsDisabled}
-          activeOpacity={0.7}
-          style={[styles.sideArrowBtn, isNextYearsDisabled && { opacity: 0.2 }]}
-        >
-          <MaterialCommunityIcons name="chevron-right" size={32} color={PRIMARY_COLOR} />
-        </TouchableOpacity>
       </View>
     );
   };
@@ -421,34 +707,69 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
         <View style={styles.timeHeader}>
           <TouchableOpacity 
             onPress={() => { triggerAnimation(); setTimeMode('hours'); }} 
-            style={[styles.timePart, timeMode === 'hours' && styles.timePartActive]}
+            activeOpacity={0.8}
+            style={[
+              styles.timePart, 
+              { backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9', borderColor: theme.border },
+              timeMode === 'hours' && styles.timePartActive
+            ]}
           >
-            <Text style={[styles.timePartText, timeMode === 'hours' && styles.timePartTextActive]}>
+            <Text style={[styles.timePartText, { color: timeMode === 'hours' ? PRIMARY_COLOR : theme.textPrimary }]}>
               {String(displayH).padStart(2, '0')}
             </Text>
-          </TouchableOpacity>
-          <Text style={styles.timeColon}>:</Text>
-          <TouchableOpacity 
-            onPress={() => { triggerAnimation(); setTimeMode('minutes'); }} 
-            style={[styles.timePart, timeMode === 'minutes' && styles.timePartActive]}
-          >
-            <Text style={[styles.timePartText, timeMode === 'minutes' && styles.timePartTextActive]}>
-              {String(currentM).padStart(2, '0')}
+            <Text style={[styles.timePartLabel, { color: timeMode === 'hours' ? PRIMARY_COLOR : theme.textSecondary }]}>
+              Hour
             </Text>
           </TouchableOpacity>
 
-          <View style={styles.ampmContainer}>
-            <TouchableOpacity onPress={() => toggleAmPm(true)} style={[styles.ampmBtn, !isPm && styles.ampmActive]}>
-              <Text style={[styles.ampmText, !isPm && styles.ampmTextActive]}>AM</Text>
+          <Text style={[styles.timeColon, { color: theme.textSecondary }]}>:</Text>
+
+          <TouchableOpacity 
+            onPress={() => { triggerAnimation(); setTimeMode('minutes'); }} 
+            activeOpacity={0.8}
+            style={[
+              styles.timePart, 
+              { backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9', borderColor: theme.border },
+              timeMode === 'minutes' && styles.timePartActive
+            ]}
+          >
+            <Text style={[styles.timePartText, { color: timeMode === 'minutes' ? PRIMARY_COLOR : theme.textPrimary }]}>
+              {String(currentM).padStart(2, '0')}
+            </Text>
+            <Text style={[styles.timePartLabel, { color: timeMode === 'minutes' ? PRIMARY_COLOR : theme.textSecondary }]}>
+              Min
+            </Text>
+          </TouchableOpacity>
+
+          <View style={[styles.ampmContainer, { borderColor: theme.border, backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9' }]}>
+            <TouchableOpacity 
+              onPress={() => toggleAmPm(true)} 
+              activeOpacity={0.8}
+              style={[styles.ampmBtn, !isPm && styles.ampmActive]}
+            >
+              <Text style={[styles.ampmText, { color: !isPm ? '#FFFFFF' : theme.textSecondary }]}>AM</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => toggleAmPm(false)} style={[styles.ampmBtn, isPm && styles.ampmActive]}>
-              <Text style={[styles.ampmText, isPm && styles.ampmTextActive]}>PM</Text>
+            <TouchableOpacity 
+              onPress={() => toggleAmPm(false)} 
+              activeOpacity={0.8}
+              style={[styles.ampmBtn, isPm && styles.ampmActive]}
+            >
+              <Text style={[styles.ampmText, { color: isPm ? '#FFFFFF' : theme.textSecondary }]}>PM</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.clockContainer}>
-          <View style={[styles.clockFace, { backgroundColor: isDarkMode ? "#1e293b" : "#F3F4F6" }, { width: clockSize, height: clockSize, borderRadius: center }]}>
+          <View style={[
+            styles.clockFace, 
+            { 
+              backgroundColor: isDarkMode ? "#1E293B" : "#F3F4F6",
+              borderColor: theme.border,
+              width: clockSize, 
+              height: clockSize, 
+              borderRadius: center 
+            }
+          ]}>
             <Svg width={clockSize} height={clockSize} style={StyleSheet.absoluteFill}>
               <SvgCircle cx={center} cy={center} r="4" fill={PRIMARY_COLOR} />
               <Line x1={center} y1={center} x2={lineX} y2={lineY} stroke={PRIMARY_COLOR} strokeWidth="2" />
@@ -470,8 +791,13 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
                   key={`${timeMode}-${val}`}
                   onPress={() => handleTimeSelect(val)}
                   style={[styles.clockItem, { left: x, top: y, zIndex: 10 }]}
+                  activeOpacity={0.7}
                 >
-                  <Text style={[styles.clockItemText, isSelected && { color: '#fff' }]}>
+                  <Text style={[
+                    styles.clockItemText, 
+                    { color: isSelected ? '#FFFFFF' : theme.textPrimary },
+                    isSelected && { fontWeight: '700' }
+                  ]}>
                     {timeMode === 'minutes' ? String(val).padStart(2, '0') : val}
                   </Text>
                 </TouchableOpacity>
@@ -486,29 +812,17 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalBg}>
-        <Animated.View style={[styles.card, { opacity: opacityValue, transform: [{ scale: scaleValue }] }]}>
-           {/* Material 3 Header - Always Rendered */}
+        <Animated.View style={[
+          styles.card, 
+          { 
+            backgroundColor: theme.cardBg, 
+            borderColor: theme.border,
+            opacity: opacityValue, 
+            transform: [{ scale: scaleValue }] 
+          }
+        ]}>
+           {/* Material 3 Header with Integrated Tabs */}
            {renderMaterialHeader()}
-
-           {/* Tabs */}
-           {!hideTime && !hideDate && (
-             <View style={[styles.tabContainer, { backgroundColor: theme.cardBg }]}>
-               <TouchableOpacity 
-                 style={[styles.tab, tab === 'date' && styles.tabActive]} 
-                 onPress={() => { triggerAnimation(); setTab('date'); setDateMode('days'); }}
-               >
-                 <MaterialCommunityIcons name="calendar-month" size={20} color={tab === 'date' ? PRIMARY_COLOR : '#6B7280'} />
-                 <Text style={[styles.tabText, tab === 'date' && styles.tabTextActive]}>Date</Text>
-               </TouchableOpacity>
-               <TouchableOpacity 
-                 style={[styles.tab, tab === 'time' && styles.tabActive]} 
-                 onPress={() => { triggerAnimation(); setTab('time'); }}
-               >
-                 <MaterialCommunityIcons name="clock-outline" size={20} color={tab === 'time' ? PRIMARY_COLOR : '#6B7280'} />
-                 <Text style={[styles.tabText, tab === 'time' && styles.tabTextActive]}>Time</Text>
-               </TouchableOpacity>
-             </View>
-           )}
            
            {/* Content */}
            <View style={styles.content}>
@@ -516,19 +830,31 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
            </View>
            
            {/* Footer */}
-           <View style={[styles.footer, { backgroundColor: isDarkMode ? "#1e293b" : "#FAFAFA", borderColor: theme.border }]}>
+           <View style={[styles.footer, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
              {allowClear && (
-               <Button onPress={() => onClear ? onClear() : onSelect(null)} textColor="#DC2626" style={{ marginRight: 'auto' }}>
+               <Button 
+                 onPress={() => onClear ? onClear() : onSelect(null)} 
+                 textColor={theme.danger || '#EF4444'} 
+                 style={{ marginRight: 'auto' }}
+                 labelStyle={{ fontWeight: '600' }}
+               >
                  Clear
                </Button>
              )}
-             <Button onPress={onClose} textColor="#6B7280">Cancel</Button>
+             <Button 
+               onPress={onClose} 
+               textColor={theme.textSecondary}
+               style={styles.cancelBtn}
+               labelStyle={{ fontWeight: '600' }}
+             >
+               Cancel
+             </Button>
              <Button 
                onPress={() => onSelect(date)} 
                mode="contained" 
                buttonColor={PRIMARY_COLOR}
                style={styles.okBtn}
-               labelStyle={{ fontWeight: 'bold' }}
+               labelStyle={{ fontWeight: '700', letterSpacing: 0.5 }}
              >
                OK
              </Button>
@@ -542,85 +868,139 @@ export default function MuiDateTimePicker({ visible, initialDate, onClose, onSel
 const styles = StyleSheet.create({
   modalBg: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center'
   },
   card: {
-    backgroundColor: '#fff',
     width: '92%',
-    maxWidth: 380,
-    borderRadius: 24, // softer corners
+    maxWidth: 360,
+    borderRadius: 28, // Modern Material 3 Dialog radius
+    borderWidth: 1,
     overflow: 'hidden',
-    elevation: 24,
+    elevation: 16,
     shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
     shadowOffset: { width: 0, height: 10 },
   },
   materialHeader: {
-    backgroundColor: PRIMARY_COLOR,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 20,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
   },
-  materialHeaderLabel: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.2,
+  headerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 8,
   },
+  headerLabelBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  materialHeaderLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.1,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  todayBadgeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginRight: 8,
+  },
+  todayBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  headerHeroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   materialHeaderDate: {
-    color: '#fff',
-    fontSize: 28,
+    fontSize: 25,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  yearTag: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  yearTagText: {
+    fontSize: 12,
     fontWeight: '800',
   },
-  tabContainer: {
+  segmentedControl: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingHorizontal: 8,
-    paddingTop: 8,
+    borderRadius: 20,
+    padding: 3,
   },
-  tab: {
-    flex: 1,
-    paddingVertical: 14,
+  segmentBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: 3,
-    borderColor: 'transparent',
-    flexDirection: 'row',
-    justifyContent: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 16,
   },
-  tabActive: {
-    borderColor: PRIMARY_COLOR,
+  segmentBtnActive: {
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
   },
-  tabText: {
-    fontSize: 15,
-    color: '#6B7280',
+  segmentText: {
+    fontSize: 12,
     fontWeight: '600',
-    marginLeft: 6,
+    marginLeft: 4,
   },
-  tabTextActive: {
-    color: PRIMARY_COLOR,
+  segmentTextActive: {
     fontWeight: '700',
   },
   content: {
-    padding: 24,
-    height: 380,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 350,
+  },
+  calendarCard: {
+    borderRadius: 20,
+    padding: 8,
+    borderWidth: 1,
+  },
+  weekDaysRibbon: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    paddingVertical: 6,
+    marginBottom: 4,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    padding: 16,
-    paddingHorizontal: 20,
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderTopWidth: 1,
-    borderColor: '#F3F4F6',
-    backgroundColor: '#FAFAFA'
+  },
+  cancelBtn: {
+    borderRadius: 20,
+    marginRight: 4,
   },
   okBtn: {
-    marginLeft: 12,
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    marginLeft: 8,
+    borderRadius: 20,
+    paddingHorizontal: 14,
   },
   
   // Date
@@ -631,50 +1011,51 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   headerSelectors: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  headerBtn: {
+  headerPillBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    marginRight: 4,
-  },
-  headerBtnActive: {
-    backgroundColor: `${PRIMARY_COLOR}15`,
+    paddingHorizontal: 11,
+    borderRadius: 20,
+    marginRight: 6,
+    borderWidth: 1,
   },
   monthTitle: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '700',
-    color: '#111827',
+    marginRight: 2,
   },
   monthArrows: {
     flexDirection: 'row',
+    alignItems: 'center',
   },
   arrowBtn: {
-    padding: 6,
-    marginLeft: 8,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 20,
+    width: 34,
+    height: 34,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 6,
+    borderRadius: 17,
+    borderWidth: 1,
   },
   dateContentArea: {
     flex: 1,
   },
   weekDays: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   weekDayText: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#9CA3AF',
   },
   daysGrid: {
     flexDirection: 'row',
@@ -686,28 +1067,44 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 100,
-    marginBottom: 4,
+    marginVertical: 1.5,
+    position: 'relative',
   },
   dayCellSelected: {
     backgroundColor: PRIMARY_COLOR,
     elevation: 4,
     shadowColor: PRIMARY_COLOR,
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
+    shadowOpacity: 0.45,
+    shadowRadius: 5,
     shadowOffset: { width: 0, height: 2 },
   },
+  dayCellToday: {
+    borderWidth: 1.5,
+    borderColor: PRIMARY_COLOR,
+  },
   dayText: {
-    fontSize: 15,
-    color: '#374151',
+    fontSize: 14,
     fontWeight: '500',
   },
   dayTextSelected: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   dayTextToday: {
     color: PRIMARY_COLOR,
     fontWeight: '800',
+  },
+  ghostDayText: {
+    fontSize: 13,
+    fontWeight: '400',
+    opacity: 0.28,
+  },
+  todayIndicatorDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    position: 'absolute',
+    bottom: 3,
   },
 
   // Grid (Months)
@@ -715,74 +1112,59 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    paddingTop: 8,
   },
   gridItem: {
     width: '31%',
-    height: 48,
+    height: 46,
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 14,
-    marginBottom: 14,
-    backgroundColor: '#F9FAFB',
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
   },
   gridItemSelected: {
     backgroundColor: PRIMARY_COLOR,
     borderColor: PRIMARY_COLOR,
-    elevation: 3,
+    elevation: 2,
   },
   gridItemText: {
-    fontSize: 15,
-    color: '#374151',
+    fontSize: 14,
     fontWeight: '600',
   },
   gridItemTextSelected: {
-    color: '#fff',
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
 
   // Grid (Years)
-  yearsWrapper: {
+  yearsContainer: {
+    flex: 1,
+  },
+  yearsHeaderBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    flex: 1,
+    marginBottom: 14,
+    paddingHorizontal: 4,
   },
-  sideArrowBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: -12, // Pull arrows outward slightly 
-    zIndex: 2,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+  yearRangeTitle: {
+    fontSize: 15,
+    fontWeight: '700',
   },
   gridContainerYears: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: 4,
+    justifyContent: 'space-between',
   },
   gridItemYears: {
-    width: '30%',
-    marginHorizontal: '1.5%',
-    height: 48,
+    width: '31%',
+    height: 46,
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 14,
-    marginBottom: 14,
-    backgroundColor: '#F9FAFB',
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
   },
 
   // Time
@@ -793,65 +1175,63 @@ const styles = StyleSheet.create({
   timeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    justifyContent: 'center',
+    marginBottom: 20,
   },
   timePart: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    minWidth: 64,
   },
   timePartActive: {
-    backgroundColor: `${PRIMARY_COLOR}20`,
+    backgroundColor: `${PRIMARY_COLOR}18`,
     borderWidth: 1.5,
     borderColor: PRIMARY_COLOR,
-    paddingHorizontal: 18.5,
-    paddingVertical: 12.5,
   },
   timePartText: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: '800',
-    color: '#111827',
   },
-  timePartTextActive: {
-    color: PRIMARY_COLOR,
+  timePartLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 2,
+    textTransform: 'uppercase',
   },
   timeColon: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: '800',
-    marginHorizontal: 12,
-    color: '#4B5563',
+    marginHorizontal: 8,
   },
   ampmContainer: {
-    marginLeft: 20,
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
+    marginLeft: 14,
+    borderWidth: 1,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   ampmBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   ampmActive: {
     backgroundColor: PRIMARY_COLOR,
   },
   ampmText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
-    color: '#4B5563',
-  },
-  ampmTextActive: {
-    color: '#fff',
   },
   clockContainer: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   clockFace: {
-    backgroundColor: '#F3F4F6',
     position: 'relative',
+    borderWidth: 1,
   },
   clockItem: {
     position: 'absolute',
@@ -862,8 +1242,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   clockItemText: {
-    fontSize: 15,
-    color: '#111827',
+    fontSize: 14,
     fontWeight: '600',
   }
 });

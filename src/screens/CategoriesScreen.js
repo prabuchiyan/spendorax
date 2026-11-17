@@ -4,7 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { TextInput as PaperTextInput, Button as PaperButton, Searchbar, Chip } from 'react-native-paper';
 import IconPicker from '../components/IconPicker';
-import ConfirmDialog from '../components/ConfirmDialog';
+import CommonBottomSheetModal from '../components/CommonBottomSheetModal';
 import ColorPickerModal from '../components/ColorPickerModal';
 import { getCategories, softDeleteCategory, updateCategory } from '../services/categories';
 import Card from '../components/Card';
@@ -44,6 +44,7 @@ export default function CategoriesScreen({ route, navigation }) {
   const [confirmMessage, setConfirmMessage] = useState('Are you sure you want to delete this item?');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeletingCategory, setIsDeletingCategory] = useState(false);
 
   async function load() {
     const rows = await getCategories(true);
@@ -672,22 +673,37 @@ export default function CategoriesScreen({ route, navigation }) {
       
 
       {/* ───────────── Delete Confirmation ───────────── */}
-      <ConfirmDialog
+      <CommonBottomSheetModal
         visible={confirmVisible}
-        title="Delete Category"
-        message={confirmMessage}
+        type="danger"
+        title="Delete Category?"
+        subtitle="Are you sure you want to permanently delete this category?"
+        confirmLabel="Delete Category"
+        cancelLabel="Keep Category"
+        loading={isDeletingCategory}
+        warnings={[
+          { title: 'Category Removed', text: 'Category will be permanently deleted from your active list.' },
+          { title: 'Transactions Preserved', text: 'Associated transactions will retain their historical records.' },
+          { title: 'Cannot Be Undone', text: 'Once deleted, this category cannot be recovered.' },
+        ]}
         onCancel={() => {
+          if (isDeletingCategory) return;
           setConfirmVisible(false);
           setConfirmTargetId(null);
         }}
         onConfirm={async () => {
-          if (confirmTargetId) {
-            await remove(confirmTargetId);
+          if (confirmTargetId && !isDeletingCategory) {
+            try {
+              setIsDeletingCategory(true);
+              await remove(confirmTargetId);
+              setConfirmVisible(false);
+              setConfirmTargetId(null);
+            } finally {
+              setIsDeletingCategory(false);
+            }
           }
-
-          setConfirmVisible(false);
-          setConfirmTargetId(null);
-        }} />
+        }}
+      />
       
 
       {/* ───────────── Add Icon Picker ───────────── */}

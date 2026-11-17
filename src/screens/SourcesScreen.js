@@ -5,15 +5,16 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  StyleSheet
+  StyleSheet,
+  InteractionManager
 } from
   'react-native';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { Searchbar } from 'react-native-paper';
 import { getSources, deleteSource } from '../services/sources';
-import { getTransactions } from '../services/transactions';
+import { getSourceTransactionBalances } from '../services/transactions';
 import Card from '../components/Card';
-import ConfirmDialog from '../components/ConfirmDialog';
+import CommonBottomSheetModal from '../components/CommonBottomSheetModal';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../components/Theme';
 import ContextualFAB from '../components/ContextualFAB';
@@ -32,55 +33,45 @@ export default function SourcesScreen({ route, navigation }) {
   const [showModal, setShowModal] = useState(false);
   const [editSource, setEditSource] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isDeletingSource, setIsDeletingSource] = useState(false);
 
   const { balanceVisible } = useBalanceVisibility();
 
   async function load() {
-    const sources = await getSources(true);
-    const transactions = await getTransactions(1000000, 'Yes');
+    try {
+      const sources = await getSources(true);
+      const balanceMap = await getSourceTransactionBalances();
 
-    const balanceMap = transactions.reduce((acc, txn) => {
-      const amt = Number(txn.amount || 0);
-      const sourceId = txn.source_id || txn.sourceId;
+      const updated = sources.map((s) => {
+        const id = String(s.id);
 
-      if (!sourceId) return acc;
+        const balance =
+          Number(s.initial_balance || 0) +
+          Number(balanceMap[id] || 0);
 
-      if (!acc[sourceId]) {
-        acc[sourceId] = 0;
-      }
+        return {
+          ...s,
+          balance
+        };
+      });
 
-      if (txn.type === 'income' || txn.type === 'credit') {
-        acc[sourceId] += amt;
-      } else if (txn.type === 'expense' || txn.type === 'debit') {
-        acc[sourceId] -= amt;
-      }
-
-      return acc;
-    }, {});
-
-    const updated = sources.map((s) => {
-      const id = s.id;
-
-      const balance =
-        Number(s.initial_balance || 0) +
-        Number(balanceMap[id] || 0);
-
-      return {
-        ...s,
-        balance
-      };
-    });
-
-    dispatch(setSources(updated));
+      dispatch(setSources(updated));
+    } catch (e) {
+      console.warn('SourcesScreen load error:', e);
+    }
   }
-
-  useEffect(() => {
-    load();
-  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      load();
+      let active = true;
+      InteractionManager.runAfterInteractions(() => {
+        if (active) {
+          load();
+        }
+      });
+      return () => {
+        active = false;
+      };
     }, [])
   );
 
@@ -462,22 +453,38 @@ export default function SourcesScreen({ route, navigation }) {
       {/* =====================================================
            DELETE CONFIRMATION
         ====================================================== */}
-      <ConfirmDialog
+      <CommonBottomSheetModal
         visible={confirmVisible}
-        title="Delete Account"
-        message="Are you sure?"
+        type="danger"
+        title="Delete Account?"
+        subtitle="Are you sure you want to delete this payment account?"
+        confirmLabel="Delete Account"
+        cancelLabel="Keep Account"
+        loading={isDeletingSource}
+        warnings={[
+          { title: 'Account Removed', text: 'This payment account will be permanently deleted.' },
+          { title: 'Transactions Safe', text: 'Past transactions linked to this account remain in your history.' },
+          { title: 'Cannot Be Undone', text: 'This account cannot be restored once deleted.' },
+        ]}
         onCancel={() => {
-          setConfirmVisible(false);
-          setConfirmTargetId(null);
+          if (!isDeletingSource) {
+            setConfirmVisible(false);
+            setConfirmTargetId(null);
+          }
         }}
         onConfirm={async () => {
-          if (confirmTargetId) {
-            await remove(confirmTargetId);
+          if (confirmTargetId && !isDeletingSource) {
+            try {
+              setIsDeletingSource(true);
+              await remove(confirmTargetId);
+              setConfirmVisible(false);
+              setConfirmTargetId(null);
+            } finally {
+              setIsDeletingSource(false);
+            }
           }
-
-          setConfirmVisible(false);
-          setConfirmTargetId(null);
-        }} />
+        }}
+      />
 
 
 

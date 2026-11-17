@@ -13,9 +13,11 @@ import { AppLockProvider } from './src/context/AppLockContext';
 import AppLockWrapper from './src/components/AppLockWrapper';
 import {
   requestPermission,
+  setupNotificationChannels,
   rescheduleAll,
   registerNotificationListener,
   syncBillNotifications,
+  syncLoanEmiNotifications,
   processPendingNotification,
 } from './src/services/notificationService';
 import SearchScreen from './src/screens/SearchScreen';
@@ -216,8 +218,8 @@ export default function App() {
 
         try {
           await requestPermission();
-          await rescheduleAll(); // already cancels all before rescheduling
-          await syncBillNotifications(); // sync specific bills after rescheduling recurring
+          await setupNotificationChannels();
+          await rescheduleAll(); // cancels all, reschedules repeating, and calls syncBillNotifications & syncLoanEmiNotifications
         } catch (e) {
           console.warn('Notification init error', e);
         }

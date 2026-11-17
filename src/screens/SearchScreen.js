@@ -22,14 +22,16 @@ import {
   useCategories,
   useSourcesList,
   useFilteredTransactions,
+  useSearchFilter,
   useAppDispatch
-} from
-  '../redux/hooks';
+} from '../redux/hooks';
 import { setCategories } from '../redux/slices/categorySlice';
 import { setSources as setReduxSources } from '../redux/slices/sourceSlice';
-import { setFilteredTransactions } from '../redux/slices/transactionSlice';
+import { setFilteredTransactions, setSearchFilter, resetSearchFilter } from '../redux/slices/transactionSlice';
 import { getDateKey } from '../utils/dateUtils';
 import TransactionListItem from '../components/TransactionListItem';
+import ContextualFAB from '../components/ContextualFAB';
+import SearchableItemPickerModal from '../components/SearchableItemPickerModal';
 
 export default function SearchScreen({ navigation }) {
   const { isDarkMode, theme } = useTheme();
@@ -40,29 +42,63 @@ export default function SearchScreen({ navigation }) {
   const sources = reduxSources || [];
   const reduxItems = useFilteredTransactions();
   const items = reduxItems || [];
-  const [searchQuery, setSearchQuery] = useState('');
+  const reduxFilter = useSearchFilter();
+
+  const [searchQuery, setSearchQuery] = useState(reduxFilter?.searchQuery || '');
   const [isAdvancedModalVisible, setAdvancedModalVisible] = useState(false);
-  const [advAmount, setAdvAmount] = useState('');
-  const [advNote, setAdvNote] = useState('');
-  const [advType, setAdvType] = useState('all'); // all, income, expense, transfer
-  const [advDateType, setAdvDateType] = useState('none'); // none, exact, month, duration
-  const [advExactDate, setAdvExactDate] = useState('');
-  const [advMonth, setAdvMonth] = useState('');
-  const [advYear, setAdvYear] = useState('');
-  const [advStartDate, setAdvStartDate] = useState('');
-  const [advEndDate, setAdvEndDate] = useState('');
+  const [showCategoryPickerModal, setShowCategoryPickerModal] = useState(false);
+  const [showSourcePickerModal, setShowSourcePickerModal] = useState(false);
+
+  const [advAmount, setAdvAmount] = useState(reduxFilter?.advAmount || '');
+  const [advNote, setAdvNote] = useState(reduxFilter?.advNote || '');
+  const [advType, setAdvType] = useState(reduxFilter?.advType || 'all');
+  const [advDateType, setAdvDateType] = useState(reduxFilter?.advDateType || 'none');
+  const [advExactDate, setAdvExactDate] = useState(reduxFilter?.advExactDate || '');
+  const [advMonth, setAdvMonth] = useState(reduxFilter?.advMonth || '');
+  const [advYear, setAdvYear] = useState(reduxFilter?.advYear || '');
+  const [advStartDate, setAdvStartDate] = useState(reduxFilter?.advStartDate || '');
+  const [advEndDate, setAdvEndDate] = useState(reduxFilter?.advEndDate || '');
+  const [advCategoryId, setAdvCategoryId] = useState(reduxFilter?.advCategoryId ?? null);
+  const [advSourceId, setAdvSourceId] = useState(reduxFilter?.advSourceId ?? null);
+  const [groupByOption, setGroupByOption] = useState(reduxFilter?.groupByOption || 'day');
+
   const [availableMonths, setAvailableMonths] = useState([]);
   const availableYears = useMemo(() => {
     const years = new Set(availableMonths.map(m => m.substring(0, 4)));
     return Array.from(years).sort().reverse();
   }, [availableMonths]);
+
+  const selectedCategory = useMemo(() => {
+    return categories.find(c => String(c.id) === String(advCategoryId));
+  }, [categories, advCategoryId]);
+
+  const selectedSource = useMemo(() => {
+    return sources.find(s => String(s.id) === String(advSourceId));
+  }, [sources, advSourceId]);
+
+  const openAdvancedModal = () => {
+    if (reduxFilter) {
+      setAdvAmount(reduxFilter.advAmount || '');
+      setAdvNote(reduxFilter.advNote || '');
+      setAdvType(reduxFilter.advType || 'all');
+      setAdvDateType(reduxFilter.advDateType || 'none');
+      setAdvExactDate(reduxFilter.advExactDate || '');
+      setAdvMonth(reduxFilter.advMonth || '');
+      setAdvYear(reduxFilter.advYear || '');
+      setAdvStartDate(reduxFilter.advStartDate || '');
+      setAdvEndDate(reduxFilter.advEndDate || '');
+      setAdvCategoryId(reduxFilter.advCategoryId ?? null);
+      setAdvSourceId(reduxFilter.advSourceId ?? null);
+      setGroupByOption(reduxFilter.groupByOption || 'day');
+    }
+    setAdvancedModalVisible(true);
+  };
   const formatMonth = (yyyyMm) => {
     if (!yyyyMm) return '';
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const [year, month] = yyyyMm.split('-');
     return `${months[parseInt(month, 10) - 1]} ${year}`;
   };
-  const [groupByOption, setGroupByOption] = useState('day'); // day, month, year
   const [datePickerTarget, setDatePickerTarget] = useState(null); // 'exact', 'start', 'end'
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -177,7 +213,12 @@ export default function SearchScreen({ navigation }) {
     setAdvYear('');
     setAdvStartDate('');
     setAdvEndDate('');
+    setAdvCategoryId(null);
+    setAdvSourceId(null);
     setGroupByOption('day');
+    dispatch(resetSearchFilter());
+    setSearchQuery('');
+    dispatch(setFilteredTransactions([]));
     monthScrollRef.current?.scrollTo?.({ x: 0, animated: false });
     yearScrollRef.current?.scrollTo?.({ x: 0, animated: false });
   };
@@ -298,15 +339,31 @@ export default function SearchScreen({ navigation }) {
 
   const fetchAdvanced = useCallback(async () => {
     try {
+      const activeAdv = reduxFilter?.isFilterActive ? reduxFilter : {
+        advAmount,
+        advNote,
+        advType,
+        advDateType,
+        advExactDate,
+        advMonth,
+        advYear,
+        advStartDate,
+        advEndDate,
+        advCategoryId,
+        advSourceId
+      };
+
       const rawTransactions = await getAdvancedSearchTransactions({
-        amount: advAmount,
-        note: advNote,
-        type: advType,
-        exactDate: advDateType === 'exact' ? advExactDate : null,
-        month: advDateType === 'month' ? advMonth : null,
-        year: advDateType === 'year' ? advYear : null,
-        startDate: advDateType === 'duration' ? advStartDate : null,
-        endDate: advDateType === 'duration' ? advEndDate : null,
+        amount: activeAdv.advAmount,
+        note: activeAdv.advNote,
+        type: activeAdv.advType,
+        exactDate: activeAdv.advDateType === 'exact' ? activeAdv.advExactDate : null,
+        month: activeAdv.advDateType === 'month' ? activeAdv.advMonth : null,
+        year: activeAdv.advDateType === 'year' ? activeAdv.advYear : null,
+        startDate: activeAdv.advDateType === 'duration' ? activeAdv.advStartDate : null,
+        endDate: activeAdv.advDateType === 'duration' ? activeAdv.advEndDate : null,
+        categoryId: activeAdv.advCategoryId,
+        sourceId: activeAdv.advSourceId,
       });
 
       const processedGroups = new Set();
@@ -337,16 +394,46 @@ export default function SearchScreen({ navigation }) {
     } catch (e) {
       console.warn(e);
     }
-  }, [advAmount, advNote, advType, advDateType, advExactDate, advMonth, advYear, advStartDate, advEndDate, dispatch]);
+  }, [
+    reduxFilter,
+    advAmount,
+    advNote,
+    advType,
+    advDateType,
+    advExactDate,
+    advMonth,
+    advYear,
+    advStartDate,
+    advEndDate,
+    advCategoryId,
+    advSourceId,
+    dispatch
+  ]);
 
   useEffect(() => {
-    if (searchQuery.trim().toLowerCase() === 'advanced search active') {
+    if (searchQuery.trim().toLowerCase() === 'advanced search active' || reduxFilter?.isFilterActive) {
       fetchAdvanced();
     }
-  }, [refreshKey, fetchAdvanced]);
+  }, [refreshKey, fetchAdvanced, searchQuery, reduxFilter?.isFilterActive]);
 
   const handleAdvancedSearch = async () => {
     setAdvancedModalVisible(false);
+    dispatch(setSearchFilter({
+      searchQuery: 'Advanced Search Active',
+      advAmount,
+      advNote,
+      advType,
+      advDateType,
+      advExactDate,
+      advMonth,
+      advYear,
+      advStartDate,
+      advEndDate,
+      advCategoryId,
+      advSourceId,
+      groupByOption,
+      isFilterActive: true
+    }));
     setSearchQuery('Advanced Search Active');
     setRefreshKey(prev => prev + 1);
   };
@@ -378,13 +465,13 @@ export default function SearchScreen({ navigation }) {
     }
 
     const groups = {};
-
+    const activeGrouping = reduxFilter?.isFilterActive ? (reduxFilter.groupByOption || groupByOption) : groupByOption;
 
     items.forEach((item) => {
       let key;
-      if (groupByOption === 'year') {
+      if (activeGrouping === 'year') {
         key = (item.date || '').substring(0, 4);
-      } else if (groupByOption === 'month') {
+      } else if (activeGrouping === 'month') {
         key = (item.date || '').substring(0, 7);
       } else {
         key = getDateKey(item.date);
@@ -409,9 +496,9 @@ export default function SearchScreen({ navigation }) {
       sort((a, b) => b.localeCompare(a)).
       map((dateKey) => {
         let title;
-        if (groupByOption === 'year') {
+        if (activeGrouping === 'year') {
           title = dateKey;
-        } else if (groupByOption === 'month') {
+        } else if (activeGrouping === 'month') {
           const [y, m] = dateKey.split('-');
           const date = new Date(y, m - 1, 1);
           title = date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
@@ -435,7 +522,7 @@ export default function SearchScreen({ navigation }) {
           data: groups[dateKey]
         };
       });
-  }, [items, groupByOption]);
+  }, [items, groupByOption, reduxFilter?.isFilterActive, reduxFilter?.groupByOption]);
 
   // ---------------------------------------------------------
   // SCREEN
@@ -479,8 +566,8 @@ export default function SearchScreen({ navigation }) {
             Find your transactions quickly
           </Text>
         </View>
-        <TouchableOpacity onPress={() => setAdvancedModalVisible(true)} style={{ padding: 8 }}>
-          <MaterialCommunityIcons name="dots-vertical" size={24} color={Colors.text} />
+        <TouchableOpacity onPress={() => openAdvancedModal()} style={{ padding: 8 }}>
+          <MaterialCommunityIcons name="dots-vertical" size={24} color={reduxFilter?.isFilterActive ? Colors.primary : Colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -596,7 +683,7 @@ export default function SearchScreen({ navigation }) {
 
         contentContainerStyle={{
           paddingHorizontal: Spacing.s,
-          paddingBottom: 40,
+          paddingBottom: 90,
           flexGrow: 1
         }}
 
@@ -796,6 +883,88 @@ export default function SearchScreen({ navigation }) {
                 })}
               </View>
 
+              {/* Account / Source Filter */}
+              <Text style={{ fontSize: 13, fontWeight: '700', textTransform: 'uppercase', color: '#6B7280', letterSpacing: 0.8, marginBottom: 10 }}>Account / Source</Text>
+              <TouchableOpacity
+                onPress={() => setShowSourcePickerModal(true)}
+                activeOpacity={0.7}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  backgroundColor: isDarkMode ? (theme.cardBg || '#1E232A') : '#F9FAFB',
+                  borderWidth: 1,
+                  borderColor: isDarkMode ? '#374151' : '#E5E7EB',
+                  borderRadius: 14,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  marginBottom: 20
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <View style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    backgroundColor: selectedSource ? (selectedSource.color || Colors.primary) : (isDarkMode ? '#374151' : '#E5E7EB'),
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    marginRight: 10
+                  }}>
+                    <MaterialCommunityIcons
+                      name={selectedSource ? (selectedSource.icon || 'wallet') : 'wallet-outline'}
+                      size={18}
+                      color={selectedSource ? '#fff' : (isDarkMode ? '#9CA3AF' : '#6B7280')}
+                    />
+                  </View>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: theme.textPrimary, flex: 1 }} numberOfLines={1}>
+                    {selectedSource ? selectedSource.name : 'All Accounts'}
+                  </Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-down" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+
+              {/* Category Filter */}
+              <Text style={{ fontSize: 13, fontWeight: '700', textTransform: 'uppercase', color: '#6B7280', letterSpacing: 0.8, marginBottom: 10 }}>Category</Text>
+              <TouchableOpacity
+                onPress={() => setShowCategoryPickerModal(true)}
+                activeOpacity={0.7}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  backgroundColor: isDarkMode ? (theme.cardBg || '#1E232A') : '#F9FAFB',
+                  borderWidth: 1,
+                  borderColor: isDarkMode ? '#374151' : '#E5E7EB',
+                  borderRadius: 14,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  marginBottom: 20
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <View style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    backgroundColor: selectedCategory ? (selectedCategory.color || Colors.primary) : (isDarkMode ? '#374151' : '#E5E7EB'),
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    marginRight: 10
+                  }}>
+                    <MaterialCommunityIcons
+                      name={selectedCategory ? (selectedCategory.icon || 'tag') : 'tag-multiple-outline'}
+                      size={18}
+                      color={selectedCategory ? '#fff' : (isDarkMode ? '#9CA3AF' : '#6B7280')}
+                    />
+                  </View>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: theme.textPrimary, flex: 1 }} numberOfLines={1}>
+                    {selectedCategory ? selectedCategory.name : 'All Categories'}
+                  </Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-down" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+
               {/* Amount */}
               <Text style={{ fontSize: 13, fontWeight: '700', textTransform: 'uppercase', color: '#6B7280', letterSpacing: 0.8, marginBottom: 12 }}>Exact Amount</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A', borderRadius: 12, paddingHorizontal: 14, marginBottom: 24 }}>
@@ -982,7 +1151,7 @@ export default function SearchScreen({ navigation }) {
               </View>
 
               <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
-                <TouchableOpacity onPress={() => { clearAdvancedSearch(); setAdvancedModalVisible(false); setSearchQuery(''); }} style={{ flex: 1, backgroundColor: '#FFF1F2', borderWidth: 1, borderColor: '#FFE4E6', paddingVertical: 16, borderRadius: 16, alignItems: 'center' }}>
+                <TouchableOpacity onPress={() => { clearAdvancedSearch(); setAdvancedModalVisible(false); }} style={{ flex: 1, backgroundColor: '#FFF1F2', borderWidth: 1, borderColor: '#FFE4E6', paddingVertical: 16, borderRadius: 16, alignItems: 'center' }}>
                   <Text style={{ color: '#E11D48', fontSize: 16, fontWeight: '800' }}>Reset</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleAdvancedSearch} style={{ flex: 2, backgroundColor: Colors.primary, paddingVertical: 16, borderRadius: 16, alignItems: 'center', shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 6 }}>
@@ -1029,6 +1198,60 @@ export default function SearchScreen({ navigation }) {
           else if (datePickerTarget === 'end') setAdvEndDate(iso);
           setDatePickerTarget(null);
         }}
+      />
+
+      {/* FAB TO ADD NEW TRANSACTIONS */}
+      <ContextualFAB
+        icon="plus"
+        actions={[
+          {
+            icon: 'arrow-down',
+            label: 'Expense',
+            color: '#E35D6A',
+            style: { backgroundColor: '#fff' },
+            onPress: () => navigation.navigate("TransactionAdd", { initialType: 'expense' }),
+          },
+          {
+            icon: 'arrow-up',
+            label: 'Income',
+            color: '#3F8F6B',
+            style: { backgroundColor: '#fff' },
+            onPress: () => navigation.navigate("TransactionAdd", { initialType: 'income' }),
+          },
+          {
+            icon: 'swap-horizontal',
+            label: 'Transfer',
+            color: '#4B7CF3',
+            style: { backgroundColor: '#fff' },
+            onPress: () => navigation.navigate("TransactionAdd", { initialType: 'transfer' }),
+          },
+        ]}
+      />
+
+      {/* ACCOUNT / SOURCE PICKER MODAL */}
+      <SearchableItemPickerModal
+        visible={showSourcePickerModal}
+        onClose={() => setShowSourcePickerModal(false)}
+        title="Select Account / Source"
+        placeholder="Search account..."
+        items={sources}
+        selectedId={advSourceId}
+        onSelect={(id) => setAdvSourceId(id)}
+        allLabel="All Accounts"
+        allIcon="wallet-outline"
+      />
+
+      {/* CATEGORY PICKER MODAL */}
+      <SearchableItemPickerModal
+        visible={showCategoryPickerModal}
+        onClose={() => setShowCategoryPickerModal(false)}
+        title="Select Category"
+        placeholder="Search category..."
+        items={categories}
+        selectedId={advCategoryId}
+        onSelect={(id) => setAdvCategoryId(id)}
+        allLabel="All Categories"
+        allIcon="tag-multiple-outline"
       />
     </View>);
 

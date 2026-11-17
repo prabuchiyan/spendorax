@@ -126,6 +126,7 @@ export async function removeTransactionFromBill(billId, transactionId) {
        WHERE id = ?`,
       [remaining[0].transaction_id, billId],
     );
+    await syncBillPaymentStatus(billId);
   }
 
   emitBillsChanged();
@@ -134,8 +135,8 @@ export async function removeTransactionFromBill(billId, transactionId) {
 export async function getBillLinkedTransactions(billId) {
   try {
     const res = await executeSql(
-      `SELECT t.*, s.name as source_name, c.name as category_name,
-              c.icon as category_icon, c.color as category_color
+      `SELECT t.*, s.name as source_name, s.color as source_color, s.icon as source_icon,
+              c.name as category_name, c.icon as category_icon, c.color as category_color
        FROM bill_linked_transactions blt
        JOIN transactions t ON t.id = blt.transaction_id
        LEFT JOIN sources s ON s.id = t.source_id
@@ -169,12 +170,17 @@ export async function getBillLinkedTransactions(billId) {
         const tx = transactions.find((t) => t.id == link.transaction_id);
         if (!tx) return null;
 
+        const src = sources.find((s) => s.id == tx.source_id);
+        const cat = categories.find((c) => c.id == tx.category_id);
+
         return {
           ...tx,
-          source_name: sources.find((s) => s.id == tx.source_id)?.name,
-          category_name: categories.find((c) => c.id == tx.category_id)?.name,
-          category_icon: categories.find((c) => c.id == tx.category_id)?.icon,
-          category_color: categories.find((c) => c.id == tx.category_id)?.color,
+          source_name: src?.name,
+          source_color: src?.color,
+          source_icon: src?.icon,
+          category_name: cat?.name,
+          category_icon: cat?.icon,
+          category_color: cat?.color,
         };
       })
       .filter(Boolean)
@@ -195,7 +201,7 @@ export function calcBillPaidAmount(linkedTxs) {
     }
     total += Number(tx.amount || 0);
   }
-  return total;
+  return Math.round(total * 100) / 100;
 }
 
 async function enrichBillsWithPaymentInfo(billsList) {
@@ -228,9 +234,14 @@ async function enrichBillsWithPaymentInfo(billsList) {
       }
       const totalPaid = calcBillPaidAmount(txsForBill);
       const billAmount = Number(bill.amount || 0);
-      const isCompletelyPaid = billAmount > 0 ? totalPaid >= billAmount : totalPaid > 0;
-      const isPartiallyPaid = totalPaid > 0 && !isCompletelyPaid;
-      const remainingAmount = Math.max(0, billAmount - totalPaid);
+      const roundedPaid = Math.round(totalPaid * 100);
+      const roundedAmount = Math.round(billAmount * 100);
+      const isCompletelyPaid =
+        (roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0) ||
+        bill.status === BILL_STATUS.PAID ||
+        Number(bill.is_paid) === 1;
+      const isPartiallyPaid = roundedPaid > 0 && !isCompletelyPaid;
+      const remainingAmount = Math.max(0, Math.round(roundedAmount - roundedPaid) / 100);
 
       return {
         ...bill,
@@ -240,6 +251,8 @@ async function enrichBillsWithPaymentInfo(billsList) {
         is_partially_paid: isPartiallyPaid,
         is_completely_paid: isCompletelyPaid,
         linked_tx_count: txsForBill.length,
+        status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? BILL_STATUS.PARTIALLY_PAID : bill.status),
+        is_paid: isCompletelyPaid ? 1 : (isPartiallyPaid ? 0 : bill.is_paid),
       };
     }).filter(Boolean);
   } catch (e) {
@@ -340,7 +353,9 @@ export async function syncBillPaymentStatus(billId) {
   const linkedTxs = await getBillLinkedTransactions(billId);
   const totalPaid = calcBillPaidAmount(linkedTxs);
   const billAmount = Number(bill.amount || 0);
-  const isFullyPaid = billAmount > 0 ? totalPaid >= billAmount : totalPaid > 0;
+  const roundedPaid = Math.round(totalPaid * 100);
+  const roundedAmount = Math.round(billAmount * 100);
+  const isFullyPaid = roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0;
 
   if (linkedTxs.length === 0) {
     if (!bill.deleted_at) {
@@ -400,7 +415,7 @@ export async function syncBillPaymentStatus(billId) {
         `UPDATE bills
          SET status = ?, is_paid = 0, paid_at = NULL, linked_transaction_id = ?, updated_at = ?
          WHERE id = ?`,
-        [BILL_STATUS.PENDING, primaryTxId, now, billId]
+        ["partially_paid", primaryTxId, now, billId]
       );
     }
 
@@ -512,7 +527,7 @@ export async function getTransferInfoForTransaction(transactionId) {
         const s = sources.find((x) => Number(x.id) === Number(creditItem.source_id));
         if (s) creditSourceName = s.name;
       }
-    } catch (e) {}
+    } catch (e) { }
 
     return {
       isTransfer: true,
@@ -539,7 +554,7 @@ export async function getBillsForTransaction(transactionId, includeDeleted = tru
   try {
     try {
       await cleanupDuplicateTransferBillLinks();
-    } catch (cleanErr) {}
+    } catch (cleanErr) { }
     // Resolve all transaction IDs in the transfer group if this is a transfer
     let txIds = [transactionId];
     try {
@@ -631,7 +646,7 @@ export async function getBillsForTransaction(transactionId, includeDeleted = tru
             if (gIds.length > 0) txIds = gIds;
           }
         }
-      } catch (err) {}
+      } catch (err) { }
 
       const allBillsRes = await executeSql(
         includeDeleted ? `SELECT * FROM bills` : `SELECT * FROM bills WHERE deleted_at IS NULL`,
@@ -895,9 +910,14 @@ export async function getAvailableBillsForTransactionLink(transactionId) {
 
       const totalPaid = calcBillPaidAmount(txsForBill);
       const billAmount = Number(b.amount || 0);
-      const isCompletelyPaid = billAmount > 0 && totalPaid >= billAmount;
-      const isPartiallyPaid = totalPaid > 0 && !isCompletelyPaid;
-      const remainingAmount = Math.max(0, billAmount - totalPaid);
+      const roundedPaid = Math.round(totalPaid * 100);
+      const roundedAmount = Math.round(billAmount * 100);
+      const isCompletelyPaid =
+        (roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0) ||
+        b.status === BILL_STATUS.PAID ||
+        Number(b.is_paid) === 1;
+      const isPartiallyPaid = roundedPaid > 0 && !isCompletelyPaid;
+      const remainingAmount = Math.max(0, Math.round(roundedAmount - roundedPaid) / 100);
 
       candidateBills.push({
         ...b,
@@ -1633,7 +1653,32 @@ export async function createBill(fields) {
 export async function getBillById(id) {
   const res = await executeSql(`SELECT * FROM bills WHERE id = ?`, [id]);
   if (!res.rows.length) return null;
-  return normalizeBill(res.rows.item(0));
+  const bill = normalizeBill(res.rows.item(0));
+  if (!bill) return null;
+  try {
+    const linkedTxs = await getBillLinkedTransactions(id);
+    const paidAmount = calcBillPaidAmount(linkedTxs);
+    const billAmount = Number(bill.amount || 0);
+    const roundedPaid = Math.round(paidAmount * 100);
+    const roundedAmount = Math.round(billAmount * 100);
+    const isCompletelyPaid =
+      (roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0) ||
+      bill.status === BILL_STATUS.PAID ||
+      Number(bill.is_paid) === 1;
+    const isPartiallyPaid = roundedPaid > 0 && !isCompletelyPaid;
+    return {
+      ...bill,
+      paid_amount: paidAmount,
+      total_paid: paidAmount,
+      remaining_amount: Math.max(0, Math.round(roundedAmount - roundedPaid) / 100),
+      is_partially_paid: isPartiallyPaid,
+      is_completely_paid: isCompletelyPaid,
+      status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? "partially_paid" : bill.status),
+      is_paid: isCompletelyPaid ? 1 : (isPartiallyPaid ? 0 : bill.is_paid),
+    };
+  } catch (e) {
+    return bill;
+  }
 }
 
 // ─── getBillSeries ────────────────────────────────────────────────────────────
@@ -1710,13 +1755,28 @@ export async function getBillSeries(templateId) {
       const billLinks = links.filter(
         (l) => Number(l.bill_id) === Number(bill.id),
       );
-      const paidAmount = billLinks.reduce((sum, link) => {
-        const tx = transactions.find(
-          (t) => Number(t.id) === Number(link.transaction_id),
-        );
-        return sum + Number(tx?.amount || 0);
-      }, 0);
-      return { ...bill, paid_amount: paidAmount };
+      const billTxs = billLinks
+        .map((l) => transactions.find((t) => Number(t.id) === Number(l.transaction_id)))
+        .filter(Boolean);
+      const paidAmount = calcBillPaidAmount(billTxs);
+      const billAmount = Number(bill.amount || 0);
+      const roundedPaid = Math.round(paidAmount * 100);
+      const roundedAmount = Math.round(billAmount * 100);
+      const isCompletelyPaid =
+        (roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0) ||
+        bill.status === BILL_STATUS.PAID ||
+        Number(bill.is_paid) === 1;
+      const isPartiallyPaid = roundedPaid > 0 && !isCompletelyPaid;
+      return {
+        ...bill,
+        paid_amount: paidAmount,
+        total_paid: paidAmount,
+        remaining_amount: Math.max(0, Math.round(roundedAmount - roundedPaid) / 100),
+        is_partially_paid: isPartiallyPaid,
+        is_completely_paid: isCompletelyPaid,
+        status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? "partially_paid" : bill.status),
+        is_paid: isCompletelyPaid ? 1 : (isPartiallyPaid ? 0 : bill.is_paid),
+      };
     });
 
     return enriched.sort((a, b) =>
@@ -1741,12 +1801,21 @@ export async function getBillSeries(templateId) {
       template.due_date,
       template.recurrence_interval,
     );
+    const templateDate = template.due_date ? String(template.due_date).slice(0, 10) : null;
+    const deletedKeys = await getDeletedOccurrenceKeys(Number(templateId));
     const overrideChild = dedupedChildren.find(
       (c) =>
         (c.due_date && c.due_date.slice(0, 7) === templateMonth) ||
         (templateKey && c.recurrence_occurrence_key && String(c.recurrence_occurrence_key) === String(templateKey)),
     );
     if (overrideChild) activeTemplate = null;
+    if (
+      overrideChild ||
+      (templateKey && deletedKeys.has(String(templateKey))) ||
+      (templateDate && deletedKeys.has(templateDate))
+    ) {
+      activeTemplate = null;
+    }
   }
 
   const series = activeTemplate ? [activeTemplate, ...dedupedChildren] : [...dedupedChildren];
@@ -1762,13 +1831,28 @@ export async function getBillSeries(templateId) {
     const billLinks = links.filter(
       (l) => Number(l.bill_id) === Number(bill.id),
     );
-    const paidAmount = billLinks.reduce((sum, link) => {
-      const tx = transactions.find(
-        (t) => Number(t.id) === Number(link.transaction_id),
-      );
-      return sum + Number(tx?.amount || 0);
-    }, 0);
-    return { ...bill, paid_amount: paidAmount };
+    const billTxs = billLinks
+      .map((l) => transactions.find((t) => Number(t.id) === Number(l.transaction_id)))
+      .filter(Boolean);
+    const paidAmount = calcBillPaidAmount(billTxs);
+    const billAmount = Number(bill.amount || 0);
+    const roundedPaid = Math.round(paidAmount * 100);
+    const roundedAmount = Math.round(billAmount * 100);
+    const isCompletelyPaid =
+      (roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0) ||
+      bill.status === BILL_STATUS.PAID ||
+      Number(bill.is_paid) === 1;
+    const isPartiallyPaid = roundedPaid > 0 && !isCompletelyPaid;
+    return {
+      ...bill,
+      paid_amount: paidAmount,
+      total_paid: paidAmount,
+      remaining_amount: Math.max(0, Math.round(roundedAmount - roundedPaid) / 100),
+      is_partially_paid: isPartiallyPaid,
+      is_completely_paid: isCompletelyPaid,
+      status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? "partially_paid" : bill.status),
+      is_paid: isCompletelyPaid ? 1 : (isPartiallyPaid ? 0 : bill.is_paid),
+    };
   });
 
   return enriched.sort((a, b) =>
@@ -1830,13 +1914,29 @@ export async function getBillSeriesMultiple(templateIds) {
         const billLinks = links.filter(
           (l) => Number(l.bill_id) === Number(bill.id),
         );
-        const paidAmount = billLinks.reduce((sum, link) => {
-          const tx = transactions.find(
-            (t) => Number(t.id) === Number(link.transaction_id),
-          );
-          return sum + Number(tx?.amount || 0);
-        }, 0);
-        return { ...bill, paid_amount: paidAmount };
+        const billTxs = billLinks
+          .map((l) => transactions.find((t) => Number(t.id) === Number(l.transaction_id)))
+          .filter(Boolean);
+        const paidAmount = calcBillPaidAmount(billTxs);
+        const billAmount = Number(bill.amount || 0);
+        const roundedPaid = Math.round(paidAmount * 100);
+        const roundedAmount = Math.round(billAmount * 100);
+        const isCompletelyPaid =
+          (roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0) ||
+          bill.status === BILL_STATUS.PAID ||
+          Number(bill.is_paid) === 1;
+        const isPartiallyPaid = roundedPaid > 0 && !isCompletelyPaid;
+        const computed = computeBillStatus(bill, todayStr());
+        return {
+          ...bill,
+          paid_amount: paidAmount,
+          total_paid: paidAmount,
+          remaining_amount: Math.max(0, Math.round(roundedAmount - roundedPaid) / 100),
+          is_partially_paid: isPartiallyPaid,
+          is_completely_paid: isCompletelyPaid,
+          status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? "partially_paid" : (computed || bill.status)),
+          is_paid: isCompletelyPaid ? 1 : (isPartiallyPaid ? 0 : bill.is_paid),
+        };
       });
     } else {
       const dedupedChildren = deduplicateSeriesChildren(allChildren, template);
@@ -1848,12 +1948,21 @@ export async function getBillSeriesMultiple(templateIds) {
           template.due_date,
           template.recurrence_interval,
         );
+        const templateDate = template.due_date ? String(template.due_date).slice(0, 10) : null;
+        const deletedKeys = await getDeletedOccurrenceKeys(Number(templateId));
         const overrideChild = dedupedChildren.find(
           (c) =>
             (c.due_date && c.due_date.slice(0, 7) === templateMonth) ||
             (templateKey && c.recurrence_occurrence_key && String(c.recurrence_occurrence_key) === String(templateKey)),
         );
         if (overrideChild) activeTemplate = null;
+        if (
+          overrideChild ||
+          (templateKey && deletedKeys.has(String(templateKey))) ||
+          (templateDate && deletedKeys.has(templateDate))
+        ) {
+          activeTemplate = null;
+        }
       }
       const series = activeTemplate
         ? [activeTemplate, ...dedupedChildren]
@@ -1862,13 +1971,29 @@ export async function getBillSeriesMultiple(templateIds) {
         const billLinks = links.filter(
           (l) => Number(l.bill_id) === Number(bill.id),
         );
-        const paidAmount = billLinks.reduce((sum, link) => {
-          const tx = transactions.find(
-            (t) => Number(t.id) === Number(link.transaction_id),
-          );
-          return sum + Number(tx?.amount || 0);
-        }, 0);
-        return { ...bill, paid_amount: paidAmount };
+        const billTxs = billLinks
+          .map((l) => transactions.find((t) => Number(t.id) === Number(l.transaction_id)))
+          .filter(Boolean);
+        const paidAmount = calcBillPaidAmount(billTxs);
+        const billAmount = Number(bill.amount || 0);
+        const roundedPaid = Math.round(paidAmount * 100);
+        const roundedAmount = Math.round(billAmount * 100);
+        const isCompletelyPaid =
+          (roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0) ||
+          bill.status === BILL_STATUS.PAID ||
+          Number(bill.is_paid) === 1;
+        const isPartiallyPaid = roundedPaid > 0 && !isCompletelyPaid;
+        const computed = computeBillStatus(bill, todayStr());
+        return {
+          ...bill,
+          paid_amount: paidAmount,
+          total_paid: paidAmount,
+          remaining_amount: Math.max(0, Math.round(roundedAmount - roundedPaid) / 100),
+          is_partially_paid: isPartiallyPaid,
+          is_completely_paid: isCompletelyPaid,
+          status: isCompletelyPaid ? BILL_STATUS.PAID : (isPartiallyPaid ? "partially_paid" : (computed || bill.status)),
+          is_paid: isCompletelyPaid ? 1 : (isPartiallyPaid ? 0 : bill.is_paid),
+        };
       });
     }
 
@@ -2154,16 +2279,75 @@ export async function getBillsForCurrentMonth(options = {}) {
     // ----------------------------------------------------------
 
     if (!thisMonthDate) {
-      const n = normalizeBill(template);
+      const allBills = allRaw;
+      const deletedKeys = await getDeletedOccurrenceKeys(Number(template.id));
+      const seriesOccurrences = allBills
+        .filter(
+          (b) =>
+            (Number(b.parent_bill_id) === Number(template.id) ||
+              Number(b.id) === Number(template.id)) &&
+            !b.deleted_at,
+        )
+        .filter((b) => {
+          if (!b.due_date) return true;
+          const dKey = b.due_date.slice(0, 10);
+          const rKey = getRecurrenceOccurrenceKey(
+            template.recurrence_type,
+            dKey,
+            template.recurrence_interval,
+          );
+          if (deletedKeys.has(dKey) || (rKey && deletedKeys.has(String(rKey)))) {
+            return false;
+          }
+          return true;
+        })
+        .map(normalizeBill)
+        .filter(Boolean);
 
-      if (n) {
+      const overdueOccurrence = seriesOccurrences
+        .filter((b) => {
+          const isPaid =
+            b.status === BILL_STATUS.PAID ||
+            Number(b.is_paid) === 1 ||
+            Boolean(b.is_completely_paid);
+          const isSkipped = b.status === BILL_STATUS.SKIPPED;
+          return (
+            !isPaid &&
+            !isSkipped &&
+            b.due_date &&
+            b.due_date.slice(0, 10) < today
+          );
+        })
+        .sort((a, b) => (b.due_date || "").localeCompare(a.due_date || ""))[0];
+
+      if (overdueOccurrence) {
         result.push({
-          ...n,
-
+          ...overdueOccurrence,
+          status: BILL_STATUS.OVERDUE,
           _templateId: template.id,
-
           _isRecurringSeries: true,
         });
+      } else {
+        const upcomingOccurrence = seriesOccurrences
+          .filter((b) => b.due_date && b.due_date.slice(0, 10) >= today)
+          .sort((a, b) => (a.due_date || "").localeCompare(b.due_date || ""))[0];
+
+        const templateDateKey = template.due_date ? template.due_date.slice(0, 10) : null;
+        const templateRecKey = template.recurrence_type && templateDateKey
+          ? getRecurrenceOccurrenceKey(template.recurrence_type, templateDateKey, template.recurrence_interval)
+          : null;
+        const isTemplateDeleted =
+          (templateDateKey && deletedKeys.has(templateDateKey)) ||
+          (templateRecKey && deletedKeys.has(String(templateRecKey)));
+
+        const target = upcomingOccurrence || (!isTemplateDeleted ? normalizeBill(template) : null);
+        if (target) {
+          result.push({
+            ...target,
+            _templateId: template.id,
+            _isRecurringSeries: true,
+          });
+        }
       }
 
       continue;
@@ -2198,7 +2382,8 @@ export async function getBillsForCurrentMonth(options = {}) {
       const deletedKeys = await getDeletedOccurrenceKeys(Number(template.id));
 
       wasIntentionallyDeleted =
-        occurrenceKey && deletedKeys.has(String(occurrenceKey));
+        (occurrenceKey && deletedKeys.has(String(occurrenceKey))) ||
+        (thisMonthDate && deletedKeys.has(String(thisMonthDate)));
 
       console.log("[getBillsForCurrentMonth] DELETION CHECK:", {
         templateId: template.id,
@@ -2394,17 +2579,38 @@ export async function getBillsForCurrentMonth(options = {}) {
   }
 
   // ============================================================
+  // ENRICH WITH PAYMENT INFO & STATUS
+  // ============================================================
+
+  const enrichedResult = await enrichBillsWithPaymentInfo(result.filter(Boolean));
+
+  // ============================================================
   // FILTERS
   // ============================================================
 
-  let filtered = result.filter(Boolean);
+  let filtered = enrichedResult.filter(Boolean).map((bill) => {
+    const isPaid =
+      bill.status === BILL_STATUS.PAID ||
+      Number(bill.is_paid) === 1 ||
+      Boolean(bill.is_completely_paid);
+    if (isPaid) return { ...bill, status: BILL_STATUS.PAID, is_paid: 1 };
+    if (bill.status === BILL_STATUS.SKIPPED) return bill;
+    const computed = computeBillStatus(bill, today);
+    return {
+      ...bill,
+      status: computed || bill.status,
+    };
+  });
 
   if (options.status && options.status !== "all") {
     const statuses = Array.isArray(options.status)
       ? options.status
       : [options.status];
 
-    filtered = filtered.filter((bill) => statuses.includes(bill.status));
+    filtered = filtered.filter((bill) => {
+      const computed = computeBillStatus(bill, today);
+      return statuses.includes(bill.status) || statuses.includes(computed);
+    });
   }
 
   if (options.category_id) {
@@ -2627,18 +2833,32 @@ export async function healDuplicateBills() {
 export async function syncBillStatuses() {
   await healDuplicateBills();
   const today = todayStr();
-  const rows = await fetchAllBillsRaw();
+  const rawBills = await fetchAllBillsRaw();
+  const rows = await enrichBillsWithPaymentInfo(rawBills);
   for (const bill of rows) {
-    const status = computeBillStatus(bill, today);
-    if (
-      status !== bill.status &&
-      status !== BILL_STATUS.SKIPPED &&
-      status !== BILL_STATUS.PAID
-    ) {
-      await executeSql(
-        `UPDATE bills SET status = ?, updated_at = ? WHERE id = ?`,
-        [status, nowIso(), bill.id],
+    // Recurring templates with active children are definitions; but if a template has no child rows,
+    // the template row itself represents the occurrence for its due date.
+    if (!bill.parent_bill_id && Number(bill.is_recurring) === 1) {
+      const hasChildren = rawBills.some(
+        (r) => Number(r.parent_bill_id) === Number(bill.id) && !r.deleted_at,
       );
+      if (hasChildren) {
+        continue;
+      }
+    }
+    // Respect manually skipped status
+    if (bill.status === BILL_STATUS.SKIPPED) {
+      continue;
+    }
+    const computedStatus = computeBillStatus(bill, today);
+    if (computedStatus && computedStatus !== bill.status) {
+      const isPaid = computedStatus === BILL_STATUS.PAID ? 1 : (bill.is_paid || 0);
+      await executeSql(
+        `UPDATE bills SET status = ?, is_paid = ?, updated_at = ? WHERE id = ?`,
+        [computedStatus, isPaid, nowIso(), bill.id],
+      );
+      bill.status = computedStatus;
+      bill.is_paid = isPaid;
     }
   }
 }
@@ -2705,25 +2925,10 @@ export async function getBillsSummary() {
   const mk = monthKey(year, month);
   const todayDate = new Date();
 
-  // Hide Credit Card template bills from all dashboard statistics.
-  // Only the generated statement (child) bill should be counted.
-  const rows = (await fetchAllBillsRaw()).map(normalizeBill).filter(Boolean);
+  // Load the active, current-month bills with payment enrichment (templates and CC templates excluded)
+  const activeBills = await getBillsForCurrentMonth({ status: null, category_id: null });
 
-  const active = rows.filter((b) => {
-    // We now include SKIPPED bills in active so they can be counted as "paid" in the progress bar.
-
-    const isCreditCardTemplate =
-      !b.parent_bill_id &&
-      b.is_recurring &&
-      typeof b.notes === "string" &&
-      b.notes.startsWith("Recurring payment template for");
-
-    return !isCreditCardTemplate;
-  });
-
-  const dedupedActive = deduplicateBillsForSummary(active);
-
-  const thisMonth = dedupedActive.filter((b) => {
+  const thisMonth = activeBills.filter((b) => {
     if (!b.due_date) return false;
     const d = new Date(b.due_date.slice(0, 10));
     return d.getFullYear() === year && d.getMonth() === month;
@@ -2734,60 +2939,54 @@ export async function getBillsSummary() {
     0,
   );
   const totalPaid = thisMonth
-    .filter((b) => b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED)
+    .filter((b) => b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED || Number(b.is_paid) === 1)
     .reduce((s, b) => s + Number(b.amount || 0), 0);
-  const paidCount = thisMonth.filter((b) => b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED).length;
-  const overdueAmount = dedupedActive
-    .filter((b) => b.status === BILL_STATUS.OVERDUE)
-    .reduce((s, b) => s + Number(b.amount || 0), 0);
-  const overdueCount = dedupedActive.filter(
-    (b) => b.status === BILL_STATUS.OVERDUE,
+  const paidCount = thisMonth.filter(
+    (b) => b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED || Number(b.is_paid) === 1,
   ).length;
 
-  const upcoming7 = dedupedActive
+  const overdueBills = activeBills.filter((b) => {
+    if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED || Number(b.is_paid) === 1)
+      return false;
+    return b.status === BILL_STATUS.OVERDUE || (b.due_date && b.due_date.slice(0, 10) < today);
+  });
+  const overdueAmount = overdueBills.reduce((s, b) => s + Number(b.amount || 0), 0);
+  const overdueCount = overdueBills.length;
+
+  const upcoming7 = activeBills
     .filter((b) => {
-      if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED)
+      if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED || Number(b.is_paid) === 1)
         return false;
       const days = daysBetween(today, b.due_date);
       return days !== null && days >= 0 && days <= 7;
     })
     .reduce((s, b) => s + Number(b.amount || 0), 0);
 
-  const upcoming3 = dedupedActive.filter((b) => {
-    if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED)
+  const upcoming3 = activeBills.filter((b) => {
+    if (b.status === BILL_STATUS.PAID || b.status === BILL_STATUS.SKIPPED || Number(b.is_paid) === 1)
       return false;
     const days = daysBetween(today, b.due_date);
     return days !== null && days >= 0 && days <= 3;
   });
 
-  const inThisCalMonth = (b) => {
-    if (!b.due_date) return false;
-    const d = new Date(b.due_date);
-    return (
-      !isNaN(d.getTime()) &&
-      d.getMonth() === todayDate.getMonth() &&
-      d.getFullYear() === todayDate.getFullYear()
-    );
-  };
-
-  const dueThisMonthCount = dedupedActive.filter(
+  const dueThisMonthCount = thisMonth.filter(
     (b) =>
       b.status !== BILL_STATUS.PAID &&
       b.status !== BILL_STATUS.SKIPPED &&
-      inThisCalMonth(b),
+      Number(b.is_paid) !== 1,
   ).length;
 
-  const dueThisMonthAmount = dedupedActive
+  const dueThisMonthAmount = thisMonth
     .filter(
       (b) =>
         b.status !== BILL_STATUS.PAID &&
         b.status !== BILL_STATUS.SKIPPED &&
-        inThisCalMonth(b),
+        Number(b.is_paid) !== 1,
     )
     .reduce((s, b) => s + Number(b.amount || 0), 0);
 
-  const upcomingAndPendingDueAmt = dedupedActive
-    .filter((b) => !b.is_paid && b.status !== BILL_STATUS.SKIPPED && inThisCalMonth(b))
+  const upcomingAndPendingDueAmt = thisMonth
+    .filter((b) => !b.is_paid && b.status !== BILL_STATUS.PAID && b.status !== BILL_STATUS.SKIPPED)
     .reduce(
       (acc, b) => {
         acc.totalAmount += Number(b.amount || 0);
@@ -2808,7 +3007,7 @@ export async function getBillsSummary() {
     upcoming3Count: upcoming3.length,
     dueThisMonthCount,
     dueThisMonthAmount,
-    pendingCount: dedupedActive.filter((b) => b.status === BILL_STATUS.PENDING).length,
+    pendingCount: activeBills.filter((b) => b.status === BILL_STATUS.PENDING && (!b.due_date || b.due_date.slice(0, 10) >= today)).length,
     upcomingAndPendingDueAmt,
   };
 }
@@ -3082,6 +3281,7 @@ async function _ensureNextOccurrence(templateId) {
   );
 
   const existingRows = rowsToArray(existingRes);
+  const deletedKeys = await getDeletedOccurrenceKeys(templateId);
 
   const existingKeys = new Set();
   for (const row of existingRows) {
@@ -3136,15 +3336,22 @@ async function _ensureNextOccurrence(templateId) {
       continue;
     }
 
+    // Skip if intentionally deleted.
+    if (
+      (occurrenceKey && deletedKeys.has(String(occurrenceKey))) ||
+      deletedKeys.has(dueDateOnly)
+    ) {
+      continue;
+    }
+
     // Already exists.
     if (occurrenceKey && existingKeys.has(String(occurrenceKey))) {
       continue;
     }
 
-    // Also check by actual due date.
+    // Also check by actual due date (including soft-deleted rows).
     const alreadyExists = existingRows.some(
       (row) =>
-        !row.deleted_at &&
         row.due_date &&
         String(row.due_date).slice(0, 10) === dueDateOnly,
     );
@@ -3189,7 +3396,7 @@ async function _ensureNextOccurrence(templateId) {
   // ---------------------------------------------------------
   // CREATE ONLY THIS ONE OCCURRENCE
   // ---------------------------------------------------------
-  await _insertBill({
+  const newBillId = await _insertBill({
     name: template.name,
     amount: template.amount,
     due_date: nextDueDate,
@@ -3208,10 +3415,46 @@ async function _ensureNextOccurrence(templateId) {
     is_paid: 0,
     linked_transaction_id: null,
     parent_bill_id: templateId,
+    recurrence_occurrence_key: occurrenceKey,
   });
+
+  // Trigger Bill Generated Notification if enabled
+  try {
+    const { Platform } = require('react-native');
+    if (Platform.OS !== 'web') {
+      const { isNotificationEnabled } = require('../database/notifications');
+      const enabled = await isNotificationEnabled('BILL_GENERATED');
+      if (enabled && newBillId) {
+        const Notifications = require('expo-notifications');
+        const formattedAmount = Number(template.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const dueDateFormatted = nextDueDate ? new Date(nextDueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : nextDueDate;
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `📋 New Bill Generated • ${template.name}`,
+            body: `Amount: ₹${formattedAmount} | Due Date: ${dueDateFormatted}\nAdded to your schedule. Tap to view details.`,
+            data: { screen: 'BillDetail', billId: newBillId, type: 'BILL_GENERATED' },
+            sound: true,
+            channelId: 'bills_channel'
+          },
+          trigger: null // Deliver immediately
+        });
+      }
+    }
+  } catch (notifErr) {
+    console.warn('Failed to notify bill generation', notifErr);
+  }
+
+  // Also sync bill notifications so the due reminder is scheduled
+  try {
+    const { syncBillNotifications } = require('./notificationService');
+    await syncBillNotifications();
+  } catch (syncErr) {
+    console.warn('Failed to sync bill notifications after occurrence creation', syncErr);
+  }
 
   console.log("[RecurringScheduler] Created next occurrence:", {
     templateId,
+    newBillId,
     dueDate: nextDueDate,
     today,
     daysUntilDue: daysBetween(today, nextDueDate),
@@ -3241,62 +3484,11 @@ async function ensureRecurringOccurrenceUniqueIndex() {
 
 // ─── linkAdditionalTransaction ────────────────────────────────────────────────
 export async function linkAdditionalTransaction(billId, transactionId) {
-  const now = nowIso();
-
-  const billDebug = await executeSql(`SELECT * FROM bills WHERE id = ?`, [
-    billId,
-  ]);
-
-  console.log(
-    "[linkAdditionalTransaction] BILL:",
-    billDebug.rows.length ? billDebug.rows.item(0) : "BILL NOT FOUND",
-  );
-
-  const statementDebug = await executeSql(
-    `SELECT * FROM credit_card_statements`,
-    [],
-  );
-
-  for (let i = 0; i < statementDebug.rows.length; i++) {
-    console.log(
-      "[linkAdditionalTransaction] STATEMENT:",
-      statementDebug.rows.item(i),
-    );
-  }
-
+  if (!billId || !transactionId) return;
   await addTransactionToBill(billId, transactionId);
-
-  await executeSql(
-    `UPDATE bills
-     SET
-       status = ?,
-       is_paid = 1,
-       paid_at = ?,
-       linked_transaction_id = ?,
-       updated_at = ?
-     WHERE id = ?`,
-    [BILL_STATUS.PAID, now, transactionId, now, billId],
-  );
-
-  const relatedBills = await executeSql(`SELECT * FROM bills`, []);
-
-  for (let i = 0; i < relatedBills.rows.length; i++) {
-    const b = relatedBills.rows.item(i);
-
-    if (
-      Number(b.id) === 103 ||
-      Number(b.id) === 172 ||
-      Number(b.parent_bill_id) === 103 ||
-      Number(b.parent_bill_id) === 172
-    ) {
-      console.log("[DEBUG] BILL ID:", b.id);
-      console.log("[DEBUG] BILL PARENT:", b.parent_bill_id);
-      console.log("[DEBUG] BILL STATUS:", b.status);
-      console.log("[DEBUG] BILL DUE:", b.due_date);
-    }
-  }
-
+  await syncBillPaymentStatus(billId);
   emitBillsChanged();
+  emit("transactionsChanged");
 }
 
 // ─── getTransactionsForBillLink ───────────────────────────────────────────────
@@ -3339,9 +3531,9 @@ export async function getTransactionsForBillLink(bill) {
       // Fetch all bills in the series and filter in JS (WebSQLite doesn't support complex WHERE or OR)
       const resChildren = await executeSql(`SELECT * FROM bills WHERE parent_bill_id = ?`, [parentId]);
       const resParent = await executeSql(`SELECT * FROM bills WHERE id = ?`, [parentId]);
-      
+
       const allRows = [...rowsToArray(resChildren), ...rowsToArray(resParent)];
-      
+
       // Deduplicate in case a bill matches both (e.g. parent_bill_id = id which shouldn't happen, but just safe)
       const uniqueRowsMap = new Map();
       allRows.forEach(row => {
@@ -3362,16 +3554,16 @@ export async function getTransactionsForBillLink(bill) {
     if (parentId) {
       // Find the most recent PAID bill before this one
       const prevPaidBills = allSeriesBills
-        .filter(b => 
-          b.due_date && 
-          String(b.due_date).slice(0, 10) < currentDueDate && 
+        .filter(b =>
+          b.due_date &&
+          String(b.due_date).slice(0, 10) < currentDueDate &&
           (Number(b.is_paid) === 1 || String(b.status).toLowerCase() === 'paid')
         )
         .sort((a, b) => String(b.due_date).localeCompare(String(a.due_date)));
 
       if (prevPaidBills.length > 0) {
         previousBill = prevPaidBills[0];
-        
+
         let startDate = previousBill.paid_at
           ? String(previousBill.paid_at).slice(0, 10)
           : String(previousBill.due_date).slice(0, 10);
@@ -3381,7 +3573,7 @@ export async function getTransactionsForBillLink(bill) {
         if (startDate > currentDueDate) {
           startDate = String(previousBill.due_date).slice(0, 10);
         }
-        
+
         // The transaction for this previous bill was already accounted for on `startDate`,
         // so we must fetch transactions starting from the DAY AFTER it was paid.
         const startObj = new Date(`${startDate}T00:00:00`);
@@ -3402,10 +3594,10 @@ export async function getTransactionsForBillLink(bill) {
         const prevAnyBills = allSeriesBills
           .filter(b => b.due_date && String(b.due_date).slice(0, 10) < currentDueDate)
           .sort((a, b) => String(a.due_date).localeCompare(String(b.due_date))); // ASCENDING sort
-          
+
         if (prevAnyBills.length > 0) {
           previousBill = prevAnyBills[0]; // Oldest bill
-          
+
           const startObj = new Date(`${String(previousBill.due_date).slice(0, 10)}T00:00:00`);
           startObj.setDate(startObj.getDate() + 1);
           filterStartDate = `${startObj.getFullYear()}-${String(startObj.getMonth() + 1).padStart(2, "0")}-${String(startObj.getDate()).padStart(2, "0")}`;
@@ -3630,7 +3822,7 @@ export async function updateBill(id, fields) {
   const dueDateChanged =
     fields.due_date !== undefined &&
     String(fields.due_date).slice(0, 10) !==
-      String(existing.due_date || "").slice(0, 10);
+    String(existing.due_date || "").slice(0, 10);
 
   const recurrenceTypeChanged =
     fields.recurrence_type !== undefined &&
@@ -3639,12 +3831,12 @@ export async function updateBill(id, fields) {
   const recurrenceIntervalChanged =
     fields.recurrence_interval !== undefined &&
     Number(fields.recurrence_interval || 1) !==
-      Number(existing.recurrence_interval || 1);
+    Number(existing.recurrence_interval || 1);
 
   const recurrenceEndDateChanged =
     fields.recurrence_end_date !== undefined &&
     String(fields.recurrence_end_date || "").slice(0, 10) !==
-      String(existing.recurrence_end_date || "").slice(0, 10);
+    String(existing.recurrence_end_date || "").slice(0, 10);
 
   const recurrenceEnabledChanged =
     fields.is_recurring !== undefined &&
@@ -4015,23 +4207,48 @@ export async function updateBill(id, fields) {
 
 export async function softDeleteBillOccurrence(billId, isTemplate, occurrenceDate) {
   if (!billId) throw new Error("Bill ID is required.");
-  
+
   const now = nowIso();
 
   if (isTemplate) {
     // For a template acting as an occurrence, mark the date as deleted and advance the template.
     await ensureRecurringDeletionTable();
-    const occurrenceKey = occurrenceDate ? String(occurrenceDate).slice(0, 10) : null;
-    if (occurrenceKey) {
+    const template = await getBillById(billId);
+    const dateKey = occurrenceDate
+      ? String(occurrenceDate).slice(0, 10)
+      : (template?.due_date ? String(template.due_date).slice(0, 10) : null);
+    const recurrenceKey = template?.recurrence_type && dateKey
+      ? getRecurrenceOccurrenceKey(template.recurrence_type, dateKey, template.recurrence_interval)
+      : null;
+
+    for (const key of [recurrenceKey, dateKey].filter(Boolean)) {
       await executeSql(
         `INSERT OR IGNORE INTO bill_deleted_occurrences (
           parent_bill_id, recurrence_occurrence_key, deleted_at
         ) VALUES (?, ?, ?)`,
-        [Number(billId), occurrenceKey, now]
+        [Number(billId), String(key), now]
       );
     }
-    
+
     // Advance template due date to the next occurrence so the deleted one no longer shows up
+    if (template && dateKey) {
+      const nextDueDate = addRecurrence(dateKey, template.recurrence_type);
+      if (nextDueDate) {
+        await executeSql(
+          `UPDATE bills
+           SET due_date = ?,
+               recurrence_effective_date = ?,
+               status = ?,
+               is_paid = 0,
+               paid_at = NULL,
+               linked_transaction_id = NULL,
+               updated_at = ?
+           WHERE id = ?`,
+          [nextDueDate, nextDueDate, BILL_STATUS.PENDING, now, Number(billId)]
+        );
+      }
+    }
+
     await _ensureNextOccurrence(billId);
   } else {
     // Real child occurrence row
@@ -4044,13 +4261,18 @@ export async function softDeleteBillOccurrence(billId, isTemplate, occurrenceDat
 
     if (bill.parent_bill_id) {
       await ensureRecurringDeletionTable();
-      const occurrenceKey = bill.recurrence_occurrence_key || (bill.due_date ? bill.due_date.slice(0, 10) : null);
-      if (occurrenceKey) {
+      const parentTemplate = await getBillById(bill.parent_bill_id);
+      const dateKey = bill.due_date ? String(bill.due_date).slice(0, 10) : null;
+      const recurrenceKey = parentTemplate?.recurrence_type && dateKey
+        ? getRecurrenceOccurrenceKey(parentTemplate.recurrence_type, dateKey, parentTemplate.recurrence_interval)
+        : bill.recurrence_occurrence_key;
+
+      for (const key of [recurrenceKey, dateKey, bill.recurrence_occurrence_key].filter(Boolean)) {
         await executeSql(
           `INSERT OR IGNORE INTO bill_deleted_occurrences (
             parent_bill_id, recurrence_occurrence_key, deleted_at
           ) VALUES (?, ?, ?)`,
-          [Number(bill.parent_bill_id), String(occurrenceKey), now]
+          [Number(bill.parent_bill_id), String(key), now]
         );
       }
     }
