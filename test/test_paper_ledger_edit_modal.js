@@ -105,3 +105,4 @@ assert.strictEqual(badAmount.error, 'Please enter a valid amount greater than 0'
 console.log('✓ Validation errors verified');
 
 console.log('All Paper Add/Edit Row Modal Tests Passed Successfully!');
+
