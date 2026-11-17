@@ -44,7 +44,7 @@
   - `setSearchQueryText(query)`
   - `useSearchFilter()` hook returning the current filter state
 
-- [ ] **Step 1: Write test for Redux slice actions**
+- [x] **Step 1: Write test for Redux slice actions**
 
 ```javascript
 // test/test_search_filter_slice.js
@@ -83,12 +83,12 @@ assert.strictEqual(reset.searchFilter.isFilterActive, false);
 console.log('Task 1 tests passed!');
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node test/test_search_filter_slice.js`  
 Expected: FAIL with missing properties or undefined action.
 
-- [ ] **Step 3: Implement `searchFilter` state and reducers in `src/redux/slices/transactionSlice.js` and `src/redux/hooks.js`**
+- [x] **Step 3: Implement `searchFilter` state and reducers in `src/redux/slices/transactionSlice.js` and `src/redux/hooks.js`**
 
 In `src/redux/slices/transactionSlice.js`:
 - Add `searchFilter` to `initialState`:
@@ -116,12 +116,12 @@ In `src/redux/slices/transactionSlice.js`:
 In `src/redux/hooks.js`:
 - Export `useSearchFilter = () => useAppSelector(state => state.transactions.searchFilter)`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node test/test_search_filter_slice.js`  
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/redux/slices/transactionSlice.js src/redux/hooks.js test/test_search_filter_slice.js
@@ -140,7 +140,7 @@ git commit -m "feat(redux): add searchFilter state and actions for advanced filt
 - Consumes: SQLite `executeSql` and params `{ amount, note, type, exactDate, month, year, startDate, endDate, categoryId, sourceId }`
 - Produces: `getAdvancedSearchTransactions(params)` filtering by `categoryId` and `sourceId` for both SQLite and Web shim
 
-- [ ] **Step 1: Write test for advanced search filtering by category and source**
+- [x] **Step 1: Write test for advanced search filtering by category and source**
 
 ```javascript
 // test/test_advanced_search_transactions.js
@@ -187,12 +187,12 @@ assert.strictEqual(filterTransactions(mockData, { sourceId: 2 }).length, 2); // 
 console.log('Task 2 tests passed!');
 ```
 
-- [ ] **Step 2: Run test to verify logic**
+- [x] **Step 2: Run test to verify logic**
 
 Run: `node test/test_advanced_search_transactions.js`  
 Expected: PASS
 
-- [ ] **Step 3: Implement Category & Source filter in `getAdvancedSearchTransactions` in `src/services/transactions.js`**
+- [x] **Step 3: Implement Category & Source filter in `getAdvancedSearchTransactions` in `src/services/transactions.js`**
 
 In `src/services/transactions.js`:
 - Destructure `categoryId` and `sourceId` from `params`.
@@ -216,12 +216,12 @@ In `src/services/transactions.js`:
 - In Web fallback branch:
   Filter by `categoryId` and `sourceId` (including checking `toAccount` / `to_account`).
 
-- [ ] **Step 4: Verify syntax with Babel parser**
+- [x] **Step 4: Verify syntax with Babel parser**
 
 Run: `node -e "const fs = require('fs'); const babel = require('@babel/parser'); babel.parse(fs.readFileSync('src/services/transactions.js', 'utf8'), { sourceType: 'module', plugins: ['jsx'] }); console.log('Syntax valid!');"`  
 Expected: `Syntax valid!`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/services/transactions.js test/test_advanced_search_transactions.js
@@ -247,7 +247,7 @@ git commit -m "feat(services): add category and source filtering to getAdvancedS
   - `allLabel`: string (e.g. "All Categories", "All Accounts")
   - `theme`: object
 
-- [ ] **Step 1: Create `src/components/SearchableItemPickerModal.js`**
+- [x] **Step 1: Create `src/components/SearchableItemPickerModal.js`**
 
 Implement reusable modal:
 - Modal container with backdrop and rounded top corners (maxHeight 85%).
@@ -257,7 +257,7 @@ Implement reusable modal:
 - ScrollView with items rendered as 4-column cards (or clean list rows) with item color, icon, name, and checkmark if selected.
 - Tapping an item triggers `onSelect(item.id)` and `onClose()`.
 
-- [ ] **Step 2: Write syntax verification script**
+- [x] **Step 2: Write syntax verification script**
 
 ```javascript
 // test/test_searchable_picker_syntax.js
@@ -268,12 +268,12 @@ babel.parse(code, { sourceType: 'module', plugins: ['jsx'] });
 console.log('SearchableItemPickerModal parsed successfully!');
 ```
 
-- [ ] **Step 3: Run syntax check**
+- [x] **Step 3: Run syntax check**
 
 Run: `node test/test_searchable_picker_syntax.js`  
 Expected: `SearchableItemPickerModal parsed successfully!`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/components/SearchableItemPickerModal.js test/test_searchable_picker_syntax.js
@@ -295,35 +295,35 @@ git commit -m "feat(components): add SearchableItemPickerModal for advanced filt
   - `ContextualFAB`
   - `getAdvancedSearchTransactions` with new `categoryId` & `sourceId`
 
-- [ ] **Step 1: Wire Redux filter state into `SearchScreen.js`**
+- [x] **Step 1: Wire Redux filter state into `SearchScreen.js`**
 - Replace local `useState` for filters with values initialized/synced from Redux `useSearchFilter()`.
 - Add local state for modal picker visibility: `showCategoryPickerModal`, `showSourcePickerModal`.
 - When "Apply Filters" is tapped, dispatch `setSearchFilter(...)` and execute query.
 - When "Reset" is tapped, dispatch `resetSearchFilter(...)` and clear input.
 
-- [ ] **Step 2: Add Account & Category Filter Rows in the Advanced Filters Modal**
+- [x] **Step 2: Add Account & Category Filter Rows in the Advanced Filters Modal**
 - In `SearchScreen.js`, under Transaction Type, add selector cards for Account Source and Category:
   - Display currently selected source (icon, color, name) or "All Accounts".
   - Display currently selected category (icon, color, name) or "All Categories".
   - Tapping opens `SearchableItemPickerModal`.
 
-- [ ] **Step 3: Add `ContextualFAB` on `SearchScreen.js`**
+- [x] **Step 3: Add `ContextualFAB` on `SearchScreen.js`**
 - Place `<ContextualFAB>` at the bottom right with actions:
   - Expense (`#E35D6A`, icon `arrow-down`) -> `navigation.navigate('TransactionAdd', { initialType: 'expense' })`
   - Income (`#3F8F6B`, icon `arrow-up`) -> `navigation.navigate('TransactionAdd', { initialType: 'income' })`
   - Transfer (`#4B7CF3`, icon `swap-horizontal`) -> `navigation.navigate('TransactionAdd', { initialType: 'transfer' })`
 - Ensure SectionList contentContainerStyle has appropriate bottom padding (`paddingBottom: 90`) so transactions are not obscured by the FAB.
 
-- [ ] **Step 4: Ensure Screen Focus & Re-query Persistence**
+- [x] **Step 4: Ensure Screen Focus & Re-query Persistence**
 - In `useFocusEffect`:
   - When returning to the screen (after adding/editing a transaction or navigating from another tab), if `isFilterActive` or `searchQuery` is active, re-execute `fetchAdvanced()` to refresh the results while preserving the filter parameters.
 
-- [ ] **Step 5: Verify syntax of `SearchScreen.js`**
+- [x] **Step 5: Verify syntax of `SearchScreen.js`**
 
 Run: `node -e "const fs = require('fs'); const babel = require('@babel/parser'); babel.parse(fs.readFileSync('src/screens/SearchScreen.js', 'utf8'), { sourceType: 'module', plugins: ['jsx'] }); console.log('SearchScreen syntax valid!');"`  
 Expected: `SearchScreen syntax valid!`
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/screens/SearchScreen.js
@@ -337,7 +337,7 @@ git commit -m "feat(screens): integrate ContextualFAB, category/source pickers, 
 **Files:**
 - Test: `test/test_e2e_advanced_filters.js`
 
-- [ ] **Step 1: Write and run end-to-end integration test**
+- [x] **Step 1: Write and run end-to-end integration test**
 
 ```javascript
 // test/test_e2e_advanced_filters.js
@@ -373,12 +373,12 @@ assert.strictEqual(state.searchFilter.advSourceId, null);
 console.log('All E2E checks passed successfully!');
 ```
 
-- [ ] **Step 2: Run E2E check**
+- [x] **Step 2: Run E2E check**
 
 Run: `node test/test_e2e_advanced_filters.js`  
 Expected: `All E2E checks passed successfully!`
 
-- [ ] **Step 3: Cleanup temporary test scripts**
+- [x] **Step 3: Cleanup temporary test scripts**
 
 ```bash
 rm test/test_search_filter_slice.js test/test_advanced_search_transactions.js test/test_searchable_picker_syntax.js test/test_e2e_advanced_filters.js
