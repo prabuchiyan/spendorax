@@ -34,19 +34,19 @@
 - Modify: `src/components/PaperAddRowModal.js`
 - Test: `test/test_paper_ledger_edit_modal.js`
 
-- [ ] **Step 1: Write test for edit modal logic and props**
+- [x] **Step 1: Write test for edit modal logic and props**
   Create `test/test_paper_ledger_edit_modal.js` verifying that initial item data populates title, amount, and type, and that submission outputs an updated object preserving the item ID.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   Run `node test/test_paper_ledger_edit_modal.js`.
-- [ ] **Step 3: Implement edit capabilities in `PaperAddRowModal.js`**
+- [x] **Step 3: Implement edit capabilities in `PaperAddRowModal.js`**
   - Add `initialItem` prop (default `null`).
   - Add `useEffect` to sync form values (`title`, `amount`, `type`) when `initialItem` or `visible` changes.
   - Dynamically render title: `initialItem ? 'Edit Paper Entry' : 'Add Paper Entry'`.
   - Dynamically render button text: `initialItem ? 'Save Changes' : 'Add Line'`.
   - Pass edited object (including existing `initialItem.id`) to `onAdd` / `onSave`.
-- [ ] **Step 4: Verify test passes**
+- [x] **Step 4: Verify test passes**
   Run `node test/test_paper_ledger_edit_modal.js`.
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   Git commit Task 1.
 
 ---
@@ -57,13 +57,13 @@
 - Modify: `src/components/PaperSwipeableRow.js`
 - Test: `test/test_paper_ledger_swipe_actions.js`
 
-- [ ] **Step 1: Write unit test for swipe gesture direction resolution**
+- [x] **Step 1: Write unit test for swipe gesture direction resolution**
   Create `test/test_paper_ledger_swipe_actions.js` asserting:
   - `dx < -40` triggers `onRequestEdit`.
   - `dx > 40` triggers `onRequestDelete`.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   Run `node test/test_paper_ledger_swipe_actions.js`.
-- [ ] **Step 3: Update `PaperSwipeableRow.js`**
+- [x] **Step 3: Update `PaperSwipeableRow.js`**
   - Add `onRequestEdit` prop.
   - Separate background actions:
     - Left background: Red container (`#EF4444`) with `trash-can-outline` and "Delete" label.
@@ -72,9 +72,9 @@
     - If `gestureState.dx > 40` or `gestureState.vx > 0.3`: snap to `+80` and call `onRequestDelete(item, resetPosition)`.
     - If `gestureState.dx < -40` or `gestureState.vx < -0.3`: snap to `-80` and call `onRequestEdit(item, resetPosition)`.
   - Wrap both action indicators in `TouchableOpacity` so tapping directly triggers the action.
-- [ ] **Step 4: Verify test passes & Babel check**
+- [x] **Step 4: Verify test passes & Babel check**
   Run `node test/test_paper_ledger_swipe_actions.js` and Babel syntax check.
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   Git commit Task 2.
 
 ---
@@ -85,16 +85,16 @@
 - Modify: `src/screens/PaperLedgerScreen.js`
 - Test: `test/test_paper_ledger_e2e.js`
 
-- [ ] **Step 1: Update `PaperLedgerScreen.js`**
+- [x] **Step 1: Update `PaperLedgerScreen.js`**
   - Add `editingItem` state (`null` when not editing).
   - Implement `handleOpenEdit(item, resetRow)` to set `editingItem` and open modal.
   - Implement `handleSaveEdit(updatedItem)` to update `items` in state by `id` and recalculate.
   - Pass `onRequestEdit={handleOpenEdit}` to `PaperSwipeableRow`.
   - Connect `PaperAddRowModal` with `initialItem={editingItem}` and `onClose={() => { setIsAddModalVisible(false); setEditingItem(null); }}`.
   - Update guide hint in notebook tape: `"Swipe right to delete • Swipe left to edit • Tap Select for bulk"`.
-- [ ] **Step 2: Update and run all tests**
+- [x] **Step 2: Update and run all tests**
   Update `test/test_paper_ledger_e2e.js` to test in-place editing and balance recalculation.
   Run full test suite:
   `node test/test_paper_ledger_utils.js; node test/test_paper_ledger_fixes.js; node test/test_paper_ledger_multiselect.js; node test/test_paper_ledger_swipe_actions.js; node test/test_paper_ledger_edit_modal.js; node test/test_paper_ledger_e2e.js`
-- [ ] **Step 3: Commit changes**
+- [x] **Step 3: Commit changes**
   Git commit Task 3.
