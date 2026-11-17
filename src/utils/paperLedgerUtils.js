@@ -46,9 +46,10 @@ function formatLedgerAmount(amount, symbol = '₹') {
   const num = Number(amount) || 0;
   const isNegative = num < 0;
   const absNum = Math.abs(num);
+  const isInteger = Number.isInteger(absNum);
   const formatted = absNum.toLocaleString('en-IN', {
     maximumFractionDigits: 2,
-    minimumFractionDigits: 0
+    minimumFractionDigits: isInteger ? 0 : 2
   });
   return `${isNegative ? '-' : ''}${symbol}${formatted}`;
 }
@@ -80,7 +81,8 @@ function formatWhatsAppLedgerText(items = [], netTotal = 0, dateStr = '') {
       const serial = `${index + 1}) `;
       const isIncome = String(item.type || '').toLowerCase() === 'income';
       const typeLabel = isIncome ? '[+]' : '[-]';
-      const cleanTitle = (item.title || (isIncome ? 'Income' : 'Expense')).trim();
+      const rawTitle = (item.title || (isIncome ? 'Income' : 'Expense')).trim();
+      const cleanTitle = rawTitle.replace(/\r?\n+/g, ' ');
       const amtStr = `${isIncome ? '+' : '-'}${formatLedgerAmount(item.amount)}`;
       
       lines.push(`${serial}${cleanTitle} ${typeLabel}`);
@@ -89,7 +91,7 @@ function formatWhatsAppLedgerText(items = [], netTotal = 0, dateStr = '') {
   }
 
   lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━');
-  const netSign = netTotal >= 0 ? '+' : '';
+  const netSign = netTotal > 0 ? '+' : '';
   lines.push(`*Total (Net):*  *${netSign}${formatLedgerAmount(netTotal)}*`);
   lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━');
   lines.push('Shared via SpendoraX Paper Ledger');
@@ -128,3 +130,4 @@ module.exports = {
   formatWhatsAppLedgerText,
   mapDbTransactionsToPaperItems
 };
+

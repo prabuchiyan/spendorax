@@ -85,3 +85,4 @@ assert.ok(emptyWaText.includes('_No transactions in ledger_'));
 console.log('   ✓ Empty state handled gracefully');
 
 console.log('\n=== All End-to-End Tests Passed Successfully! ===');
+

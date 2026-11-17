@@ -182,7 +182,10 @@ export default function PaperAddRowModal({ visible, onClose, onAdd }) {
                 placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
                 value={amount}
                 onChangeText={(a) => {
-                  setAmount(a.replace(/[^0-9.]/g, ''));
+                  const sanitized = a.replace(/[^0-9.]/g, '');
+                  const parts = sanitized.split('.');
+                  const clean = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : sanitized;
+                  setAmount(clean);
                   if (error) setError('');
                 }}
                 keyboardType="decimal-pad"
@@ -333,3 +336,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+

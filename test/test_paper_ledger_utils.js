@@ -52,3 +52,4 @@ assert.strictEqual(mapped[0].amount, 1200, 'Should retain amount');
 assert.strictEqual(mapped[1].title, 'Food', 'Should fall back to category_name');
 
 console.log('Task 1 tests passed successfully!');
+

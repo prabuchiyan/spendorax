@@ -119,7 +119,7 @@ export default function PaperLedgerScreen({ navigation }) {
         // Compute start and end ISO dates for the chosen month
         const lastDay = new Date(year, month, 0).getDate();
         const startStr = `${monthStr}-01T00:00:00`;
-        const endStr = `${monthStr}-${String(lastDay).padStart(2, '0')}T23:59:59`;
+        const endStr = `${monthStr}-${String(lastDay).padStart(2, '0')}T23:59:59.999Z`;
 
         const txs = await getTransactionsByDateRange(null, startStr, endStr);
         // Keep only income and expense
@@ -169,7 +169,7 @@ export default function PaperLedgerScreen({ navigation }) {
       const lastDay = new Date(year, month, 0).getDate();
 
       const startStr = `${firstMonth}-01T00:00:00`;
-      const endStr = `${lastMonth}-${String(lastDay).padStart(2, '0')}T23:59:59`;
+      const endStr = `${lastMonth}-${String(lastDay).padStart(2, '0')}T23:59:59.999Z`;
 
       const txs = await getTransactionsByDateRange(null, startStr, endStr);
       const validTxs = (txs || []).filter(
@@ -179,8 +179,8 @@ export default function PaperLedgerScreen({ navigation }) {
       );
 
       const newItems = mapDbTransactionsToPaperItems(validTxs, categoriesMap);
-      setItems(newItems);
-      Alert.alert('Imported All', `Loaded ${newItems.length} transactions across all months.`);
+      setItems((prev) => [...prev, ...newItems]);
+      Alert.alert('Imported All', `Added ${newItems.length} transactions across all months.`);
     } catch (err) {
       console.error('Error importing all transactions:', err);
       Alert.alert('Error', 'Failed to import all transactions.');
@@ -464,10 +464,11 @@ export default function PaperLedgerScreen({ navigation }) {
                     <Text
                       style={[
                         styles.amountText,
-                        { color: isIncome ? '#10B981' : textColor },
+                        { color: isIncome ? '#10B981' : '#EF4444' },
                       ]}
                       numberOfLines={1}
                       adjustsFontSizeToFit
+                      minimumFontScale={0.7}
                     >
                       {isIncome ? '+' : '-'}
                       {formatLedgerAmount(item.amount)}
@@ -527,10 +528,10 @@ export default function PaperLedgerScreen({ navigation }) {
               </View>
               <View style={styles.breakdownPillContainer}>
                 <Text style={styles.breakdownIncome}>
-                  +{formatLedgerAmount(totals.totalIncome)}
+                  {totals.totalIncome > 0 ? '+' : ''}{formatLedgerAmount(totals.totalIncome)}
                 </Text>
                 <Text style={styles.breakdownExpense}>
-                  −{formatLedgerAmount(totals.totalExpense)}
+                  {totals.totalExpense > 0 ? '−' : ''}{formatLedgerAmount(totals.totalExpense)}
                 </Text>
               </View>
             </View>
@@ -542,15 +543,18 @@ export default function PaperLedgerScreen({ navigation }) {
                   styles.totalAmountText,
                   {
                     color:
-                      totals.netTotal >= 0
+                      totals.netTotal > 0
                         ? '#10B981'
-                        : '#EF4444',
+                        : totals.netTotal < 0
+                        ? '#EF4444'
+                        : textColor,
                   },
                 ]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
+                minimumFontScale={0.7}
               >
-                {totals.netTotal >= 0 ? '+' : ''}
+                {totals.netTotal > 0 ? '+' : ''}
                 {formatLedgerAmount(totals.netTotal)}
               </Text>
             </View>
@@ -722,11 +726,11 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   col80: {
-    width: '78%',
+    width: '76%',
     borderRightWidth: 1.5,
   },
   col20: {
-    width: '22%',
+    width: '24%',
   },
   tableRow: {
     flexDirection: 'row',
@@ -735,12 +739,13 @@ const styles = StyleSheet.create({
   },
   cell80: {
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     justifyContent: 'center',
   },
   cell20: {
     paddingVertical: 8,
-    paddingHorizontal: 10,
+    paddingLeft: 2,
+    paddingRight: 8,
     justifyContent: 'center',
     alignItems: 'flex-end',
   },
@@ -811,13 +816,14 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   totalCol20: {
-    paddingHorizontal: 10,
+    paddingLeft: 2,
+    paddingRight: 8,
     paddingVertical: 4,
     justifyContent: 'center',
     alignItems: 'flex-end',
   },
   totalLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
@@ -840,7 +846,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   totalAmountText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     textAlign: 'right',
   },
@@ -849,3 +855,4 @@ const styles = StyleSheet.create({
     height: 4,
   },
 });
+

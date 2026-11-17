@@ -223,3 +223,4 @@ Run node verification script to ensure both files compile and export properly wi
 - [ ] **Step 2: Verify app bundling / syntax integrity**
 
 Run `expo doctor` or node checks to verify no dependency or syntax issues.
+
