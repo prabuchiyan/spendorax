@@ -92,11 +92,11 @@ export default function PaperSwipeableRow({
   // Render row content
   const rowContent = (
     <>
-      {/* 75% Left: Checkbox (if selection mode), Serial, Description, Badge */}
+      {/* 65% Left: Checkbox (if selection mode), Serial, Description, Badge */}
       <View
         style={[
-          styles.col75,
-          styles.cell75,
+          styles.col65,
+          styles.cell65,
           { borderRightColor: redMarginLine },
         ]}
       >
@@ -150,8 +150,8 @@ export default function PaperSwipeableRow({
         </View>
       </View>
 
-      {/* 25% Right: Amount Only */}
-      <View style={[styles.col25, styles.cell25]}>
+      {/* 35% Right: Amount Only */}
+      <View style={[styles.col35, styles.cell35]}>
         <Text
           style={[
             styles.amountText,
@@ -278,22 +278,22 @@ const styles = StyleSheet.create({
     width: '100%',
     minHeight: 52,
   },
-  col75: {
-    width: '75%',
+  col65: {
+    width: '65%',
     borderRightWidth: 1.5,
   },
-  col25: {
-    width: '25%',
+  col35: {
+    width: '35%',
   },
-  cell75: {
+  cell65: {
     paddingVertical: 8,
     paddingHorizontal: 10,
     justifyContent: 'center',
   },
-  cell25: {
+  cell35: {
     paddingVertical: 8,
-    paddingLeft: 2,
-    paddingRight: 8,
+    paddingLeft: 4,
+    paddingRight: 10,
     justifyContent: 'center',
     alignItems: 'flex-end',
   },

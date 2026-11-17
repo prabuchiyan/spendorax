@@ -570,7 +570,7 @@ export default function PaperLedgerScreen({ navigation }) {
             </View>
           </View>
 
-          {/* Paper Table Header (75% / 25%) */}
+          {/* Paper Table Header (65% / 35%) */}
           <View
             style={[
               styles.tableRowHeader,
@@ -580,10 +580,10 @@ export default function PaperLedgerScreen({ navigation }) {
               },
             ]}
           >
-            {/* 75% Left Header */}
+            {/* 65% Left Header */}
             <View
               style={[
-                styles.col75,
+                styles.col65,
                 styles.headerCol,
                 { borderRightColor: redMarginLine },
               ]}
@@ -603,8 +603,8 @@ export default function PaperLedgerScreen({ navigation }) {
               </View>
             </View>
 
-            {/* 25% Right Header */}
-            <View style={[styles.col25, styles.headerCol]}>
+            {/* 35% Right Header */}
+            <View style={[styles.col35, styles.headerCol]}>
               <Text
                 style={[styles.headerLabelRight, { color: textMuted }]}
                 numberOfLines={1}
@@ -669,17 +669,17 @@ export default function PaperLedgerScreen({ navigation }) {
               >
                 <View
                   style={[
-                    styles.col75,
-                    styles.cell75,
+                    styles.col65,
+                    styles.cell65,
                     { borderRightColor: redMarginLine },
                   ]}
                 />
-                <View style={[styles.col25, styles.cell25]} />
+                <View style={[styles.col35, styles.cell35]} />
               </View>
             ))
           )}
 
-          {/* Bottom Total Row with continuing 75% / 25% vertical divide */}
+          {/* Bottom Total Row with continuing 65% / 35% vertical divide */}
           <View
             style={[
               styles.totalRow,
@@ -690,11 +690,11 @@ export default function PaperLedgerScreen({ navigation }) {
               },
             ]}
           >
-            {/* 75% Bottom: "Total" */}
+            {/* 65% Bottom: "Total" */}
             <View
               style={[
-                styles.col75,
-                styles.totalCol75,
+                styles.col65,
+                styles.totalCol65,
                 { borderRightColor: redMarginLine },
               ]}
             >
@@ -714,8 +714,8 @@ export default function PaperLedgerScreen({ navigation }) {
               </View>
             </View>
 
-            {/* 25% Bottom: Net Total Amount */}
-            <View style={[styles.col25, styles.totalCol25]}>
+            {/* 35% Bottom: Net Total Amount */}
+            <View style={[styles.col35, styles.totalCol35]}>
               <Text
                 style={[
                   styles.totalAmountText,
@@ -960,27 +960,27 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     textAlign: 'right',
   },
-  col75: {
-    width: '75%',
+  col65: {
+    width: '65%',
     borderRightWidth: 1.5,
   },
-  col25: {
-    width: '25%',
+  col35: {
+    width: '35%',
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     minHeight: 52,
   },
-  cell75: {
+  cell65: {
     paddingVertical: 8,
     paddingHorizontal: 10,
     justifyContent: 'center',
   },
-  cell25: {
+  cell35: {
     paddingVertical: 8,
-    paddingLeft: 2,
-    paddingRight: 8,
+    paddingLeft: 4,
+    paddingRight: 10,
     justifyContent: 'center',
     alignItems: 'flex-end',
   },
@@ -1007,16 +1007,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     paddingVertical: 10,
   },
-  totalCol75: {
+  totalCol65: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  totalCol25: {
-    paddingLeft: 2,
-    paddingRight: 8,
+  totalCol35: {
+    paddingLeft: 4,
+    paddingRight: 10,
     paddingVertical: 4,
     justifyContent: 'center',
     alignItems: 'flex-end',
