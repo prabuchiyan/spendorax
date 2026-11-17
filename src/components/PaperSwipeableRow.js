@@ -21,6 +21,10 @@ export default function PaperSwipeableRow({
   textColor,
   textMuted,
   isDarkMode,
+  isSelectionMode = false,
+  isSelected = false,
+  onToggleSelect,
+  onLongPress,
 }) {
   const pan = useRef(new Animated.Value(0)).current;
 
@@ -35,6 +39,8 @@ export default function PaperSwipeableRow({
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Disable swipe gesture in selection mode
+        if (isSelectionMode) return false;
         // Only claim gesture if horizontal movement is dominant
         return (
           Math.abs(gestureState.dx) > 15 &&
@@ -42,7 +48,6 @@ export default function PaperSwipeableRow({
         );
       },
       onPanResponderMove: (_, gestureState) => {
-        // Direct tracking with subtle resistance for large gestures
         pan.setValue(gestureState.dx);
       },
       onPanResponderRelease: (_, gestureState) => {
@@ -68,104 +73,150 @@ export default function PaperSwipeableRow({
   ).current;
 
   const serialNo = `${index + 1}) `;
+  const effectiveBg = isSelected
+    ? isDarkMode
+      ? '#1C2940'
+      : '#EBF3FF'
+    : paperBg;
 
-  return (
-    <View style={[styles.container, { borderBottomColor: ruledLineColor }]}>
-      {/* Background reveal showing delete actions on both left and right swipe */}
-      <View style={styles.backgroundDelete}>
-        <TouchableOpacity
-          style={styles.leftDeleteIndicator}
-          onPress={() => onRequestDelete(item, resetPosition)}
-          activeOpacity={0.8}
-        >
-          <MaterialCommunityIcons name="trash-can-outline" size={20} color="#FFF" />
-          <Text style={styles.deleteText}>Delete</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.rightDeleteIndicator}
-          onPress={() => onRequestDelete(item, resetPosition)}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.deleteText}>Delete</Text>
-          <MaterialCommunityIcons name="trash-can-outline" size={20} color="#FFF" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Foreground paper row */}
-      <Animated.View
+  // Render row content
+  const rowContent = (
+    <>
+      {/* 75% Left: Checkbox (if selection mode), Serial, Description, Badge */}
+      <View
         style={[
-          styles.rowForeground,
-          {
-            backgroundColor: paperBg,
-            transform: [{ translateX: pan }],
-          },
+          styles.col75,
+          styles.cell75,
+          { borderRightColor: redMarginLine },
         ]}
-        {...panResponder.panHandlers}
       >
-        {/* 75% Left: Serial, Description, Badge */}
-        <View
-          style={[
-            styles.col75,
-            styles.cell75,
-            { borderRightColor: redMarginLine },
-          ]}
-        >
-          <View style={styles.rowMain}>
-            <Text style={[styles.serialText, { color: textMuted }]}>
-              {serialNo}
+        <View style={styles.rowMain}>
+          {isSelectionMode && (
+            <MaterialCommunityIcons
+              name={isSelected ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
+              size={20}
+              color={isSelected ? '#3B82F6' : textMuted}
+              style={{ marginRight: 6 }}
+            />
+          )}
+
+          <Text style={[styles.serialText, { color: textMuted }]}>
+            {serialNo}
+          </Text>
+
+          <View style={{ flex: 1, paddingRight: 4 }}>
+            <Text
+              style={[styles.itemTitle, { color: textColor }]}
+              numberOfLines={2}
+            >
+              {item.title}
             </Text>
-            <View style={{ flex: 1, paddingRight: 4 }}>
-              <Text
-                style={[styles.itemTitle, { color: textColor }]}
-                numberOfLines={2}
+            <View style={styles.badgeRow}>
+              <View
+                style={[
+                  styles.typeBadge,
+                  {
+                    backgroundColor: isIncome
+                      ? isDarkMode
+                        ? '#0A3324'
+                        : '#E6F9F0'
+                      : isDarkMode
+                      ? '#3B171C'
+                      : '#FEECEC',
+                  },
+                ]}
               >
-                {item.title}
-              </Text>
-              <View style={styles.badgeRow}>
-                <View
+                <Text
                   style={[
-                    styles.typeBadge,
-                    {
-                      backgroundColor: isIncome
-                        ? isDarkMode
-                          ? '#0A3324'
-                          : '#E6F9F0'
-                        : isDarkMode
-                        ? '#3B171C'
-                        : '#FEECEC',
-                    },
+                    styles.typeBadgeText,
+                    { color: isIncome ? '#10B981' : '#EF4444' },
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.typeBadgeText,
-                      { color: isIncome ? '#10B981' : '#EF4444' },
-                    ]}
-                  >
-                    {isIncome ? '+ Income' : '- Expense'}
-                  </Text>
-                </View>
+                  {isIncome ? '+ Income' : '- Expense'}
+                </Text>
               </View>
             </View>
           </View>
         </View>
+      </View>
 
-        {/* 25% Right: Amount Only */}
-        <View style={[styles.col25, styles.cell25]}>
-          <Text
-            style={[
-              styles.amountText,
-              { color: isIncome ? '#10B981' : '#EF4444' },
-            ]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.65}
+      {/* 25% Right: Amount Only */}
+      <View style={[styles.col25, styles.cell25]}>
+        <Text
+          style={[
+            styles.amountText,
+            { color: isIncome ? '#10B981' : '#EF4444' },
+          ]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.65}
+        >
+          {isIncome ? '+' : '-'}
+          {formatLedgerAmount(item.amount)}
+        </Text>
+      </View>
+    </>
+  );
+
+  return (
+    <View style={[styles.container, { borderBottomColor: ruledLineColor }]}>
+      {/* Background reveal showing delete actions on both left and right swipe (hidden in selection mode) */}
+      {!isSelectionMode && (
+        <View style={styles.backgroundDelete}>
+          <TouchableOpacity
+            style={styles.leftDeleteIndicator}
+            onPress={() => onRequestDelete(item, resetPosition)}
+            activeOpacity={0.8}
           >
-            {isIncome ? '+' : '-'}
-            {formatLedgerAmount(item.amount)}
-          </Text>
+            <MaterialCommunityIcons name="trash-can-outline" size={20} color="#FFF" />
+            <Text style={styles.deleteText}>Delete</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.rightDeleteIndicator}
+            onPress={() => onRequestDelete(item, resetPosition)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.deleteText}>Delete</Text>
+            <MaterialCommunityIcons name="trash-can-outline" size={20} color="#FFF" />
+          </TouchableOpacity>
         </View>
-      </Animated.View>
+      )}
+
+      {/* Foreground paper row */}
+      {isSelectionMode ? (
+        <TouchableOpacity
+          style={[
+            styles.rowForeground,
+            {
+              backgroundColor: effectiveBg,
+            },
+          ]}
+          onPress={() => onToggleSelect && onToggleSelect(item.id)}
+          activeOpacity={0.7}
+        >
+          {rowContent}
+        </TouchableOpacity>
+      ) : (
+        <Animated.View
+          style={[
+            styles.rowForeground,
+            {
+              backgroundColor: effectiveBg,
+              transform: [{ translateX: pan }],
+            },
+          ]}
+          {...panResponder.panHandlers}
+        >
+          <TouchableOpacity
+            style={styles.touchableWrapper}
+            onLongPress={() => onLongPress && onLongPress(item.id)}
+            delayLongPress={300}
+            activeOpacity={0.9}
+          >
+            {rowContent}
+          </TouchableOpacity>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -202,6 +253,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   rowForeground: {
+    flexDirection: 'row',
+    width: '100%',
+    minHeight: 52,
+  },
+  touchableWrapper: {
     flexDirection: 'row',
     width: '100%',
     minHeight: 52,
@@ -258,4 +314,3 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 });
-

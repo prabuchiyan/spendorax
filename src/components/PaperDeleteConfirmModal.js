@@ -21,7 +21,8 @@ export default function PaperDeleteConfirmModal({
 
   if (!item) return null;
 
-  const isIncome = item.type === 'income';
+  const isBatch = Boolean(item.isBatch);
+  const isIncome = !isBatch && item.type === 'income';
 
   return (
     <Modal
@@ -55,13 +56,15 @@ export default function PaperDeleteConfirmModal({
 
               {/* Title & Warning Message */}
               <Text style={[styles.title, { color: theme.textPrimary }]}>
-                Delete Entry?
+                {isBatch ? `Delete ${item.count} Entries?` : 'Delete Entry?'}
               </Text>
               <Text style={[styles.message, { color: theme.textSecondary }]}>
-                Are you sure you want to remove this transaction from the calculation sheet?
+                {isBatch
+                  ? `Are you sure you want to remove these ${item.count} selected transactions from the calculation sheet?`
+                  : 'Are you sure you want to remove this transaction from the calculation sheet?'}
               </Text>
 
-              {/* Item Preview Card */}
+              {/* Item / Batch Preview Card */}
               <View
                 style={[
                   styles.itemPreview,
@@ -71,32 +74,56 @@ export default function PaperDeleteConfirmModal({
                   },
                 ]}
               >
-                <View style={{ flex: 1, paddingRight: 8 }}>
-                  <Text
-                    style={[styles.itemTitle, { color: theme.textPrimary }]}
-                    numberOfLines={2}
-                  >
-                    {item.title}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.itemType,
-                      { color: isIncome ? '#10B981' : '#EF4444' },
-                    ]}
-                  >
-                    {isIncome ? 'Income (+)' : 'Expense (−)'}
-                  </Text>
-                </View>
+                {isBatch ? (
+                  <>
+                    <View style={{ flex: 1, paddingRight: 8 }}>
+                      <Text
+                        style={[styles.itemTitle, { color: theme.textPrimary }]}
+                        numberOfLines={1}
+                      >
+                        {item.count} Transactions Selected
+                      </Text>
+                      <Text style={[styles.itemType, { color: '#EF4444' }]}>
+                        Will be removed from sheet
+                      </Text>
+                    </View>
 
-                <Text
-                  style={[
-                    styles.itemAmount,
-                    { color: isIncome ? '#10B981' : '#EF4444' },
-                  ]}
-                >
-                  {isIncome ? '+' : '−'}
-                  {formatLedgerAmount(item.amount)}
-                </Text>
+                    {item.totalAmount != null && (
+                      <Text style={[styles.itemAmount, { color: theme.textPrimary }]}>
+                        {formatLedgerAmount(item.totalAmount)}
+                      </Text>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <View style={{ flex: 1, paddingRight: 8 }}>
+                      <Text
+                        style={[styles.itemTitle, { color: theme.textPrimary }]}
+                        numberOfLines={2}
+                      >
+                        {item.title}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.itemType,
+                          { color: isIncome ? '#10B981' : '#EF4444' },
+                        ]}
+                      >
+                        {isIncome ? 'Income (+)' : 'Expense (−)'}
+                      </Text>
+                    </View>
+
+                    <Text
+                      style={[
+                        styles.itemAmount,
+                        { color: isIncome ? '#10B981' : '#EF4444' },
+                      ]}
+                    >
+                      {isIncome ? '+' : '−'}
+                      {formatLedgerAmount(item.amount)}
+                    </Text>
+                  </>
+                )}
               </View>
 
               {/* Action Buttons */}
@@ -127,7 +154,9 @@ export default function PaperDeleteConfirmModal({
                     color="#FFF"
                     style={{ marginRight: 6 }}
                   />
-                  <Text style={styles.deleteBtnText}>Delete</Text>
+                  <Text style={styles.deleteBtnText}>
+                    {isBatch ? `Delete (${item.count})` : 'Delete'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>

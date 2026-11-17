@@ -43,6 +43,10 @@ export default function PaperLedgerScreen({ navigation }) {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [resetRowCallback, setResetRowCallback] = useState(null);
 
+  // Multi-select state
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+
   // Load categories and available months on mount
   useEffect(() => {
     let isMounted = true;
@@ -94,6 +98,56 @@ export default function PaperLedgerScreen({ navigation }) {
     setItems((prev) => prev.filter((it) => it.id !== rowId));
   }, []);
 
+  // Multi-select handlers
+  const handleToggleSelect = useCallback((id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    if (selectedIds.size === items.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(items.map((it) => it.id)));
+    }
+  }, [selectedIds.size, items]);
+
+  const handleEnterSelectionMode = useCallback((initialId = null) => {
+    setIsSelectionMode(true);
+    if (initialId) {
+      setSelectedIds(new Set([initialId]));
+    } else {
+      setSelectedIds(new Set());
+    }
+  }, []);
+
+  const handleExitSelectionMode = useCallback(() => {
+    setIsSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const handlePromptDeleteSelected = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    const selectedItems = items.filter((it) => selectedIds.has(it.id));
+    const selectedAmount = selectedItems.reduce(
+      (acc, it) => acc + (Number(it.amount) || 0),
+      0
+    );
+
+    setItemToDelete({
+      isBatch: true,
+      count: selectedIds.size,
+      totalAmount: selectedAmount,
+    });
+  }, [selectedIds, items]);
+
   // Request delete with cross-platform confirmation dialog (works on Web, iOS, Android)
   const requestDeleteRow = useCallback((item, onCancel) => {
     setItemToDelete(item);
@@ -102,11 +156,17 @@ export default function PaperLedgerScreen({ navigation }) {
 
   const handleConfirmDelete = useCallback(() => {
     if (itemToDelete) {
-      handleDeleteRow(itemToDelete.id);
+      if (itemToDelete.isBatch) {
+        setItems((prev) => prev.filter((it) => !selectedIds.has(it.id)));
+        setSelectedIds(new Set());
+        setIsSelectionMode(false);
+      } else {
+        handleDeleteRow(itemToDelete.id);
+      }
       setItemToDelete(null);
       setResetRowCallback(null);
     }
-  }, [itemToDelete, handleDeleteRow]);
+  }, [itemToDelete, selectedIds, handleDeleteRow]);
 
   const handleCancelDelete = useCallback(() => {
     if (resetRowCallback) {
@@ -267,73 +327,165 @@ export default function PaperLedgerScreen({ navigation }) {
   return (
     <View style={[styles.screen, { backgroundColor: isDarkMode ? '#0F1218' : '#F1F4F9' }]}>
       {/* Top Toolbar Action Bar */}
-      <View
-        style={[
-          styles.toolbar,
-          {
-            backgroundColor: isDarkMode ? '#19202C' : '#FFFFFF',
-            borderBottomColor: isDarkMode ? '#283244' : '#E2E8F0',
-          },
-        ]}
-      >
-        <View style={styles.toolbarLeft}>
-          <TouchableOpacity
-            style={[styles.toolButton, { backgroundColor: Colors.primary }]}
-            onPress={() => setIsMonthModalVisible(true)}
-            activeOpacity={0.8}
-            disabled={importing}
-          >
-            {importing ? (
-              <ActivityIndicator size="small" color="#FFF" />
-            ) : (
-              <MaterialCommunityIcons name="calendar-import" size={17} color="#FFF" />
-            )}
-            <Text style={styles.toolButtonText}>Import Month</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.toolButtonOutline,
-              {
-                borderColor: Colors.primary,
-                backgroundColor: isDarkMode ? '#14223A' : '#EFF6FF',
-              },
-            ]}
-            onPress={() => setIsAddModalVisible(true)}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="plus" size={17} color={Colors.primary} />
-            <Text style={[styles.toolButtonOutlineText, { color: Colors.primary }]}>
-              Add Line
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.toolbarRight}>
-          {items.length > 0 && (
+      {isSelectionMode ? (
+        <View
+          style={[
+            styles.toolbar,
+            {
+              backgroundColor: isDarkMode ? '#1E2533' : '#EFF6FF',
+              borderBottomColor: isDarkMode ? '#2D3A50' : '#BFDBFE',
+            },
+          ]}
+        >
+          <View style={styles.toolbarLeft}>
             <TouchableOpacity
               style={[
-                styles.iconActionBtn,
-                { backgroundColor: isDarkMode ? '#2A1B20' : '#FEE2E2' },
+                styles.toolButtonOutline,
+                {
+                  borderColor: isDarkMode ? '#3B4863' : '#CBD5E1',
+                  backgroundColor: isDarkMode ? '#171E2B' : '#FFFFFF',
+                },
               ]}
-              onPress={handleClearAll}
-              activeOpacity={0.7}
-              title="Clear all entries"
+              onPress={handleExitSelectionMode}
+              activeOpacity={0.8}
             >
-              <MaterialCommunityIcons name="trash-can-outline" size={19} color="#EF4444" />
+              <MaterialCommunityIcons name="close" size={17} color={theme.textPrimary} />
+              <Text style={[styles.toolButtonOutlineText, { color: theme.textPrimary }]}>
+                Cancel
+              </Text>
             </TouchableOpacity>
-          )}
 
-          <TouchableOpacity
-            style={[styles.shareBtn, { backgroundColor: '#25D366' }]}
-            onPress={handleShareToWhatsApp}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="whatsapp" size={18} color="#FFF" />
-            <Text style={styles.shareBtnText}>Share</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.toolButtonOutline,
+                {
+                  borderColor: Colors.primary,
+                  backgroundColor: isDarkMode ? '#172544' : '#DBEAFE',
+                },
+              ]}
+              onPress={handleSelectAll}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons
+                name={
+                  selectedIds.size === items.length && items.length > 0
+                    ? 'checkbox-marked'
+                    : 'checkbox-blank-outline'
+                }
+                size={17}
+                color={Colors.primary}
+              />
+              <Text style={[styles.toolButtonOutlineText, { color: Colors.primary }]}>
+                {selectedIds.size === items.length && items.length > 0
+                  ? 'Deselect All'
+                  : 'Select All'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.toolbarRight}>
+            <Text style={[styles.selectionCountText, { color: theme.textSecondary }]}>
+              {selectedIds.size} selected
+            </Text>
+
+            <TouchableOpacity
+              style={[
+                styles.deleteSelectedBtn,
+                {
+                  backgroundColor:
+                    selectedIds.size > 0 ? '#EF4444' : isDarkMode ? '#332025' : '#FCA5A5',
+                  opacity: selectedIds.size > 0 ? 1 : 0.6,
+                },
+              ]}
+              onPress={handlePromptDeleteSelected}
+              disabled={selectedIds.size === 0}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="trash-can-outline" size={16} color="#FFF" />
+              <Text style={styles.deleteSelectedBtnText}>
+                Delete ({selectedIds.size})
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      ) : (
+        <View
+          style={[
+            styles.toolbar,
+            {
+              backgroundColor: isDarkMode ? '#19202C' : '#FFFFFF',
+              borderBottomColor: isDarkMode ? '#283244' : '#E2E8F0',
+            },
+          ]}
+        >
+          <View style={styles.toolbarLeft}>
+            <TouchableOpacity
+              style={[styles.toolButton, { backgroundColor: Colors.primary }]}
+              onPress={() => setIsMonthModalVisible(true)}
+              activeOpacity={0.8}
+              disabled={importing}
+            >
+              {importing ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <MaterialCommunityIcons name="calendar-import" size={17} color="#FFF" />
+              )}
+              <Text style={styles.toolButtonText}>Import Month</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.toolButtonOutline,
+                {
+                  borderColor: Colors.primary,
+                  backgroundColor: isDarkMode ? '#14223A' : '#EFF6FF',
+                },
+              ]}
+              onPress={() => setIsAddModalVisible(true)}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="plus" size={17} color={Colors.primary} />
+              <Text style={[styles.toolButtonOutlineText, { color: Colors.primary }]}>
+                Add Line
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.toolbarRight}>
+            {items.length > 0 && (
+              <TouchableOpacity
+                style={[
+                  styles.toolButtonOutline,
+                  {
+                    borderColor: isDarkMode ? '#374151' : '#CBD5E1',
+                    backgroundColor: isDarkMode ? '#1F2937' : '#F8FAFC',
+                  },
+                ]}
+                onPress={() => handleEnterSelectionMode()}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons
+                  name="checkbox-multiple-marked-outline"
+                  size={16}
+                  color={theme.textPrimary}
+                />
+                <Text style={[styles.toolButtonOutlineText, { color: theme.textPrimary }]}>
+                  Select
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.shareBtn, { backgroundColor: '#25D366' }]}
+              onPress={handleShareToWhatsApp}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="whatsapp" size={18} color="#FFF" />
+              <Text style={styles.shareBtnText}>Share</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Main Notebook Paper Area */}
       <ScrollView
@@ -359,7 +511,9 @@ export default function PaperLedgerScreen({ navigation }) {
             <View style={styles.tapeTitleRow}>
               <Text style={styles.tapeTitle}>SPENDORAX MATH CALCULATION PAD</Text>
               <Text style={styles.tapeSub}>
-                {items.length} {items.length === 1 ? 'entry' : 'entries'} • Swipe row to remove
+                {isSelectionMode
+                  ? `${selectedIds.size} of ${items.length} selected`
+                  : `${items.length} ${items.length === 1 ? 'entry' : 'entries'} • Swipe row or tap Select`}
               </Text>
             </View>
           </View>
@@ -425,6 +579,10 @@ export default function PaperLedgerScreen({ navigation }) {
                 textColor={textColor}
                 textMuted={textMuted}
                 isDarkMode={isDarkMode}
+                isSelectionMode={isSelectionMode}
+                isSelected={selectedIds.has(item.id)}
+                onToggleSelect={handleToggleSelect}
+                onLongPress={handleEnterSelectionMode}
               />
             ))
           )}
@@ -595,6 +753,24 @@ const styles = StyleSheet.create({
   toolButtonOutlineText: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  selectionCountText: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginRight: 4,
+  },
+  deleteSelectedBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 4,
+  },
+  deleteSelectedBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   iconActionBtn: {
     width: 34,
