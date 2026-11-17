@@ -1082,7 +1082,7 @@ export async function getAvailableMonths() {
 }
 
 export async function getAdvancedSearchTransactions(params) {
-  const { amount, note, type, exactDate, month, year, startDate, endDate } = params;
+  const { amount, note, type, exactDate, month, year, startDate, endDate, categoryId, sourceId } = params;
 
   try {
     if (Platform.OS === 'web') {
@@ -1117,6 +1117,20 @@ export async function getAdvancedSearchTransactions(params) {
         if (note && note.trim() !== '') {
           if (!tx.notes) return false;
           if (tx.notes.toLowerCase() !== note.trim().toLowerCase()) return false;
+        }
+
+        if (categoryId !== undefined && categoryId !== null && String(categoryId).trim() !== '') {
+          if (String(tx.category_id) !== String(categoryId)) return false;
+        }
+
+        if (sourceId !== undefined && sourceId !== null && String(sourceId).trim() !== '') {
+          const matchesSource = (
+            String(tx.source_id) === String(sourceId) ||
+            String(tx.toAccount) === String(sourceId) ||
+            String(tx.to_account) === String(sourceId) ||
+            (tx.transfer_group_id && rows.some(r => r.transfer_group_id === tx.transfer_group_id && String(r.source_id) === String(sourceId)))
+          );
+          if (!matchesSource) return false;
         }
 
         if (!tx.date) {
@@ -1208,6 +1222,21 @@ export async function getAdvancedSearchTransactions(params) {
     if (note && note.trim() !== '') {
       conditions.push(`LOWER(notes) = LOWER(?)`);
       queryParams.push(note.trim());
+    }
+
+    if (categoryId !== undefined && categoryId !== null && String(categoryId).trim() !== '') {
+      conditions.push(`category_id = ?`);
+      queryParams.push(categoryId);
+    }
+
+    if (sourceId !== undefined && sourceId !== null && String(sourceId).trim() !== '') {
+      conditions.push(`(
+        source_id = ? OR 
+        (transfer_group_id IS NOT NULL AND transfer_group_id != '' AND transfer_group_id IN (
+          SELECT transfer_group_id FROM transactions WHERE source_id = ?
+        ))
+      )`);
+      queryParams.push(sourceId, sourceId);
     }
 
     if (exactDate) {
