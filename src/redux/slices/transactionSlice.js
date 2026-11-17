@@ -1,10 +1,28 @@
 import { createSlice } from '@reduxjs/toolkit';
 
+export const initialSearchFilter = {
+  searchQuery: '',
+  advAmount: '',
+  advNote: '',
+  advType: 'all',          // 'all' | 'expense' | 'income' | 'transfer'
+  advDateType: 'none',     // 'none' | 'exact' | 'month' | 'year' | 'duration'
+  advExactDate: '',
+  advMonth: '',
+  advYear: '',
+  advStartDate: '',
+  advEndDate: '',
+  advCategoryId: null,     // null means 'All Categories'
+  advSourceId: null,       // null means 'All Accounts'
+  groupByOption: 'day',    // 'day' | 'month' | 'year'
+  isFilterActive: false
+};
+
 const initialState = {
   transactions: [],
   filteredTransactions: [],
   isLoading: false,
   error: null,
+  searchFilter: { ...initialSearchFilter },
 };
 
 const transactionSlice = createSlice({
@@ -26,6 +44,18 @@ const transactionSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    setSearchFilter: (state, action) => {
+      state.searchFilter = {
+        ...state.searchFilter,
+        ...action.payload
+      };
+    },
+    resetSearchFilter: (state) => {
+      state.searchFilter = { ...initialSearchFilter };
+    },
+    setSearchQueryText: (state, action) => {
+      state.searchFilter.searchQuery = action.payload;
+    },
     resetTransactions: (state) => {
       return initialState;
     },
@@ -38,6 +68,9 @@ export const {
   setLoading,
   setError,
   clearError,
+  setSearchFilter,
+  resetSearchFilter,
+  setSearchQueryText,
   resetTransactions,
 } = transactionSlice.actions;
 
