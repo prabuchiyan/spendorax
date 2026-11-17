@@ -107,3 +107,4 @@ Update `getAdvancedSearchTransactions`:
 3. **Common Modal Design**: Verify search filter inside the category and account modals filters the list seamlessly.
 4. **Persistence**: Set filters, navigate away to Dashboard or other screens, return to Search; confirm all filter selections and results remain intact.
 5. **Reset**: Tap Reset in Advanced Filters; verify all filters clear back to default.
+
