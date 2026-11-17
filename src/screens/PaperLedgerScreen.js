@@ -25,6 +25,7 @@ import {
 import PaperAddRowModal from '../components/PaperAddRowModal';
 import PaperMonthPickerModal from '../components/PaperMonthPickerModal';
 import PaperSwipeableRow from '../components/PaperSwipeableRow';
+import PaperDeleteConfirmModal from '../components/PaperDeleteConfirmModal';
 
 export default function PaperLedgerScreen({ navigation }) {
   const { isDarkMode, theme } = useTheme();
@@ -39,6 +40,8 @@ export default function PaperLedgerScreen({ navigation }) {
   // Modals state
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [isMonthModalVisible, setIsMonthModalVisible] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [resetRowCallback, setResetRowCallback] = useState(null);
 
   // Load categories and available months on mount
   useEffect(() => {
@@ -91,38 +94,27 @@ export default function PaperLedgerScreen({ navigation }) {
     setItems((prev) => prev.filter((it) => it.id !== rowId));
   }, []);
 
-  // Request delete with confirmation warning prompt (used by swipe gesture)
-  const requestDeleteRow = useCallback(
-    (item, onCancel) => {
-      Alert.alert(
-        'Delete Entry',
-        `Are you sure you want to remove "${item.title}" from this calculation sheet?`,
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-            onPress: () => {
-              if (onCancel) onCancel();
-            },
-          },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: () => {
-              handleDeleteRow(item.id);
-            },
-          },
-        ],
-        {
-          cancelable: true,
-          onDismiss: () => {
-            if (onCancel) onCancel();
-          },
-        }
-      );
-    },
-    [handleDeleteRow]
-  );
+  // Request delete with cross-platform confirmation dialog (works on Web, iOS, Android)
+  const requestDeleteRow = useCallback((item, onCancel) => {
+    setItemToDelete(item);
+    setResetRowCallback(() => onCancel);
+  }, []);
+
+  const handleConfirmDelete = useCallback(() => {
+    if (itemToDelete) {
+      handleDeleteRow(itemToDelete.id);
+      setItemToDelete(null);
+      setResetRowCallback(null);
+    }
+  }, [itemToDelete, handleDeleteRow]);
+
+  const handleCancelDelete = useCallback(() => {
+    if (resetRowCallback) {
+      resetRowCallback();
+    }
+    setItemToDelete(null);
+    setResetRowCallback(null);
+  }, [resetRowCallback]);
 
   // Handle clearing entire ledger
   const handleClearAll = useCallback(() => {
@@ -543,6 +535,14 @@ export default function PaperLedgerScreen({ navigation }) {
         onClose={() => setIsMonthModalVisible(false)}
         onSelectMonth={handleImportMonth}
         onSelectAll={handleImportAll}
+      />
+
+      {/* Modal: Delete Confirmation (Cross-platform) */}
+      <PaperDeleteConfirmModal
+        visible={!!itemToDelete}
+        item={itemToDelete}
+        onCancel={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
       />
     </View>
   );

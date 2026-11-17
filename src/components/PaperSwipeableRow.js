@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Animated,
   PanResponder,
+  TouchableOpacity,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -45,8 +46,16 @@ export default function PaperSwipeableRow({
         pan.setValue(gestureState.dx);
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (Math.abs(gestureState.dx) > 75) {
-          // Threshold reached: trigger confirmation warning
+        const absDx = Math.abs(gestureState.dx);
+        const absVx = Math.abs(gestureState.vx);
+        if (absDx > 40 || absVx > 0.3) {
+          // Snap row open to show red delete banner and open confirmation
+          const snapTo = gestureState.dx > 0 ? 80 : -80;
+          Animated.spring(pan, {
+            toValue: snapTo,
+            useNativeDriver: true,
+            bounciness: 4,
+          }).start();
           onRequestDelete(item, resetPosition);
         } else {
           resetPosition();
@@ -64,14 +73,22 @@ export default function PaperSwipeableRow({
     <View style={[styles.container, { borderBottomColor: ruledLineColor }]}>
       {/* Background reveal showing delete actions on both left and right swipe */}
       <View style={styles.backgroundDelete}>
-        <View style={styles.leftDeleteIndicator}>
+        <TouchableOpacity
+          style={styles.leftDeleteIndicator}
+          onPress={() => onRequestDelete(item, resetPosition)}
+          activeOpacity={0.8}
+        >
           <MaterialCommunityIcons name="trash-can-outline" size={20} color="#FFF" />
           <Text style={styles.deleteText}>Delete</Text>
-        </View>
-        <View style={styles.rightDeleteIndicator}>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.rightDeleteIndicator}
+          onPress={() => onRequestDelete(item, resetPosition)}
+          activeOpacity={0.8}
+        >
           <Text style={styles.deleteText}>Delete</Text>
           <MaterialCommunityIcons name="trash-can-outline" size={20} color="#FFF" />
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* Foreground paper row */}
@@ -241,3 +258,4 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 });
+
