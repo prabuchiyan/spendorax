@@ -39,6 +39,8 @@ export default function PaperLedgerScreen({ navigation }) {
 
   // Modals state
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [resetEditRowCallback, setResetEditRowCallback] = useState(null);
   const [isMonthModalVisible, setIsMonthModalVisible] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [resetRowCallback, setResetRowCallback] = useState(null);
@@ -81,17 +83,50 @@ export default function PaperLedgerScreen({ navigation }) {
   // Compute live totals
   const totals = useMemo(() => calculateLedgerTotals(items), [items]);
 
-  // Handle adding custom row
-  const handleAddRow = useCallback((newRow) => {
-    const item = {
-      id: `custom_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      title: newRow.title,
-      type: newRow.type,
-      amount: newRow.amount,
-      date: new Date().toISOString(),
-    };
-    setItems((prev) => [...prev, item]);
+  // Handle adding custom row or saving edits
+  const handleSaveRow = useCallback(
+    (rowPayload) => {
+      if (rowPayload.id) {
+        // Updating existing row
+        setItems((prev) =>
+          prev.map((it) => (it.id === rowPayload.id ? { ...it, ...rowPayload } : it))
+        );
+        if (resetEditRowCallback) {
+          resetEditRowCallback();
+        }
+      } else {
+        // Adding new row
+        const item = {
+          id: `custom_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          title: rowPayload.title,
+          type: rowPayload.type,
+          amount: rowPayload.amount,
+          date: new Date().toISOString(),
+        };
+        setItems((prev) => [...prev, item]);
+      }
+      setEditingItem(null);
+      setResetEditRowCallback(null);
+    },
+    [resetEditRowCallback]
+  );
+
+  // Open edit modal for an existing row
+  const handleOpenEdit = useCallback((item, onCancel) => {
+    setEditingItem(item);
+    setResetEditRowCallback(() => onCancel);
+    setIsAddModalVisible(true);
   }, []);
+
+  // Close add/edit modal and reset swiped row position if cancelled
+  const handleCloseAddEditModal = useCallback(() => {
+    if (resetEditRowCallback) {
+      resetEditRowCallback();
+    }
+    setIsAddModalVisible(false);
+    setEditingItem(null);
+    setResetEditRowCallback(null);
+  }, [resetEditRowCallback]);
 
   // Handle deleting single row
   const handleDeleteRow = useCallback((rowId) => {
@@ -436,7 +471,10 @@ export default function PaperLedgerScreen({ navigation }) {
                     backgroundColor: isDarkMode ? '#14223A' : '#EFF6FF',
                   },
                 ]}
-                onPress={() => setIsAddModalVisible(true)}
+                onPress={() => {
+                  setEditingItem(null);
+                  setIsAddModalVisible(true);
+                }}
                 activeOpacity={0.8}
               >
                 <MaterialCommunityIcons name="plus" size={16} color={Colors.primary} />
@@ -527,7 +565,7 @@ export default function PaperLedgerScreen({ navigation }) {
               <Text style={styles.tapeHintText} numberOfLines={1}>
                 {isSelectionMode
                   ? `${selectedIds.size} of ${items.length} selected • Tap rows to toggle`
-                  : 'Swipe row left/right to remove • Tap Select for bulk'}
+                  : 'Swipe right to delete • Swipe left to edit • Tap Select for bulk'}
               </Text>
             </View>
           </View>
@@ -604,6 +642,7 @@ export default function PaperLedgerScreen({ navigation }) {
                 isIncome={item.type === 'income'}
                 formatLedgerAmount={formatLedgerAmount}
                 onRequestDelete={requestDeleteRow}
+                onRequestEdit={handleOpenEdit}
                 paperBg={paperBg}
                 ruledLineColor={ruledLineColor}
                 redMarginLine={redMarginLine}
@@ -709,11 +748,12 @@ export default function PaperLedgerScreen({ navigation }) {
         </View>
       </ScrollView>
 
-      {/* Modal: Add Custom Row */}
+      {/* Modal: Add/Edit Row */}
       <PaperAddRowModal
         visible={isAddModalVisible}
-        onClose={() => setIsAddModalVisible(false)}
-        onAdd={handleAddRow}
+        onClose={handleCloseAddEditModal}
+        onAdd={handleSaveRow}
+        initialItem={editingItem}
       />
 
       {/* Modal: Month Picker */}

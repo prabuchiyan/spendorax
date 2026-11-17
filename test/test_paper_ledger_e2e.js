@@ -84,5 +84,33 @@ const emptyWaText = formatWhatsAppLedgerText([], 0);
 assert.ok(emptyWaText.includes('_No transactions in ledger_'));
 console.log('   ✓ Empty state handled gracefully');
 
+// Test 7: Row Editing and In-Place Recalculation
+console.log('\n7. Testing Row In-Place Editing and Real-time Recalculation...');
+const initialItems = [
+  { id: '1', title: 'Monthly Salary', type: 'income', amount: 50000 },
+  { id: '2', title: 'Grocery Mart', type: 'expense', amount: 4000 },
+];
+assert.strictEqual(calculateLedgerTotals(initialItems).netTotal, 46000);
+
+// Edit item 2: Update Grocery Mart from 4000 to 4500 and title to 'Supermarket'
+const editedItems = initialItems.map(it =>
+  it.id === '2' ? { ...it, title: 'Supermarket', amount: 4500 } : it
+);
+const editedTotals = calculateLedgerTotals(editedItems);
+assert.strictEqual(editedItems[1].title, 'Supermarket');
+assert.strictEqual(editedItems[1].amount, 4500);
+assert.strictEqual(editedTotals.totalExpense, 4500);
+assert.strictEqual(editedTotals.netTotal, 45500, 'Net total should decrease by 500');
+
+// Edit item 2: Change type from expense to income (e.g. Cashback refund)
+const refundItems = editedItems.map(it =>
+  it.id === '2' ? { ...it, title: 'Cashback Refund', type: 'income', amount: 500 } : it
+);
+const refundTotals = calculateLedgerTotals(refundItems);
+assert.strictEqual(refundTotals.totalIncome, 50500);
+assert.strictEqual(refundTotals.totalExpense, 0);
+assert.strictEqual(refundTotals.netTotal, 50500);
+console.log('   ✓ In-place edit and reactive recalculation verified');
+
 console.log('\n=== All End-to-End Tests Passed Successfully! ===');
 

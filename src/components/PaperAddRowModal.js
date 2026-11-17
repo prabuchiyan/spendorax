@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,12 +14,31 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from './Theme';
 
-export default function PaperAddRowModal({ visible, onClose, onAdd }) {
+export default function PaperAddRowModal({ visible, onClose, onAdd, initialItem = null }) {
   const { isDarkMode, theme } = useTheme();
   const [title, setTitle] = useState('');
   const [type, setType] = useState('expense'); // 'income' | 'expense'
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
+
+  const isEditing = Boolean(initialItem);
+
+  useEffect(() => {
+    if (initialItem) {
+      setTitle(initialItem.title || '');
+      setType(initialItem.type || 'expense');
+      setAmount(
+        initialItem.amount !== undefined && initialItem.amount !== null
+          ? String(initialItem.amount)
+          : ''
+      );
+    } else {
+      setTitle('');
+      setType('expense');
+      setAmount('');
+    }
+    setError('');
+  }, [initialItem, visible]);
 
   const handleAdd = () => {
     const trimmedTitle = title.trim();
@@ -34,11 +53,17 @@ export default function PaperAddRowModal({ visible, onClose, onAdd }) {
       return;
     }
 
-    onAdd({
+    const payload = {
       title: trimmedTitle,
       type,
       amount: parsedAmount,
-    });
+    };
+
+    if (initialItem && initialItem.id) {
+      payload.id = initialItem.id;
+    }
+
+    onAdd(payload);
 
     // Reset and close
     setTitle('');
@@ -79,13 +104,13 @@ export default function PaperAddRowModal({ visible, onClose, onAdd }) {
               <View style={styles.header}>
                 <View style={styles.headerTitleRow}>
                   <MaterialCommunityIcons
-                    name="notebook-edit"
+                    name={isEditing ? 'pencil-box-outline' : 'notebook-edit'}
                     size={22}
-                    color={Colors.primary}
+                    color={isEditing ? '#3B82F6' : Colors.primary}
                     style={{ marginRight: 8 }}
                   />
                   <Text style={[styles.title, { color: theme.textPrimary }]}>
-                    Add Paper Entry
+                    {isEditing ? 'Edit Paper Entry' : 'Add Paper Entry'}
                   </Text>
                 </View>
                 <TouchableOpacity onPress={handleCancel} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -214,13 +239,24 @@ export default function PaperAddRowModal({ visible, onClose, onAdd }) {
                   style={[
                     styles.addButton,
                     {
-                      backgroundColor: type === 'income' ? '#10B981' : Colors.primary,
+                      backgroundColor: isEditing
+                        ? '#2563EB'
+                        : type === 'income'
+                        ? '#10B981'
+                        : Colors.primary,
                     },
                   ]}
                   onPress={handleAdd}
                 >
-                  <MaterialCommunityIcons name="plus" size={18} color="#FFF" style={{ marginRight: 4 }} />
-                  <Text style={styles.addText}>Add to Paper</Text>
+                  <MaterialCommunityIcons
+                    name={isEditing ? 'content-save-outline' : 'plus'}
+                    size={18}
+                    color="#FFF"
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text style={styles.addText}>
+                    {isEditing ? 'Save Changes' : 'Add to Paper'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </KeyboardAvoidingView>

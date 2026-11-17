@@ -15,6 +15,7 @@ export default function PaperSwipeableRow({
   isIncome,
   formatLedgerAmount,
   onRequestDelete,
+  onRequestEdit,
   paperBg,
   ruledLineColor,
   redMarginLine,
@@ -54,14 +55,23 @@ export default function PaperSwipeableRow({
         const absDx = Math.abs(gestureState.dx);
         const absVx = Math.abs(gestureState.vx);
         if (absDx > 40 || absVx > 0.3) {
-          // Snap row open to show red delete banner and open confirmation
-          const snapTo = gestureState.dx > 0 ? 80 : -80;
-          Animated.spring(pan, {
-            toValue: snapTo,
-            useNativeDriver: true,
-            bounciness: 4,
-          }).start();
-          onRequestDelete(item, resetPosition);
+          if (gestureState.dx > 0) {
+            // Swiping right reveals left delete action
+            Animated.spring(pan, {
+              toValue: 80,
+              useNativeDriver: true,
+              bounciness: 4,
+            }).start();
+            onRequestDelete && onRequestDelete(item, resetPosition);
+          } else {
+            // Swiping left reveals right edit action
+            Animated.spring(pan, {
+              toValue: -80,
+              useNativeDriver: true,
+              bounciness: 4,
+            }).start();
+            onRequestEdit && onRequestEdit(item, resetPosition);
+          }
         } else {
           resetPosition();
         }
@@ -160,24 +170,24 @@ export default function PaperSwipeableRow({
 
   return (
     <View style={[styles.container, { borderBottomColor: ruledLineColor }]}>
-      {/* Background reveal showing delete actions on both left and right swipe (hidden in selection mode) */}
+      {/* Background reveal showing delete action on right swipe (left side) and edit action on left swipe (right side) */}
       {!isSelectionMode && (
-        <View style={styles.backgroundDelete}>
+        <View style={styles.backgroundActionsContainer}>
           <TouchableOpacity
             style={styles.leftDeleteIndicator}
-            onPress={() => onRequestDelete(item, resetPosition)}
+            onPress={() => onRequestDelete && onRequestDelete(item, resetPosition)}
             activeOpacity={0.8}
           >
             <MaterialCommunityIcons name="trash-can-outline" size={20} color="#FFF" />
-            <Text style={styles.deleteText}>Delete</Text>
+            <Text style={styles.actionText}>Delete</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.rightDeleteIndicator}
-            onPress={() => onRequestDelete(item, resetPosition)}
+            style={styles.rightEditIndicator}
+            onPress={() => onRequestEdit && onRequestEdit(item, resetPosition)}
             activeOpacity={0.8}
           >
-            <Text style={styles.deleteText}>Delete</Text>
-            <MaterialCommunityIcons name="trash-can-outline" size={20} color="#FFF" />
+            <Text style={styles.actionText}>Edit</Text>
+            <MaterialCommunityIcons name="pencil" size={20} color="#FFF" />
           </TouchableOpacity>
         </View>
       )}
@@ -228,25 +238,31 @@ const styles = StyleSheet.create({
     minHeight: 52,
     overflow: 'hidden',
   },
-  backgroundDelete: {
+  backgroundActionsContainer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#EF4444',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
+    alignItems: 'stretch',
   },
   leftDeleteIndicator: {
+    backgroundColor: '#EF4444',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 18,
+    width: '50%',
     gap: 6,
   },
-  rightDeleteIndicator: {
+  rightEditIndicator: {
+    backgroundColor: '#2563EB',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 18,
+    width: '50%',
     gap: 6,
   },
-  deleteText: {
+  actionText: {
     color: '#FFF',
     fontSize: 13,
     fontWeight: '700',
