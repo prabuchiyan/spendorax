@@ -24,6 +24,7 @@ import {
   markBillPaid,
   skipBill,
   deleteBill,
+  softDeleteBillOccurrence,
 } from "../services/bills";
 import { getCategories } from "../services/categories";
 import { getPreferredBillOccurrence } from "../services/billUtils";
@@ -1405,7 +1406,12 @@ export default function BillsScreen({ navigation }) {
 
           try {
             setIsDeleting(true);
-            await deleteBill(confirmTarget.id);
+            const isRecurringOcc = Boolean(confirmTarget.parent_bill_id);
+            if (isRecurringOcc) {
+              await softDeleteBillOccurrence(confirmTarget.id, false, confirmTarget.due_date);
+            } else {
+              await deleteBill(confirmTarget.id);
+            }
             setConfirmVisible(false);
             setConfirmTarget(null);
             await load();

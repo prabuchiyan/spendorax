@@ -1801,12 +1801,21 @@ export async function getBillSeries(templateId) {
       template.due_date,
       template.recurrence_interval,
     );
+    const templateDate = template.due_date ? String(template.due_date).slice(0, 10) : null;
+    const deletedKeys = await getDeletedOccurrenceKeys(Number(templateId));
     const overrideChild = dedupedChildren.find(
       (c) =>
         (c.due_date && c.due_date.slice(0, 7) === templateMonth) ||
         (templateKey && c.recurrence_occurrence_key && String(c.recurrence_occurrence_key) === String(templateKey)),
     );
     if (overrideChild) activeTemplate = null;
+    if (
+      overrideChild ||
+      (templateKey && deletedKeys.has(String(templateKey))) ||
+      (templateDate && deletedKeys.has(templateDate))
+    ) {
+      activeTemplate = null;
+    }
   }
 
   const series = activeTemplate ? [activeTemplate, ...dedupedChildren] : [...dedupedChildren];
@@ -1939,12 +1948,21 @@ export async function getBillSeriesMultiple(templateIds) {
           template.due_date,
           template.recurrence_interval,
         );
+        const templateDate = template.due_date ? String(template.due_date).slice(0, 10) : null;
+        const deletedKeys = await getDeletedOccurrenceKeys(Number(templateId));
         const overrideChild = dedupedChildren.find(
           (c) =>
             (c.due_date && c.due_date.slice(0, 7) === templateMonth) ||
             (templateKey && c.recurrence_occurrence_key && String(c.recurrence_occurrence_key) === String(templateKey)),
         );
         if (overrideChild) activeTemplate = null;
+        if (
+          overrideChild ||
+          (templateKey && deletedKeys.has(String(templateKey))) ||
+          (templateDate && deletedKeys.has(templateDate))
+        ) {
+          activeTemplate = null;
+        }
       }
       const series = activeTemplate
         ? [activeTemplate, ...dedupedChildren]
@@ -2262,6 +2280,7 @@ export async function getBillsForCurrentMonth(options = {}) {
 
     if (!thisMonthDate) {
       const allBills = allRaw;
+      const deletedKeys = await getDeletedOccurrenceKeys(Number(template.id));
       const seriesOccurrences = allBills
         .filter(
           (b) =>
@@ -2269,6 +2288,19 @@ export async function getBillsForCurrentMonth(options = {}) {
               Number(b.id) === Number(template.id)) &&
             !b.deleted_at,
         )
+        .filter((b) => {
+          if (!b.due_date) return true;
+          const dKey = b.due_date.slice(0, 10);
+          const rKey = getRecurrenceOccurrenceKey(
+            template.recurrence_type,
+            dKey,
+            template.recurrence_interval,
+          );
+          if (deletedKeys.has(dKey) || (rKey && deletedKeys.has(String(rKey)))) {
+            return false;
+          }
+          return true;
+        })
         .map(normalizeBill)
         .filter(Boolean);
 
@@ -2300,7 +2332,15 @@ export async function getBillsForCurrentMonth(options = {}) {
           .filter((b) => b.due_date && b.due_date.slice(0, 10) >= today)
           .sort((a, b) => (a.due_date || "").localeCompare(b.due_date || ""))[0];
 
-        const target = upcomingOccurrence || normalizeBill(template);
+        const templateDateKey = template.due_date ? template.due_date.slice(0, 10) : null;
+        const templateRecKey = template.recurrence_type && templateDateKey
+          ? getRecurrenceOccurrenceKey(template.recurrence_type, templateDateKey, template.recurrence_interval)
+          : null;
+        const isTemplateDeleted =
+          (templateDateKey && deletedKeys.has(templateDateKey)) ||
+          (templateRecKey && deletedKeys.has(String(templateRecKey)));
+
+        const target = upcomingOccurrence || (!isTemplateDeleted ? normalizeBill(template) : null);
         if (target) {
           result.push({
             ...target,
@@ -2342,7 +2382,8 @@ export async function getBillsForCurrentMonth(options = {}) {
       const deletedKeys = await getDeletedOccurrenceKeys(Number(template.id));
 
       wasIntentionallyDeleted =
-        occurrenceKey && deletedKeys.has(String(occurrenceKey));
+        (occurrenceKey && deletedKeys.has(String(occurrenceKey))) ||
+        (thisMonthDate && deletedKeys.has(String(thisMonthDate)));
 
       console.log("[getBillsForCurrentMonth] DELETION CHECK:", {
         templateId: template.id,
@@ -3240,6 +3281,7 @@ async function _ensureNextOccurrence(templateId) {
   );
 
   const existingRows = rowsToArray(existingRes);
+  const deletedKeys = await getDeletedOccurrenceKeys(templateId);
 
   const existingKeys = new Set();
   for (const row of existingRows) {
@@ -3294,15 +3336,22 @@ async function _ensureNextOccurrence(templateId) {
       continue;
     }
 
+    // Skip if intentionally deleted.
+    if (
+      (occurrenceKey && deletedKeys.has(String(occurrenceKey))) ||
+      deletedKeys.has(dueDateOnly)
+    ) {
+      continue;
+    }
+
     // Already exists.
     if (occurrenceKey && existingKeys.has(String(occurrenceKey))) {
       continue;
     }
 
-    // Also check by actual due date.
+    // Also check by actual due date (including soft-deleted rows).
     const alreadyExists = existingRows.some(
       (row) =>
-        !row.deleted_at &&
         row.due_date &&
         String(row.due_date).slice(0, 10) === dueDateOnly,
     );
@@ -3366,6 +3415,7 @@ async function _ensureNextOccurrence(templateId) {
     is_paid: 0,
     linked_transaction_id: null,
     parent_bill_id: templateId,
+    recurrence_occurrence_key: occurrenceKey,
   });
 
   // Trigger Bill Generated Notification if enabled
@@ -4163,17 +4213,42 @@ export async function softDeleteBillOccurrence(billId, isTemplate, occurrenceDat
   if (isTemplate) {
     // For a template acting as an occurrence, mark the date as deleted and advance the template.
     await ensureRecurringDeletionTable();
-    const occurrenceKey = occurrenceDate ? String(occurrenceDate).slice(0, 10) : null;
-    if (occurrenceKey) {
+    const template = await getBillById(billId);
+    const dateKey = occurrenceDate
+      ? String(occurrenceDate).slice(0, 10)
+      : (template?.due_date ? String(template.due_date).slice(0, 10) : null);
+    const recurrenceKey = template?.recurrence_type && dateKey
+      ? getRecurrenceOccurrenceKey(template.recurrence_type, dateKey, template.recurrence_interval)
+      : null;
+
+    for (const key of [recurrenceKey, dateKey].filter(Boolean)) {
       await executeSql(
         `INSERT OR IGNORE INTO bill_deleted_occurrences (
           parent_bill_id, recurrence_occurrence_key, deleted_at
         ) VALUES (?, ?, ?)`,
-        [Number(billId), occurrenceKey, now]
+        [Number(billId), String(key), now]
       );
     }
 
     // Advance template due date to the next occurrence so the deleted one no longer shows up
+    if (template && dateKey) {
+      const nextDueDate = addRecurrence(dateKey, template.recurrence_type);
+      if (nextDueDate) {
+        await executeSql(
+          `UPDATE bills
+           SET due_date = ?,
+               recurrence_effective_date = ?,
+               status = ?,
+               is_paid = 0,
+               paid_at = NULL,
+               linked_transaction_id = NULL,
+               updated_at = ?
+           WHERE id = ?`,
+          [nextDueDate, nextDueDate, BILL_STATUS.PENDING, now, Number(billId)]
+        );
+      }
+    }
+
     await _ensureNextOccurrence(billId);
   } else {
     // Real child occurrence row
@@ -4186,13 +4261,18 @@ export async function softDeleteBillOccurrence(billId, isTemplate, occurrenceDat
 
     if (bill.parent_bill_id) {
       await ensureRecurringDeletionTable();
-      const occurrenceKey = bill.recurrence_occurrence_key || (bill.due_date ? bill.due_date.slice(0, 10) : null);
-      if (occurrenceKey) {
+      const parentTemplate = await getBillById(bill.parent_bill_id);
+      const dateKey = bill.due_date ? String(bill.due_date).slice(0, 10) : null;
+      const recurrenceKey = parentTemplate?.recurrence_type && dateKey
+        ? getRecurrenceOccurrenceKey(parentTemplate.recurrence_type, dateKey, parentTemplate.recurrence_interval)
+        : bill.recurrence_occurrence_key;
+
+      for (const key of [recurrenceKey, dateKey, bill.recurrence_occurrence_key].filter(Boolean)) {
         await executeSql(
           `INSERT OR IGNORE INTO bill_deleted_occurrences (
             parent_bill_id, recurrence_occurrence_key, deleted_at
           ) VALUES (?, ?, ?)`,
-          [Number(bill.parent_bill_id), String(occurrenceKey), now]
+          [Number(bill.parent_bill_id), String(key), now]
         );
       }
     }
