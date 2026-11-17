@@ -326,166 +326,160 @@ export default function PaperLedgerScreen({ navigation }) {
 
   return (
     <View style={[styles.screen, { backgroundColor: isDarkMode ? '#0F1218' : '#F1F4F9' }]}>
-      {/* Top Toolbar Action Bar */}
-      {isSelectionMode ? (
-        <View
-          style={[
-            styles.toolbar,
-            {
-              backgroundColor: isDarkMode ? '#1E2533' : '#EFF6FF',
-              borderBottomColor: isDarkMode ? '#2D3A50' : '#BFDBFE',
-            },
-          ]}
+      {/* Top Action Bar (Horizontally scrollable, never cuts off) */}
+      <View
+        style={[
+          styles.toolbarWrapper,
+          {
+            backgroundColor: isDarkMode ? '#19202C' : '#FFFFFF',
+            borderBottomColor: isDarkMode ? '#283244' : '#E2E8F0',
+          },
+        ]}
+      >
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.toolbarScrollContent}
         >
-          <View style={styles.toolbarLeft}>
-            <TouchableOpacity
-              style={[
-                styles.toolButtonOutline,
-                {
-                  borderColor: isDarkMode ? '#3B4863' : '#CBD5E1',
-                  backgroundColor: isDarkMode ? '#171E2B' : '#FFFFFF',
-                },
-              ]}
-              onPress={handleExitSelectionMode}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="close" size={17} color={theme.textPrimary} />
-              <Text style={[styles.toolButtonOutlineText, { color: theme.textPrimary }]}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.toolButtonOutline,
-                {
-                  borderColor: Colors.primary,
-                  backgroundColor: isDarkMode ? '#172544' : '#DBEAFE',
-                },
-              ]}
-              onPress={handleSelectAll}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons
-                name={
-                  selectedIds.size === items.length && items.length > 0
-                    ? 'checkbox-marked'
-                    : 'checkbox-blank-outline'
-                }
-                size={17}
-                color={Colors.primary}
-              />
-              <Text style={[styles.toolButtonOutlineText, { color: Colors.primary }]}>
-                {selectedIds.size === items.length && items.length > 0
-                  ? 'Deselect All'
-                  : 'Select All'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.toolbarRight}>
-            <Text style={[styles.selectionCountText, { color: theme.textSecondary }]}>
-              {selectedIds.size} selected
-            </Text>
-
-            <TouchableOpacity
-              style={[
-                styles.deleteSelectedBtn,
-                {
-                  backgroundColor:
-                    selectedIds.size > 0 ? '#EF4444' : isDarkMode ? '#332025' : '#FCA5A5',
-                  opacity: selectedIds.size > 0 ? 1 : 0.6,
-                },
-              ]}
-              onPress={handlePromptDeleteSelected}
-              disabled={selectedIds.size === 0}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="trash-can-outline" size={16} color="#FFF" />
-              <Text style={styles.deleteSelectedBtnText}>
-                Delete ({selectedIds.size})
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ) : (
-        <View
-          style={[
-            styles.toolbar,
-            {
-              backgroundColor: isDarkMode ? '#19202C' : '#FFFFFF',
-              borderBottomColor: isDarkMode ? '#283244' : '#E2E8F0',
-            },
-          ]}
-        >
-          <View style={styles.toolbarLeft}>
-            <TouchableOpacity
-              style={[styles.toolButton, { backgroundColor: Colors.primary }]}
-              onPress={() => setIsMonthModalVisible(true)}
-              activeOpacity={0.8}
-              disabled={importing}
-            >
-              {importing ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <MaterialCommunityIcons name="calendar-import" size={17} color="#FFF" />
-              )}
-              <Text style={styles.toolButtonText}>Import Month</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.toolButtonOutline,
-                {
-                  borderColor: Colors.primary,
-                  backgroundColor: isDarkMode ? '#14223A' : '#EFF6FF',
-                },
-              ]}
-              onPress={() => setIsAddModalVisible(true)}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="plus" size={17} color={Colors.primary} />
-              <Text style={[styles.toolButtonOutlineText, { color: Colors.primary }]}>
-                Add Line
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.toolbarRight}>
-            {items.length > 0 && (
+          {isSelectionMode ? (
+            <>
               <TouchableOpacity
                 style={[
                   styles.toolButtonOutline,
                   {
-                    borderColor: isDarkMode ? '#374151' : '#CBD5E1',
-                    backgroundColor: isDarkMode ? '#1F2937' : '#F8FAFC',
+                    borderColor: isDarkMode ? '#3B4863' : '#CBD5E1',
+                    backgroundColor: isDarkMode ? '#171E2B' : '#FFFFFF',
                   },
                 ]}
-                onPress={() => handleEnterSelectionMode()}
+                onPress={handleExitSelectionMode}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="close" size={16} color={theme.textPrimary} />
+                <Text style={[styles.toolButtonOutlineText, { color: theme.textPrimary }]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.toolButtonOutline,
+                  {
+                    borderColor: Colors.primary,
+                    backgroundColor: isDarkMode ? '#172544' : '#DBEAFE',
+                  },
+                ]}
+                onPress={handleSelectAll}
                 activeOpacity={0.8}
               >
                 <MaterialCommunityIcons
-                  name="checkbox-multiple-marked-outline"
+                  name={
+                    selectedIds.size === items.length && items.length > 0
+                      ? 'checkbox-marked'
+                      : 'checkbox-blank-outline'
+                  }
                   size={16}
-                  color={theme.textPrimary}
+                  color={Colors.primary}
                 />
-                <Text style={[styles.toolButtonOutlineText, { color: theme.textPrimary }]}>
-                  Select
+                <Text style={[styles.toolButtonOutlineText, { color: Colors.primary }]}>
+                  {selectedIds.size === items.length && items.length > 0
+                    ? 'Deselect All'
+                    : 'Select All'}
                 </Text>
               </TouchableOpacity>
-            )}
 
-            <TouchableOpacity
-              style={[styles.shareBtn, { backgroundColor: '#25D366' }]}
-              onPress={handleShareToWhatsApp}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="whatsapp" size={18} color="#FFF" />
-              <Text style={styles.shareBtnText}>Share</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+              <View style={styles.selectionCountPill}>
+                <Text style={[styles.selectionCountText, { color: theme.textSecondary }]}>
+                  {selectedIds.size} selected
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.deleteSelectedBtn,
+                  {
+                    backgroundColor:
+                      selectedIds.size > 0 ? '#EF4444' : isDarkMode ? '#332025' : '#FCA5A5',
+                    opacity: selectedIds.size > 0 ? 1 : 0.6,
+                  },
+                ]}
+                onPress={handlePromptDeleteSelected}
+                disabled={selectedIds.size === 0}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="trash-can-outline" size={16} color="#FFF" />
+                <Text style={styles.deleteSelectedBtnText}>
+                  Delete ({selectedIds.size})
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={[styles.toolButton, { backgroundColor: Colors.primary }]}
+                onPress={() => setIsMonthModalVisible(true)}
+                activeOpacity={0.8}
+                disabled={importing}
+              >
+                {importing ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <MaterialCommunityIcons name="calendar-import" size={16} color="#FFF" />
+                )}
+                <Text style={styles.toolButtonText}>Import Month</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.toolButtonOutline,
+                  {
+                    borderColor: Colors.primary,
+                    backgroundColor: isDarkMode ? '#14223A' : '#EFF6FF',
+                  },
+                ]}
+                onPress={() => setIsAddModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="plus" size={16} color={Colors.primary} />
+                <Text style={[styles.toolButtonOutlineText, { color: Colors.primary }]}>
+                  Add Line
+                </Text>
+              </TouchableOpacity>
+
+              {items.length > 0 && (
+                <TouchableOpacity
+                  style={[
+                    styles.toolButtonOutline,
+                    {
+                      borderColor: isDarkMode ? '#374151' : '#CBD5E1',
+                      backgroundColor: isDarkMode ? '#1F2937' : '#F8FAFC',
+                    },
+                  ]}
+                  onPress={() => handleEnterSelectionMode()}
+                  activeOpacity={0.8}
+                >
+                  <MaterialCommunityIcons
+                    name="checkbox-multiple-marked-outline"
+                    size={16}
+                    color={theme.textPrimary}
+                  />
+                  <Text style={[styles.toolButtonOutlineText, { color: theme.textPrimary }]}>
+                    Select
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                style={[styles.shareBtn, { backgroundColor: '#25D366' }]}
+                onPress={handleShareToWhatsApp}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="whatsapp" size={16} color="#FFF" />
+                <Text style={styles.shareBtnText}>Share</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </ScrollView>
+      </View>
 
       {/* Main Notebook Paper Area */}
       <ScrollView
@@ -504,16 +498,36 @@ export default function PaperLedgerScreen({ navigation }) {
           {/* Top Binding Tape of Math Calc Book */}
           <View style={styles.notebookTape}>
             <View style={styles.tapeStitchRow}>
-              {[...Array(14)].map((_, i) => (
+              {[...Array(16)].map((_, i) => (
                 <View key={i} style={styles.tapeStitchDot} />
               ))}
             </View>
-            <View style={styles.tapeTitleRow}>
-              <Text style={styles.tapeTitle}>SPENDORAX MATH CALCULATION PAD</Text>
-              <Text style={styles.tapeSub}>
+
+            <View style={styles.tapeMainRow}>
+              <View style={styles.tapeTitleBlock}>
+                <MaterialCommunityIcons
+                  name="notebook-outline"
+                  size={14}
+                  color="#FEF3C7"
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={styles.tapeTitle} numberOfLines={1}>
+                  MATH CALCULATION PAD
+                </Text>
+              </View>
+
+              <View style={styles.tapeCountBadge}>
+                <Text style={styles.tapeCountText}>
+                  {items.length} {items.length === 1 ? 'entry' : 'entries'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.tapeInfoRow}>
+              <Text style={styles.tapeHintText} numberOfLines={1}>
                 {isSelectionMode
-                  ? `${selectedIds.size} of ${items.length} selected`
-                  : `${items.length} ${items.length === 1 ? 'entry' : 'entries'} • Swipe row or tap Select`}
+                  ? `${selectedIds.size} of ${items.length} selected • Tap rows to toggle`
+                  : 'Swipe row left/right to remove • Tap Select for bulk'}
               </Text>
             </View>
           </View>
@@ -536,14 +550,31 @@ export default function PaperLedgerScreen({ navigation }) {
                 { borderRightColor: redMarginLine },
               ]}
             >
-              <Text style={[styles.headerLabel, { color: textMuted }]}>
-                PARTICULARS (INCOME & EXPENSE)
-              </Text>
+              <View style={styles.headerTitleWrap}>
+                <Text
+                  style={[styles.headerLabel, { color: textMuted }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  PARTICULARS
+                </Text>
+                <Text style={[styles.headerSubLabel, { color: textMuted }]}>
+                  (INCOME / EXPENSE)
+                </Text>
+              </View>
             </View>
 
             {/* 25% Right Header */}
             <View style={[styles.col25, styles.headerCol]}>
-              <Text style={[styles.headerLabelRight, { color: textMuted }]}>AMOUNT</Text>
+              <Text
+                style={[styles.headerLabelRight, { color: textMuted }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+              >
+                AMOUNT
+              </Text>
             </View>
           </View>
 
@@ -710,13 +741,15 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  toolbar: {
+  toolbarWrapper: {
+    borderBottomWidth: 1,
+  },
+  toolbarScrollContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
   },
   toolbarLeft: {
     flexDirection: 'row',
@@ -754,10 +787,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  selectionCountPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
   selectionCountText: {
     fontSize: 13,
     fontWeight: '600',
-    marginRight: 4,
   },
   deleteSelectedBtn: {
     flexDirection: 'row',
@@ -771,13 +808,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 13,
     fontWeight: '700',
-  },
-  iconActionBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   shareBtn: {
     flexDirection: 'row',
@@ -809,14 +839,14 @@ const styles = StyleSheet.create({
   notebookTape: {
     backgroundColor: '#854D0E',
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     borderTopLeftRadius: 7,
     borderTopRightRadius: 7,
   },
   tapeStitchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: 5,
   },
   tapeStitchDot: {
     width: 4,
@@ -824,34 +854,65 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.4)',
   },
-  tapeTitleRow: {
+  tapeMainRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  tapeTitleBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    paddingRight: 8,
+  },
   tapeTitle: {
     color: '#FEF3C7',
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
   },
-  tapeSub: {
+  tapeCountBadge: {
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  tapeCountText: {
+    color: '#FEF3C7',
+    fontSize: 10.5,
+    fontWeight: '700',
+  },
+  tapeInfoRow: {
+    marginTop: 4,
+  },
+  tapeHintText: {
     color: 'rgba(254,243,199,0.8)',
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10.5,
+    fontWeight: '500',
   },
   tableRowHeader: {
     flexDirection: 'row',
     borderBottomWidth: 1.5,
   },
   headerCol: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  headerTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 5,
+    flexWrap: 'wrap',
   },
   headerLabel: {
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.6,
+  },
+  headerSubLabel: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    letterSpacing: 0.4,
   },
   headerLabelRight: {
     fontSize: 11,

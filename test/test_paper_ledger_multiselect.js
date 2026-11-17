@@ -39,3 +39,4 @@ assert.strictEqual(emptyAfterDeleteAll.length, 0, 'All items should be removed')
 assert.strictEqual(calculateLedgerTotals(emptyAfterDeleteAll).netTotal, 0, 'Empty net total is 0');
 
 console.log('Multi-Record Selection & Deletion Tests Passed Successfully!');
+
