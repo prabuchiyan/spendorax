@@ -28,3 +28,4 @@ assert.ok(!multilineText.includes('Groceries\nMilk & Bread'), 'Should replace ne
 assert.ok(multilineText.includes('Groceries Milk & Bread'), 'Should have flattened title on one line');
 
 console.log('All Review Fixes Tests Passed!');
+

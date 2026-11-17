@@ -24,6 +24,7 @@ import {
 } from '../utils/paperLedgerUtils';
 import PaperAddRowModal from '../components/PaperAddRowModal';
 import PaperMonthPickerModal from '../components/PaperMonthPickerModal';
+import PaperSwipeableRow from '../components/PaperSwipeableRow';
 
 export default function PaperLedgerScreen({ navigation }) {
   const { isDarkMode, theme } = useTheme();
@@ -89,6 +90,39 @@ export default function PaperLedgerScreen({ navigation }) {
   const handleDeleteRow = useCallback((rowId) => {
     setItems((prev) => prev.filter((it) => it.id !== rowId));
   }, []);
+
+  // Request delete with confirmation warning prompt (used by swipe gesture)
+  const requestDeleteRow = useCallback(
+    (item, onCancel) => {
+      Alert.alert(
+        'Delete Entry',
+        `Are you sure you want to remove "${item.title}" from this calculation sheet?`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => {
+              if (onCancel) onCancel();
+            },
+          },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => {
+              handleDeleteRow(item.id);
+            },
+          },
+        ],
+        {
+          cancelable: true,
+          onDismiss: () => {
+            if (onCancel) onCancel();
+          },
+        }
+      );
+    },
+    [handleDeleteRow]
+  );
 
   // Handle clearing entire ledger
   const handleClearAll = useCallback(() => {
@@ -278,7 +312,7 @@ export default function PaperLedgerScreen({ navigation }) {
           >
             <MaterialCommunityIcons name="plus" size={17} color={Colors.primary} />
             <Text style={[styles.toolButtonOutlineText, { color: Colors.primary }]}>
-              + Add Line
+              Add Line
             </Text>
           </TouchableOpacity>
         </View>
@@ -292,9 +326,9 @@ export default function PaperLedgerScreen({ navigation }) {
               ]}
               onPress={handleClearAll}
               activeOpacity={0.7}
-              title="Clear sheet"
+              title="Clear all entries"
             >
-              <MaterialCommunityIcons name="delete-sweep-outline" size={19} color="#EF4444" />
+              <MaterialCommunityIcons name="trash-can-outline" size={19} color="#EF4444" />
             </TouchableOpacity>
           )}
 
@@ -333,12 +367,12 @@ export default function PaperLedgerScreen({ navigation }) {
             <View style={styles.tapeTitleRow}>
               <Text style={styles.tapeTitle}>SPENDORAX MATH CALCULATION PAD</Text>
               <Text style={styles.tapeSub}>
-                {items.length} {items.length === 1 ? 'entry' : 'entries'}
+                {items.length} {items.length === 1 ? 'entry' : 'entries'} • Swipe row to remove
               </Text>
             </View>
           </View>
 
-          {/* Paper Table Header (80% / 20%) */}
+          {/* Paper Table Header (75% / 25%) */}
           <View
             style={[
               styles.tableRowHeader,
@@ -348,10 +382,10 @@ export default function PaperLedgerScreen({ navigation }) {
               },
             ]}
           >
-            {/* 80% Left Header */}
+            {/* 75% Left Header */}
             <View
               style={[
-                styles.col80,
+                styles.col75,
                 styles.headerCol,
                 { borderRightColor: redMarginLine },
               ]}
@@ -361,8 +395,8 @@ export default function PaperLedgerScreen({ navigation }) {
               </Text>
             </View>
 
-            {/* 20% Right Header */}
-            <View style={[styles.col20, styles.headerCol]}>
+            {/* 25% Right Header */}
+            <View style={[styles.col25, styles.headerCol]}>
               <Text style={[styles.headerLabelRight, { color: textMuted }]}>AMOUNT</Text>
             </View>
           </View>
@@ -385,98 +419,22 @@ export default function PaperLedgerScreen({ navigation }) {
               </Text>
             </View>
           ) : (
-            items.map((item, index) => {
-              const isIncome = item.type === 'income';
-              const serialNo = `${index + 1}) `;
-
-              return (
-                <View
-                  key={item.id}
-                  style={[
-                    styles.tableRow,
-                    { borderBottomColor: ruledLineColor },
-                  ]}
-                >
-                  {/* 80% Left Column: Serial, Details, Income/Expense Badge, Delete */}
-                  <View
-                    style={[
-                      styles.col80,
-                      styles.cell80,
-                      { borderRightColor: redMarginLine },
-                    ]}
-                  >
-                    <View style={styles.rowMain}>
-                      <Text style={[styles.serialText, { color: textMuted }]}>
-                        {serialNo}
-                      </Text>
-                      <View style={{ flex: 1 }}>
-                        <Text
-                          style={[styles.itemTitle, { color: textColor }]}
-                          numberOfLines={2}
-                        >
-                          {item.title}
-                        </Text>
-                        <View style={styles.badgeRow}>
-                          <View
-                            style={[
-                              styles.typeBadge,
-                              {
-                                backgroundColor: isIncome
-                                  ? isDarkMode
-                                    ? '#0A3324'
-                                    : '#E6F9F0'
-                                  : isDarkMode
-                                  ? '#3B171C'
-                                  : '#FEECEC',
-                              },
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.typeBadgeText,
-                                { color: isIncome ? '#10B981' : '#EF4444' },
-                              ]}
-                            >
-                              {isIncome ? '+ Income' : '- Expense'}
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-
-                      {/* Delete entire row button */}
-                      <TouchableOpacity
-                        style={styles.deleteRowBtn}
-                        onPress={() => handleDeleteRow(item.id)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        activeOpacity={0.6}
-                      >
-                        <MaterialCommunityIcons
-                          name="trash-can-outline"
-                          size={17}
-                          color="#EF4444"
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-
-                  {/* 20% Right Column: Only Amount */}
-                  <View style={[styles.col20, styles.cell20]}>
-                    <Text
-                      style={[
-                        styles.amountText,
-                        { color: isIncome ? '#10B981' : '#EF4444' },
-                      ]}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.7}
-                    >
-                      {isIncome ? '+' : '-'}
-                      {formatLedgerAmount(item.amount)}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })
+            items.map((item, index) => (
+              <PaperSwipeableRow
+                key={item.id}
+                item={item}
+                index={index}
+                isIncome={item.type === 'income'}
+                formatLedgerAmount={formatLedgerAmount}
+                onRequestDelete={requestDeleteRow}
+                paperBg={paperBg}
+                ruledLineColor={ruledLineColor}
+                redMarginLine={redMarginLine}
+                textColor={textColor}
+                textMuted={textMuted}
+                isDarkMode={isDarkMode}
+              />
+            ))
           )}
 
           {/* Additional ruled lines for notebook paper feel if few items */}
@@ -491,17 +449,17 @@ export default function PaperLedgerScreen({ navigation }) {
               >
                 <View
                   style={[
-                    styles.col80,
-                    styles.cell80,
+                    styles.col75,
+                    styles.cell75,
                     { borderRightColor: redMarginLine },
                   ]}
                 />
-                <View style={[styles.col20, styles.cell20]} />
+                <View style={[styles.col25, styles.cell25]} />
               </View>
             ))
           )}
 
-          {/* Bottom Total Row with continuing 80% / 20% vertical divide */}
+          {/* Bottom Total Row with continuing 75% / 25% vertical divide */}
           <View
             style={[
               styles.totalRow,
@@ -512,11 +470,11 @@ export default function PaperLedgerScreen({ navigation }) {
               },
             ]}
           >
-            {/* 80% Bottom: "Total" */}
+            {/* 75% Bottom: "Total" */}
             <View
               style={[
-                styles.col80,
-                styles.totalCol80,
+                styles.col75,
+                styles.totalCol75,
                 { borderRightColor: redMarginLine },
               ]}
             >
@@ -536,8 +494,8 @@ export default function PaperLedgerScreen({ navigation }) {
               </View>
             </View>
 
-            {/* 20% Bottom: Net Total Amount */}
-            <View style={[styles.col20, styles.totalCol20]}>
+            {/* 25% Bottom: Net Total Amount */}
+            <View style={[styles.col25, styles.totalCol25]}>
               <Text
                 style={[
                   styles.totalAmountText,
@@ -546,13 +504,13 @@ export default function PaperLedgerScreen({ navigation }) {
                       totals.netTotal > 0
                         ? '#10B981'
                         : totals.netTotal < 0
-                        ? '#EF4444'
-                        : textColor,
+                          ? '#EF4444'
+                          : textColor,
                   },
                 ]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
-                minimumFontScale={0.7}
+                minimumFontScale={0.65}
               >
                 {totals.netTotal > 0 ? '+' : ''}
                 {formatLedgerAmount(totals.netTotal)}
@@ -725,65 +683,29 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     textAlign: 'right',
   },
-  col80: {
-    width: '76%',
+  col75: {
+    width: '75%',
     borderRightWidth: 1.5,
   },
-  col20: {
-    width: '24%',
+  col25: {
+    width: '25%',
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     minHeight: 52,
   },
-  cell80: {
+  cell75: {
     paddingVertical: 8,
     paddingHorizontal: 10,
     justifyContent: 'center',
   },
-  cell20: {
+  cell25: {
     paddingVertical: 8,
     paddingLeft: 2,
     paddingRight: 8,
     justifyContent: 'center',
     alignItems: 'flex-end',
-  },
-  rowMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  serialText: {
-    fontSize: 13,
-    fontWeight: '700',
-    width: 24,
-  },
-  itemTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 3,
-  },
-  typeBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  typeBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  deleteRowBtn: {
-    padding: 6,
-    marginLeft: 6,
-  },
-  amountText: {
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'right',
   },
   emptyPaperNotice: {
     paddingVertical: 44,
@@ -808,14 +730,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     paddingVertical: 10,
   },
-  totalCol80: {
+  totalCol75: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  totalCol20: {
+  totalCol25: {
     paddingLeft: 2,
     paddingRight: 8,
     paddingVertical: 4,
