@@ -21,6 +21,7 @@ import {
   formatLedgerAmount,
   formatWhatsAppLedgerText,
   mapDbTransactionsToPaperItems,
+  isTransferTransaction,
 } from '../utils/paperLedgerUtils';
 import PaperAddRowModal from '../components/PaperAddRowModal';
 import PaperMonthPickerModal from '../components/PaperMonthPickerModal';
@@ -401,9 +402,10 @@ export default function PaperLedgerScreen({ navigation }) {
         const endStr = `${monthStr}-${String(lastDay).padStart(2, '0')}T23:59:59.999Z`;
 
         const txs = await getTransactionsByDateRange(null, startStr, endStr);
-        // Keep only income and expense
+        // Exclude all transfer transactions and keep only genuine income and expense
         const validTxs = (txs || []).filter(
           (t) =>
+            !isTransferTransaction(t) &&
             t.type &&
             (t.type.toLowerCase() === 'income' || t.type.toLowerCase() === 'expense')
         );
@@ -451,8 +453,10 @@ export default function PaperLedgerScreen({ navigation }) {
       const endStr = `${lastMonth}-${String(lastDay).padStart(2, '0')}T23:59:59.999Z`;
 
       const txs = await getTransactionsByDateRange(null, startStr, endStr);
+      // Exclude all transfer transactions and keep only genuine income and expense
       const validTxs = (txs || []).filter(
         (t) =>
+          !isTransferTransaction(t) &&
           t.type &&
           (t.type.toLowerCase() === 'income' || t.type.toLowerCase() === 'expense')
       );

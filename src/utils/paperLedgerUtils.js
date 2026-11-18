@@ -101,34 +101,53 @@ function formatWhatsAppLedgerText(items = [], netTotal = 0, dateStr = '') {
 }
 
 /**
- * Maps raw database transactions to paper ledger items
+ * Checks whether a database transaction is a transfer
+ * @param {Object} tx
+ * @returns {boolean}
+ */
+function isTransferTransaction(tx) {
+  if (!tx) return false;
+  return Boolean(
+    (tx.transfer_group_id && String(tx.transfer_group_id).trim() !== '') ||
+    tx.is_transfer === 1 ||
+    tx.is_transfer === true ||
+    String(tx.is_transfer).trim() === '1' ||
+    String(tx.type || '').toLowerCase() === 'transfer'
+  );
+}
+
+/**
+ * Maps raw database transactions to paper ledger items, excluding transfers
  * @param {Array<Object>} transactions
  * @param {Object} [categoriesMap]
  * @returns {Array<{ id: string, title: string, type: 'income' | 'expense', amount: number, originalId?: number, date?: string }>}
  */
 function mapDbTransactionsToPaperItems(transactions = [], categoriesMap = {}) {
-  return (transactions || []).map((tx, idx) => {
-    const isIncome = String(tx.type || '').toLowerCase() === 'income';
-    const catName = tx.category_name || (tx.category_id && categoriesMap[tx.category_id]?.name) || '';
-    const note = (tx.notes || '').trim();
-    const title = note || catName || (isIncome ? 'Income' : 'Expense');
-    const amount = Math.abs(Number(tx.amount) || 0);
+  return (transactions || [])
+    .filter((tx) => !isTransferTransaction(tx))
+    .map((tx, idx) => {
+      const isIncome = String(tx.type || '').toLowerCase() === 'income';
+      const catName = tx.category_name || (tx.category_id && categoriesMap[tx.category_id]?.name) || '';
+      const note = (tx.notes || '').trim();
+      const title = note || catName || (isIncome ? 'Income' : 'Expense');
+      const amount = Math.abs(Number(tx.amount) || 0);
 
-    return {
-      id: `db_${tx.id || idx}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      title,
-      type: isIncome ? 'income' : 'expense',
-      amount,
-      originalId: tx.id,
-      date: tx.date || null
-    };
-  });
+      return {
+        id: `db_${tx.id || idx}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        title,
+        type: isIncome ? 'income' : 'expense',
+        amount,
+        originalId: tx.id,
+        date: tx.date || null
+      };
+    });
 }
 
 module.exports = {
   calculateLedgerTotals,
   formatLedgerAmount,
   formatWhatsAppLedgerText,
-  mapDbTransactionsToPaperItems
+  mapDbTransactionsToPaperItems,
+  isTransferTransaction,
 };
 

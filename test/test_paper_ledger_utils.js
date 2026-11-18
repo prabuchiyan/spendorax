@@ -3,7 +3,8 @@ const assert = require('assert');
 const {
   calculateLedgerTotals,
   formatWhatsAppLedgerText,
-  mapDbTransactionsToPaperItems
+  mapDbTransactionsToPaperItems,
+  isTransferTransaction,
 } = require('../src/utils/paperLedgerUtils');
 
 console.log('Running Task 1 tests...');
@@ -50,6 +51,29 @@ assert.strictEqual(mapped[0].title, 'Freelance', 'Should use notes as title');
 assert.strictEqual(mapped[0].type, 'income', 'Should retain income type');
 assert.strictEqual(mapped[0].amount, 1200, 'Should retain amount');
 assert.strictEqual(mapped[1].title, 'Food', 'Should fall back to category_name');
+
+// 6. Test Transfer Transaction Detection & Exclusion
+const transferTxs = [
+  { id: 1, type: 'transfer', amount: 500, notes: 'Direct Transfer' },
+  { id: 2, type: 'expense', amount: 500, transfer_group_id: 'grp_123', notes: 'Bank Transfer Debit' },
+  { id: 3, type: 'income', amount: 500, transfer_group_id: 'grp_123', notes: 'Bank Transfer Credit' },
+  { id: 4, type: 'expense', amount: 250, is_transfer: 1, notes: 'Flagged Transfer' },
+  { id: 5, type: 'income', amount: 1500, notes: 'Real Salary', transfer_group_id: null },
+  { id: 6, type: 'expense', amount: 45, notes: 'Coffee', transfer_group_id: null },
+];
+
+assert.strictEqual(isTransferTransaction(transferTxs[0]), true, 'type transfer should be true');
+assert.strictEqual(isTransferTransaction(transferTxs[1]), true, 'transfer_group_id debit should be true');
+assert.strictEqual(isTransferTransaction(transferTxs[2]), true, 'transfer_group_id credit should be true');
+assert.strictEqual(isTransferTransaction(transferTxs[3]), true, 'is_transfer = 1 should be true');
+assert.strictEqual(isTransferTransaction(transferTxs[4]), false, 'genuine income should be false');
+assert.strictEqual(isTransferTransaction(transferTxs[5]), false, 'genuine expense should be false');
+
+const mappedWithoutTransfers = mapDbTransactionsToPaperItems(transferTxs);
+assert.strictEqual(mappedWithoutTransfers.length, 2, 'Should only map genuine non-transfer transactions');
+assert.strictEqual(mappedWithoutTransfers[0].title, 'Real Salary');
+assert.strictEqual(mappedWithoutTransfers[1].title, 'Coffee');
+console.log('✓ Transfer transaction exclusion verified successfully!');
 
 console.log('Task 1 tests passed successfully!');
 
