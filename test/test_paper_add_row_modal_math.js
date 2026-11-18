@@ -117,3 +117,4 @@ assert.strictEqual(expr, '');
 console.log('✓ Operator insertion and Clear work as expected');
 
 console.log('All Modal Math Logic Tests Passed Successfully!');
+

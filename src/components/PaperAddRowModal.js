@@ -32,8 +32,8 @@ export default function PaperAddRowModal({ visible, onClose, onAdd, initialItem 
         initialItem.formula
           ? String(initialItem.formula)
           : initialItem.amount !== undefined && initialItem.amount !== null
-          ? String(initialItem.amount)
-          : ''
+            ? String(initialItem.amount)
+            : ''
       );
     } else {
       setTitle('');
@@ -55,6 +55,18 @@ export default function PaperAddRowModal({ visible, onClose, onAdd, initialItem 
     const trimmed = (amount || '').trim();
     if (!trimmed) {
       if (op === '-' || op === '−') setAmount('-');
+      else if (op === '(') setAmount('(');
+      return;
+    }
+    if (op === '(') {
+      const endsWithOp = /[+\-*/%−×÷]$/.test(trimmed);
+      setAmount(endsWithOp ? `${trimmed} (` : `${trimmed} * (`);
+      if (error) setError('');
+      return;
+    }
+    if (op === ')') {
+      setAmount(`${trimmed})`);
+      if (error) setError('');
       return;
     }
     const endsWithOp = /[+\-*/%−×÷]$/.test(trimmed);
@@ -246,14 +258,14 @@ export default function PaperAddRowModal({ visible, onClose, onAdd, initialItem 
                               ? '#3A1E24'
                               : '#FEE2E2'
                             : isDarkMode
-                            ? '#1E283A'
-                            : '#EFF6FF',
+                              ? '#1E283A'
+                              : '#EFF6FF',
                         borderColor:
                           op === 'C'
                             ? '#EF4444'
                             : isDarkMode
-                            ? '#334155'
-                            : '#BFDBFE',
+                              ? '#334155'
+                              : '#BFDBFE',
                       },
                     ]}
                     onPress={() => handleInsertOperator(op)}
@@ -340,8 +352,8 @@ export default function PaperAddRowModal({ visible, onClose, onAdd, initialItem 
                       backgroundColor: isEditing
                         ? '#2563EB'
                         : type === 'income'
-                        ? '#10B981'
-                        : Colors.primary,
+                          ? '#10B981'
+                          : Colors.primary,
                     },
                   ]}
                   onPress={handleAdd}

@@ -162,7 +162,11 @@ export default function PaperSwipeableRow({
                     color="#3B82F6"
                     style={{ marginRight: 3 }}
                   />
-                  <Text style={[styles.formulaBadgeText, { color: isDarkMode ? '#93C5FD' : '#2563EB' }]}>
+                  <Text
+                    style={[styles.formulaBadgeText, { color: isDarkMode ? '#93C5FD' : '#2563EB' }]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
                     {item.formula}
                   </Text>
                 </View>
@@ -354,11 +358,14 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     borderWidth: 1,
     marginLeft: 6,
+    maxWidth: 140,
+    flexShrink: 1,
   },
   formulaBadgeText: {
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.2,
+    flexShrink: 1,
   },
   amountText: {
     fontSize: 13.5,
