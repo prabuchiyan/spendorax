@@ -25,17 +25,17 @@
 - Modify: `src/components/PaperSwipeableRow.js`
 - Create / Update: `test/test_paper_ledger_modern_ui.js`
 
-- [ ] **Step 1: Write test for modern row styling & elements**
+- [x] **Step 1: Write test for modern row styling & elements**
   Create `test/test_paper_ledger_modern_ui.js` asserting modern styling structure, tabular amount format, and pill attributes.
-- [ ] **Step 2: Update `PaperSwipeableRow.js`**
+- [x] **Step 2: Update `PaperSwipeableRow.js`**
   - Replace `redMarginLine` border with a subtle modern divider (`subtleDividerColor`).
   - Style serial index cleanly (`#01`, `#02`, etc.).
   - Polish income (`+ Inflow`) and expense (`− Outflow` or `− Expense`) pills with modern soft colors.
   - Polish formula badge into a clean monospaced calculation chip.
   - Round swipe action reveal indicators into modern action capsules.
-- [ ] **Step 3: Verify Babel syntax and unit test**
+- [x] **Step 3: Verify Babel syntax and unit test**
   Run `node test/test_paper_ledger_modern_ui.js` and Babel syntax check.
-- [ ] **Step 4: Local commit Task 1**
+- [x] **Step 4: Local commit Task 1**
   Commit locally: `feat(paper-ledger): modernize swipeable rows with sleek fintech styling` (no push).
 
 ---
@@ -44,21 +44,21 @@
 **Files:**
 - Modify: `src/screens/PaperLedgerScreen.js`
 
-- [ ] **Step 1: Update surface styling & remove retro elements**
+- [x] **Step 1: Update surface styling & remove retro elements**
   - Replace parchment paper backgrounds with pure elevated card surfaces (`#FFFFFF` in light, `#131926` in dark).
   - Remove brown binding tape and white stitch dots; replace with modern sleek header card.
   - Modernize sheet title pill, inline edit button, `+ New` button pill, and count badge.
-- [ ] **Step 2: Modernize column headers and empty state**
+- [x] **Step 2: Modernize column headers and empty state**
   - Update 65% / 35% header to `TRANSACTION / FORMULA` and `AMOUNT` with clean letter spacing and subtle divider.
   - Modernize empty state with clean icon and typography.
   - Remove fake blank notebook ruled lines.
-- [ ] **Step 3: Build Modern Fintech Net Balance Hero Summary**
+- [x] **Step 3: Build Modern Fintech Net Balance Hero Summary**
   - Replace double-line ledger footer with a modern hero summary block:
     - Side-by-side Inflow and Outflow breakdown pills.
     - Large Net Balance display with dynamic color (`#10B981` positive, `#F43F5E` negative) and status pill (`Surplus`, `Deficit`, `Balanced`).
-- [ ] **Step 4: Verify Babel syntax & run test suite**
+- [x] **Step 4: Verify Babel syntax & run test suite**
   Run all test suites including `test_paper_ledger_db_e2e.js` and `test_paper_ledger_modern_ui.js`.
-- [ ] **Step 5: Local commit Task 2**
+- [x] **Step 5: Local commit Task 2**
   Commit locally: `feat(paper-ledger): redesign paper ledger with modern fintech card and summary hero` (no push).
 
 ---
@@ -67,7 +67,7 @@
 **Files:**
 - All test suites in `test/`
 
-- [ ] **Step 1: Run all test suites across the project**
+- [x] **Step 1: Run all test suites across the project**
   Ensure all DB persistence, pinning, math expression, swipe, and modal tests pass 100%.
-- [ ] **Step 2: Present final verification to user**
+- [x] **Step 2: Present final verification to user**
   Summarize changes and provide local verification guide.

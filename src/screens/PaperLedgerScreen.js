@@ -508,16 +508,45 @@ export default function PaperLedgerScreen({ navigation }) {
     }
   }, [items, totals.netTotal, showInfoAlert]);
 
-  // Paper styling constants
-  const paperBg = isDarkMode ? '#171B24' : '#FDFBF7';
-  const paperBorder = isDarkMode ? '#283141' : '#E8E1D3';
-  const ruledLineColor = isDarkMode ? '#222A38' : '#ECE5D8';
-  const redMarginLine = isDarkMode ? '#F43F5E' : '#EF4444';
-  const textColor = isDarkMode ? '#F1F5F9' : '#1E293B';
-  const textMuted = isDarkMode ? '#8B9BB4' : '#64748B';
+  // Modern Fintech styling constants
+  const screenBg = isDarkMode ? '#0B0F17' : '#F8FAFC';
+  const cardBg = isDarkMode ? '#131926' : '#FFFFFF';
+  const cardBorder = isDarkMode ? '#1F293D' : '#E2E8F0';
+  const headerBg = isDarkMode ? '#162032' : '#F8FAFC';
+  const headerBorder = isDarkMode ? '#1F293D' : '#E2E8F0';
+  const tableHeaderBg = isDarkMode ? '#101622' : '#F8FAFC';
+  const rowDividerColor = isDarkMode ? '#1F293D' : '#F1F5F9';
+  const colDividerColor = isDarkMode ? '#1F293D' : '#F1F5F9';
+  const textColor = isDarkMode ? '#F8FAFC' : '#0F172A';
+  const textMuted = isDarkMode ? '#94A3B8' : '#64748B';
+
+  const netStatus = useMemo(() => {
+    if (totals.netTotal > 0) {
+      return {
+        label: 'Surplus',
+        color: isDarkMode ? '#34D399' : '#059669',
+        bg: isDarkMode ? '#064E3B' : '#ECFDF5',
+        icon: 'trending-up',
+      };
+    }
+    if (totals.netTotal < 0) {
+      return {
+        label: 'Deficit',
+        color: isDarkMode ? '#FB7185' : '#E11D48',
+        bg: isDarkMode ? '#4C0519' : '#FFF1F2',
+        icon: 'trending-down',
+      };
+    }
+    return {
+      label: 'Balanced',
+      color: textMuted,
+      bg: isDarkMode ? '#1E293B' : '#F1F5F9',
+      icon: 'scale-balance',
+    };
+  }, [totals.netTotal, isDarkMode, textMuted]);
 
   return (
-    <View style={[styles.screen, { backgroundColor: isDarkMode ? '#0F1218' : '#F1F4F9' }]}>
+    <View style={[styles.screen, { backgroundColor: screenBg }]}>
       {/* Top Action Bar (Horizontally scrollable, never cuts off) */}
       <View
         style={[
@@ -728,82 +757,118 @@ export default function PaperLedgerScreen({ navigation }) {
       >
         <View
           style={[
-            styles.paperSheet,
+            styles.fintechSheet,
             {
-              backgroundColor: paperBg,
-              borderColor: paperBorder,
+              backgroundColor: cardBg,
+              borderColor: cardBorder,
             },
           ]}
         >
-          {/* Top Binding Tape of Math Calc Book */}
-          <View style={styles.notebookTape}>
-            <View style={styles.tapeStitchRow}>
-              {[...Array(16)].map((_, i) => (
-                <View key={i} style={styles.tapeStitchDot} />
-              ))}
-            </View>
+          {/* Top Fintech Card Header */}
+          <View
+            style={[
+              styles.fintechHeader,
+              {
+                backgroundColor: headerBg,
+                borderBottomColor: headerBorder,
+              },
+            ]}
+          >
+            <View style={styles.fintechHeaderMainRow}>
+              <View style={styles.fintechTitleBlock}>
+                <View
+                  style={[
+                    styles.titleIconBadge,
+                    {
+                      backgroundColor: isDarkMode ? '#172554' : '#EFF6FF',
+                    },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name={activeSheetTitle ? 'bookmark-check' : 'calculator-variant-outline'}
+                    size={16}
+                    color={activeSheetTitle ? '#3B82F6' : '#6366F1'}
+                  />
+                </View>
 
-            <View style={styles.tapeMainRow}>
-              <View style={styles.tapeTitleBlock}>
-                <MaterialCommunityIcons
-                  name={activeSheetTitle ? 'bookmark-check' : 'notebook-outline'}
-                  size={14}
-                  color={activeSheetTitle ? '#FDE68A' : '#FEF3C7'}
-                  style={{ marginRight: 6 }}
-                />
-                <Text style={styles.tapeTitle} numberOfLines={1}>
-                  {activeSheetTitle ? activeSheetTitle.toUpperCase() : 'MATH CALCULATION PAD'}
+                <Text
+                  style={[styles.fintechSheetTitle, { color: textColor }]}
+                  numberOfLines={1}
+                >
+                  {activeSheetTitle ? activeSheetTitle : 'Financial Calculation Sheet'}
                 </Text>
+
                 {activeSheetTitle && (
                   <TouchableOpacity
                     onPress={() => setIsSaveModalVisible(true)}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    style={{ marginLeft: 6 }}
+                    style={[
+                      styles.editTitleBtn,
+                      { backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9' },
+                    ]}
                     activeOpacity={0.7}
                   >
-                    <MaterialCommunityIcons name="pencil" size={13} color="#FEF3C7" />
+                    <MaterialCommunityIcons
+                      name="pencil"
+                      size={12}
+                      color={isDarkMode ? '#94A3B8' : '#64748B'}
+                    />
                   </TouchableOpacity>
                 )}
               </View>
 
-              <View style={styles.tapeRightControls}>
+              <View style={styles.fintechHeaderControls}>
                 {(activeSheetTitle || items.length > 0) && (
                   <TouchableOpacity
-                    style={styles.tapeNewSheetBtn}
+                    style={[
+                      styles.fintechNewBtn,
+                      {
+                        backgroundColor: isDarkMode ? '#172554' : '#EFF6FF',
+                        borderColor: isDarkMode ? '#1E3A8A' : '#BFDBFE',
+                      },
+                    ]}
                     onPress={handlePromptNewSheet}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     activeOpacity={0.7}
                   >
-                    <MaterialCommunityIcons name="plus" size={13} color="#FEF3C7" />
-                    <Text style={styles.tapeNewSheetText}>New</Text>
+                    <MaterialCommunityIcons name="plus" size={13} color="#3B82F6" />
+                    <Text style={styles.fintechNewBtnText}>New</Text>
                   </TouchableOpacity>
                 )}
-                <View style={styles.tapeCountBadge}>
-                  <Text style={styles.tapeCountText}>
+
+                <View
+                  style={[
+                    styles.fintechCountBadge,
+                    {
+                      backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9',
+                    },
+                  ]}
+                >
+                  <Text style={[styles.fintechCountText, { color: textMuted }]}>
                     {items.length} {items.length === 1 ? 'entry' : 'entries'}
                   </Text>
                 </View>
               </View>
             </View>
 
-            <View style={styles.tapeInfoRow}>
-              <Text style={styles.tapeHintText} numberOfLines={1}>
+            <View style={styles.fintechHeaderSubRow}>
+              <Text style={[styles.fintechSubText, { color: textMuted }]} numberOfLines={1}>
                 {isSelectionMode
                   ? `${selectedIds.size} of ${items.length} selected • Tap rows to toggle`
                   : activeSheetLastUpdated
-                    ? `Saved Sheet • Updated: ${new Date(activeSheetLastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} • Swipe L/R to edit/delete`
-                    : 'Swipe right to delete • Swipe left to edit • Tap Save to keep in DB'}
+                    ? `Saved Sheet • Updated ${new Date(activeSheetLastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} • Swipe L/R to edit or delete`
+                    : 'Swipe right to delete • Swipe left to edit • Tap Save to keep in database'}
               </Text>
             </View>
           </View>
 
-          {/* Paper Table Header (65% / 35%) */}
+          {/* Table Column Header: 65% / 35% Grid */}
           <View
             style={[
               styles.tableRowHeader,
               {
-                borderBottomColor: ruledLineColor,
-                backgroundColor: isDarkMode ? '#131720' : '#F7F3EB',
+                borderBottomColor: rowDividerColor,
+                backgroundColor: tableHeaderBg,
               },
             ]}
           >
@@ -812,53 +877,55 @@ export default function PaperLedgerScreen({ navigation }) {
               style={[
                 styles.col65,
                 styles.headerCol,
-                { borderRightColor: redMarginLine },
+                { borderRightColor: colDividerColor },
               ]}
             >
-              <View style={styles.headerTitleWrap}>
-                <Text
-                  style={[styles.headerLabel, { color: textMuted }]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.8}
-                >
-                  PARTICULARS
-                </Text>
-                <Text style={[styles.headerSubLabel, { color: textMuted }]}>
-                  (INCOME / EXPENSE)
-                </Text>
-              </View>
+              <Text style={[styles.headerLabel, { color: textMuted }]}>
+                TRANSACTION / FORMULA
+              </Text>
             </View>
 
             {/* 35% Right Header */}
-            <View style={[styles.col35, styles.headerCol]}>
-              <Text
-                style={[styles.headerLabelRight, { color: textMuted }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.8}
-              >
-                AMOUNT
+            <View style={[styles.col35, styles.headerColRight]}>
+              <Text style={[styles.headerLabelRight, { color: textMuted }]}>
+                AMOUNT (₹)
               </Text>
             </View>
           </View>
 
-          {/* Paper Rows (80% / 20% split) */}
+          {/* Rows or Clean Empty State */}
           {items.length === 0 ? (
-            <View style={styles.emptyPaperNotice}>
-              <MaterialCommunityIcons
-                name="notebook-outline"
-                size={44}
-                color={textMuted}
-                style={{ marginBottom: 10, opacity: 0.6 }}
-              />
-              <Text style={[styles.emptyPaperTitle, { color: textColor }]}>
-                Clean Sheet Ready
+            <View style={styles.emptyNotice}>
+              <View
+                style={[
+                  styles.emptyIconCircle,
+                  { backgroundColor: isDarkMode ? '#172554' : '#EFF6FF' },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="calculator-variant-outline"
+                  size={36}
+                  color={Colors.primary}
+                />
+              </View>
+              <Text style={[styles.emptyTitle, { color: textColor }]}>
+                Calculation Sheet Ready
               </Text>
-              <Text style={[styles.emptyPaperDesc, { color: textMuted }]}>
-                Tap "Import Month" to bring transactions from your records, or "+ Add Line" to jot
-                down calculations.
+              <Text style={[styles.emptyDesc, { color: textMuted }]}>
+                Add your first calculation row using "+ Add Line" above, or import transactions
+                directly from your database records.
               </Text>
+              <TouchableOpacity
+                style={[styles.emptyAddBtn, { backgroundColor: Colors.primary }]}
+                onPress={() => {
+                  setEditingItem(null);
+                  setIsAddModalVisible(true);
+                }}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="plus" size={16} color="#FFF" style={{ marginRight: 4 }} />
+                <Text style={styles.emptyAddBtnText}>Add First Line</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             items.map((item, index) => (
@@ -870,9 +937,9 @@ export default function PaperLedgerScreen({ navigation }) {
                 formatLedgerAmount={formatLedgerAmount}
                 onRequestDelete={requestDeleteRow}
                 onRequestEdit={handleOpenEdit}
-                paperBg={paperBg}
-                ruledLineColor={ruledLineColor}
-                redMarginLine={redMarginLine}
+                paperBg={cardBg}
+                rowDividerColor={rowDividerColor}
+                columnDividerColor={colDividerColor}
                 textColor={textColor}
                 textMuted={textMuted}
                 isDarkMode={isDarkMode}
@@ -884,74 +951,111 @@ export default function PaperLedgerScreen({ navigation }) {
             ))
           )}
 
-          {/* Additional ruled lines for notebook paper feel if few items */}
-          {items.length > 0 && items.length < 5 && (
-            [...Array(5 - items.length)].map((_, i) => (
-              <View
-                key={`empty-rule-${i}`}
-                style={[
-                  styles.tableRow,
-                  { borderBottomColor: ruledLineColor, height: 44 },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.col65,
-                    styles.cell65,
-                    { borderRightColor: redMarginLine },
-                  ]}
-                />
-                <View style={[styles.col35, styles.cell35]} />
-              </View>
-            ))
-          )}
-
-          {/* Bottom Total Row with continuing 65% / 35% vertical divide */}
+          {/* Modern Fintech Hero Balance Summary Card */}
           <View
             style={[
-              styles.totalRow,
+              styles.heroSummaryContainer,
               {
-                borderTopColor: isDarkMode ? '#283141' : '#D1C7B7',
-                borderBottomColor: ruledLineColor,
-                backgroundColor: isDarkMode ? '#131822' : '#F4EFE6',
+                borderTopColor: rowDividerColor,
+                backgroundColor: isDarkMode ? '#0E1420' : '#F8FAFC',
               },
             ]}
           >
-            {/* 65% Bottom: "Total" */}
-            <View
-              style={[
-                styles.col65,
-                styles.totalCol65,
-                { borderRightColor: redMarginLine },
-              ]}
-            >
-              <View>
-                <Text style={[styles.totalLabel, { color: textColor }]}>Total</Text>
-                <Text style={[styles.totalSub, { color: textMuted }]}>
-                  (Income − Expenses)
-                </Text>
+            {/* Breakdown Chips: Inflow & Outflow */}
+            <View style={styles.breakdownRow}>
+              <View
+                style={[
+                  styles.breakdownChip,
+                  {
+                    backgroundColor: isDarkMode ? '#064E3B' : '#ECFDF5',
+                    borderColor: isDarkMode ? '#065F46' : '#A7F3D0',
+                  },
+                ]}
+              >
+                <View style={[styles.breakdownChipIcon, { backgroundColor: isDarkMode ? '#065F46' : '#D1FAE5' }]}>
+                  <MaterialCommunityIcons name="arrow-bottom-left" size={13} color="#059669" />
+                </View>
+                <View>
+                  <Text style={[styles.breakdownChipLabel, { color: isDarkMode ? '#6EE7B7' : '#059669' }]}>
+                    Total Inflow
+                  </Text>
+                  <Text style={[styles.breakdownChipValue, { color: isDarkMode ? '#34D399' : '#059669' }]}>
+                    {totals.totalIncome > 0 ? '+' : ''}
+                    {formatLedgerAmount(totals.totalIncome)}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.breakdownPillContainer}>
-                <Text style={styles.breakdownIncome}>
-                  {totals.totalIncome > 0 ? '+' : ''}{formatLedgerAmount(totals.totalIncome)}
-                </Text>
-                <Text style={styles.breakdownExpense}>
-                  {totals.totalExpense > 0 ? '−' : ''}{formatLedgerAmount(totals.totalExpense)}
-                </Text>
+
+              <View
+                style={[
+                  styles.breakdownChip,
+                  {
+                    backgroundColor: isDarkMode ? '#4C0519' : '#FFF1F2',
+                    borderColor: isDarkMode ? '#881337' : '#FECDD3',
+                  },
+                ]}
+              >
+                <View style={[styles.breakdownChipIcon, { backgroundColor: isDarkMode ? '#881337' : '#FFE4E6' }]}>
+                  <MaterialCommunityIcons name="arrow-top-right" size={13} color="#E11D48" />
+                </View>
+                <View>
+                  <Text style={[styles.breakdownChipLabel, { color: isDarkMode ? '#FDA4AF' : '#E11D48' }]}>
+                    Total Outflow
+                  </Text>
+                  <Text style={[styles.breakdownChipValue, { color: isDarkMode ? '#FB7185' : '#E11D48' }]}>
+                    {totals.totalExpense > 0 ? '−' : ''}
+                    {formatLedgerAmount(totals.totalExpense)}
+                  </Text>
+                </View>
               </View>
             </View>
 
-            {/* 35% Bottom: Net Total Amount */}
-            <View style={[styles.col35, styles.totalCol35]}>
+            {/* Hero Net Total Card */}
+            <View
+              style={[
+                styles.netHeroCard,
+                {
+                  backgroundColor: isDarkMode ? '#131A27' : '#FFFFFF',
+                  borderColor: isDarkMode ? '#1F2B3E' : '#E2E8F0',
+                },
+              ]}
+            >
+              <View style={styles.netHeroHeader}>
+                <View style={styles.netHeroLabelRow}>
+                  <MaterialCommunityIcons
+                    name="scale-balance"
+                    size={16}
+                    color={Colors.primary}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={[styles.netHeroLabel, { color: textMuted }]}>
+                    CALCULATED NET
+                  </Text>
+                </View>
+
+                {/* Status Pill: Surplus / Deficit / Balanced */}
+                <View style={[styles.netStatusPill, { backgroundColor: netStatus.bg }]}>
+                  <MaterialCommunityIcons
+                    name={netStatus.icon}
+                    size={12}
+                    color={netStatus.color}
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text style={[styles.netStatusText, { color: netStatus.color }]}>
+                    {netStatus.label}
+                  </Text>
+                </View>
+              </View>
+
               <Text
                 style={[
-                  styles.totalAmountText,
+                  styles.netHeroAmount,
                   {
                     color:
                       totals.netTotal > 0
-                        ? '#10B981'
+                        ? isDarkMode ? '#34D399' : '#059669'
                         : totals.netTotal < 0
-                          ? '#EF4444'
+                          ? isDarkMode ? '#FB7185' : '#E11D48'
                           : textColor,
                   },
                 ]}
@@ -964,14 +1068,6 @@ export default function PaperLedgerScreen({ navigation }) {
               </Text>
             </View>
           </View>
-
-          {/* Double rule under Total row (classic accounting underline) */}
-          <View
-            style={[
-              styles.doubleUnderline,
-              { borderTopColor: isDarkMode ? '#283141' : '#D1C7B7' },
-            ]}
-          />
         </View>
       </ScrollView>
 
@@ -1128,215 +1224,237 @@ const styles = StyleSheet.create({
     padding: 12,
     paddingBottom: 32,
   },
-  paperSheet: {
-    borderRadius: 8,
+  fintechSheet: {
+    borderRadius: 14,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
     elevation: 3,
     overflow: 'hidden',
   },
-  notebookTape: {
-    backgroundColor: '#854D0E',
-    paddingVertical: 8,
+  fintechHeader: {
+    paddingVertical: 12,
     paddingHorizontal: 14,
-    borderTopLeftRadius: 7,
-    borderTopRightRadius: 7,
+    borderBottomWidth: 1,
   },
-  tapeStitchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 5,
-  },
-  tapeStitchDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.4)',
-  },
-  tapeMainRow: {
+  fintechHeaderMainRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  tapeTitleBlock: {
+  fintechTitleBlock: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    paddingRight: 8,
+    paddingRight: 10,
+    gap: 8,
   },
-  tapeTitle: {
-    color: '#FEF3C7',
-    fontSize: 11.5,
-    fontWeight: '800',
-    letterSpacing: 0.8,
+  titleIconBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fintechSheetTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    letterSpacing: 0.2,
     flexShrink: 1,
   },
-  tapeCountBadge: {
-    backgroundColor: 'rgba(0,0,0,0.22)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
+  editTitleBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  tapeCountText: {
-    color: '#FEF3C7',
-    fontSize: 10.5,
-    fontWeight: '700',
-  },
-  tapeRightControls: {
+  fintechHeaderControls: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  tapeNewSheetBtn: {
+  fintechNewBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4.5,
     borderRadius: 8,
-    gap: 3,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.28)',
+    gap: 3,
     ...(Platform.OS === 'web' && { cursor: 'pointer' }),
   },
-  tapeNewSheetText: {
-    color: '#FEF3C7',
-    fontSize: 11.5,
+  fintechNewBtnText: {
+    color: '#3B82F6',
+    fontSize: 12,
     fontWeight: '700',
   },
-  tapeInfoRow: {
-    marginTop: 4,
+  fintechCountBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
-  tapeHintText: {
-    color: 'rgba(254,243,199,0.8)',
-    fontSize: 10.5,
+  fintechCountText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  fintechHeaderSubRow: {
+    marginTop: 6,
+  },
+  fintechSubText: {
+    fontSize: 11,
     fontWeight: '500',
   },
   tableRowHeader: {
     flexDirection: 'row',
-    borderBottomWidth: 1.5,
+    borderBottomWidth: 1,
   },
   headerCol: {
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
   },
-  headerTitleWrap: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 5,
-    flexWrap: 'wrap',
+  headerColRight: {
+    paddingVertical: 9,
+    paddingRight: 14,
+    paddingLeft: 6,
+    alignItems: 'flex-end',
   },
   headerLabel: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '800',
     letterSpacing: 0.6,
   },
-  headerSubLabel: {
-    fontSize: 9.5,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-  },
   headerLabelRight: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '800',
     letterSpacing: 0.6,
     textAlign: 'right',
   },
   col65: {
     width: '65%',
-    borderRightWidth: 1.5,
+    borderRightWidth: 1,
   },
   col35: {
     width: '35%',
   },
-  tableRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    minHeight: 52,
-  },
-  cell65: {
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    justifyContent: 'center',
-  },
-  cell35: {
-    paddingVertical: 8,
-    paddingLeft: 4,
-    paddingRight: 10,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-  },
-  emptyPaperNotice: {
-    paddingVertical: 44,
+  emptyNotice: {
+    paddingVertical: 48,
     paddingHorizontal: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyPaperTitle: {
+  emptyIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  emptyTitle: {
     fontSize: 16,
     fontWeight: '700',
     marginBottom: 6,
   },
-  emptyPaperDesc: {
+  emptyDesc: {
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 18,
-    maxWidth: 300,
+    maxWidth: 320,
+    marginBottom: 16,
   },
-  totalRow: {
+  emptyAddBtn: {
     flexDirection: 'row',
-    borderTopWidth: 2,
-    borderBottomWidth: 1,
-    paddingVertical: 10,
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
   },
-  totalCol65: {
+  emptyAddBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  heroSummaryContainer: {
+    borderTopWidth: 1,
+    padding: 14,
+    gap: 12,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  breakdownChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 8,
+  },
+  breakdownChipIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  breakdownChipLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  breakdownChipValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    marginTop: 1,
+  },
+  netHeroCard: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  netHeroHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    marginBottom: 6,
   },
-  totalCol35: {
-    paddingLeft: 4,
-    paddingRight: 10,
-    paddingVertical: 4,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
+  netHeroLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  totalLabel: {
-    fontSize: 15,
+  netHeroLabel: {
+    fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
-  totalSub: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 1,
+  netStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 12,
   },
-  breakdownPillContainer: {
-    alignItems: 'flex-end',
+  netStatusText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
-  breakdownIncome: {
-    fontSize: 10,
-    color: '#10B981',
-    fontWeight: '600',
-  },
-  breakdownExpense: {
-    fontSize: 10,
-    color: '#EF4444',
-    fontWeight: '600',
-  },
-  totalAmountText: {
-    fontSize: 14,
+  netHeroAmount: {
+    fontSize: 22,
     fontWeight: '800',
-    textAlign: 'right',
-  },
-  doubleUnderline: {
-    borderTopWidth: 2,
-    height: 4,
+    letterSpacing: 0.3,
   },
 });
 
