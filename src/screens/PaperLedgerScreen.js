@@ -101,6 +101,7 @@ export default function PaperLedgerScreen({ navigation }) {
           title: rowPayload.title,
           type: rowPayload.type,
           amount: rowPayload.amount,
+          formula: rowPayload.formula || null,
           date: new Date().toISOString(),
         };
         setItems((prev) => [...prev, item]);

@@ -145,6 +145,28 @@ export default function PaperSwipeableRow({
                   {isIncome ? '+ Income' : '- Expense'}
                 </Text>
               </View>
+
+              {item.formula ? (
+                <View
+                  style={[
+                    styles.formulaBadge,
+                    {
+                      backgroundColor: isDarkMode ? '#172544' : '#EFF6FF',
+                      borderColor: isDarkMode ? '#253B66' : '#BFDBFE',
+                    },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="calculator-variant-outline"
+                    size={11}
+                    color="#3B82F6"
+                    style={{ marginRight: 3 }}
+                  />
+                  <Text style={[styles.formulaBadgeText, { color: isDarkMode ? '#93C5FD' : '#2563EB' }]}>
+                    {item.formula}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
         </View>
@@ -323,6 +345,20 @@ const styles = StyleSheet.create({
   typeBadgeText: {
     fontSize: 10,
     fontWeight: '700',
+  },
+  formulaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+    borderWidth: 1,
+    marginLeft: 6,
+  },
+  formulaBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   amountText: {
     fontSize: 13.5,

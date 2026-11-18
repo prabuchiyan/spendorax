@@ -85,7 +85,8 @@ function formatWhatsAppLedgerText(items = [], netTotal = 0, dateStr = '') {
       const cleanTitle = rawTitle.replace(/\r?\n+/g, ' ');
       const amtStr = `${isIncome ? '+' : '-'}${formatLedgerAmount(item.amount)}`;
       
-      lines.push(`${serial}${cleanTitle} ${typeLabel}`);
+      const formulaStr = item.formula ? ` [${item.formula}]` : '';
+      lines.push(`${serial}${cleanTitle}${formulaStr} ${typeLabel}`);
       lines.push(`     └─► Amount: *${amtStr}*`);
     });
   }
