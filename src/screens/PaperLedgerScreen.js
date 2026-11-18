@@ -26,6 +26,14 @@ import PaperAddRowModal from '../components/PaperAddRowModal';
 import PaperMonthPickerModal from '../components/PaperMonthPickerModal';
 import PaperSwipeableRow from '../components/PaperSwipeableRow';
 import PaperDeleteConfirmModal from '../components/PaperDeleteConfirmModal';
+import PaperSaveSheetModal from '../components/PaperSaveSheetModal';
+import PaperSavedSheetsModal from '../components/PaperSavedSheetsModal';
+import {
+  savePaperLedger,
+  getPaperLedgers,
+  togglePinPaperLedger,
+  deletePaperLedger,
+} from '../services/paperLedgerService';
 
 export default function PaperLedgerScreen({ navigation }) {
   const { isDarkMode, theme } = useTheme();
@@ -49,6 +57,24 @@ export default function PaperLedgerScreen({ navigation }) {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
 
+  // Saved Sheet Persistence State
+  const [savedSheets, setSavedSheets] = useState([]);
+  const [activeSheetId, setActiveSheetId] = useState(null);
+  const [activeSheetTitle, setActiveSheetTitle] = useState(null);
+  const [activeSheetLastUpdated, setActiveSheetLastUpdated] = useState(null);
+  const [isSaveModalVisible, setIsSaveModalVisible] = useState(false);
+  const [isSavedSheetsModalVisible, setIsSavedSheetsModalVisible] = useState(false);
+
+  // Load saved sheets from database
+  const loadSavedSheets = useCallback(async () => {
+    try {
+      const sheets = await getPaperLedgers();
+      setSavedSheets(sheets || []);
+    } catch (err) {
+      console.warn('Failed to load saved sheets', err);
+    }
+  }, []);
+
   // Load categories and available months on mount
   useEffect(() => {
     let isMounted = true;
@@ -68,6 +94,7 @@ export default function PaperLedgerScreen({ navigation }) {
         });
         setCategoriesMap(cmap);
         setAvailableMonths(months || []);
+        loadSavedSheets();
       } catch (err) {
         console.warn('Failed to load initial ledger data', err);
       } finally {
@@ -228,6 +255,123 @@ export default function PaperLedgerScreen({ navigation }) {
       ]
     );
   }, [items.length]);
+
+  // Handle prompt for saving
+  const handlePromptSave = useCallback(() => {
+    if (items.length === 0) {
+      Alert.alert('Empty Ledger', 'Please add some calculation rows before saving.');
+      return;
+    }
+    setIsSaveModalVisible(true);
+  }, [items.length]);
+
+  // Handle saving sheet to DB (new or update)
+  const handleSaveSheetSubmit = useCallback(
+    async (titleToSave, asNew = false) => {
+      try {
+        const shouldCreateNew = asNew || !activeSheetId;
+        const targetId = shouldCreateNew ? null : activeSheetId;
+
+        const savedId = await savePaperLedger({
+          id: targetId,
+          title: titleToSave,
+          items,
+          totalIncome: totals.totalIncome,
+          totalExpense: totals.totalExpense,
+          netTotal: totals.netTotal,
+        });
+
+        setActiveSheetId(savedId);
+        setActiveSheetTitle(titleToSave);
+        setActiveSheetLastUpdated(new Date().toISOString());
+
+        await loadSavedSheets();
+
+        Alert.alert(
+          shouldCreateNew ? 'Sheet Saved' : 'Sheet Updated',
+          `"${titleToSave}" has been saved to your records.`
+        );
+      } catch (err) {
+        console.error('Error saving paper ledger:', err);
+        Alert.alert('Save Failed', 'Could not save the ledger to the database.');
+      }
+    },
+    [activeSheetId, items, totals, loadSavedSheets]
+  );
+
+  // Handle opening a saved sheet
+  const handleSelectSheet = useCallback((sheet) => {
+    setItems(sheet.items || []);
+    setActiveSheetId(sheet.id);
+    setActiveSheetTitle(sheet.title);
+    setActiveSheetLastUpdated(sheet.updated_at);
+  }, []);
+
+  // Handle starting a fresh sheet
+  const handleNewSheet = useCallback(() => {
+    setItems([]);
+    setActiveSheetId(null);
+    setActiveSheetTitle(null);
+    setActiveSheetLastUpdated(null);
+  }, []);
+
+  const handlePromptNewSheet = useCallback(() => {
+    if (items.length > 0) {
+      Alert.alert(
+        'Start New Sheet?',
+        'This will clear the current sheet. Make sure your changes are saved.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'New Sheet', style: 'destructive', onPress: handleNewSheet },
+        ]
+      );
+    } else {
+      handleNewSheet();
+    }
+  }, [items.length, handleNewSheet]);
+
+  // Handle pin toggle
+  const handleTogglePinSheet = useCallback(
+    async (id, currentPinned) => {
+      try {
+        await togglePinPaperLedger(id, !currentPinned);
+        await loadSavedSheets();
+      } catch (err) {
+        console.warn('Failed to toggle pin state', err);
+      }
+    },
+    [loadSavedSheets]
+  );
+
+  // Handle deleting saved sheet
+  const handleDeleteSheet = useCallback(
+    (sheet) => {
+      Alert.alert(
+        'Delete Saved Ledger',
+        `Are you sure you want to delete "${sheet.title}"? This cannot be undone.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await deletePaperLedger(sheet.id);
+                if (activeSheetId === sheet.id) {
+                  handleNewSheet();
+                }
+                await loadSavedSheets();
+              } catch (err) {
+                console.error('Failed to delete saved ledger', err);
+                Alert.alert('Error', 'Failed to delete sheet.');
+              }
+            },
+          },
+        ]
+      );
+    },
+    [activeSheetId, handleNewSheet, loadSavedSheets]
+  );
 
   // Import transactions for a specific month (YYYY-MM)
   const handleImportMonth = useCallback(
@@ -468,6 +612,51 @@ export default function PaperLedgerScreen({ navigation }) {
                 style={[
                   styles.toolButtonOutline,
                   {
+                    borderColor: activeSheetId ? '#10B981' : Colors.primary,
+                    backgroundColor: activeSheetId
+                      ? isDarkMode ? '#0A2E20' : '#ECFDF5'
+                      : isDarkMode ? '#14223A' : '#EFF6FF',
+                  },
+                ]}
+                onPress={handlePromptSave}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons
+                  name={activeSheetId ? 'content-save-check-outline' : 'content-save-outline'}
+                  size={16}
+                  color={activeSheetId ? '#10B981' : Colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.toolButtonOutlineText,
+                    { color: activeSheetId ? '#10B981' : Colors.primary },
+                  ]}
+                >
+                  {activeSheetId ? 'Update' : 'Save'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.toolButtonOutline,
+                  {
+                    borderColor: isDarkMode ? '#3B4863' : '#CBD5E1',
+                    backgroundColor: isDarkMode ? '#171E2B' : '#FFFFFF',
+                  },
+                ]}
+                onPress={() => setIsSavedSheetsModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="book-open-outline" size={16} color={theme.textPrimary} />
+                <Text style={[styles.toolButtonOutlineText, { color: theme.textPrimary }]}>
+                  Sheets ({savedSheets.length})
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.toolButtonOutline,
+                  {
                     borderColor: Colors.primary,
                     backgroundColor: isDarkMode ? '#14223A' : '#EFF6FF',
                   },
@@ -545,20 +734,41 @@ export default function PaperLedgerScreen({ navigation }) {
             <View style={styles.tapeMainRow}>
               <View style={styles.tapeTitleBlock}>
                 <MaterialCommunityIcons
-                  name="notebook-outline"
+                  name={activeSheetTitle ? 'bookmark-check' : 'notebook-outline'}
                   size={14}
-                  color="#FEF3C7"
+                  color={activeSheetTitle ? '#FDE68A' : '#FEF3C7'}
                   style={{ marginRight: 6 }}
                 />
                 <Text style={styles.tapeTitle} numberOfLines={1}>
-                  MATH CALCULATION PAD
+                  {activeSheetTitle ? activeSheetTitle.toUpperCase() : 'MATH CALCULATION PAD'}
                 </Text>
+                {activeSheetTitle && (
+                  <TouchableOpacity
+                    onPress={() => setIsSaveModalVisible(true)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={{ marginLeft: 6 }}
+                  >
+                    <MaterialCommunityIcons name="pencil" size={13} color="#FEF3C7" />
+                  </TouchableOpacity>
+                )}
               </View>
 
-              <View style={styles.tapeCountBadge}>
-                <Text style={styles.tapeCountText}>
-                  {items.length} {items.length === 1 ? 'entry' : 'entries'}
-                </Text>
+              <View style={styles.tapeRightControls}>
+                {activeSheetTitle && (
+                  <TouchableOpacity
+                    style={styles.tapeNewSheetBtn}
+                    onPress={handlePromptNewSheet}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialCommunityIcons name="plus" size={13} color="#FEF3C7" />
+                    <Text style={styles.tapeNewSheetText}>New</Text>
+                  </TouchableOpacity>
+                )}
+                <View style={styles.tapeCountBadge}>
+                  <Text style={styles.tapeCountText}>
+                    {items.length} {items.length === 1 ? 'entry' : 'entries'}
+                  </Text>
+                </View>
               </View>
             </View>
 
@@ -566,7 +776,9 @@ export default function PaperLedgerScreen({ navigation }) {
               <Text style={styles.tapeHintText} numberOfLines={1}>
                 {isSelectionMode
                   ? `${selectedIds.size} of ${items.length} selected • Tap rows to toggle`
-                  : 'Swipe right to delete • Swipe left to edit • Tap Select for bulk'}
+                  : activeSheetLastUpdated
+                  ? `Saved Sheet • Updated: ${new Date(activeSheetLastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} • Swipe L/R to edit/delete`
+                  : 'Swipe right to delete • Swipe left to edit • Tap Save to keep in DB'}
               </Text>
             </View>
           </View>
@@ -774,6 +986,28 @@ export default function PaperLedgerScreen({ navigation }) {
         onCancel={handleCancelDelete}
         onConfirm={handleConfirmDelete}
       />
+
+      {/* Modal: Save / Update Sheet */}
+      <PaperSaveSheetModal
+        visible={isSaveModalVisible}
+        currentTitle={activeSheetTitle || ''}
+        isUpdating={!!activeSheetId}
+        lastUpdated={activeSheetLastUpdated}
+        onClose={() => setIsSaveModalVisible(false)}
+        onSave={handleSaveSheetSubmit}
+      />
+
+      {/* Modal: Saved Sheets Browser with Pinning */}
+      <PaperSavedSheetsModal
+        visible={isSavedSheetsModalVisible}
+        sheets={savedSheets}
+        activeSheetId={activeSheetId}
+        onClose={() => setIsSavedSheetsModalVisible(false)}
+        onSelectSheet={handleSelectSheet}
+        onTogglePin={handleTogglePinSheet}
+        onDeleteSheet={handleDeleteSheet}
+        onNewSheet={handleNewSheet}
+      />
     </View>
   );
 }
@@ -921,6 +1155,25 @@ const styles = StyleSheet.create({
   tapeCountText: {
     color: '#FEF3C7',
     fontSize: 10.5,
+    fontWeight: '700',
+  },
+  tapeRightControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  tapeNewSheetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    gap: 2,
+  },
+  tapeNewSheetText: {
+    color: '#FEF3C7',
+    fontSize: 11,
     fontWeight: '700',
   },
   tapeInfoRow: {

@@ -34,22 +34,22 @@
 - Create: `src/services/paperLedgerService.js`
 - Test: `test/test_paper_ledger_service.js`
 
-- [ ] **Step 1: Write test for paper ledger DB service**
+- [x] **Step 1: Write test for paper ledger DB service**
   Create `test/test_paper_ledger_service.js` testing:
   - Saving a new ledger returns an ID.
   - Updating an existing ledger modifies title, data, totals, and `updated_at`.
   - Fetching ledgers returns records sorted by `is_pinned DESC, updated_at DESC`.
   - Pinning and unpinning toggles `is_pinned`.
   - Deleting removes the record.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   Run `node test/test_paper_ledger_service.js`.
-- [ ] **Step 3: Implement table in `init.js` and service in `paperLedgerService.js`**
+- [x] **Step 3: Implement table in `init.js` and service in `paperLedgerService.js`**
   - Add `CREATE TABLE IF NOT EXISTS paper_ledgers` in `init.js`.
   - Add `paper_ledgers` to `clearAllTables` array.
   - Implement functions in `src/services/paperLedgerService.js`: `savePaperLedger`, `getPaperLedgers`, `getPaperLedgerById`, `togglePinPaperLedger`, `deletePaperLedger`, `renamePaperLedger`.
-- [ ] **Step 4: Verify test passes**
+- [x] **Step 4: Verify test passes**
   Run `node test/test_paper_ledger_service.js`.
-- [ ] **Step 5: Local commit**
+- [x] **Step 5: Local commit**
   Commit Task 1 locally (do not push).
 
 ---
@@ -61,18 +61,18 @@
 - Create: `src/components/PaperSavedSheetsModal.js`
 - Test: `test/test_paper_saved_sheets_components.js`
 
-- [ ] **Step 1: Write tests for modal component logic**
+- [x] **Step 1: Write tests for modal component logic**
   Create `test/test_paper_saved_sheets_components.js` testing:
   - Title validation and default date naming in save modal.
   - Pin sorting and filtering logic in saved sheets modal.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   Run `node test/test_paper_saved_sheets_components.js`.
-- [ ] **Step 3: Implement `PaperSaveSheetModal.js` & `PaperSavedSheetsModal.js`**
+- [x] **Step 3: Implement `PaperSaveSheetModal.js` & `PaperSavedSheetsModal.js`**
   - `PaperSaveSheetModal`: prompt for title, Save / Save as Copy options.
   - `PaperSavedSheetsModal`: list of sheets with pinned golden badge, quick Pin/Unpin button, Open, Delete, and Search filter.
-- [ ] **Step 4: Verify test passes & Babel check**
+- [x] **Step 4: Verify test passes & Babel check**
   Run `node test/test_paper_saved_sheets_components.js` and Babel syntax check.
-- [ ] **Step 5: Local commit**
+- [x] **Step 5: Local commit**
   Commit Task 2 locally (do not push).
 
 ---
@@ -83,14 +83,14 @@
 - Modify: `src/screens/PaperLedgerScreen.js`
 - Test: `test/test_paper_ledger_db_e2e.js`
 
-- [ ] **Step 1: Write end-to-end integration test**
+- [x] **Step 1: Write end-to-end integration test**
   Create `test/test_paper_ledger_db_e2e.js`.
-- [ ] **Step 2: Update `PaperLedgerScreen.js`**
+- [x] **Step 2: Update `PaperLedgerScreen.js`**
   - Add `activeSheetId`, `activeSheetTitle`, `savedSheetsCount`.
   - Add "Save" and "Sheets (N)" to the top toolbar.
   - Show active sheet title in notebook binding tape with rename and "+ New Sheet" buttons.
   - Wire up Save modal, Saved Sheets modal, Pin/Unpin, and Load Sheet.
-- [ ] **Step 3: Run full test suite & Babel AST checks**
+- [x] **Step 3: Run full test suite & Babel AST checks**
   Run all 10+ test suites and verify Babel syntax across all modified files.
-- [ ] **Step 4: Local commit**
+- [x] **Step 4: Local commit**
   Commit Task 3 locally (do not push).
