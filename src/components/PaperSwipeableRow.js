@@ -19,6 +19,8 @@ export default function PaperSwipeableRow({
   paperBg,
   ruledLineColor,
   redMarginLine,
+  rowDividerColor,
+  columnDividerColor,
   textColor,
   textMuted,
   isDarkMode,
@@ -58,7 +60,7 @@ export default function PaperSwipeableRow({
           if (gestureState.dx > 0) {
             // Swiping right reveals left delete action
             Animated.spring(pan, {
-              toValue: 80,
+              toValue: 84,
               useNativeDriver: true,
               bounciness: 4,
             }).start();
@@ -66,7 +68,7 @@ export default function PaperSwipeableRow({
           } else {
             // Swiping left reveals right edit action
             Animated.spring(pan, {
-              toValue: -80,
+              toValue: -84,
               useNativeDriver: true,
               bounciness: 4,
             }).start();
@@ -82,67 +84,74 @@ export default function PaperSwipeableRow({
     })
   ).current;
 
-  const serialNo = `${index + 1}) `;
   const effectiveBg = isSelected
-    ? isDarkMode
-      ? '#1C2940'
-      : '#EBF3FF'
-    : paperBg;
+    ? (isDarkMode ? '#1C2940' : '#EBF3FF')
+    : (paperBg || (isDarkMode ? '#131926' : '#FFFFFF'));
+
+  const effectiveRowDivider = rowDividerColor || ruledLineColor || (isDarkMode ? '#1F293D' : '#F1F5F9');
+  const effectiveColDivider = columnDividerColor || redMarginLine || (isDarkMode ? '#1F293D' : '#F1F5F9');
+
+  const serialText = index + 1 < 10 ? `0${index + 1}` : `${index + 1}`;
+
+  // Modern Fintech colors
+  const badgeBg = isIncome
+    ? (isDarkMode ? '#064E3B' : '#ECFDF5')
+    : (isDarkMode ? '#4C0519' : '#FFF1F2');
+  const badgeText = isIncome
+    ? (isDarkMode ? '#34D399' : '#059669')
+    : (isDarkMode ? '#FB7185' : '#E11D48');
+  const amountColor = isIncome
+    ? (isDarkMode ? '#34D399' : '#059669')
+    : (isDarkMode ? '#FB7185' : '#E11D48');
 
   // Render row content
   const rowContent = (
     <>
-      {/* 65% Left: Checkbox (if selection mode), Serial, Description, Badge */}
+      {/* 65% Left: Checkbox (if selection mode), Serial badge, Description, Type & Formula Badges */}
       <View
         style={[
           styles.col65,
           styles.cell65,
-          { borderRightColor: redMarginLine },
+          { borderRightColor: effectiveColDivider },
         ]}
       >
         <View style={styles.rowMain}>
-          {isSelectionMode && (
+          {isSelectionMode ? (
             <MaterialCommunityIcons
               name={isSelected ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
               size={20}
-              color={isSelected ? '#3B82F6' : textMuted}
-              style={{ marginRight: 6 }}
+              color={isSelected ? '#3B82F6' : (textMuted || '#94A3B8')}
+              style={{ marginRight: 8 }}
             />
+          ) : (
+            <View
+              style={[
+                styles.serialBadge,
+                { backgroundColor: isDarkMode ? '#1C2433' : '#F1F5F9' },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.serialText,
+                  { color: isDarkMode ? '#8E9FB8' : '#64748B' },
+                ]}
+              >
+                {serialText}
+              </Text>
+            </View>
           )}
 
-          <Text style={[styles.serialText, { color: textMuted }]}>
-            {serialNo}
-          </Text>
-
-          <View style={{ flex: 1, paddingRight: 4 }}>
+          <View style={{ flex: 1, paddingRight: 6 }}>
             <Text
-              style={[styles.itemTitle, { color: textColor }]}
+              style={[styles.itemTitle, { color: textColor || (isDarkMode ? '#F8FAFC' : '#0F172A') }]}
               numberOfLines={2}
             >
               {item.title}
             </Text>
             <View style={styles.badgeRow}>
-              <View
-                style={[
-                  styles.typeBadge,
-                  {
-                    backgroundColor: isIncome
-                      ? isDarkMode
-                        ? '#0A3324'
-                        : '#E6F9F0'
-                      : isDarkMode
-                      ? '#3B171C'
-                      : '#FEECEC',
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.typeBadgeText,
-                    { color: isIncome ? '#10B981' : '#EF4444' },
-                  ]}
-                >
-                  {isIncome ? '+ Income' : '- Expense'}
+              <View style={[styles.typeBadge, { backgroundColor: badgeBg }]}>
+                <Text style={[styles.typeBadgeText, { color: badgeText }]}>
+                  {isIncome ? '+ Inflow' : '− Outflow'}
                 </Text>
               </View>
 
@@ -151,15 +160,15 @@ export default function PaperSwipeableRow({
                   style={[
                     styles.formulaBadge,
                     {
-                      backgroundColor: isDarkMode ? '#172544' : '#EFF6FF',
-                      borderColor: isDarkMode ? '#253B66' : '#BFDBFE',
+                      backgroundColor: isDarkMode ? '#162238' : '#F1F5F9',
+                      borderColor: isDarkMode ? '#243452' : '#CBD5E1',
                     },
                   ]}
                 >
                   <MaterialCommunityIcons
                     name="calculator-variant-outline"
                     size={11}
-                    color="#3B82F6"
+                    color={isDarkMode ? '#60A5FA' : '#2563EB'}
                     style={{ marginRight: 3 }}
                   />
                   <Text
@@ -179,15 +188,12 @@ export default function PaperSwipeableRow({
       {/* 35% Right: Amount Only */}
       <View style={[styles.col35, styles.cell35]}>
         <Text
-          style={[
-            styles.amountText,
-            { color: isIncome ? '#10B981' : '#EF4444' },
-          ]}
+          style={[styles.amountText, { color: amountColor }]}
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.65}
         >
-          {isIncome ? '+' : '-'}
+          {isIncome ? '+' : '−'}
           {formatLedgerAmount(item.amount)}
         </Text>
       </View>
@@ -195,30 +201,41 @@ export default function PaperSwipeableRow({
   );
 
   return (
-    <View style={[styles.container, { borderBottomColor: ruledLineColor }]}>
+    <View style={[styles.container, { borderBottomColor: effectiveRowDivider }]}>
       {/* Background reveal showing delete action on right swipe (left side) and edit action on left swipe (right side) */}
       {!isSelectionMode && (
         <View style={styles.backgroundActionsContainer}>
           <TouchableOpacity
-            style={styles.leftDeleteIndicator}
+            style={[
+              styles.leftDeleteIndicator,
+              { backgroundColor: isDarkMode ? '#3B121C' : '#FEE2E2' },
+            ]}
             onPress={() => onRequestDelete && onRequestDelete(item, resetPosition)}
             activeOpacity={0.8}
           >
-            <MaterialCommunityIcons name="trash-can-outline" size={20} color="#FFF" />
-            <Text style={styles.actionText}>Delete</Text>
+            <View style={styles.actionIconCircleDelete}>
+              <MaterialCommunityIcons name="trash-can-outline" size={17} color="#FFF" />
+            </View>
+            <Text style={[styles.actionText, { color: '#EF4444' }]}>Delete</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
-            style={styles.rightEditIndicator}
+            style={[
+              styles.rightEditIndicator,
+              { backgroundColor: isDarkMode ? '#132447' : '#DBEAFE' },
+            ]}
             onPress={() => onRequestEdit && onRequestEdit(item, resetPosition)}
             activeOpacity={0.8}
           >
-            <Text style={styles.actionText}>Edit</Text>
-            <MaterialCommunityIcons name="pencil" size={20} color="#FFF" />
+            <Text style={[styles.actionText, { color: '#2563EB' }]}>Edit</Text>
+            <View style={styles.actionIconCircleEdit}>
+              <MaterialCommunityIcons name="pencil" size={17} color="#FFF" />
+            </View>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* Foreground paper row */}
+      {/* Foreground fintech row */}
       {isSelectionMode ? (
         <TouchableOpacity
           style={[
@@ -246,7 +263,8 @@ export default function PaperSwipeableRow({
           <TouchableOpacity
             style={styles.touchableWrapper}
             onLongPress={() => onLongPress && onLongPress(item.id)}
-            delayLongPress={300}
+            onPress={() => onRequestEdit && onRequestEdit(item, resetPosition)}
+            delayLongPress={350}
             activeOpacity={0.9}
           >
             {rowContent}
@@ -261,7 +279,7 @@ const styles = StyleSheet.create({
   container: {
     position: 'relative',
     borderBottomWidth: 1,
-    minHeight: 52,
+    minHeight: 56,
     overflow: 'hidden',
   },
   backgroundActionsContainer: {
@@ -271,55 +289,68 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
   },
   leftDeleteIndicator: {
-    backgroundColor: '#EF4444',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     width: '50%',
-    gap: 6,
+    gap: 8,
   },
   rightEditIndicator: {
-    backgroundColor: '#2563EB',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     width: '50%',
-    gap: 6,
+    gap: 8,
+  },
+  actionIconCircleDelete: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionIconCircleEdit: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionText: {
-    color: '#FFF',
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   rowForeground: {
     flexDirection: 'row',
     width: '100%',
-    minHeight: 52,
+    minHeight: 56,
   },
   touchableWrapper: {
     flexDirection: 'row',
     width: '100%',
-    minHeight: 52,
+    minHeight: 56,
   },
   col65: {
     width: '65%',
-    borderRightWidth: 1.5,
+    borderRightWidth: 1,
   },
   col35: {
     width: '35%',
   },
   cell65: {
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     justifyContent: 'center',
   },
   cell35: {
-    paddingVertical: 8,
-    paddingLeft: 4,
-    paddingRight: 10,
+    paddingVertical: 10,
+    paddingLeft: 6,
+    paddingRight: 14,
     justifyContent: 'center',
     alignItems: 'flex-end',
   },
@@ -327,49 +358,59 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  serialBadge: {
+    width: 26,
+    height: 22,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
   serialText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
-    width: 24,
+    letterSpacing: 0.2,
   },
   itemTitle: {
     fontSize: 14,
     fontWeight: '600',
+    lineHeight: 19,
   },
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 3,
+    marginTop: 4,
   },
   typeBadge: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 6.5,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 5,
   },
   typeBadgeText: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '700',
   },
   formulaBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 6.5,
     paddingVertical: 1.5,
-    borderRadius: 4,
+    borderRadius: 5,
     borderWidth: 1,
     marginLeft: 6,
     maxWidth: 140,
     flexShrink: 1,
   },
   formulaBadgeText: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '700',
     letterSpacing: 0.2,
     flexShrink: 1,
   },
   amountText: {
-    fontSize: 13.5,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '800',
     textAlign: 'right',
+    letterSpacing: 0.2,
   },
 });
