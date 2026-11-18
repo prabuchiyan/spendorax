@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from './Theme';
+import { evaluateMathExpression } from '../utils/mathExpressionParser';
 
 export default function PaperAddRowModal({ visible, onClose, onAdd, initialItem = null }) {
   const { isDarkMode, theme } = useTheme();
@@ -28,7 +29,9 @@ export default function PaperAddRowModal({ visible, onClose, onAdd, initialItem 
       setTitle(initialItem.title || '');
       setType(initialItem.type || 'expense');
       setAmount(
-        initialItem.amount !== undefined && initialItem.amount !== null
+        initialItem.formula
+          ? String(initialItem.formula)
+          : initialItem.amount !== undefined && initialItem.amount !== null
           ? String(initialItem.amount)
           : ''
       );
@@ -40,23 +43,52 @@ export default function PaperAddRowModal({ visible, onClose, onAdd, initialItem 
     setError('');
   }, [initialItem, visible]);
 
+  // Live evaluation of amount or math expression
+  const evalResult = useMemo(() => evaluateMathExpression(amount), [amount]);
+
+  const handleInsertOperator = (op) => {
+    if (op === 'C') {
+      setAmount('');
+      if (error) setError('');
+      return;
+    }
+    const trimmed = (amount || '').trim();
+    if (!trimmed) {
+      if (op === '-' || op === '−') setAmount('-');
+      return;
+    }
+    const endsWithOp = /[+\-*/%−×÷]$/.test(trimmed);
+    if (endsWithOp) {
+      setAmount(trimmed.slice(0, -1).trim() + ` ${op} `);
+    } else {
+      setAmount(`${trimmed} ${op} `);
+    }
+    if (error) setError('');
+  };
+
   const handleAdd = () => {
     const trimmedTitle = title.trim();
-    const parsedAmount = parseFloat(amount);
 
     if (!trimmedTitle) {
       setError('Please enter a description or note');
       return;
     }
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      setError('Please enter a valid amount greater than 0');
+
+    const evaluated = evaluateMathExpression(amount);
+    if (!evaluated.isValid || evaluated.result === null || evaluated.result <= 0) {
+      setError(
+        evaluated.error
+          ? evaluated.error
+          : 'Please enter a valid amount or formula greater than 0'
+      );
       return;
     }
 
     const payload = {
       title: trimmedTitle,
       type,
-      amount: parsedAmount,
+      amount: evaluated.result,
+      formula: evaluated.hasOperator ? amount.trim() : null,
     };
 
     if (initialItem && initialItem.id) {
@@ -190,10 +222,57 @@ export default function PaperAddRowModal({ visible, onClose, onAdd, initialItem 
                 autoFocus
               />
 
-              {/* Amount Input */}
-              <Text style={[styles.label, { color: theme.textSecondary, marginTop: 12 }]}>
-                Amount (₹)
-              </Text>
+              {/* Amount Label and Operator Strip */}
+              <View style={styles.amountHeaderRow}>
+                <Text style={[styles.label, { color: theme.textSecondary, marginBottom: 0 }]}>
+                  Amount (₹) or Formula
+                </Text>
+                <Text style={[styles.amountHint, { color: theme.textSecondary }]}>
+                  e.g. 100 + 25, 100 * 5, 100 % 25
+                </Text>
+              </View>
+
+              {/* Quick Math Operators Strip */}
+              <View style={styles.operatorStrip}>
+                {['+', '−', '×', '÷', '%', '(', ')', 'C'].map((op) => (
+                  <TouchableOpacity
+                    key={op}
+                    style={[
+                      styles.operatorButton,
+                      {
+                        backgroundColor:
+                          op === 'C'
+                            ? isDarkMode
+                              ? '#3A1E24'
+                              : '#FEE2E2'
+                            : isDarkMode
+                            ? '#1E283A'
+                            : '#EFF6FF',
+                        borderColor:
+                          op === 'C'
+                            ? '#EF4444'
+                            : isDarkMode
+                            ? '#334155'
+                            : '#BFDBFE',
+                      },
+                    ]}
+                    onPress={() => handleInsertOperator(op)}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.operatorButtonText,
+                        {
+                          color: op === 'C' ? '#EF4444' : Colors.primary,
+                        },
+                      ]}
+                    >
+                      {op}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
               <TextInput
                 style={[
                   styles.input,
@@ -203,18 +282,37 @@ export default function PaperAddRowModal({ visible, onClose, onAdd, initialItem 
                     color: theme.textPrimary,
                   },
                 ]}
-                placeholder="0.00"
+                placeholder="0.00 or e.g. 100 + 25"
                 placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
                 value={amount}
                 onChangeText={(a) => {
-                  const sanitized = a.replace(/[^0-9.]/g, '');
-                  const parts = sanitized.split('.');
-                  const clean = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : sanitized;
-                  setAmount(clean);
+                  const sanitized = a.replace(/[^0-9.+−×÷*/%() ]/g, '');
+                  setAmount(sanitized);
                   if (error) setError('');
                 }}
-                keyboardType="decimal-pad"
+                keyboardType={Platform.OS === 'ios' ? 'numbers-and-punctuation' : 'default'}
               />
+
+              {/* Live Evaluated Preview Badge */}
+              {evalResult.isValid && evalResult.hasOperator && evalResult.result !== null && (
+                <View
+                  style={[
+                    styles.evalPreviewRow,
+                    {
+                      backgroundColor: isDarkMode ? '#0F2C22' : '#ECFDF5',
+                      borderColor: '#10B981',
+                    },
+                  ]}
+                >
+                  <MaterialCommunityIcons name="calculator-variant-outline" size={15} color="#10B981" />
+                  <Text style={[styles.evalPreviewLabel, { color: isDarkMode ? '#A7F3D0' : '#065F46' }]}>
+                    Evaluated:
+                  </Text>
+                  <Text style={styles.evalPreviewResult}>
+                    ₹{evalResult.result.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                  </Text>
+                </View>
+              )}
 
               {/* Error text */}
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -329,6 +427,55 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     marginBottom: 6,
+  },
+  amountHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  amountHint: {
+    fontSize: 11,
+    fontStyle: 'italic',
+  },
+  operatorStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    gap: 4,
+  },
+  operatorButton: {
+    flex: 1,
+    height: 32,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  operatorButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  evalPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 6,
+  },
+  evalPreviewLabel: {
+    fontSize: 11.5,
+    fontWeight: '600',
+  },
+  evalPreviewResult: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#10B981',
   },
   input: {
     borderWidth: 1,
