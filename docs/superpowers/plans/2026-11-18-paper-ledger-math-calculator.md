@@ -35,7 +35,7 @@
 - Create: `src/utils/mathExpressionParser.js`
 - Test: `test/test_math_expression_parser.js`
 
-- [ ] **Step 1: Write unit tests for math expression parser**
+- [x] **Step 1: Write unit tests for math expression parser**
   Create `test/test_math_expression_parser.js` testing:
   - `100 + 25` = 125
   - `100 - 25` = 75
@@ -46,13 +46,13 @@
   - Division by zero handling
   - Incomplete expression handling (`100 + ` returns pending/no crash)
   - Unicode operator normalization (`×` to `*`, `÷` to `/`, `−` to `-`)
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   Run `node test/test_math_expression_parser.js`.
-- [ ] **Step 3: Implement `src/utils/mathExpressionParser.js`**
+- [x] **Step 3: Implement `src/utils/mathExpressionParser.js`**
   Implement safe tokenizer and shunting-yard / recursive descent evaluator with percentage calculation.
-- [ ] **Step 4: Verify test passes**
+- [x] **Step 4: Verify test passes**
   Run `node test/test_math_expression_parser.js`.
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   Git commit Task 1.
 
 ---
@@ -63,22 +63,22 @@
 - Modify: `src/components/PaperAddRowModal.js`
 - Test: `test/test_paper_add_row_modal_math.js`
 
-- [ ] **Step 1: Write test for modal math state and submission**
+- [x] **Step 1: Write test for modal math state and submission**
   Create `test/test_paper_add_row_modal_math.js` testing:
   - Input with formula `100 + 25` outputs `amount: 125, formula: '100 + 25'`.
   - Input with plain number `150` outputs `amount: 150, formula: null`.
   - Restoring `initialItem.formula` when editing.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   Run `node test/test_paper_add_row_modal_math.js`.
-- [ ] **Step 3: Update `PaperAddRowModal.js`**
+- [x] **Step 3: Update `PaperAddRowModal.js`**
   - Add quick operator strip (`+`, `−`, `×`, `÷`, `%`, `(`, `)`, `C`) above Amount input.
   - Add live preview pill badge below Amount input (`= ₹<result>`).
   - Update input sanitization to allow arithmetic characters `[0-9. +−×÷*/%()]`.
   - Synchronize `formula` when `initialItem` changes.
   - Return `{ title, type, amount: evaluatedAmount, formula }` on submit.
-- [ ] **Step 4: Verify test passes & Babel check**
+- [x] **Step 4: Verify test passes & Babel check**
   Run `node test/test_paper_add_row_modal_math.js` and Babel syntax check.
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   Git commit Task 2.
 
 ---
@@ -90,16 +90,16 @@
 - Modify: `src/utils/paperLedgerUtils.js`
 - Test: `test/test_paper_ledger_math_e2e.js`
 
-- [ ] **Step 1: Write end-to-end test for paper row formula tag and WhatsApp export**
+- [x] **Step 1: Write end-to-end test for paper row formula tag and WhatsApp export**
   Create `test/test_paper_ledger_math_e2e.js` asserting:
   - Rows with `formula` format WhatsApp output with formula details.
   - Net totals compute correctly from evaluated `amount`.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   Run `node test/test_paper_ledger_math_e2e.js`.
-- [ ] **Step 3: Update `PaperSwipeableRow.js` and `paperLedgerUtils.js`**
+- [x] **Step 3: Update `PaperSwipeableRow.js` and `paperLedgerUtils.js`**
   - In `PaperSwipeableRow.js`, render a formula badge `🧮 {item.formula}` next to the income/expense badge if `item.formula` is present.
   - In `paperLedgerUtils.js`, update `formatWhatsAppLedgerText` to include `[formula]` when available.
-- [ ] **Step 4: Run full test suite & Babel AST check**
+- [x] **Step 4: Run full test suite & Babel AST check**
   Run all test files.
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   Git commit Task 3.
