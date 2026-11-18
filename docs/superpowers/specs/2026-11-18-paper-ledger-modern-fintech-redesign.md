@@ -30,7 +30,9 @@ The user requested: *"Now can you update the ledger paper design. It's looks ver
    - Replace with a modern balance summary card:
      - Side-by-side or stacked inflow/outflow breakdown badges.
      - Large bold net balance with status badge (`Surplus`, `Deficit`, `Balanced`).
-6. **Zero Regressions & Local Commit Constraint:**
+6. **Contextual App FAB:**
+   - Replaced the "+ Add Line" top toolbar button with the standard SpendoraX floating `ContextualFAB` at the bottom-right of the screen for quick, one-tap calculation row addition.
+7. **Zero Regressions & Local Commit Constraint:**
    - Keep all database persistence, pinning, math expression calculation, multi-selection, and WhatsApp export intact.
    - Maintain the user constraint: **Do NOT run `git push`** (local commits only).
 
@@ -38,3 +40,4 @@ The user requested: *"Now can you update the ledger paper design. It's looks ver
 - `src/screens/PaperLedgerScreen.js`: Redesign sheet card, header tape, table column header, empty state, and summary hero card.
 - `src/components/PaperSwipeableRow.js`: Update row styling, column divider, serial format, formula badge, and swipe capsules.
 - `test/test_paper_ledger_modern_ui.js`: New tests asserting the modern fintech theme classes, elements, and calculations.
+

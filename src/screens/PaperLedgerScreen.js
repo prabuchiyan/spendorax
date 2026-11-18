@@ -29,6 +29,7 @@ import PaperDeleteConfirmModal from '../components/PaperDeleteConfirmModal';
 import PaperConfirmModal from '../components/PaperConfirmModal';
 import PaperSaveSheetModal from '../components/PaperSaveSheetModal';
 import PaperSavedSheetsModal from '../components/PaperSavedSheetsModal';
+import ContextualFAB from '../components/ContextualFAB';
 import {
   savePaperLedger,
   getPaperLedgers,
@@ -694,25 +695,6 @@ export default function PaperLedgerScreen({ navigation }) {
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.toolButtonOutline,
-                  {
-                    borderColor: Colors.primary,
-                    backgroundColor: isDarkMode ? '#14223A' : '#EFF6FF',
-                  },
-                ]}
-                onPress={() => {
-                  setEditingItem(null);
-                  setIsAddModalVisible(true);
-                }}
-                activeOpacity={0.8}
-              >
-                <MaterialCommunityIcons name="plus" size={16} color={Colors.primary} />
-                <Text style={[styles.toolButtonOutlineText, { color: Colors.primary }]}>
-                  Add Line
-                </Text>
-              </TouchableOpacity>
 
               {items.length > 0 && (
                 <TouchableOpacity
@@ -1071,6 +1053,17 @@ export default function PaperLedgerScreen({ navigation }) {
         </View>
       </ScrollView>
 
+      {/* App Floating Action Button (FAB) to Add Calculation Line */}
+      {!isSelectionMode && (
+        <ContextualFAB
+          icon="plus"
+          onPress={() => {
+            setEditingItem(null);
+            setIsAddModalVisible(true);
+          }}
+        />
+      )}
+
       {/* Modal: Add/Edit Row */}
       <PaperAddRowModal
         visible={isAddModalVisible}
@@ -1222,7 +1215,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 12,
-    paddingBottom: 32,
+    paddingBottom: 96,
   },
   fintechSheet: {
     borderRadius: 14,
