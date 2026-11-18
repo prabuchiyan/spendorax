@@ -66,3 +66,4 @@ assert.strictEqual(confirmModalConfig, null, 'Modal should NOT open when sheet i
 assert.strictEqual(items.length, 0);
 
 console.log('✓ New Sheet confirmation logic verified successfully!');
+
