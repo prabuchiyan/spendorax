@@ -77,12 +77,12 @@ export default function PaperSavedSheetsModal({
             borderColor: isActive
               ? Colors.primary
               : isPinned
-              ? isDarkMode
-                ? '#543B14'
-                : '#FDE68A'
-              : isDarkMode
-              ? '#2A3447'
-              : '#E2E8F0',
+                ? isDarkMode
+                  ? '#543B14'
+                  : '#FDE68A'
+                : isDarkMode
+                  ? '#2A3447'
+                  : '#E2E8F0',
           },
         ]}
         onPress={() => {
@@ -140,8 +140,8 @@ export default function PaperSavedSheetsModal({
                     netTotal > 0
                       ? isDarkMode ? '#0A3324' : '#E6F9F0'
                       : netTotal < 0
-                      ? isDarkMode ? '#3B171C' : '#FEECEC'
-                      : isDarkMode ? '#1E2533' : '#F1F5F9',
+                        ? isDarkMode ? '#3B171C' : '#FEECEC'
+                        : isDarkMode ? '#1E2533' : '#F1F5F9',
                 },
               ]}
             >
@@ -153,8 +153,8 @@ export default function PaperSavedSheetsModal({
                       netTotal > 0
                         ? '#10B981'
                         : netTotal < 0
-                        ? '#EF4444'
-                        : theme.textSecondary,
+                          ? '#EF4444'
+                          : theme.textSecondary,
                   },
                 ]}
               >
@@ -497,3 +497,4 @@ const styles = StyleSheet.create({
     maxWidth: 280,
   },
 });
+

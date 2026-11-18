@@ -26,6 +26,7 @@ import PaperAddRowModal from '../components/PaperAddRowModal';
 import PaperMonthPickerModal from '../components/PaperMonthPickerModal';
 import PaperSwipeableRow from '../components/PaperSwipeableRow';
 import PaperDeleteConfirmModal from '../components/PaperDeleteConfirmModal';
+import PaperConfirmModal from '../components/PaperConfirmModal';
 import PaperSaveSheetModal from '../components/PaperSaveSheetModal';
 import PaperSavedSheetsModal from '../components/PaperSavedSheetsModal';
 import {
@@ -64,6 +65,16 @@ export default function PaperLedgerScreen({ navigation }) {
   const [activeSheetLastUpdated, setActiveSheetLastUpdated] = useState(null);
   const [isSaveModalVisible, setIsSaveModalVisible] = useState(false);
   const [isSavedSheetsModalVisible, setIsSavedSheetsModalVisible] = useState(false);
+  const [confirmModalConfig, setConfirmModalConfig] = useState(null);
+
+  // Cross-platform info alert helper (works on Web, iOS, Android)
+  const showInfoAlert = useCallback((title, message) => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.alert) {
+      window.alert(`${title}\n\n${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  }, []);
 
   // Load saved sheets from database
   const loadSavedSheets = useCallback(async () => {
@@ -242,28 +253,28 @@ export default function PaperLedgerScreen({ navigation }) {
   // Handle clearing entire ledger
   const handleClearAll = useCallback(() => {
     if (items.length === 0) return;
-    Alert.alert(
-      'Clear Paper Ledger',
-      'Are you sure you want to remove all calculation entries from this sheet?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear All',
-          style: 'destructive',
-          onPress: () => setItems([]),
-        },
-      ]
-    );
+    setConfirmModalConfig({
+      title: 'Clear Paper Ledger',
+      message: 'Are you sure you want to remove all calculation entries from this sheet?',
+      confirmLabel: 'Clear All',
+      confirmIcon: 'trash-can-outline',
+      confirmColor: '#EF4444',
+      isDestructive: true,
+      onConfirm: () => {
+        setItems([]);
+        setConfirmModalConfig(null);
+      },
+    });
   }, [items.length]);
 
   // Handle prompt for saving
   const handlePromptSave = useCallback(() => {
     if (items.length === 0) {
-      Alert.alert('Empty Ledger', 'Please add some calculation rows before saving.');
+      showInfoAlert('Empty Ledger', 'Please add some calculation rows before saving.');
       return;
     }
     setIsSaveModalVisible(true);
-  }, [items.length]);
+  }, [items.length, showInfoAlert]);
 
   // Handle saving sheet to DB (new or update)
   const handleSaveSheetSubmit = useCallback(
@@ -287,16 +298,16 @@ export default function PaperLedgerScreen({ navigation }) {
 
         await loadSavedSheets();
 
-        Alert.alert(
+        showInfoAlert(
           shouldCreateNew ? 'Sheet Saved' : 'Sheet Updated',
           `"${titleToSave}" has been saved to your records.`
         );
       } catch (err) {
         console.error('Error saving paper ledger:', err);
-        Alert.alert('Save Failed', 'Could not save the ledger to the database.');
+        showInfoAlert('Save Failed', 'Could not save the ledger to the database.');
       }
     },
-    [activeSheetId, items, totals, loadSavedSheets]
+    [activeSheetId, items, totals, loadSavedSheets, showInfoAlert]
   );
 
   // Handle opening a saved sheet
@@ -317,14 +328,17 @@ export default function PaperLedgerScreen({ navigation }) {
 
   const handlePromptNewSheet = useCallback(() => {
     if (items.length > 0) {
-      Alert.alert(
-        'Start New Sheet?',
-        'This will clear the current sheet. Make sure your changes are saved.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'New Sheet', style: 'destructive', onPress: handleNewSheet },
-        ]
-      );
+      setConfirmModalConfig({
+        title: 'Start New Sheet?',
+        message: 'This will clear the current calculation entries and start a fresh sheet. Make sure your changes are saved.',
+        confirmLabel: 'New Sheet',
+        confirmIcon: 'plus-circle-outline',
+        confirmColor: Colors.primary,
+        onConfirm: () => {
+          handleNewSheet();
+          setConfirmModalConfig(null);
+        },
+      });
     } else {
       handleNewSheet();
     }
@@ -346,31 +360,29 @@ export default function PaperLedgerScreen({ navigation }) {
   // Handle deleting saved sheet
   const handleDeleteSheet = useCallback(
     (sheet) => {
-      Alert.alert(
-        'Delete Saved Ledger',
-        `Are you sure you want to delete "${sheet.title}"? This cannot be undone.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                await deletePaperLedger(sheet.id);
-                if (activeSheetId === sheet.id) {
-                  handleNewSheet();
-                }
-                await loadSavedSheets();
-              } catch (err) {
-                console.error('Failed to delete saved ledger', err);
-                Alert.alert('Error', 'Failed to delete sheet.');
-              }
-            },
-          },
-        ]
-      );
+      setConfirmModalConfig({
+        title: 'Delete Saved Ledger',
+        message: `Are you sure you want to delete "${sheet.title}"? This cannot be undone.`,
+        confirmLabel: 'Delete',
+        confirmIcon: 'trash-can-outline',
+        confirmColor: '#EF4444',
+        isDestructive: true,
+        onConfirm: async () => {
+          setConfirmModalConfig(null);
+          try {
+            await deletePaperLedger(sheet.id);
+            if (activeSheetId === sheet.id) {
+              handleNewSheet();
+            }
+            await loadSavedSheets();
+          } catch (err) {
+            console.error('Failed to delete saved ledger', err);
+            showInfoAlert('Error', 'Failed to delete sheet.');
+          }
+        },
+      });
     },
-    [activeSheetId, handleNewSheet, loadSavedSheets]
+    [activeSheetId, handleNewSheet, loadSavedSheets, showInfoAlert]
   );
 
   // Import transactions for a specific month (YYYY-MM)
@@ -396,30 +408,30 @@ export default function PaperLedgerScreen({ navigation }) {
         );
 
         if (validTxs.length === 0) {
-          Alert.alert('No Transactions', `No income or expenses found for ${monthStr}.`);
+          showInfoAlert('No Transactions', `No income or expenses found for ${monthStr}.`);
           return;
         }
 
         const newItems = mapDbTransactionsToPaperItems(validTxs, categoriesMap);
         setItems((prev) => [...prev, ...newItems]);
-        Alert.alert(
+        showInfoAlert(
           'Transactions Imported',
           `Successfully loaded ${newItems.length} transactions from ${monthStr}.`
         );
       } catch (err) {
         console.error('Error importing month transactions:', err);
-        Alert.alert('Error', 'Failed to import transactions from database.');
+        showInfoAlert('Error', 'Failed to import transactions from database.');
       } finally {
         setImporting(false);
       }
     },
-    [categoriesMap]
+    [categoriesMap, showInfoAlert]
   );
 
   // Import all available months
   const handleImportAll = useCallback(async () => {
     if (availableMonths.length === 0) {
-      Alert.alert('No Months', 'No past transaction months found to import.');
+      showInfoAlert('No Months', 'No past transaction months found to import.');
       return;
     }
     try {
@@ -446,19 +458,19 @@ export default function PaperLedgerScreen({ navigation }) {
 
       const newItems = mapDbTransactionsToPaperItems(validTxs, categoriesMap);
       setItems((prev) => [...prev, ...newItems]);
-      Alert.alert('Imported All', `Added ${newItems.length} transactions across all months.`);
+      showInfoAlert('Imported All', `Added ${newItems.length} transactions across all months.`);
     } catch (err) {
       console.error('Error importing all transactions:', err);
-      Alert.alert('Error', 'Failed to import all transactions.');
+      showInfoAlert('Error', 'Failed to import all transactions.');
     } finally {
       setImporting(false);
     }
-  }, [availableMonths, categoriesMap]);
+  }, [availableMonths, categoriesMap, showInfoAlert]);
 
   // Share formatted calculation to WhatsApp
   const handleShareToWhatsApp = useCallback(async () => {
     if (items.length === 0) {
-      Alert.alert('Empty Paper', 'Add or import transactions before sharing.');
+      showInfoAlert('Empty Paper', 'Add or import transactions before sharing.');
       return;
     }
 
@@ -491,10 +503,10 @@ export default function PaperLedgerScreen({ navigation }) {
           title: 'SpendoraX Paper Ledger',
         });
       } catch (e) {
-        Alert.alert('Share Failed', 'Unable to open share dialogue.');
+        showInfoAlert('Share Failed', 'Unable to open share dialogue.');
       }
     }
-  }, [items, totals.netTotal]);
+  }, [items, totals.netTotal, showInfoAlert]);
 
   // Paper styling constants
   const paperBg = isDarkMode ? '#171B24' : '#FDFBF7';
@@ -745,8 +757,9 @@ export default function PaperLedgerScreen({ navigation }) {
                 {activeSheetTitle && (
                   <TouchableOpacity
                     onPress={() => setIsSaveModalVisible(true)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     style={{ marginLeft: 6 }}
+                    activeOpacity={0.7}
                   >
                     <MaterialCommunityIcons name="pencil" size={13} color="#FEF3C7" />
                   </TouchableOpacity>
@@ -754,10 +767,11 @@ export default function PaperLedgerScreen({ navigation }) {
               </View>
 
               <View style={styles.tapeRightControls}>
-                {activeSheetTitle && (
+                {(activeSheetTitle || items.length > 0) && (
                   <TouchableOpacity
                     style={styles.tapeNewSheetBtn}
                     onPress={handlePromptNewSheet}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     activeOpacity={0.7}
                   >
                     <MaterialCommunityIcons name="plus" size={13} color="#FEF3C7" />
@@ -777,8 +791,8 @@ export default function PaperLedgerScreen({ navigation }) {
                 {isSelectionMode
                   ? `${selectedIds.size} of ${items.length} selected • Tap rows to toggle`
                   : activeSheetLastUpdated
-                  ? `Saved Sheet • Updated: ${new Date(activeSheetLastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} • Swipe L/R to edit/delete`
-                  : 'Swipe right to delete • Swipe left to edit • Tap Save to keep in DB'}
+                    ? `Saved Sheet • Updated: ${new Date(activeSheetLastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} • Swipe L/R to edit/delete`
+                    : 'Swipe right to delete • Swipe left to edit • Tap Save to keep in DB'}
               </Text>
             </View>
           </View>
@@ -1008,6 +1022,19 @@ export default function PaperLedgerScreen({ navigation }) {
         onDeleteSheet={handleDeleteSheet}
         onNewSheet={handleNewSheet}
       />
+
+      {/* Modal: Action Confirmation (Cross-platform) */}
+      <PaperConfirmModal
+        visible={Boolean(confirmModalConfig)}
+        title={confirmModalConfig?.title}
+        message={confirmModalConfig?.message}
+        confirmLabel={confirmModalConfig?.confirmLabel}
+        confirmIcon={confirmModalConfig?.confirmIcon}
+        confirmColor={confirmModalConfig?.confirmColor}
+        isDestructive={confirmModalConfig?.isDestructive}
+        onCancel={() => setConfirmModalConfig(null)}
+        onConfirm={confirmModalConfig?.onConfirm}
+      />
     </View>
   );
 }
@@ -1145,6 +1172,7 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '800',
     letterSpacing: 0.8,
+    flexShrink: 1,
   },
   tapeCountBadge: {
     backgroundColor: 'rgba(0,0,0,0.22)',
@@ -1165,15 +1193,18 @@ const styles = StyleSheet.create({
   tapeNewSheetBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     borderRadius: 8,
-    gap: 2,
+    gap: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
+    ...(Platform.OS === 'web' && { cursor: 'pointer' }),
   },
   tapeNewSheetText: {
     color: '#FEF3C7',
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '700',
   },
   tapeInfoRow: {

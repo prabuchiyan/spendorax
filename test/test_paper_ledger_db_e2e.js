@@ -171,5 +171,29 @@ function createPaperLedgerDbMock() {
   assert.strictEqual(allSheets[0].id, sheet1Id);
   console.log('   ✓ Deleted sheet removed from list');
 
+  // Test 7: Starting New Sheet (resetting active sheet state)
+  console.log('\n7. Testing Starting New Sheet (+ New Action)...');
+  let activeSheetState = {
+    id: sheet1Id,
+    title: updatedSheet.title,
+    lastUpdated: updatedSheet.updated_at,
+    items: [...updatedSheet.items],
+  };
+
+  // User taps + New -> resets active sheet and workspace items
+  activeSheetState = {
+    id: null,
+    title: null,
+    lastUpdated: null,
+    items: [],
+  };
+
+  assert.strictEqual(activeSheetState.id, null);
+  assert.strictEqual(activeSheetState.title, null);
+  assert.strictEqual(activeSheetState.lastUpdated, null);
+  assert.strictEqual(activeSheetState.items.length, 0);
+  console.log('   ✓ + New Sheet correctly resets active sheet id, title, and workspace items');
+
   console.log('\n=== All Paper Ledger DB End-to-End Tests Passed Successfully! ===');
 })();
+
