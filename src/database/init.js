@@ -171,6 +171,19 @@ export async function initDB() {
     created_at TEXT DEFAULT (datetime('now'))
 );`);
 
+    // Paper Ledgers (math calculation sheets)
+    await executeSql(`CREATE TABLE IF NOT EXISTS paper_ledgers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      data TEXT NOT NULL,
+      total_income REAL DEFAULT 0,
+      total_expense REAL DEFAULT 0,
+      net_total REAL DEFAULT 0,
+      is_pinned INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );`);
+
     // Migrate legacy is_paid rows to status column
     try {
       await executeSql(
@@ -416,7 +429,8 @@ export async function clearAllTables() {
     'loan_payments',
     'loans',
     'notifications',
-    'bill_deleted_occurrences'
+    'bill_deleted_occurrences',
+    'paper_ledgers'
   ];
   console.log('Prabu tables', tables);
 
