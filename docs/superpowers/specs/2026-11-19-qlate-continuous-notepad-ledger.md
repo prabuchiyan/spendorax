@@ -48,3 +48,4 @@ Redesign SpendoraX Paper Ledger into a true **Qlate (Calculator + Notepad)** con
 
 ## 3. Constraints
 - Never run `git push`. All commits local.
+

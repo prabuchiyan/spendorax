@@ -6,8 +6,6 @@ import {
   StyleSheet,
   Platform,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { formatLedgerAmount } from '../utils/paperLedgerUtils';
 
 const LINE_HEIGHT = 40;
 
@@ -27,7 +25,7 @@ export default function QlateNotepadSheet({
   const lines = evaluatedDoc.lines || [];
   const lineCount = Math.max(lines.length, 6); // Keep at least 6 ruled lines visible for an inviting pad
 
-  // Ensure line numbers and result rows match at least lineCount
+  // Ensure result rows match at least lineCount
   const displayLineCount = Math.max(lines.length, 6);
   const displayLines = Array.from({ length: displayLineCount }, (_, idx) => {
     return lines[idx] || { lineNum: idx + 1, amount: null, resultText: '' };
@@ -35,7 +33,7 @@ export default function QlateNotepadSheet({
 
   return (
     <View style={styles.sheetWrapper}>
-      {/* Table Column Header: Line # | Notepad (Left ~70%) | Results (Right ~30%) */}
+      {/* Table Column Header: Notepad (Left ~80%) | Results (Right ~20%) - No row numbers gutter */}
       <View
         style={[
           styles.tableHeader,
@@ -45,10 +43,6 @@ export default function QlateNotepadSheet({
           },
         ]}
       >
-        <View style={[styles.headerColNum, { borderRightColor: colDividerColor }]}>
-          <Text style={[styles.headerLabel, { color: textMuted }]}>#</Text>
-        </View>
-
         <View style={[styles.headerColNote, { borderRightColor: colDividerColor }]}>
           <Text style={[styles.headerLabel, { color: textMuted }]}>
             NOTE / CALCULATION (TYPE FREELY)
@@ -64,38 +58,7 @@ export default function QlateNotepadSheet({
 
       {/* Main Parallel Notepad Body */}
       <View style={[styles.sheetBody, { backgroundColor: cardBg }]}>
-        {/* Far Left: Line Numbers Gutter */}
-        <View style={[styles.gutterCol, { borderRightColor: colDividerColor }]}>
-          {displayLines.map((lineItem, idx) => {
-            const hasContent = idx < lines.length && (lines[idx].text || '').trim().length > 0;
-            const lineNumStr = idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`;
-            return (
-              <View
-                key={`num_${idx}`}
-                style={[
-                  styles.lineCell,
-                  { height: LINE_HEIGHT, borderBottomColor: rowDividerColor },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.lineNumText,
-                    {
-                      color: hasContent
-                        ? (isDarkMode ? '#8E9FB8' : '#64748B')
-                        : (isDarkMode ? '#334155' : '#CBD5E1'),
-                      fontWeight: hasContent ? '700' : '400',
-                    },
-                  ]}
-                >
-                  {lineNumStr}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
-
-        {/* Center: Continuous Multiline Text Document */}
+        {/* Left: Continuous Multiline Text Document (Expanded Space like Qlate) */}
         <View style={[styles.textCol, { borderRightColor: colDividerColor }]}>
           {/* Subtle background ruled horizontal lines */}
           <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -129,7 +92,7 @@ export default function QlateNotepadSheet({
           />
         </View>
 
-        {/* Right Margin: Parallel Live Calculation Results Column */}
+        {/* Right Margin: Parallel Live Calculation Results Column (Compact ~78px) */}
         <View style={styles.resultsCol}>
           {displayLines.map((lineItem, idx) => {
             const isEvaluated = idx < lines.length && lines[idx].amount !== null;
@@ -195,26 +158,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     height: 38,
   },
-  headerColNum: {
-    width: 44,
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRightWidth: 1,
-  },
   headerColNote: {
     flex: 1,
     height: '100%',
     justifyContent: 'center',
-    paddingLeft: 12,
+    paddingLeft: 10,
     borderRightWidth: 1,
   },
   headerColResult: {
-    width: 116,
+    width: 78,
     height: '100%',
     justifyContent: 'center',
     alignItems: 'flex-end',
-    paddingRight: 12,
+    paddingRight: 8,
   },
   headerLabel: {
     fontSize: 10,
@@ -231,62 +187,54 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     position: 'relative',
   },
-  gutterCol: {
-    width: 44,
-    borderRightWidth: 1,
-  },
   textCol: {
     flex: 1,
     borderRightWidth: 1,
     position: 'relative',
   },
   resultsCol: {
-    width: 116,
-  },
-  lineCell: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderBottomWidth: 1,
+    width: 78,
   },
   lineCellResult: {
     justifyContent: 'center',
     alignItems: 'flex-end',
-    paddingRight: 10,
+    paddingRight: 6,
     borderBottomWidth: 1,
-  },
-  lineNumText: {
-    fontSize: 11,
-    letterSpacing: 0.2,
   },
   ruledGuideline: {
     borderBottomWidth: 1,
   },
   multilineInput: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
     lineHeight: LINE_HEIGHT,
     paddingTop: 0,
     paddingBottom: 0,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     margin: 0,
     ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+        whiteSpace: 'pre',
+        overflowX: 'auto',
+      },
       android: {
         includeFontPadding: false,
       },
     }),
   },
   resultPill: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 5,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 5,
     borderWidth: 1,
-    maxWidth: 104,
+    maxWidth: 72,
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
   resultPillText: {
-    fontSize: 12.5,
-    fontWeight: '800',
-    letterSpacing: 0.2,
+    fontSize: 11.5,
+    fontWeight: '700',
+    letterSpacing: 0.1,
   },
 });

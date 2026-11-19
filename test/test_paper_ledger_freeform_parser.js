@@ -106,6 +106,15 @@ assert.strictEqual(formatImportTransactionTitle(tx3), '09-07-2026: Expense: Cash
 
 console.log('✓ formatImportTransactionTitle verified (DD-MM-YYYY: Category: Notes)');
 
+// Newline stripping in notes/categories
+const txMultiline = {
+  date: '2026-12-14',
+  category_name: 'Supermarket\nStore',
+  notes: 'Item 1\nItem 2',
+};
+assert.strictEqual(formatImportTransactionTitle(txMultiline), '14-12-2026: Supermarket Store: Item 1 Item 2');
+console.log('✓ formatImportTransactionTitle strips newlines to keep transaction on one line');
+
 // 11. mapDbTransactionsToPaperItems uses new title format
 const mapped = mapDbTransactionsToPaperItems([tx1]);
 assert.strictEqual(mapped[0].title, '14-12-2026: Salary: December Paycheck');

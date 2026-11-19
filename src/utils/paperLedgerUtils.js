@@ -164,8 +164,10 @@ function formatImportTransactionTitle(tx, categoriesMap = {}) {
     tx.category_name ||
     (tx.category_id && categoriesMap[tx.category_id]?.name) ||
     (isIncome ? 'Income' : 'Expense')
-  ).trim();
-  const note = (tx.notes || '').trim();
+  )
+    .replace(/[\r\n]+/g, ' ')
+    .trim();
+  const note = (tx.notes || '').replace(/[\r\n]+/g, ' ').trim();
 
   if (note && note.toLowerCase() !== cat.toLowerCase()) {
     return `${dateStr}: ${cat}: ${note}`;
