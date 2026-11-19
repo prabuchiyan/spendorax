@@ -28,8 +28,6 @@ import {
   parseNotepadDocument,
 } from '../utils/paperLedgerUtils';
 import PaperMonthPickerModal from '../components/PaperMonthPickerModal';
-import PaperSwipeableRow from '../components/PaperSwipeableRow';
-import PaperDeleteConfirmModal from '../components/PaperDeleteConfirmModal';
 import PaperConfirmModal from '../components/PaperConfirmModal';
 import PaperSaveSheetModal from '../components/PaperSaveSheetModal';
 import PaperSavedSheetsModal from '../components/PaperSavedSheetsModal';
@@ -67,12 +65,6 @@ export default function PaperLedgerScreen({ navigation }) {
 
   // Modals & Confirmation state (No modal for Add/Edit - 100% continuous document editing)
   const [isMonthModalVisible, setIsMonthModalVisible] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState(null);
-  const [resetRowCallback, setResetRowCallback] = useState(null);
-
-  // Multi-select state
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState(new Set());
 
   // Saved Sheet Persistence State
   const [savedSheets, setSavedSheets] = useState([]);
@@ -514,172 +506,109 @@ export default function PaperLedgerScreen({ navigation }) {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.toolbarScrollContent}
         >
-          {isSelectionMode ? (
-            <>
-              <TouchableOpacity
-                style={[
-                  styles.toolButtonOutline,
-                  {
-                    borderColor: isDarkMode ? '#3B4863' : '#CBD5E1',
-                    backgroundColor: isDarkMode ? '#171E2B' : '#FFFFFF',
-                  },
-                ]}
-                onPress={handleExitSelectionMode}
-                activeOpacity={0.8}
-              >
-                <MaterialCommunityIcons name="close" size={16} color={theme.textPrimary} />
-                <Text style={[styles.toolButtonOutlineText, { color: theme.textPrimary }]}>
-                  Cancel
-                </Text>
-              </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.toolButtonOutline,
+              {
+                borderColor: isDarkMode ? '#3B4863' : '#CBD5E1',
+                backgroundColor: isDarkMode ? '#171E2B' : '#FFFFFF',
+              },
+            ]}
+            onPress={handlePromptNewSheet}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="file-document-plus-outline" size={16} color={theme.textPrimary} />
+            <Text style={[styles.toolButtonOutlineText, { color: theme.textPrimary }]}>
+              New Sheet
+            </Text>
+          </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.toolButtonOutline,
-                  {
-                    borderColor: Colors.primary,
-                    backgroundColor: isDarkMode ? '#172544' : '#DBEAFE',
-                  },
-                ]}
-                onPress={handleSelectAll}
-                activeOpacity={0.8}
-              >
-                <MaterialCommunityIcons
-                  name={
-                    selectedIds.size === items.length && items.length > 0
-                      ? 'checkbox-marked'
-                      : 'checkbox-blank-outline'
-                  }
-                  size={16}
-                  color={Colors.primary}
-                />
-                <Text style={[styles.toolButtonOutlineText, { color: Colors.primary }]}>
-                  {selectedIds.size === items.length && items.length > 0
-                    ? 'Deselect All'
-                    : 'Select All'}
-                </Text>
-              </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toolButton, { backgroundColor: Colors.primary }]}
+            onPress={() => setIsMonthModalVisible(true)}
+            activeOpacity={0.8}
+            disabled={importing}
+          >
+            {importing ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <MaterialCommunityIcons name="calendar-import" size={16} color="#FFF" />
+            )}
+            <Text style={styles.toolButtonText}>Import Month</Text>
+          </TouchableOpacity>
 
-              <View style={styles.selectionCountPill}>
-                <Text style={[styles.selectionCountText, { color: theme.textSecondary }]}>
-                  {selectedIds.size} selected
-                </Text>
-              </View>
+          <TouchableOpacity
+            style={[
+              styles.toolButtonOutline,
+              {
+                borderColor: activeSheetId ? '#10B981' : Colors.primary,
+                backgroundColor: activeSheetId
+                  ? isDarkMode ? '#0A2E20' : '#ECFDF5'
+                  : isDarkMode ? '#14223A' : '#EFF6FF',
+              },
+            ]}
+            onPress={handlePromptSave}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons
+              name={activeSheetId ? 'content-save-check-outline' : 'content-save-outline'}
+              size={16}
+              color={activeSheetId ? '#10B981' : Colors.primary}
+            />
+            <Text
+              style={[
+                styles.toolButtonOutlineText,
+                { color: activeSheetId ? '#10B981' : Colors.primary },
+              ]}
+            >
+              {activeSheetId ? 'Update' : 'Save'}
+            </Text>
+          </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.deleteSelectedBtn,
-                  {
-                    backgroundColor:
-                      selectedIds.size > 0 ? '#EF4444' : isDarkMode ? '#332025' : '#FCA5A5',
-                    opacity: selectedIds.size > 0 ? 1 : 0.6,
-                  },
-                ]}
-                onPress={handlePromptDeleteSelected}
-                disabled={selectedIds.size === 0}
-                activeOpacity={0.8}
-              >
-                <MaterialCommunityIcons name="trash-can-outline" size={16} color="#FFF" />
-                <Text style={styles.deleteSelectedBtnText}>
-                  Delete ({selectedIds.size})
-                </Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <TouchableOpacity
-                style={[styles.toolButton, { backgroundColor: Colors.primary }]}
-                onPress={() => setIsMonthModalVisible(true)}
-                activeOpacity={0.8}
-                disabled={importing}
-              >
-                {importing ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <MaterialCommunityIcons name="calendar-import" size={16} color="#FFF" />
-                )}
-                <Text style={styles.toolButtonText}>Import Month</Text>
-              </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.toolButtonOutline,
+              {
+                borderColor: isDarkMode ? '#3B4863' : '#CBD5E1',
+                backgroundColor: isDarkMode ? '#171E2B' : '#FFFFFF',
+              },
+            ]}
+            onPress={() => setIsSavedSheetsModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="book-open-outline" size={16} color={theme.textPrimary} />
+            <Text style={[styles.toolButtonOutlineText, { color: theme.textPrimary }]}>
+              Sheets ({savedSheets.length})
+            </Text>
+          </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.toolButtonOutline,
-                  {
-                    borderColor: activeSheetId ? '#10B981' : Colors.primary,
-                    backgroundColor: activeSheetId
-                      ? isDarkMode ? '#0A2E20' : '#ECFDF5'
-                      : isDarkMode ? '#14223A' : '#EFF6FF',
-                  },
-                ]}
-                onPress={handlePromptSave}
-                activeOpacity={0.8}
-              >
-                <MaterialCommunityIcons
-                  name={activeSheetId ? 'content-save-check-outline' : 'content-save-outline'}
-                  size={16}
-                  color={activeSheetId ? '#10B981' : Colors.primary}
-                />
-                <Text
-                  style={[
-                    styles.toolButtonOutlineText,
-                    { color: activeSheetId ? '#10B981' : Colors.primary },
-                  ]}
-                >
-                  {activeSheetId ? 'Update' : 'Save'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.toolButtonOutline,
-                  {
-                    borderColor: isDarkMode ? '#3B4863' : '#CBD5E1',
-                    backgroundColor: isDarkMode ? '#171E2B' : '#FFFFFF',
-                  },
-                ]}
-                onPress={() => setIsSavedSheetsModalVisible(true)}
-                activeOpacity={0.8}
-              >
-                <MaterialCommunityIcons name="book-open-outline" size={16} color={theme.textPrimary} />
-                <Text style={[styles.toolButtonOutlineText, { color: theme.textPrimary }]}>
-                  Sheets ({savedSheets.length})
-                </Text>
-              </TouchableOpacity>
-
-
-              {items.length > 0 && (
-                <TouchableOpacity
-                  style={[
-                    styles.toolButtonOutline,
-                    {
-                      borderColor: isDarkMode ? '#374151' : '#CBD5E1',
-                      backgroundColor: isDarkMode ? '#1F2937' : '#F8FAFC',
-                    },
-                  ]}
-                  onPress={() => handleEnterSelectionMode()}
-                  activeOpacity={0.8}
-                >
-                  <MaterialCommunityIcons
-                    name="checkbox-multiple-marked-outline"
-                    size={16}
-                    color={theme.textPrimary}
-                  />
-                  <Text style={[styles.toolButtonOutlineText, { color: theme.textPrimary }]}>
-                    Select
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity
-                style={[styles.shareBtn, { backgroundColor: '#25D366' }]}
-                onPress={handleShareToWhatsApp}
-                activeOpacity={0.8}
-              >
-                <MaterialCommunityIcons name="whatsapp" size={16} color="#FFF" />
-                <Text style={styles.shareBtnText}>Share</Text>
-              </TouchableOpacity>
-            </>
+          {notepadText.trim().length > 0 && (
+            <TouchableOpacity
+              style={[
+                styles.toolButtonOutline,
+                {
+                  borderColor: isDarkMode ? '#4B252C' : '#FCA5A5',
+                  backgroundColor: isDarkMode ? '#231518' : '#FEF2F2',
+                },
+              ]}
+              onPress={handleClearAll}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="trash-can-outline" size={16} color="#EF4444" />
+              <Text style={[styles.toolButtonOutlineText, { color: '#EF4444' }]}>
+                Clear
+              </Text>
+            </TouchableOpacity>
           )}
+
+          <TouchableOpacity
+            style={[styles.shareBtn, { backgroundColor: '#25D366' }]}
+            onPress={handleShareToWhatsApp}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="whatsapp" size={16} color="#FFF" />
+            <Text style={styles.shareBtnText}>Share</Text>
+          </TouchableOpacity>
         </ScrollView>
       </View>
 
@@ -966,13 +895,7 @@ export default function PaperLedgerScreen({ navigation }) {
         onSelectAll={handleImportAll}
       />
 
-      {/* Modal: Delete Confirmation (Cross-platform) */}
-      <PaperDeleteConfirmModal
-        visible={!!itemToDelete}
-        item={itemToDelete}
-        onCancel={handleCancelDelete}
-        onConfirm={handleConfirmDelete}
-      />
+
 
       {/* Modal: Save / Update Sheet */}
       <PaperSaveSheetModal
