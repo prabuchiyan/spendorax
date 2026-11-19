@@ -112,3 +112,4 @@ assert.strictEqual(mapped[0].title, '14-12-2026: Salary: December Paycheck');
 console.log('✓ mapDbTransactionsToPaperItems applies DD-MM-YYYY format');
 
 console.log('\nAll Freeform Parser and Title Formatter Tests Passed Successfully!');
+

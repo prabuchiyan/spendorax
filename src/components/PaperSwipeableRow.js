@@ -1,13 +1,16 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   Animated,
   PanResponder,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { formatItemToFreeformLine } from '../utils/paperLedgerUtils';
 
 export default function PaperSwipeableRow({
   item,
@@ -16,6 +19,10 @@ export default function PaperSwipeableRow({
   formatLedgerAmount,
   onRequestDelete,
   onRequestEdit,
+  isEditing = false,
+  onStartEdit,
+  onCommitEdit,
+  onCancelEdit,
   paperBg,
   ruledLineColor,
   redMarginLine,
@@ -30,6 +37,17 @@ export default function PaperSwipeableRow({
   onLongPress,
 }) {
   const pan = useRef(new Animated.Value(0)).current;
+  const editInputRef = useRef(null);
+  const [editText, setEditText] = useState(() => formatItemToFreeformLine(item));
+
+  useEffect(() => {
+    if (isEditing) {
+      setEditText(formatItemToFreeformLine(item));
+      setTimeout(() => {
+        editInputRef.current?.focus();
+      }, 50);
+    }
+  }, [isEditing, item]);
 
   const resetPosition = () => {
     Animated.spring(pan, {
@@ -39,11 +57,32 @@ export default function PaperSwipeableRow({
     }).start();
   };
 
+  const handleTriggerEdit = () => {
+    if (onStartEdit) {
+      resetPosition();
+      onStartEdit(item.id);
+    } else if (onRequestEdit) {
+      onRequestEdit(item, resetPosition);
+    }
+  };
+
+  const handleSaveInline = () => {
+    if (onCommitEdit) {
+      onCommitEdit(item.id, editText);
+    }
+  };
+
+  const handleCancelInline = () => {
+    if (onCancelEdit) {
+      onCancelEdit();
+    }
+  };
+
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Disable swipe gesture in selection mode
-        if (isSelectionMode) return false;
+        // Disable swipe gesture in selection mode or when editing
+        if (isSelectionMode || isEditing) return false;
         // Only claim gesture if horizontal movement is dominant
         return (
           Math.abs(gestureState.dx) > 15 &&
@@ -66,13 +105,8 @@ export default function PaperSwipeableRow({
             }).start();
             onRequestDelete && onRequestDelete(item, resetPosition);
           } else {
-            // Swiping left reveals right edit action
-            Animated.spring(pan, {
-              toValue: -84,
-              useNativeDriver: true,
-              bounciness: 4,
-            }).start();
-            onRequestEdit && onRequestEdit(item, resetPosition);
+            // Swiping left activates inline line edit
+            handleTriggerEdit();
           }
         } else {
           resetPosition();
@@ -199,6 +233,87 @@ export default function PaperSwipeableRow({
     </>
   );
 
+  if (isEditing) {
+    return (
+      <View
+        style={[
+          styles.container,
+          {
+            borderBottomColor: effectiveRowDivider,
+            backgroundColor: isDarkMode ? '#172033' : '#F0F9FF',
+          },
+        ]}
+      >
+        <View style={styles.touchableWrapper}>
+          {/* 65% Left: Serial badge and live TextInput directly on the paper ruling */}
+          <View
+            style={[
+              styles.col65,
+              styles.cell65,
+              { borderRightColor: effectiveColDivider },
+            ]}
+          >
+            <View style={styles.rowMain}>
+              <View
+                style={[
+                  styles.serialBadge,
+                  { backgroundColor: isDarkMode ? '#1E293B' : '#E2E8F0' },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.serialText,
+                    { color: isDarkMode ? '#94A3B8' : '#64748B' },
+                  ]}
+                >
+                  {serialText}
+                </Text>
+              </View>
+
+              <View style={{ flex: 1, paddingRight: 6 }}>
+                <TextInput
+                  ref={editInputRef}
+                  style={[
+                    styles.inlineEditInput,
+                    { color: textColor || (isDarkMode ? '#F8FAFC' : '#0F172A') },
+                  ]}
+                  value={editText}
+                  onChangeText={setEditText}
+                  onSubmitEditing={handleSaveInline}
+                  returnKeyType="done"
+                  blurOnSubmit={true}
+                  placeholder="e.g. Dinner 450 or Salary +50000"
+                  placeholderTextColor={textMuted || '#94A3B8'}
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* 35% Right: In-place Save and Cancel icon buttons directly on the line */}
+          <View style={[styles.col35, styles.cell35, styles.editActionsRow]}>
+            <TouchableOpacity
+              style={[styles.inlineSaveBtn, { backgroundColor: '#10B98125' }]}
+              onPress={handleSaveInline}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialCommunityIcons name="check" size={16} color="#10B981" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.inlineCancelBtn, { backgroundColor: isDarkMode ? '#334155' : '#E2E8F0' }]}
+              onPress={handleCancelInline}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialCommunityIcons name="close" size={14} color={textMuted || '#64748B'} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { borderBottomColor: effectiveRowDivider }]}>
       {/* Background reveal showing delete action on right swipe (left side) and edit action on left swipe (right side) */}
@@ -223,7 +338,7 @@ export default function PaperSwipeableRow({
               styles.rightEditIndicator,
               { backgroundColor: isDarkMode ? '#132447' : '#DBEAFE' },
             ]}
-            onPress={() => onRequestEdit && onRequestEdit(item, resetPosition)}
+            onPress={handleTriggerEdit}
             activeOpacity={0.8}
           >
             <Text style={[styles.actionText, { color: '#2563EB' }]}>Edit</Text>
@@ -262,7 +377,7 @@ export default function PaperSwipeableRow({
           <TouchableOpacity
             style={styles.touchableWrapper}
             onLongPress={() => onLongPress && onLongPress(item.id)}
-            onPress={() => onRequestEdit && onRequestEdit(item, resetPosition)}
+            onPress={handleTriggerEdit}
             delayLongPress={350}
             activeOpacity={0.9}
           >
@@ -412,5 +527,32 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'right',
     letterSpacing: 0.2,
+  },
+  inlineEditInput: {
+    fontSize: 14,
+    fontWeight: '600',
+    paddingVertical: Platform.OS === 'ios' ? 4 : 0,
+    paddingHorizontal: 0,
+    margin: 0,
+  },
+  editActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  inlineSaveBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inlineCancelBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

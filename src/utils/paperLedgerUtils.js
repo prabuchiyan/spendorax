@@ -355,6 +355,42 @@ function filterCandidatesBySearch(candidates = [], searchQuery = '') {
   });
 }
 
+/**
+ * Formats an existing paper ledger item into a freeform string for inline on-paper editing.
+ * e.g. { title: 'Dinner', amount: 450, type: 'expense' } -> 'Dinner 450'
+ *      { title: 'Salary', amount: 50000, type: 'income' } -> 'Salary +50000'
+ *      { title: 'Groceries', formula: '100+25', type: 'expense' } -> 'Groceries 100+25'
+ * @param {Object} item
+ * @returns {string}
+ */
+function formatItemToFreeformLine(item) {
+  if (!item || typeof item !== 'object') return '';
+  const title = (item.title || '').trim();
+  const isIncome = String(item.type || '').toLowerCase() === 'income';
+
+  let val = '';
+  if (item.formula) {
+    val = String(item.formula).trim();
+  } else if (item.amount !== undefined && item.amount !== null && !isNaN(item.amount)) {
+    val = String(item.amount).trim();
+  }
+
+  if (!val) return title;
+
+  if (isIncome) {
+    if (val.startsWith('+')) {
+      return title ? `${title} ${val}`.trim() : val;
+    }
+    return title ? `${title} +${val}`.trim() : `+${val}`;
+  }
+
+  // Expense
+  if (val.startsWith('+')) {
+    val = val.substring(1).trim();
+  }
+  return title ? `${title} ${val}`.trim() : val;
+}
+
 module.exports = {
   calculateLedgerTotals,
   formatLedgerAmount,
@@ -364,6 +400,7 @@ module.exports = {
   formatTxDate,
   formatImportTransactionTitle,
   parseNotepadLine,
+  formatItemToFreeformLine,
   selectAllCandidates,
   deselectAllCandidates,
   toggleCandidateSelection,

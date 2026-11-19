@@ -91,3 +91,4 @@
   Run all 15 test suites and verify Babel syntax.
 - [ ] **Step 5: Local commit Task 3**
   Commit locally: `feat(paper-ledger): wire up freeform notepad typing, selective import, and in-app toast` (no push).
+

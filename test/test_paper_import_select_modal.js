@@ -64,3 +64,4 @@ assert.strictEqual(searchEmpty.length, 3, 'Empty query returns all candidates');
 console.log('✓ filterCandidatesBySearch works');
 
 console.log('All Selective Import Tests Passed Successfully!');
+

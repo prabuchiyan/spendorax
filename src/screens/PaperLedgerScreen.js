@@ -25,7 +25,6 @@ import {
   isTransferTransaction,
   parseNotepadLine,
 } from '../utils/paperLedgerUtils';
-import PaperAddRowModal from '../components/PaperAddRowModal';
 import PaperMonthPickerModal from '../components/PaperMonthPickerModal';
 import PaperSwipeableRow from '../components/PaperSwipeableRow';
 import PaperDeleteConfirmModal from '../components/PaperDeleteConfirmModal';
@@ -52,13 +51,15 @@ export default function PaperLedgerScreen({ navigation }) {
   const [loadingMonths, setLoadingMonths] = useState(false);
   const [importing, setImporting] = useState(false);
 
-  // Modals state
-  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
-  const [resetEditRowCallback, setResetEditRowCallback] = useState(null);
+  // Modals & Confirmation state (No modal for Add/Edit - 100% on-paper editing)
   const [isMonthModalVisible, setIsMonthModalVisible] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [resetRowCallback, setResetRowCallback] = useState(null);
+
+  // In-place on-paper editing & new line state
+  const newLineInputRef = useRef(null);
+  const [newLineText, setNewLineText] = useState('');
+  const [editingRowId, setEditingRowId] = useState(null);
 
   // Multi-select state
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -72,11 +73,6 @@ export default function PaperLedgerScreen({ navigation }) {
   const [isSaveModalVisible, setIsSaveModalVisible] = useState(false);
   const [isSavedSheetsModalVisible, setIsSavedSheetsModalVisible] = useState(false);
   const [confirmModalConfig, setConfirmModalConfig] = useState(null);
-
-  // Notepad-style quick typing state (Option B)
-  const notepadInputRef = useRef(null);
-  const [notepadInput, setNotepadInput] = useState('');
-  const [notepadType, setNotepadType] = useState('expense'); // 'expense' | 'income'
 
   // Modern Toast notification state
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
@@ -186,22 +182,69 @@ export default function PaperLedgerScreen({ navigation }) {
       setEditingItem(null);
       setResetEditRowCallback(null);
     },
-    [resetEditRowCallback]
+    []
   );
 
-  // Commit freeform line typed directly like a notepad (Enter key or Add button)
-  const handleCommitNotepadLine = useCallback(() => {
-    const raw = (notepadInput || '').trim();
+  // Start in-place editing on an existing ruled row (No modal!)
+  const handleStartEdit = useCallback((rowId) => {
+    setEditingRowId(rowId);
+  }, []);
+
+  // Cancel in-place editing
+  const handleCancelEdit = useCallback(() => {
+    setEditingRowId(null);
+  }, []);
+
+  // Commit in-place edit on an existing row directly on the paper
+  const handleCommitEdit = useCallback(
+    (rowId, text) => {
+      const trimmed = (text || '').trim();
+      if (!trimmed) {
+        setEditingRowId(null);
+        return;
+      }
+
+      const currentItem = items.find((it) => it.id === rowId);
+      const defaultType = currentItem?.type || 'expense';
+      const parsed = parseNotepadLine(trimmed, defaultType);
+
+      if (!parsed) {
+        showToast('Could not find amount in line. Try e.g. "Dinner 450"', 'error');
+        return;
+      }
+
+      setItems((prev) =>
+        prev.map((it) =>
+          it.id === rowId
+            ? {
+                ...it,
+                title: parsed.title,
+                amount: parsed.amount,
+                type: parsed.type,
+                formula: parsed.formula || null,
+              }
+            : it
+        )
+      );
+      setEditingRowId(null);
+      showToast(`Updated "${parsed.title}" (₹${formatLedgerAmount(parsed.amount)})`, 'success');
+    },
+    [items, showToast]
+  );
+
+  // Commit freeform line typed directly on the paper ruling (Enter key or Add button)
+  const handleCommitNewLine = useCallback(() => {
+    const raw = (newLineText || '').trim();
     if (!raw) return;
 
-    const parsed = parseNotepadLine(raw, notepadType);
+    const parsed = parseNotepadLine(raw, 'expense');
     if (!parsed) {
       showToast('Could not find amount in line. Try e.g. "Dinner 450"', 'error');
       return;
     }
 
     const newItem = {
-      id: `notepad_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      id: `paper_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       title: parsed.title,
       type: parsed.type,
       amount: parsed.amount,
@@ -210,31 +253,14 @@ export default function PaperLedgerScreen({ navigation }) {
     };
 
     setItems((prev) => [...prev, newItem]);
-    setNotepadInput('');
+    setNewLineText('');
     showToast(`Added "${parsed.title}" (₹${formatLedgerAmount(parsed.amount)})`, 'success');
 
     // Keep input focused so the next line can be typed immediately
     setTimeout(() => {
-      notepadInputRef.current?.focus();
+      newLineInputRef.current?.focus();
     }, 60);
-  }, [notepadInput, notepadType, showToast]);
-
-  // Open edit modal for an existing row
-  const handleOpenEdit = useCallback((item, onCancel) => {
-    setEditingItem(item);
-    setResetEditRowCallback(() => onCancel);
-    setIsAddModalVisible(true);
-  }, []);
-
-  // Close add/edit modal and reset swiped row position if cancelled
-  const handleCloseAddEditModal = useCallback(() => {
-    if (resetEditRowCallback) {
-      resetEditRowCallback();
-    }
-    setIsAddModalVisible(false);
-    setEditingItem(null);
-    setResetEditRowCallback(null);
-  }, [resetEditRowCallback]);
+  }, [newLineText, showToast]);
 
   // Handle deleting single row
   const handleDeleteRow = useCallback((rowId) => {
@@ -972,7 +998,10 @@ export default function PaperLedgerScreen({ navigation }) {
               isIncome={item.type === 'income'}
               formatLedgerAmount={formatLedgerAmount}
               onRequestDelete={requestDeleteRow}
-              onRequestEdit={handleOpenEdit}
+              isEditing={editingRowId === item.id}
+              onStartEdit={handleStartEdit}
+              onCommitEdit={handleCommitEdit}
+              onCancelEdit={handleCancelEdit}
               paperBg={cardBg}
               rowDividerColor={rowDividerColor}
               columnDividerColor={colDividerColor}
@@ -1005,106 +1034,91 @@ export default function PaperLedgerScreen({ navigation }) {
                 Notepad Ledger Ready
               </Text>
               <Text style={[styles.emptyDesc, { color: textMuted }]}>
-                Type directly below (e.g. Dinner 450 or Salary +50000) and press Enter ↵ to add rows instantly, or import from your database.
+                Type directly on the line below (e.g. Dinner 450 or Salary +50000) and press Enter ↵ to add rows instantly, or import from your database.
               </Text>
             </View>
           )}
 
-          {/* Inline Notepad Quick-Entry Bar (Type directly & press Enter to advance) */}
+          {/* Direct On-Paper Next Ruled Line (Type directly & press Enter to advance) */}
           {!isSelectionMode && (
             <View
               style={[
-                styles.notepadBar,
+                styles.paperNewLineRow,
                 {
-                  backgroundColor: isDarkMode ? '#111827' : '#F8FAFC',
-                  borderTopColor: rowDividerColor,
                   borderBottomColor: rowDividerColor,
+                  backgroundColor: isDarkMode ? '#131926' : '#FFFFFF',
                 },
               ]}
             >
-              {/* Type toggle pill (Inflow + / Outflow −) */}
-              <TouchableOpacity
+              {/* 65% Left: Next Serial Number & Direct Borderless TextInput */}
+              <View
                 style={[
-                  styles.notepadTypeToggle,
-                  {
-                    backgroundColor:
-                      notepadType === 'income'
-                        ? (isDarkMode ? '#064E3B' : '#ECFDF5')
-                        : (isDarkMode ? '#4C0519' : '#FFF1F2'),
-                    borderColor:
-                      notepadType === 'income'
-                        ? (isDarkMode ? '#065F46' : '#A7F3D0')
-                        : (isDarkMode ? '#881337' : '#FECDD3'),
-                  },
+                  styles.col65,
+                  styles.cell65,
+                  { borderRightColor: colDividerColor },
                 ]}
-                onPress={() => setNotepadType((prev) => (prev === 'income' ? 'expense' : 'income'))}
-                activeOpacity={0.7}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <MaterialCommunityIcons
-                  name={notepadType === 'income' ? 'plus-circle' : 'minus-circle'}
-                  size={14}
-                  color={notepadType === 'income' ? '#10B981' : '#EF4444'}
-                />
-                <Text
-                  style={[
-                    styles.notepadTypeToggleText,
-                    { color: notepadType === 'income' ? '#10B981' : '#EF4444' },
-                  ]}
-                >
-                  {notepadType === 'income' ? '+ Inflow' : '− Outflow'}
-                </Text>
-              </TouchableOpacity>
+                <View style={styles.rowMain}>
+                  <View
+                    style={[
+                      styles.serialBadge,
+                      {
+                        backgroundColor: newLineText.trim().length > 0
+                          ? (isDarkMode ? '#172554' : '#EFF6FF')
+                          : (isDarkMode ? '#1C2433' : '#F1F5F9'),
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.serialText,
+                        {
+                          color: newLineText.trim().length > 0
+                            ? '#3B82F6'
+                            : (isDarkMode ? '#8E9FB8' : '#64748B'),
+                        },
+                      ]}
+                    >
+                      {items.length + 1 < 10 ? `0${items.length + 1}` : `${items.length + 1}`}
+                    </Text>
+                  </View>
 
-              {/* Freeform Text Input */}
-              <TextInput
-                ref={notepadInputRef}
-                style={[
-                  styles.notepadTextInput,
-                  {
-                    color: textColor,
-                  },
-                ]}
-                placeholder="Type note & amount (e.g. Dinner 450, Salary +50000, 100+25)..."
-                placeholderTextColor={textMuted}
-                value={notepadInput}
-                onChangeText={setNotepadInput}
-                onSubmitEditing={handleCommitNotepadLine}
-                returnKeyType="next"
-                blurOnSubmit={false}
-              />
+                  <View style={{ flex: 1, paddingRight: 6 }}>
+                    <TextInput
+                      ref={newLineInputRef}
+                      style={[
+                        styles.paperLineInput,
+                        { color: textColor },
+                      ]}
+                      placeholder={items.length === 0 ? "Type line 01 (e.g. Dinner 450 or Salary +50000)..." : "Type next line here..."}
+                      placeholderTextColor={textMuted}
+                      value={newLineText}
+                      onChangeText={setNewLineText}
+                      onSubmitEditing={handleCommitNewLine}
+                      returnKeyType="next"
+                      blurOnSubmit={false}
+                    />
+                  </View>
+                </View>
+              </View>
 
-              {/* Enter / Add Button */}
-              <TouchableOpacity
-                style={[
-                  styles.notepadAddBtn,
-                  {
-                    backgroundColor:
-                      notepadInput.trim().length > 0
-                        ? (theme.primary || Colors.primary)
-                        : (isDarkMode ? '#1E293B' : '#E2E8F0'),
-                  },
-                ]}
-                disabled={notepadInput.trim().length === 0}
-                onPress={handleCommitNotepadLine}
-                activeOpacity={0.8}
-              >
-                <MaterialCommunityIcons
-                  name="arrow-down-left"
-                  size={14}
-                  color={notepadInput.trim().length > 0 ? '#FFFFFF' : textMuted}
-                />
-                <Text
-                  style={[
-                    styles.notepadAddBtnText,
-                    {
-                      color: notepadInput.trim().length > 0 ? '#FFFFFF' : textMuted,
-                    },
-                  ]}
-                >
-                  ↵
-                </Text>
-              </TouchableOpacity>
+              {/* 35% Right: Action button or Enter prompt */}
+              <View style={[styles.col35, styles.cell35, { alignItems: 'flex-end', justifyContent: 'center' }]}>
+                {newLineText.trim().length > 0 ? (
+                  <TouchableOpacity
+                    style={[styles.paperLineAddBtn, { backgroundColor: theme.primary || Colors.primary }]}
+                    onPress={handleCommitNewLine}
+                    activeOpacity={0.8}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={styles.paperLineAddText}>Add ↵</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={[styles.paperLineHint, { color: textMuted }]}>
+                    ↵ Enter
+                  </Text>
+                )}
+              </View>
             </View>
           )}
 
@@ -1228,17 +1242,12 @@ export default function PaperLedgerScreen({ navigation }) {
         </View>
       </ScrollView>
 
-      {/* App Floating Action Button (FAB) to Add Calculation Line */}
+      {/* App Floating Action Button (FAB) to Focus Paper Entry Line */}
       {!isSelectionMode && (
         <ContextualFAB
           icon="plus"
           onPress={() => {
-            if (notepadInputRef.current) {
-              notepadInputRef.current.focus();
-            } else {
-              setEditingItem(null);
-              setIsAddModalVisible(true);
-            }
+            newLineInputRef.current?.focus();
           }}
         />
       )}
@@ -1261,14 +1270,6 @@ export default function PaperLedgerScreen({ navigation }) {
           setCandidateImportItems([]);
         }}
         onConfirmImport={handleConfirmImportSelected}
-      />
-
-      {/* Modal: Add/Edit Row */}
-      <PaperAddRowModal
-        visible={isAddModalVisible}
-        onClose={handleCloseAddEditModal}
-        onAdd={handleSaveRow}
-        initialItem={editingItem}
       />
 
       {/* Modal: Month Picker */}
@@ -1648,47 +1649,35 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.3,
   },
-  notepadBar: {
+  paperNewLineRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderTopWidth: 1,
+    alignItems: 'stretch',
     minHeight: 52,
-    gap: 8,
+    borderBottomWidth: 1,
   },
-  notepadTypeToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
+  paperLineInput: {
+    fontSize: 14,
+    fontWeight: '600',
+    paddingVertical: Platform.OS === 'ios' ? 4 : 0,
+    paddingHorizontal: 0,
+    margin: 0,
+  },
+  paperLineAddBtn: {
+    paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 4,
-  },
-  notepadTypeToggleText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  notepadTextInput: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '500',
-    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
-    paddingHorizontal: 6,
-  },
-  notepadAddBtn: {
-    flexDirection: 'row',
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 2,
   },
-  notepadAddBtnText: {
-    fontSize: 13,
+  paperLineAddText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '700',
+  },
+  paperLineHint: {
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0.2,
   },
 });
 
