@@ -7,14 +7,32 @@ const {
 
 console.log('Testing Paper Ledger Freeform Parser and Title Formatter...');
 
-// 1. Basic Expense parsing
+// 1. Basic Income parsing (unsigned numbers default to income)
 const res1 = parseNotepadLine('Dinner 450');
 assert.strictEqual(res1.isValid, true);
 assert.strictEqual(res1.title, 'Dinner');
 assert.strictEqual(res1.amount, 450);
-assert.strictEqual(res1.type, 'expense');
+assert.strictEqual(res1.type, 'income');
+assert.strictEqual(res1.resultText, '+ ₹450');
 assert.strictEqual(res1.formula, null);
-console.log('✓ "Dinner 450" parsed correctly');
+console.log('✓ "Dinner 450" parsed correctly as income (+ ₹450)');
+
+// 1b. Minus on amount for expense: Dinner - 450 -> − ₹450
+const res1b = parseNotepadLine('Dinner - 450');
+assert.strictEqual(res1b.isValid, true);
+assert.strictEqual(res1b.title, 'Dinner');
+assert.strictEqual(res1b.amount, 450);
+assert.strictEqual(res1b.type, 'expense');
+assert.strictEqual(res1b.resultText, '− ₹450');
+console.log('✓ "Dinner - 450" parsed correctly as expense (− ₹450)');
+
+// 1c. Math expression: 100*5 -> + ₹500
+const res1c = parseNotepadLine('100*5');
+assert.strictEqual(res1c.isValid, true);
+assert.strictEqual(res1c.amount, 500);
+assert.strictEqual(res1c.type, 'income');
+assert.strictEqual(res1c.resultText, '+ ₹500');
+console.log('✓ "100*5" parsed correctly as income (+ ₹500)');
 
 // 2. Explicit Income with + prefix on amount
 const res2 = parseNotepadLine('Salary +50000');
@@ -47,15 +65,23 @@ assert.strictEqual(res5.isValid, true);
 assert.strictEqual(res5.title, 'Grocery Mart');
 assert.strictEqual(res5.amount, 125);
 assert.strictEqual(res5.formula, '100 + 25');
-assert.strictEqual(res5.type, 'expense');
+assert.strictEqual(res5.type, 'income');
 console.log('✓ "Grocery Mart 100 + 25" parsed correctly with formula');
+
+// 5b. Math expression with expense
+const res5b = parseNotepadLine('Grocery Mart -(100 + 25)');
+assert.strictEqual(res5b.isValid, true);
+assert.strictEqual(res5b.title, 'Grocery Mart');
+assert.strictEqual(res5b.amount, 125);
+assert.strictEqual(res5b.type, 'expense');
+console.log('✓ "Grocery Mart -(100 + 25)" parsed correctly as expense');
 
 // 6. Math expression with Income +
 const res6 = parseNotepadLine('Freelance Design +100*5');
 assert.strictEqual(res6.isValid, true);
 assert.strictEqual(res6.title, 'Freelance Design');
 assert.strictEqual(res6.amount, 500);
-assert.strictEqual(res6.formula, '100*5');
+assert.strictEqual(res6.formula, '+100*5');
 assert.strictEqual(res6.type, 'income');
 console.log('✓ "Freelance Design +100*5" parsed correctly');
 
@@ -125,9 +151,9 @@ const pGold = parseNotepadLine('Gold 400g 700');
 assert.strictEqual(pGold.isValid, true);
 assert.strictEqual(pGold.title, 'Gold 400g');
 assert.strictEqual(pGold.amount, 700);
-assert.strictEqual(pGold.type, 'expense');
+assert.strictEqual(pGold.type, 'income');
 
-const pMilk = parseNotepadLine('Milk 5L 700');
+const pMilk = parseNotepadLine('Milk 5L -700');
 assert.strictEqual(pMilk.isValid, true);
 assert.strictEqual(pMilk.title, 'Milk 5L');
 assert.strictEqual(pMilk.amount, 700);
@@ -137,13 +163,12 @@ const pOct = parseNotepadLine('October 3rd 700');
 assert.strictEqual(pOct.isValid, true);
 assert.strictEqual(pOct.title, 'October 3rd');
 assert.strictEqual(pOct.amount, 700);
-assert.strictEqual(pOct.type, 'expense');
+assert.strictEqual(pOct.type, 'income');
 
-const pSugar = parseNotepadLine('Sugar 2kg 100 + 25');
+const pSugar = parseNotepadLine('Sugar 2kg -125');
 assert.strictEqual(pSugar.isValid, true);
 assert.strictEqual(pSugar.title, 'Sugar 2kg');
 assert.strictEqual(pSugar.amount, 125);
-assert.strictEqual(pSugar.formula, '100 + 25');
 assert.strictEqual(pSugar.type, 'expense');
 console.log('✓ Units in title (400g, 5L, 3rd, 2kg) parsed cleanly with amount extracted');
 

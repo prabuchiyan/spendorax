@@ -17,34 +17,42 @@ export { SAMPLE_PAPER_LEDGER_TEXT };
 
 const MATH_EXAMPLES = [
   {
-    title: 'Regular Expense (Debit)',
-    desc: 'Name + number or with (-) sign',
+    title: 'Income / Credit (Default)',
+    desc: 'Unsigned number or name + amount',
     input: 'Dinner 450',
+    result: '+ ₹450',
+    isIncome: true,
+    icon: 'cash-plus',
+  },
+  {
+    title: 'Expense / Debit with (-)',
+    desc: 'Amount with minus sign (-)',
+    input: 'Dinner - 450',
     result: '− ₹450',
     isIncome: false,
     icon: 'cart-outline',
   },
   {
-    title: 'Money In (Credit)',
-    desc: 'Put a (+) sign on amount',
-    input: 'Salary +50000',
-    result: '+ ₹50,000',
+    title: 'Math Expression (Income)',
+    desc: 'Common math like multiplication',
+    input: '100*5',
+    result: '+ ₹500',
     isIncome: true,
-    icon: 'cash-plus',
+    icon: 'calculator-variant-outline',
   },
   {
     title: 'Units in Name (400g, 5L, 3rd)',
     desc: 'Takes only the last number as amount',
-    input: 'Milk 5L 700',
-    result: '− ₹700',
-    isIncome: false,
+    input: 'Gold 400g 700',
+    result: '+ ₹700',
+    isIncome: true,
     icon: 'weight',
   },
   {
-    title: 'Units with Math (2kg, etc.)',
-    desc: 'Units stay in name, math evaluates',
-    input: 'Sugar 2kg 100+25',
-    result: '− ₹125',
+    title: 'Units with Expense (-)',
+    desc: 'Units in title with expense amount',
+    input: 'Milk 5L -700',
+    result: '− ₹700',
     isIncome: false,
     icon: 'scale',
   },
@@ -52,49 +60,33 @@ const MATH_EXAMPLES = [
     title: 'Math Addition (+)',
     desc: 'Common user math: 2000 + 5',
     input: '2000 + 5',
-    result: '− ₹2,005',
-    isIncome: false,
+    result: '+ ₹2,005',
+    isIncome: true,
     icon: 'plus',
   },
   {
     title: 'Math Subtraction (−)',
     desc: 'Common user math: 400- 100',
     input: '400- 100',
-    result: '− ₹300',
-    isIncome: false,
+    result: '+ ₹300',
+    isIncome: true,
     icon: 'minus',
   },
   {
-    title: 'Multiplication (× or *)',
-    desc: 'Quantity multiplied by price',
-    input: 'Apples 40*6',
-    result: '− ₹240',
-    isIncome: false,
-    icon: 'close',
-  },
-  {
-    title: 'Division (÷ or /)',
-    desc: 'Split bill among people',
-    input: 'Room Rent 6000/3',
+    title: 'Expense with Minus & Bill',
+    desc: 'Split expense with minus sign',
+    input: 'Room Rent -2000',
     result: '− ₹2,000',
     isIncome: false,
     icon: 'slash-forward',
   },
   {
-    title: 'Percentage (%)',
+    title: 'Percentage (%) Tip or Tax',
     desc: 'Calculate tip, tax or discount %',
-    input: 'Restaurant Tip 500%10',
+    input: 'Restaurant Tip -50',
     result: '− ₹50',
     isIncome: false,
     icon: 'percent-outline',
-  },
-  {
-    title: 'Income Calculation',
-    desc: 'Math with income (+) sign',
-    input: 'Freelance Bonus +100*5',
-    result: '+ ₹500',
-    isIncome: true,
-    icon: 'calculator-variant-outline',
   },
   {
     title: 'Plain Note / Heading',
@@ -168,28 +160,28 @@ export default function PaperGuideModal({
               <View style={styles.ruleItem}>
                 <Text style={styles.ruleBullet}>1.</Text>
                 <Text style={[styles.ruleText, { color: textColor }]}>
-                  <Text style={{ fontWeight: '700' }}>Name + Number or (-) sign</Text> = Expense / Debit. Example: <Text style={styles.monoText}>Dinner 450</Text> or <Text style={styles.monoText}>-450</Text>
+                  <Text style={{ fontWeight: '700' }}>Unsigned numbers or (+)</Text> = Income / Credit. Example: <Text style={styles.monoText}>Dinner 450</Text> → <Text style={{ color: '#10B981', fontWeight: '700' }}>+ ₹450</Text>, or <Text style={styles.monoText}>100*5</Text> → <Text style={{ color: '#10B981', fontWeight: '700' }}>+ ₹500</Text>
                 </Text>
               </View>
 
               <View style={styles.ruleItem}>
                 <Text style={styles.ruleBullet}>2.</Text>
                 <Text style={[styles.ruleText, { color: textColor }]}>
-                  <Text style={{ fontWeight: '700' }}>(+) sign on amount</Text> = Income / Credit. Example: <Text style={styles.monoText}>Salary +50000</Text> or <Text style={styles.monoText}>+50000</Text>
+                  <Text style={{ fontWeight: '700' }}>(-) Minus sign on amount</Text> = Expense / Debit. Example: <Text style={styles.monoText}>Dinner - 450</Text> or <Text style={styles.monoText}>Dinner -450</Text> → <Text style={{ color: '#EF4444', fontWeight: '700' }}>− ₹450</Text>
                 </Text>
               </View>
 
               <View style={styles.ruleItem}>
                 <Text style={styles.ruleBullet}>3.</Text>
                 <Text style={[styles.ruleText, { color: textColor }]}>
-                  <Text style={{ fontWeight: '700' }}>Units like 400g, 5L, 3rd</Text> stay in title. Example: <Text style={styles.monoText}>Milk 5L 700</Text> takes <Text style={styles.monoText}>700</Text> as amount.
+                  <Text style={{ fontWeight: '700' }}>Units like 400g, 5L, 3rd</Text> stay in title. Example: <Text style={styles.monoText}>Gold 400g 700</Text> takes <Text style={styles.monoText}>700</Text> as amount.
                 </Text>
               </View>
 
               <View style={styles.ruleItem}>
                 <Text style={styles.ruleBullet}>4.</Text>
                 <Text style={[styles.ruleText, { color: textColor }]}>
-                  <Text style={{ fontWeight: '700' }}>Common math</Text> evaluates live: <Text style={styles.monoText}>2000 + 5</Text> gives <Text style={styles.monoText}>2005</Text>, and <Text style={styles.monoText}>400- 100</Text> gives <Text style={styles.monoText}>300</Text>.
+                  <Text style={{ fontWeight: '700' }}>Common math</Text> evaluates live: <Text style={styles.monoText}>2000 + 5</Text> gives <Text style={styles.monoText}>+ ₹2,005</Text>, and <Text style={styles.monoText}>400- 100</Text> gives <Text style={styles.monoText}>+ ₹300</Text>.
                 </Text>
               </View>
             </View>

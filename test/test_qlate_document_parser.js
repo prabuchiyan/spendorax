@@ -9,32 +9,31 @@ const { parseNotepadDocument } = require('../src/utils/paperLedgerUtils');
 console.log('Testing Qlate Continuous Notepad Document Parser...');
 
 // Test 1: Mixed multiline text document
-const sampleDoc = `Dinner 450
-Salary +50000
-Grocery 100+25
+const sampleDoc = `Dinner -450
+Salary 50000
+Grocery -125
 This is just a note with no numbers
 Electricity Bill -1200
-Freelance Design +100*5`;
+Freelance Design 100*5`;
 
 const docResult = parseNotepadDocument(sampleDoc);
 
 assert.strictEqual(docResult.lines.length, 6, 'Should have 6 lines evaluated');
 
-// Line 1: Dinner 450
-assert.strictEqual(docResult.lines[0].text, 'Dinner 450');
+// Line 1: Dinner -450
+assert.strictEqual(docResult.lines[0].text, 'Dinner -450');
 assert.strictEqual(docResult.lines[0].amount, 450);
 assert.strictEqual(docResult.lines[0].type, 'expense');
 assert.strictEqual(docResult.lines[0].resultText, '− ₹450');
 
-// Line 2: Salary +50000
-assert.strictEqual(docResult.lines[1].text, 'Salary +50000');
+// Line 2: Salary 50000
+assert.strictEqual(docResult.lines[1].text, 'Salary 50000');
 assert.strictEqual(docResult.lines[1].amount, 50000);
 assert.strictEqual(docResult.lines[1].type, 'income');
 assert.strictEqual(docResult.lines[1].resultText, '+ ₹50,000');
 
-// Line 3: Grocery 100+25 (Formula = 125)
+// Line 3: Grocery -125
 assert.strictEqual(docResult.lines[2].amount, 125);
-assert.strictEqual(docResult.lines[2].formula, '100+25');
 assert.strictEqual(docResult.lines[2].type, 'expense');
 assert.strictEqual(docResult.lines[2].resultText, '− ₹125');
 
@@ -46,10 +45,11 @@ assert.strictEqual(docResult.lines[3].resultText, '');
 assert.strictEqual(docResult.lines[4].amount, 1200);
 assert.strictEqual(docResult.lines[4].type, 'expense');
 
-// Line 6: Freelance Design +100*5 (Income formula = 500)
+// Line 6: Freelance Design 100*5 (Income formula = 500)
 assert.strictEqual(docResult.lines[5].amount, 500);
 assert.strictEqual(docResult.lines[5].type, 'income');
 assert.strictEqual(docResult.lines[5].formula, '100*5');
+assert.strictEqual(docResult.lines[5].resultText, '+ ₹500');
 
 // Totals:
 // Income: 50000 + 500 = 50500

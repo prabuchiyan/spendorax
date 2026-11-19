@@ -396,7 +396,7 @@ export default function PaperLedgerScreen({ navigation }) {
     (selectedItems) => {
       if (!selectedItems || selectedItems.length === 0) return;
       const newLines = selectedItems.map((item) => {
-        const sign = item.type === 'income' ? '+' : '';
+        const sign = item.type === 'expense' ? '-' : '';
         return `${item.title} ${sign}${item.amount}`;
       });
       setNotepadText((prev) => {

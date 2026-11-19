@@ -178,17 +178,18 @@ function formatImportTransactionTitle(tx, categoriesMap = {}) {
 /**
  * Parses a freeform typed line into a paper ledger transaction item.
  * Supports:
- * - "Dinner 450" -> title: "Dinner", amount: 450, type: "expense", formula: null
- * - "Salary +50000" or "+ Salary 50000" -> title: "Salary", amount: 50000, type: "income", formula: null
- * - "Grocery Mart 100 + 25" -> title: "Grocery Mart", amount: 125, formula: "100 + 25", type: "expense"
- * - "Freelance Design +100*5" -> title: "Freelance Design", amount: 500, formula: "100*5", type: "income"
- * - "100 + 25" -> title: "Calculation", amount: 125, formula: "100 + 25", type: "expense"
+ * - "Dinner 450" -> title: "Dinner", amount: 450, type: "income", resultText: "+ ₹450"
+ * - "Dinner - 450" or "Dinner -450" -> title: "Dinner", amount: 450, type: "expense", resultText: "− ₹450"
+ * - "100*5" -> title: "Calculation", amount: 500, type: "income", formula: "100*5", resultText: "+ ₹500"
+ * - "-100*5" -> title: "Calculation", amount: 500, type: "expense", formula: "-100*5", resultText: "− ₹500"
+ * - "Gold 400g 700" -> title: "Gold 400g", amount: 700, type: "income"
+ * - "Milk 5L -700" -> title: "Milk 5L", amount: 700, type: "expense"
  *
  * @param {string} rawText
- * @param {'income'|'expense'} [defaultType='expense']
- * @returns {{ title: string, amount: number, formula: string|null, type: 'income'|'expense', isValid: boolean, error?: string }}
+ * @param {'income'|'expense'} [defaultType='income']
+ * @returns {{ title: string, amount: number, formula: string|null, type: 'income'|'expense', resultText: string, isValid: boolean, error?: string }}
  */
-function parseNotepadLine(rawText, defaultType = 'expense') {
+function parseNotepadLine(rawText, defaultType = 'income') {
   if (!rawText || typeof rawText !== 'string') {
     return { isValid: false, error: 'Empty line' };
   }
@@ -224,11 +225,16 @@ function parseNotepadLine(rawText, defaultType = 'expense') {
   if (!/[a-zA-Z]/.test(text)) {
     const wholeEval = evaluateMathExpression(text);
     if (wholeEval.isValid) {
+      const type = forcedType || (wholeEval.result < 0 ? 'expense' : defaultType);
+      const isIncome = type === 'income';
+      const absAmount = Math.abs(wholeEval.result);
+      const resultText = (isIncome ? '+ ' : '− ') + formatLedgerAmount(absAmount);
       return {
         title: 'Calculation',
-        amount: Math.abs(wholeEval.result),
+        amount: absAmount,
         formula: wholeEval.hasOperator ? text : null,
-        type: forcedType || (wholeEval.result < 0 ? 'expense' : defaultType),
+        type,
+        resultText,
         isValid: true,
       };
     }
@@ -253,10 +259,8 @@ function parseNotepadLine(rawText, defaultType = 'expense') {
     let localForced = null;
     if (cleanAfter.startsWith('+')) {
       localForced = 'income';
-      cleanAfter = cleanAfter.substring(1).trim();
     } else if (cleanAfter.startsWith('-') || cleanAfter.startsWith('−')) {
       localForced = 'expense';
-      cleanAfter = cleanAfter.substring(1).trim();
     }
 
     const testEval = evaluateMathExpression(cleanAfter);
@@ -264,6 +268,7 @@ function parseNotepadLine(rawText, defaultType = 'expense') {
       title = text.substring(0, lastLetterIdx + 1).trim();
       exprPart = cleanAfter;
       if (localForced) forcedType = localForced;
+      else if (testEval.result < 0) forcedType = 'expense';
     } else {
       // If afterLetters has multiple numbers like '1 450' in 'Day 1 450',
       // scan backwards from spaces to find the trailing math expression
@@ -277,15 +282,15 @@ function parseNotepadLine(rawText, defaultType = 'expense') {
         let candForced = null;
         if (cand.startsWith('+')) {
           candForced = 'income';
-          cand = cand.substring(1).trim();
         } else if (cand.startsWith('-') || cand.startsWith('−')) {
           candForced = 'expense';
-          cand = cand.substring(1).trim();
         }
-        if (evaluateMathExpression(cand).isValid) {
+        const candEval = evaluateMathExpression(cand);
+        if (candEval.isValid) {
           title = (text.substring(0, lastLetterIdx + 1) + ' ' + afterLetters.substring(0, splitIdx)).trim();
           exprPart = cand;
           if (candForced) forcedType = candForced;
+          else if (candEval.result < 0) forcedType = 'expense';
           break;
         }
       }
@@ -298,15 +303,15 @@ function parseNotepadLine(rawText, defaultType = 'expense') {
       let candForced = null;
       if (cand.startsWith('+')) {
         candForced = 'income';
-        cand = cand.substring(1).trim();
       } else if (cand.startsWith('-') || cand.startsWith('−')) {
         candForced = 'expense';
-        cand = cand.substring(1).trim();
       }
-      if (evaluateMathExpression(cand).isValid) {
+      const leadEval = evaluateMathExpression(cand);
+      if (leadEval.isValid) {
         title = matchLeading[2].trim();
         exprPart = cand;
         if (candForced) forcedType = candForced;
+        else if (leadEval.result < 0) forcedType = 'expense';
       }
     }
   }
@@ -320,11 +325,17 @@ function parseNotepadLine(rawText, defaultType = 'expense') {
     return { isValid: false, error: evalRes.error || 'Invalid amount/expression' };
   }
 
+  const type = forcedType || (evalRes.result < 0 ? 'expense' : defaultType);
+  const isIncome = type === 'income';
+  const absAmount = Math.abs(evalRes.result);
+  const resultText = (isIncome ? '+ ' : '− ') + formatLedgerAmount(absAmount);
+
   return {
     title: title || 'Calculation',
-    amount: Math.abs(evalRes.result),
+    amount: absAmount,
     formula: evalRes.hasOperator ? exprPart : null,
-    type: forcedType || defaultType,
+    type,
+    resultText,
     isValid: true,
   };
 }
@@ -441,14 +452,14 @@ function formatItemToFreeformLine(item) {
     if (val.startsWith('+')) {
       return title ? `${title} ${val}`.trim() : val;
     }
-    return title ? `${title} +${val}`.trim() : `+${val}`;
+    return title ? `${title} ${val}`.trim() : val;
   }
 
-  // Expense
-  if (val.startsWith('+')) {
-    val = val.substring(1).trim();
+  // Expense: format with '-' prefix
+  if (val.startsWith('-') || val.startsWith('−')) {
+    return title ? `${title} ${val}`.trim() : val;
   }
-  return title ? `${title} ${val}`.trim() : val;
+  return title ? `${title} -${val}`.trim() : `-${val}`;
 }
 
 /**
@@ -499,7 +510,7 @@ function parseNotepadDocument(text = '') {
       continue;
     }
 
-    const parsed = parseNotepadLine(trimmed, 'expense');
+    const parsed = parseNotepadLine(trimmed, 'income');
     if (!parsed || !parsed.isValid) {
       // Commentary or text note with no math
       evaluatedLines.push({
@@ -565,15 +576,15 @@ function parseNotepadDocument(text = '') {
 }
 
 const SAMPLE_PAPER_LEDGER_TEXT = `--- Monthly Budget & Calculation ---
-Salary +50000
-Freelance Bonus +100*5
-House Rent 12000
-Grocery Mart 100+25
-Electricity Bill 1200
-Room Rent split 6000/3
-Restaurant Tip 500%10
-Apples 40*6
-Shopping Discount 500-150`;
+Salary 50000
+Freelance Bonus 100*5
+House Rent -12000
+Grocery Mart -125
+Electricity Bill -1200
+Room Rent split -2000
+Restaurant Tip -50
+Apples -240
+Shopping Discount -350`;
 
 module.exports = {
   calculateLedgerTotals,
