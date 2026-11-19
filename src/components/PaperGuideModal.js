@@ -17,34 +17,50 @@ export { SAMPLE_PAPER_LEDGER_TEXT };
 
 const MATH_EXAMPLES = [
   {
-    title: 'Regular Expense',
-    desc: 'Just type name and number',
+    title: 'Regular Expense (Debit)',
+    desc: 'Name + number or with (-) sign',
     input: 'Dinner 450',
     result: '− ₹450',
     isIncome: false,
     icon: 'cart-outline',
   },
   {
-    title: 'Money In (Income)',
-    desc: 'Put a + sign for income',
+    title: 'Money In (Credit)',
+    desc: 'Put a (+) sign on amount',
     input: 'Salary +50000',
     result: '+ ₹50,000',
     isIncome: true,
     icon: 'cash-plus',
   },
   {
-    title: 'Addition (+)',
-    desc: 'Add numbers together',
-    input: 'Grocery 100+25',
+    title: 'Units in Name (400g, 5L, 3rd)',
+    desc: 'Takes only the last number as amount',
+    input: 'Milk 5L 700',
+    result: '− ₹700',
+    isIncome: false,
+    icon: 'weight',
+  },
+  {
+    title: 'Units with Math (2kg, etc.)',
+    desc: 'Units stay in name, math evaluates',
+    input: 'Sugar 2kg 100+25',
     result: '− ₹125',
+    isIncome: false,
+    icon: 'scale',
+  },
+  {
+    title: 'Math Addition (+)',
+    desc: 'Common user math: 2000 + 5',
+    input: '2000 + 5',
+    result: '− ₹2,005',
     isIncome: false,
     icon: 'plus',
   },
   {
-    title: 'Subtraction (−)',
-    desc: 'Subtract discount or amount',
-    input: 'Discount 500-150',
-    result: '− ₹350',
+    title: 'Math Subtraction (−)',
+    desc: 'Common user math: 400- 100',
+    input: '400- 100',
+    result: '− ₹300',
     isIncome: false,
     icon: 'minus',
   },
@@ -74,7 +90,7 @@ const MATH_EXAMPLES = [
   },
   {
     title: 'Income Calculation',
-    desc: 'Math with income + sign',
+    desc: 'Math with income (+) sign',
     input: 'Freelance Bonus +100*5',
     result: '+ ₹500',
     isIncome: true,
@@ -143,30 +159,37 @@ export default function PaperGuideModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollBody}
           >
-            {/* Quick 3 Simple Rules */}
+            {/* Quick Simple Rules */}
             <View style={[styles.ruleBox, { backgroundColor: isDarkMode ? '#172554' : '#EFF6FF', borderColor: isDarkMode ? '#1E3A8A' : '#BFDBFE' }]}>
               <Text style={[styles.ruleBoxTitle, { color: isDarkMode ? '#93C5FD' : '#1D4ED8' }]}>
-                3 Simple Rules:
+                4 Simple Rules for Common Users:
               </Text>
 
               <View style={styles.ruleItem}>
                 <Text style={styles.ruleBullet}>1.</Text>
                 <Text style={[styles.ruleText, { color: textColor }]}>
-                  <Text style={{ fontWeight: '700' }}>Name + Number</Text> = Money Out (Expense). Example: <Text style={styles.monoText}>Dinner 450</Text>
+                  <Text style={{ fontWeight: '700' }}>Name + Number or (-) sign</Text> = Expense / Debit. Example: <Text style={styles.monoText}>Dinner 450</Text> or <Text style={styles.monoText}>-450</Text>
                 </Text>
               </View>
 
               <View style={styles.ruleItem}>
                 <Text style={styles.ruleBullet}>2.</Text>
                 <Text style={[styles.ruleText, { color: textColor }]}>
-                  <Text style={{ fontWeight: '700' }}>Put a + sign</Text> = Money In (Income). Example: <Text style={styles.monoText}>Salary +50000</Text>
+                  <Text style={{ fontWeight: '700' }}>(+) sign on amount</Text> = Income / Credit. Example: <Text style={styles.monoText}>Salary +50000</Text> or <Text style={styles.monoText}>+50000</Text>
                 </Text>
               </View>
 
               <View style={styles.ruleItem}>
                 <Text style={styles.ruleBullet}>3.</Text>
                 <Text style={[styles.ruleText, { color: textColor }]}>
-                  <Text style={{ fontWeight: '700' }}>Lines without numbers</Text> are kept as notes or headings.
+                  <Text style={{ fontWeight: '700' }}>Units like 400g, 5L, 3rd</Text> stay in title. Example: <Text style={styles.monoText}>Milk 5L 700</Text> takes <Text style={styles.monoText}>700</Text> as amount.
+                </Text>
+              </View>
+
+              <View style={styles.ruleItem}>
+                <Text style={styles.ruleBullet}>4.</Text>
+                <Text style={[styles.ruleText, { color: textColor }]}>
+                  <Text style={{ fontWeight: '700' }}>Common math</Text> evaluates live: <Text style={styles.monoText}>2000 + 5</Text> gives <Text style={styles.monoText}>2005</Text>, and <Text style={styles.monoText}>400- 100</Text> gives <Text style={styles.monoText}>300</Text>.
                 </Text>
               </View>
             </View>

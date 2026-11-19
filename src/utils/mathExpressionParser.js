@@ -40,13 +40,10 @@ function tokenize(expression) {
     }
 
     if (char === '+' || char === '-' || char === '*' || char === '/' || char === '%') {
-      // Check for unary minus: at start or after an operator or '('
-      if (char === '-') {
-        const prevToken = tokens[tokens.length - 1];
-        if (!prevToken || prevToken.type === 'operator' || (prevToken.type === 'paren' && prevToken.value === '(')) {
-          // Unary minus: treat next number as negative, or push 0 and '-'
-          tokens.push({ type: 'number', value: 0 });
-        }
+      const prevToken = tokens[tokens.length - 1];
+      const isUnary = !prevToken || prevToken.type === 'operator' || (prevToken.type === 'paren' && prevToken.value === '(');
+      if ((char === '-' || char === '+') && isUnary) {
+        tokens.push({ type: 'number', value: 0 });
       }
       tokens.push({ type: 'operator', value: char });
       i++;
@@ -87,7 +84,7 @@ function evaluateMathExpression(rawExpr) {
     return { isValid: false, result: null, hasOperator: false };
   }
 
-  const hasOperator = /[+\-*/%]/.test(expr);
+  const hasOperator = /[+\-*/%]/.test(expr.replace(/^[+\-]\s*/, ''));
 
   const tokens = tokenize(expr);
   if (!tokens || tokens.length === 0) {

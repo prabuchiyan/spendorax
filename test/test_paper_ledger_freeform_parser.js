@@ -120,5 +120,62 @@ const mapped = mapDbTransactionsToPaperItems([tx1]);
 assert.strictEqual(mapped[0].title, '14-12-2026: Salary: December Paycheck');
 console.log('✓ mapDbTransactionsToPaperItems applies DD-MM-YYYY format');
 
+// 12. Units in description (400g, 5L, 3rd, 2kg) with trailing amount
+const pGold = parseNotepadLine('Gold 400g 700');
+assert.strictEqual(pGold.isValid, true);
+assert.strictEqual(pGold.title, 'Gold 400g');
+assert.strictEqual(pGold.amount, 700);
+assert.strictEqual(pGold.type, 'expense');
+
+const pMilk = parseNotepadLine('Milk 5L 700');
+assert.strictEqual(pMilk.isValid, true);
+assert.strictEqual(pMilk.title, 'Milk 5L');
+assert.strictEqual(pMilk.amount, 700);
+assert.strictEqual(pMilk.type, 'expense');
+
+const pOct = parseNotepadLine('October 3rd 700');
+assert.strictEqual(pOct.isValid, true);
+assert.strictEqual(pOct.title, 'October 3rd');
+assert.strictEqual(pOct.amount, 700);
+assert.strictEqual(pOct.type, 'expense');
+
+const pSugar = parseNotepadLine('Sugar 2kg 100 + 25');
+assert.strictEqual(pSugar.isValid, true);
+assert.strictEqual(pSugar.title, 'Sugar 2kg');
+assert.strictEqual(pSugar.amount, 125);
+assert.strictEqual(pSugar.formula, '100 + 25');
+assert.strictEqual(pSugar.type, 'expense');
+console.log('✓ Units in title (400g, 5L, 3rd, 2kg) parsed cleanly with amount extracted');
+
+// 13. (+) for income / credit, (-) for expense / debit
+const pIncome = parseNotepadLine('Bonus +5000');
+assert.strictEqual(pIncome.type, 'income');
+assert.strictEqual(pIncome.amount, 5000);
+
+const pIncomeSpaced = parseNotepadLine('Salary + 50000');
+assert.strictEqual(pIncomeSpaced.type, 'income');
+assert.strictEqual(pIncomeSpaced.amount, 50000);
+
+const pExpense = parseNotepadLine('Dinner -450');
+assert.strictEqual(pExpense.type, 'expense');
+assert.strictEqual(pExpense.amount, 450);
+
+const pExpenseSpaced = parseNotepadLine('Dinner - 450');
+assert.strictEqual(pExpenseSpaced.type, 'expense');
+assert.strictEqual(pExpenseSpaced.amount, 450);
+console.log('✓ Signed amounts (+ for income, - for expense) parsed correctly');
+
+// 14. Pure math calculations (2000 + 5 -> 2005, 400- 100 -> 300)
+const pCalc1 = parseNotepadLine('2000 + 5');
+assert.strictEqual(pCalc1.isValid, true);
+assert.strictEqual(pCalc1.amount, 2005);
+assert.strictEqual(pCalc1.formula, '2000 + 5');
+
+const pCalc2 = parseNotepadLine('400- 100');
+assert.strictEqual(pCalc2.isValid, true);
+assert.strictEqual(pCalc2.amount, 300);
+assert.strictEqual(pCalc2.formula, '400- 100');
+console.log('✓ Pure math calculations (2000 + 5 = 2005, 400- 100 = 300) evaluated as expected');
+
 console.log('\nAll Freeform Parser and Title Formatter Tests Passed Successfully!');
 

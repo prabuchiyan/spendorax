@@ -234,27 +234,85 @@ function parseNotepadLine(rawText, defaultType = 'expense') {
     }
   }
 
-  // 2. Split into title and trailing amount/expression
-  let match = text.match(/^(.*?)(?:\s+([+\-−]?\s*[\d(].*))$/);
-  if (!match) {
-    // Also try matching without whitespace if sign is present, e.g. "Store+100"
-    match = text.match(/^(.*?)([+\-−]\s*[\d(].*)$/);
+  // 2. Line contains letters: separate description (including units like 400g, 5L, 3rd) and math amount
+  let title = '';
+  let exprPart = '';
+
+  // Find the index of the last letter
+  let lastLetterIdx = -1;
+  for (let i = text.length - 1; i >= 0; i--) {
+    if (/[a-zA-Z]/.test(text[i])) {
+      lastLetterIdx = i;
+      break;
+    }
   }
 
-  if (!match) {
+  if (lastLetterIdx < text.length - 1) {
+    const afterLetters = text.substring(lastLetterIdx + 1).trim();
+    let cleanAfter = afterLetters;
+    let localForced = null;
+    if (cleanAfter.startsWith('+')) {
+      localForced = 'income';
+      cleanAfter = cleanAfter.substring(1).trim();
+    } else if (cleanAfter.startsWith('-') || cleanAfter.startsWith('−')) {
+      localForced = 'expense';
+      cleanAfter = cleanAfter.substring(1).trim();
+    }
+
+    const testEval = evaluateMathExpression(cleanAfter);
+    if (testEval.isValid) {
+      title = text.substring(0, lastLetterIdx + 1).trim();
+      exprPart = cleanAfter;
+      if (localForced) forcedType = localForced;
+    } else {
+      // If afterLetters has multiple numbers like '1 450' in 'Day 1 450',
+      // scan backwards from spaces to find the trailing math expression
+      const spaceIndices = [];
+      for (let i = 0; i < afterLetters.length; i++) {
+        if (afterLetters[i] === ' ') spaceIndices.push(i);
+      }
+      for (let i = spaceIndices.length - 1; i >= 0; i--) {
+        const splitIdx = spaceIndices[i];
+        let cand = afterLetters.substring(splitIdx + 1).trim();
+        let candForced = null;
+        if (cand.startsWith('+')) {
+          candForced = 'income';
+          cand = cand.substring(1).trim();
+        } else if (cand.startsWith('-') || cand.startsWith('−')) {
+          candForced = 'expense';
+          cand = cand.substring(1).trim();
+        }
+        if (evaluateMathExpression(cand).isValid) {
+          title = (text.substring(0, lastLetterIdx + 1) + ' ' + afterLetters.substring(0, splitIdx)).trim();
+          exprPart = cand;
+          if (candForced) forcedType = candForced;
+          break;
+        }
+      }
+    }
+  } else {
+    // Line ends with a letter: check if leading part is math (e.g. '450 Dinner' or '+50000 Salary')
+    const matchLeading = text.match(/^([+\-−]?\s*[\d(][\d+\-*\/%().\s]*?)\s+([a-zA-Z].*)$/);
+    if (matchLeading) {
+      let cand = matchLeading[1].trim();
+      let candForced = null;
+      if (cand.startsWith('+')) {
+        candForced = 'income';
+        cand = cand.substring(1).trim();
+      } else if (cand.startsWith('-') || cand.startsWith('−')) {
+        candForced = 'expense';
+        cand = cand.substring(1).trim();
+      }
+      if (evaluateMathExpression(cand).isValid) {
+        title = matchLeading[2].trim();
+        exprPart = cand;
+        if (candForced) forcedType = candForced;
+      }
+    }
+  }
+
+  if (!exprPart) {
     return { isValid: false, error: 'No amount or formula found' };
-  }
-
-  let title = match[1].trim();
-  let exprPart = match[2].trim();
-
-  // Check if expression part starts with sign
-  if (exprPart.startsWith('+')) {
-    forcedType = 'income';
-    exprPart = exprPart.substring(1).trim();
-  } else if (exprPart.startsWith('-') || exprPart.startsWith('−')) {
-    forcedType = 'expense';
-    exprPart = exprPart.substring(1).trim();
   }
 
   const evalRes = evaluateMathExpression(exprPart);
