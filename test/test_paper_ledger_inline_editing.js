@@ -7,7 +7,7 @@ const assert = require('assert');
 const {
   formatItemToFreeformLine,
   parseNotepadLine,
-} = require('../src/utils/paperLedgerUtils');
+} = require('../src/utils/smartNotepadUtils');
 
 console.log('Testing Paper Ledger Inline Editing Formatter & Parser Round-Trip...');
 

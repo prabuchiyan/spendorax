@@ -5,7 +5,7 @@ const {
   formatLedgerAmount,
   formatWhatsAppLedgerText,
   mapDbTransactionsToPaperItems
-} = require('../src/utils/paperLedgerUtils');
+} = require('../src/utils/smartNotepadUtils');
 
 console.log('=== Running Paper Ledger End-to-End & Edge Cases Tests ===\n');
 

@@ -4,7 +4,7 @@
  */
 
 const assert = require('assert');
-const { parseNotepadDocument } = require('../src/utils/paperLedgerUtils');
+const { parseNotepadDocument } = require('../src/utils/smartNotepadUtils');
 
 console.log('Testing Qlate Continuous Notepad Document Parser...');
 

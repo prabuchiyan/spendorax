@@ -98,7 +98,7 @@ const MATH_EXAMPLES = [
   },
 ];
 
-export default function PaperGuideModal({
+export default function SmartNotepadGuideModal({
   visible,
   onClose,
   onInsertTemplate,

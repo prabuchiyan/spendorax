@@ -3,7 +3,7 @@ const assert = require('assert');
 const {
   formatLedgerAmount,
   formatWhatsAppLedgerText
-} = require('../src/utils/paperLedgerUtils');
+} = require('../src/utils/smartNotepadUtils');
 
 console.log('Running Review Fixes Tests...');
 

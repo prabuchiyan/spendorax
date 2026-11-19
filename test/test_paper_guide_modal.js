@@ -4,7 +4,7 @@
  */
 
 const assert = require('assert');
-const { parseNotepadDocument, SAMPLE_PAPER_LEDGER_TEXT } = require('../src/utils/paperLedgerUtils');
+const { parseNotepadDocument, SAMPLE_PAPER_LEDGER_TEXT } = require('../src/utils/smartNotepadUtils');
 
 console.log('Testing Paper Guide Modal Sample Calculations...');
 

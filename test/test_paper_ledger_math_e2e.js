@@ -3,7 +3,7 @@ const {
   calculateLedgerTotals,
   formatLedgerAmount,
   formatWhatsAppLedgerText,
-} = require('../src/utils/paperLedgerUtils');
+} = require('../src/utils/smartNotepadUtils');
 
 console.log('Testing Paper Ledger Math & Formula End-to-End...');
 

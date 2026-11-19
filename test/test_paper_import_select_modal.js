@@ -10,7 +10,7 @@ const {
   toggleCandidateSelection,
   filterSelectedCandidates,
   filterCandidatesBySearch,
-} = require('../src/utils/paperLedgerUtils');
+} = require('../src/utils/smartNotepadUtils');
 
 console.log('Testing Paper Import Selective Checklist Logic...');
 

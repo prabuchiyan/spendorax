@@ -1318,35 +1318,5 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.3,
   },
-  paperNewLineRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    minHeight: 52,
-    borderBottomWidth: 1,
-  },
-  paperLineInput: {
-    fontSize: 14,
-    fontWeight: '600',
-    paddingVertical: Platform.OS === 'ios' ? 4 : 0,
-    paddingHorizontal: 0,
-    margin: 0,
-  },
-  paperLineAddBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  paperLineAddText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  paperLineHint: {
-    fontSize: 12,
-    fontWeight: '500',
-    letterSpacing: 0.2,
-  },
 });
 

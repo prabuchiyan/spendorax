@@ -5,7 +5,7 @@ const {
   formatWhatsAppLedgerText,
   mapDbTransactionsToPaperItems,
   isTransferTransaction,
-} = require('../src/utils/paperLedgerUtils');
+} = require('../src/utils/smartNotepadUtils');
 
 console.log('Running Task 1 tests...');
 

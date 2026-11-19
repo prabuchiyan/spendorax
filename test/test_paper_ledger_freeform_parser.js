@@ -3,7 +3,7 @@ const {
   parseNotepadLine,
   formatImportTransactionTitle,
   mapDbTransactionsToPaperItems,
-} = require('../src/utils/paperLedgerUtils');
+} = require('../src/utils/smartNotepadUtils');
 
 console.log('Testing Paper Ledger Freeform Parser and Title Formatter...');
 
