@@ -33,6 +33,7 @@ import PaperSaveSheetModal from '../components/PaperSaveSheetModal';
 import PaperSavedSheetsModal from '../components/PaperSavedSheetsModal';
 import PaperImportSelectModal from '../components/PaperImportSelectModal';
 import PaperToast from '../components/PaperToast';
+import PaperGuideModal from '../components/PaperGuideModal';
 import ContextualFAB from '../components/ContextualFAB';
 import QlateNotepadSheet from '../components/QlateNotepadSheet';
 import {
@@ -73,6 +74,7 @@ export default function PaperLedgerScreen({ navigation }) {
   const [activeSheetLastUpdated, setActiveSheetLastUpdated] = useState(null);
   const [isSaveModalVisible, setIsSaveModalVisible] = useState(false);
   const [isSavedSheetsModalVisible, setIsSavedSheetsModalVisible] = useState(false);
+  const [isGuideModalVisible, setIsGuideModalVisible] = useState(false);
   const [confirmModalConfig, setConfirmModalConfig] = useState(null);
 
   // Modern Toast notification state
@@ -411,6 +413,22 @@ export default function PaperLedgerScreen({ navigation }) {
     [showToast]
   );
 
+  // Handle inserting sample template from guide popup
+  const handleInsertSampleTemplate = useCallback(
+    (templateText) => {
+      setNotepadText((prev) => {
+        const trimmed = (prev || '').trim();
+        if (!trimmed) {
+          return templateText;
+        }
+        return `${trimmed}\n\n${templateText}`;
+      });
+      setIsGuideModalVisible(false);
+      showToast('Sample notes added to notepad', 'success');
+    },
+    [showToast]
+  );
+
   // Share formatted calculation to WhatsApp
   const handleShareToWhatsApp = useCallback(async () => {
     if (!notepadText.trim() || evaluatedDoc.validCount === 0) {
@@ -467,7 +485,7 @@ export default function PaperLedgerScreen({ navigation }) {
   const netStatus = useMemo(() => {
     if (totals.netTotal > 0) {
       return {
-        label: 'Surplus',
+        label: 'Saved',
         color: isDarkMode ? '#34D399' : '#059669',
         bg: isDarkMode ? '#064E3B' : '#ECFDF5',
         icon: 'trending-up',
@@ -475,7 +493,7 @@ export default function PaperLedgerScreen({ navigation }) {
     }
     if (totals.netTotal < 0) {
       return {
-        label: 'Deficit',
+        label: 'Overspent',
         color: isDarkMode ? '#FB7185' : '#E11D48',
         bg: isDarkMode ? '#4C0519' : '#FFF1F2',
         icon: 'trending-down',
@@ -579,6 +597,23 @@ export default function PaperLedgerScreen({ navigation }) {
             <MaterialCommunityIcons name="book-open-outline" size={16} color={theme.textPrimary} />
             <Text style={[styles.toolButtonOutlineText, { color: theme.textPrimary }]}>
               Sheets ({savedSheets.length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.toolButtonOutline,
+              {
+                borderColor: '#F59E0B',
+                backgroundColor: isDarkMode ? '#2D2006' : '#FEF3C7',
+              },
+            ]}
+            onPress={() => setIsGuideModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="lightbulb-on-outline" size={16} color="#D97706" />
+            <Text style={[styles.toolButtonOutlineText, { color: isDarkMode ? '#FCD34D' : '#B45309' }]}>
+              How to Use
             </Text>
           </TouchableOpacity>
 
@@ -698,6 +733,24 @@ export default function PaperLedgerScreen({ navigation }) {
                   </TouchableOpacity>
                 )}
 
+                <TouchableOpacity
+                  style={[
+                    styles.fintechNewBtn,
+                    {
+                      backgroundColor: isDarkMode ? '#2D2006' : '#FEF3C7',
+                      borderColor: isDarkMode ? '#78350F' : '#FDE68A',
+                    },
+                  ]}
+                  onPress={() => setIsGuideModalVisible(true)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons name="lightbulb-on-outline" size={13} color="#D97706" />
+                  <Text style={[styles.fintechNewBtnText, { color: isDarkMode ? '#FCD34D' : '#B45309' }]}>
+                    Guide
+                  </Text>
+                </TouchableOpacity>
+
                 <View
                   style={[
                     styles.fintechCountBadge,
@@ -763,7 +816,7 @@ export default function PaperLedgerScreen({ navigation }) {
                 </View>
                 <View>
                   <Text style={[styles.breakdownChipLabel, { color: isDarkMode ? '#6EE7B7' : '#059669' }]}>
-                    Total Inflow
+                    Money In
                   </Text>
                   <Text style={[styles.breakdownChipValue, { color: isDarkMode ? '#34D399' : '#059669' }]}>
                     {totals.totalIncome > 0 ? '+' : ''}
@@ -786,7 +839,7 @@ export default function PaperLedgerScreen({ navigation }) {
                 </View>
                 <View>
                   <Text style={[styles.breakdownChipLabel, { color: isDarkMode ? '#FDA4AF' : '#E11D48' }]}>
-                    Total Outflow
+                    Money Out
                   </Text>
                   <Text style={[styles.breakdownChipValue, { color: isDarkMode ? '#FB7185' : '#E11D48' }]}>
                     {totals.totalExpense > 0 ? '−' : ''}
@@ -815,7 +868,7 @@ export default function PaperLedgerScreen({ navigation }) {
                     style={{ marginRight: 6 }}
                   />
                   <Text style={[styles.netHeroLabel, { color: textMuted }]}>
-                    CALCULATED NET
+                    REMAINING BALANCE
                   </Text>
                 </View>
 
@@ -917,6 +970,13 @@ export default function PaperLedgerScreen({ navigation }) {
         onTogglePin={handleTogglePinSheet}
         onDeleteSheet={handleDeleteSheet}
         onNewSheet={handleNewSheet}
+      />
+
+      {/* Modal: How to Use & Math Examples Guide */}
+      <PaperGuideModal
+        visible={isGuideModalVisible}
+        onClose={() => setIsGuideModalVisible(false)}
+        onInsertTemplate={handleInsertSampleTemplate}
       />
 
       {/* Modal: Action Confirmation (Cross-platform) */}

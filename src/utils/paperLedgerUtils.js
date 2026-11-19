@@ -506,6 +506,17 @@ function parseNotepadDocument(text = '') {
   };
 }
 
+const SAMPLE_PAPER_LEDGER_TEXT = `--- Monthly Budget & Calculation ---
+Salary +50000
+Freelance Bonus +100*5
+House Rent 12000
+Grocery Mart 100+25
+Electricity Bill 1200
+Room Rent split 6000/3
+Restaurant Tip 500%10
+Apples 40*6
+Shopping Discount 500-150`;
+
 module.exports = {
   calculateLedgerTotals,
   formatLedgerAmount,
@@ -522,6 +533,7 @@ module.exports = {
   toggleCandidateSelection,
   filterSelectedCandidates,
   filterCandidatesBySearch,
+  SAMPLE_PAPER_LEDGER_TEXT,
 };
 
 
