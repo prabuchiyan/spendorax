@@ -294,6 +294,67 @@ function mapDbTransactionsToPaperItems(transactions = [], categoriesMap = {}) {
     });
 }
 
+/**
+ * Returns a Set containing IDs of all candidates.
+ * @param {Array<{ id: string }>} candidates
+ * @returns {Set<string>}
+ */
+function selectAllCandidates(candidates = []) {
+  return new Set((candidates || []).map((c) => String(c.id)));
+}
+
+/**
+ * Returns an empty Set (none selected).
+ * @returns {Set<string>}
+ */
+function deselectAllCandidates() {
+  return new Set();
+}
+
+/**
+ * Toggles an item ID in a Set, returning a new Set.
+ * @param {Set<string>} selectedSet
+ * @param {string} id
+ * @returns {Set<string>}
+ */
+function toggleCandidateSelection(selectedSet, id) {
+  const next = new Set(selectedSet || []);
+  const idStr = String(id);
+  if (next.has(idStr)) {
+    next.delete(idStr);
+  } else {
+    next.add(idStr);
+  }
+  return next;
+}
+
+/**
+ * Filters candidates to return only those whose id is in selectedSet.
+ * @param {Array<{ id: string }>} candidates
+ * @param {Set<string>} selectedSet
+ * @returns {Array<Object>}
+ */
+function filterSelectedCandidates(candidates = [], selectedSet = new Set()) {
+  const set = selectedSet instanceof Set ? selectedSet : new Set(selectedSet || []);
+  return (candidates || []).filter((c) => set.has(String(c.id)));
+}
+
+/**
+ * Filters candidates by case-insensitive search string matching title or category.
+ * @param {Array<{ title?: string, category?: string }>} candidates
+ * @param {string} searchQuery
+ * @returns {Array<Object>}
+ */
+function filterCandidatesBySearch(candidates = [], searchQuery = '') {
+  const query = (searchQuery || '').trim().toLowerCase();
+  if (!query) return candidates;
+  return (candidates || []).filter((c) => {
+    const titleMatch = (c.title || '').toLowerCase().includes(query);
+    const catMatch = (c.category || '').toLowerCase().includes(query);
+    return titleMatch || catMatch;
+  });
+}
+
 module.exports = {
   calculateLedgerTotals,
   formatLedgerAmount,
@@ -303,5 +364,11 @@ module.exports = {
   formatTxDate,
   formatImportTransactionTitle,
   parseNotepadLine,
+  selectAllCandidates,
+  deselectAllCandidates,
+  toggleCandidateSelection,
+  filterSelectedCandidates,
+  filterCandidatesBySearch,
 };
+
 
