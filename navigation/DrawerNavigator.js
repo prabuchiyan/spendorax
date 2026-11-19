@@ -15,7 +15,7 @@ import LoanDashboardScreen from '../src/screens/LoanDashboardScreen';
 import ReportsScreen from '../src/screens/ReportsScreen';
 import CreditCardStatementsScreen from '../src/screens/CreditCardStatementsScreen';
 import BillsScreen from '../src/screens/BillsScreen';
-import PaperLedgerScreen from '../src/screens/PaperLedgerScreen';
+import SmartNotepadScreen from '../src/screens/SmartNotepadScreen';
 import { Colors } from '../src/components/Theme';
 import { Switch } from 'react-native';
 import { useBalanceVisibility } from '../src/context/BalanceVisibilityContext';
@@ -29,7 +29,7 @@ const menuItems = [
   { name: 'CreditCards', label: 'Credit Cards', icon: 'credit-card-outline', activeIcon: 'credit-card' },
   { name: 'Categories', label: 'Categories', icon: 'tag-multiple-outline', activeIcon: 'tag-multiple' },
   { name: 'Transactions', label: 'Transactions', icon: 'format-list-bulleted', activeIcon: 'format-list-bulleted' },
-  { name: 'PaperLedger', label: 'Paper Ledger', icon: 'notebook-edit-outline', activeIcon: 'notebook-edit' },
+  { name: 'SmartNotepad', label: 'Smart Notepad', icon: 'notebook-edit-outline', activeIcon: 'notebook-edit' },
   { name: 'Bills', label: 'Bills', icon: 'file-document-outline', activeIcon: 'file-document' },
   { name: 'Loans', label: 'Loans', icon: 'bank-outline', activeIcon: 'bank' },
   { name: 'Reports', label: 'Reports', icon: 'chart-bar', activeIcon: 'chart-bar' },
@@ -222,7 +222,8 @@ export default function DrawerNavigator() {
         })}
       />
       <Drawer.Screen name="Transactions" component={TransactionsScreen} />
-      <Drawer.Screen name="PaperLedger" component={PaperLedgerScreen} options={{ title: 'Paper Ledger' }} />
+      <Drawer.Screen name="SmartNotepad" component={SmartNotepadScreen} options={{ title: 'Smart Notepad' }} />
+      <Drawer.Screen name="PaperLedger" component={SmartNotepadScreen} options={{ title: 'Smart Notepad', drawerItemStyle: { display: 'none' } }} />
       <Drawer.Screen name="Loans" component={LoanDashboardScreen} options={{ title: "Loans" }} />
       <Drawer.Screen name="CreditCards" component={CreditCardsScreen} options={{ title: 'Credit Cards' }} />
       <Drawer.Screen name="Bills" component={BillsScreen} options={{ title: 'Bills' }} />
