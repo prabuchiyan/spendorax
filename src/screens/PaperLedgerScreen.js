@@ -276,7 +276,7 @@ export default function PaperLedgerScreen({ navigation }) {
   const handleDeleteSheet = useCallback(
     (sheet) => {
       setConfirmModalConfig({
-        title: 'Delete Saved Ledger',
+        title: 'Delete Saved Notepad',
         message: `Are you sure you want to delete "${sheet.title}"? This cannot be undone.`,
         confirmLabel: 'Delete',
         confirmIcon: 'trash-can-outline',
@@ -291,7 +291,7 @@ export default function PaperLedgerScreen({ navigation }) {
             }
             await loadSavedSheets();
           } catch (err) {
-            console.error('Failed to delete saved ledger', err);
+            console.error('Failed to delete saved notepad', err);
             showInfoAlert('Error', 'Failed to delete sheet.');
           }
         },
@@ -454,7 +454,7 @@ export default function PaperLedgerScreen({ navigation }) {
         // Fallback to standard React Native Share sheet
         await Share.share({
           message: shareText,
-          title: 'SpendoraX Paper Ledger',
+          title: 'SpendoraX Smart Notepad',
         });
       }
     } catch (error) {
@@ -462,7 +462,7 @@ export default function PaperLedgerScreen({ navigation }) {
       try {
         await Share.share({
           message: shareText,
-          title: 'SpendoraX Paper Ledger',
+          title: 'SpendoraX Smart Notepad',
         });
       } catch (e) {
         showInfoAlert('Share Failed', 'Unable to open share dialogue.');
@@ -692,7 +692,7 @@ export default function PaperLedgerScreen({ navigation }) {
                   style={[styles.fintechSheetTitle, { color: textColor }]}
                   numberOfLines={1}
                 >
-                  {activeSheetTitle ? activeSheetTitle : 'Financial Calculation Sheet'}
+                  {activeSheetTitle ? activeSheetTitle : 'Smart Notepad'}
                 </Text>
 
                 {activeSheetTitle && (

@@ -46,7 +46,7 @@ console.log('   ✓ Negative Net:', deficitTotals.netTotal);
 // Test 4: WhatsApp Formatting and URL Safety
 console.log('\n4. Testing WhatsApp Sharing Output and URL Encoding...');
 const waText = formatWhatsAppLedgerText(items, totals.netTotal, '17 Nov 2026');
-assert.ok(waText.includes('SpendoraX - Paper Ledger'), 'Must have ledger header');
+assert.ok(waText.includes('SpendoraX - Smart Notepad'), 'Must have notepad header');
 assert.ok(waText.includes('1) Monthly Salary [+]'), 'Must format row 1 with serial and type');
 assert.ok(waText.includes('3) House Rent [-]'), 'Must format row 3');
 assert.ok(waText.includes('*Total (Net):*  *+₹36,751*'), 'Must format final net total with plus sign');

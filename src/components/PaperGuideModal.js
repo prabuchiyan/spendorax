@@ -128,7 +128,7 @@ export default function PaperGuideModal({
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.headerTitle, { color: textColor }]}>
-                  How to Use Paper Ledger
+                  How to Use Smart Notepad
                 </Text>
                 <Text style={[styles.headerSubtitle, { color: textMuted }]}>
                   Simple rules and all math calculations
@@ -301,7 +301,7 @@ export default function PaperGuideModal({
               activeOpacity={0.8}
             >
               <MaterialCommunityIcons name="content-paste" size={16} color="#FFF" />
-              <Text style={styles.insertBtnText}>Try Sample Notes in Notepad</Text>
+              <Text style={styles.insertBtnText}>Try Sample Notes in Smart Notepad</Text>
             </TouchableOpacity>
 
             <TouchableOpacity

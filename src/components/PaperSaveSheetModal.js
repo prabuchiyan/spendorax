@@ -81,7 +81,7 @@ export default function PaperSaveSheetModal({
                     style={{ marginRight: 8 }}
                   />
                   <Text style={[styles.title, { color: theme.textPrimary }]}>
-                    {isUpdating ? 'Update Paper Ledger' : 'Save Paper Ledger'}
+                    {isUpdating ? 'Update Smart Notepad' : 'Save Smart Notepad'}
                   </Text>
                 </View>
                 <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -91,8 +91,8 @@ export default function PaperSaveSheetModal({
 
               <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
                 {isUpdating
-                  ? 'Update this saved calculation sheet in your records.'
-                  : 'Save this calculation sheet to your local records for future reference.'}
+                  ? 'Update this saved notepad in your records.'
+                  : 'Save this notepad to your local records for future reference.'}
               </Text>
 
               {isUpdating && lastUpdated ? (

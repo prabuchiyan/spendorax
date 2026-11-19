@@ -35,7 +35,7 @@ assert.strictEqual(calculateLedgerTotals(deficitItems).netTotal, -800, 'Net tota
 
 // 4. Test WhatsApp formatting
 const shareText = formatWhatsAppLedgerText(sampleItems, 3000);
-assert.ok(shareText.includes('Paper Ledger'), 'Should include Paper Ledger header');
+assert.ok(shareText.includes('Smart Notepad'), 'Should include Smart Notepad header');
 assert.ok(shareText.includes('1) Salary'), 'Should include 1) Salary');
 assert.ok(shareText.includes('3) Groceries'), 'Should include 3) Groceries');
 assert.ok(shareText.includes('3,000') || shareText.includes('3000'), 'Should include net total');

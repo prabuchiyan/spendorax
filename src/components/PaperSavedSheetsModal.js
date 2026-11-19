@@ -232,7 +232,7 @@ export default function PaperSavedSheetsModal({
                     style={{ marginRight: 8 }}
                   />
                   <Text style={[styles.title, { color: theme.textPrimary }]}>
-                    Saved Ledgers
+                    Saved Notepads
                   </Text>
                   <View style={[styles.countBadge, { backgroundColor: isDarkMode ? '#1E283D' : '#E2E8F0' }]}>
                     <Text style={[styles.countBadgeText, { color: theme.textSecondary }]}>

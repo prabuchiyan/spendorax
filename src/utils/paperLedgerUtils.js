@@ -70,7 +70,7 @@ function formatWhatsAppLedgerText(items = [], netTotal = 0, dateStr = '') {
   });
 
   const lines = [
-    '📓 *SpendoraX - Paper Ledger*',
+    '📓 *SpendoraX - Smart Notepad*',
     `📅 *Date:* ${formattedDate}`,
     '━━━━━━━━━━━━━━━━━━━━━━━━━'
   ];
@@ -96,7 +96,7 @@ function formatWhatsAppLedgerText(items = [], netTotal = 0, dateStr = '') {
   const netSign = netTotal > 0 ? '+' : '';
   lines.push(`*Total (Net):*  *${netSign}${formatLedgerAmount(netTotal)}*`);
   lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━');
-  lines.push('Shared via SpendoraX Paper Ledger');
+  lines.push('Shared via SpendoraX Smart Notepad');
 
   return lines.join('\n');
 }

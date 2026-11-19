@@ -149,7 +149,7 @@ function ThemedAppContent({ navigationRef, visible, hideDialog }) {
                   <Stack.Screen name="CreditCardCreate" component={CreditCardCreateScreen} options={{ title: 'Credit Card Details' }} />
                   <Stack.Screen name="CreditCardStatementEdit" component={CreditCardStatementEditScreen} options={{ title: 'Edit Statement' }} />
                   <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Financial Reports' }} />
-                  <Stack.Screen name="PaperLedger" component={PaperLedgerScreen} options={{ title: 'Paper Ledger' }} />
+                  <Stack.Screen name="PaperLedger" component={PaperLedgerScreen} options={{ title: 'Smart Notepad' }} />
                   <Stack.Screen name="BillDetail" component={BillDetailScreen} options={{ title: 'Bill Details' }} />
                   <Stack.Screen name="BillOccurrenceEdit" component={require('./src/screens/BillOccurrenceEditScreen').default} options={{ title: 'Edit Occurrence' }} />
                   <Stack.Screen name="Backup" component={BackupScreen} options={{ title: 'Backup & Restore' }} />
