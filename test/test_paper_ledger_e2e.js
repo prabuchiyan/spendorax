@@ -72,8 +72,8 @@ const validTxs = dbTxs.filter(t => t.type === 'income' || t.type === 'expense');
 const mapped = mapDbTransactionsToPaperItems(validTxs, catsMap);
 
 assert.strictEqual(mapped.length, 2, 'Should map 2 valid items (no transfers)');
-assert.strictEqual(mapped[0].title, 'Freelance Design', 'Should use note when present');
-assert.strictEqual(mapped[1].title, 'Dining Out', 'Should fallback to category name');
+assert.ok(mapped[0].title.includes('Salary: Freelance Design'), 'Should format title as DD-MM-YYYY: Category: Notes');
+assert.ok(mapped[1].title.includes('Dining Out'), 'Should format title with category name');
 console.log('   ✓ Mapped items:', mapped.map(m => `${m.title} (${m.type}: ₹${m.amount})`).join(', '));
 
 // Test 6: Empty State

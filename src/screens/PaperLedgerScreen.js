@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -22,6 +23,7 @@ import {
   formatWhatsAppLedgerText,
   mapDbTransactionsToPaperItems,
   isTransferTransaction,
+  parseNotepadLine,
 } from '../utils/paperLedgerUtils';
 import PaperAddRowModal from '../components/PaperAddRowModal';
 import PaperMonthPickerModal from '../components/PaperMonthPickerModal';
@@ -30,6 +32,8 @@ import PaperDeleteConfirmModal from '../components/PaperDeleteConfirmModal';
 import PaperConfirmModal from '../components/PaperConfirmModal';
 import PaperSaveSheetModal from '../components/PaperSaveSheetModal';
 import PaperSavedSheetsModal from '../components/PaperSavedSheetsModal';
+import PaperImportSelectModal from '../components/PaperImportSelectModal';
+import PaperToast from '../components/PaperToast';
 import ContextualFAB from '../components/ContextualFAB';
 import {
   savePaperLedger,
@@ -68,6 +72,39 @@ export default function PaperLedgerScreen({ navigation }) {
   const [isSaveModalVisible, setIsSaveModalVisible] = useState(false);
   const [isSavedSheetsModalVisible, setIsSavedSheetsModalVisible] = useState(false);
   const [confirmModalConfig, setConfirmModalConfig] = useState(null);
+
+  // Notepad-style quick typing state (Option B)
+  const notepadInputRef = useRef(null);
+  const [notepadInput, setNotepadInput] = useState('');
+  const [notepadType, setNotepadType] = useState('expense'); // 'expense' | 'income'
+
+  // Modern Toast notification state
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+  const showToast = useCallback((message, type = 'success') => {
+    setToast({ visible: true, message, type });
+  }, []);
+  const hideToast = useCallback(() => {
+    setToast((prev) => ({ ...prev, visible: false }));
+  }, []);
+
+  // Selective Import Checklist Modal state
+  const [isImportSelectModalVisible, setIsImportSelectModalVisible] = useState(false);
+  const [candidateImportItems, setCandidateImportItems] = useState([]);
+  const [importMonthLabel, setImportMonthLabel] = useState('');
+
+  // Month label formatter (e.g. 2026-12 -> December 2026)
+  const formatMonthYearLabel = useCallback((monthYearStr) => {
+    if (!monthYearStr) return '';
+    const parts = monthYearStr.split('-');
+    if (parts.length < 2) return monthYearStr;
+    const year = parts[0];
+    const monthIdx = parseInt(parts[1], 10) - 1;
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return `${monthNames[monthIdx] || parts[1]} ${year}`;
+  }, []);
 
   // Cross-platform info alert helper (works on Web, iOS, Android)
   const showInfoAlert = useCallback((title, message) => {
@@ -151,6 +188,36 @@ export default function PaperLedgerScreen({ navigation }) {
     },
     [resetEditRowCallback]
   );
+
+  // Commit freeform line typed directly like a notepad (Enter key or Add button)
+  const handleCommitNotepadLine = useCallback(() => {
+    const raw = (notepadInput || '').trim();
+    if (!raw) return;
+
+    const parsed = parseNotepadLine(raw, notepadType);
+    if (!parsed) {
+      showToast('Could not find amount in line. Try e.g. "Dinner 450"', 'error');
+      return;
+    }
+
+    const newItem = {
+      id: `notepad_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      title: parsed.title,
+      type: parsed.type,
+      amount: parsed.amount,
+      formula: parsed.formula || null,
+      date: new Date().toISOString(),
+    };
+
+    setItems((prev) => [...prev, newItem]);
+    setNotepadInput('');
+    showToast(`Added "${parsed.title}" (₹${formatLedgerAmount(parsed.amount)})`, 'success');
+
+    // Keep input focused so the next line can be typed immediately
+    setTimeout(() => {
+      notepadInputRef.current?.focus();
+    }, 60);
+  }, [notepadInput, notepadType, showToast]);
 
   // Open edit modal for an existing row
   const handleOpenEdit = useCallback((item, onCancel) => {
@@ -272,11 +339,11 @@ export default function PaperLedgerScreen({ navigation }) {
   // Handle prompt for saving
   const handlePromptSave = useCallback(() => {
     if (items.length === 0) {
-      showInfoAlert('Empty Ledger', 'Please add some calculation rows before saving.');
+      showToast('Please add calculation rows before saving', 'info');
       return;
     }
     setIsSaveModalVisible(true);
-  }, [items.length, showInfoAlert]);
+  }, [items.length, showToast]);
 
   // Handle saving sheet to DB (new or update)
   const handleSaveSheetSubmit = useCallback(
@@ -300,16 +367,18 @@ export default function PaperLedgerScreen({ navigation }) {
 
         await loadSavedSheets();
 
-        showInfoAlert(
-          shouldCreateNew ? 'Sheet Saved' : 'Sheet Updated',
-          `"${titleToSave}" has been saved to your records.`
+        showToast(
+          shouldCreateNew
+            ? `Sheet "${titleToSave}" saved to records`
+            : `Sheet "${titleToSave}" updated`,
+          'success'
         );
       } catch (err) {
         console.error('Error saving paper ledger:', err);
-        showInfoAlert('Save Failed', 'Could not save the ledger to the database.');
+        showToast('Failed to save sheet to database', 'error');
       }
     },
-    [activeSheetId, items, totals, loadSavedSheets, showInfoAlert]
+    [activeSheetId, items, totals, loadSavedSheets, showToast]
   );
 
   // Handle opening a saved sheet
@@ -387,7 +456,7 @@ export default function PaperLedgerScreen({ navigation }) {
     [activeSheetId, handleNewSheet, loadSavedSheets, showInfoAlert]
   );
 
-  // Import transactions for a specific month (YYYY-MM)
+  // Import transactions for a specific month (YYYY-MM) via selective checklist modal
   const handleImportMonth = useCallback(
     async (monthStr) => {
       try {
@@ -411,30 +480,29 @@ export default function PaperLedgerScreen({ navigation }) {
         );
 
         if (validTxs.length === 0) {
-          showInfoAlert('No Transactions', `No income or expenses found for ${monthStr}.`);
+          showToast(`No income or expenses found for ${formatMonthYearLabel(monthStr) || monthStr}`, 'info');
           return;
         }
 
         const newItems = mapDbTransactionsToPaperItems(validTxs, categoriesMap);
-        setItems((prev) => [...prev, ...newItems]);
-        showInfoAlert(
-          'Transactions Imported',
-          `Successfully loaded ${newItems.length} transactions from ${monthStr}.`
-        );
+        setCandidateImportItems(newItems);
+        setImportMonthLabel(formatMonthYearLabel(monthStr));
+        setIsMonthModalVisible(false);
+        setIsImportSelectModalVisible(true);
       } catch (err) {
         console.error('Error importing month transactions:', err);
-        showInfoAlert('Error', 'Failed to import transactions from database.');
+        showToast('Failed to import transactions from database', 'error');
       } finally {
         setImporting(false);
       }
     },
-    [categoriesMap, showInfoAlert]
+    [categoriesMap, formatMonthYearLabel, showToast]
   );
 
-  // Import all available months
+  // Import all available months via selective checklist modal
   const handleImportAll = useCallback(async () => {
     if (availableMonths.length === 0) {
-      showInfoAlert('No Months', 'No past transaction months found to import.');
+      showToast('No past transaction months found to import', 'info');
       return;
     }
     try {
@@ -461,21 +529,37 @@ export default function PaperLedgerScreen({ navigation }) {
           (t.type.toLowerCase() === 'income' || t.type.toLowerCase() === 'expense')
       );
 
+      if (validTxs.length === 0) {
+        showToast('No income or expenses found across recorded months', 'info');
+        return;
+      }
+
       const newItems = mapDbTransactionsToPaperItems(validTxs, categoriesMap);
-      setItems((prev) => [...prev, ...newItems]);
-      showInfoAlert('Imported All', `Added ${newItems.length} transactions across all months.`);
+      setCandidateImportItems(newItems);
+      setImportMonthLabel('All Recorded Months');
+      setIsMonthModalVisible(false);
+      setIsImportSelectModalVisible(true);
     } catch (err) {
       console.error('Error importing all transactions:', err);
-      showInfoAlert('Error', 'Failed to import all transactions.');
+      showToast('Failed to import all transactions', 'error');
     } finally {
       setImporting(false);
     }
-  }, [availableMonths, categoriesMap, showInfoAlert]);
+  }, [availableMonths, categoriesMap, showToast]);
+
+  // Handle confirming selected items from Selective Import modal
+  const handleConfirmImportSelected = useCallback((selectedItems) => {
+    if (!selectedItems || selectedItems.length === 0) return;
+    setItems((prev) => [...prev, ...selectedItems]);
+    setIsImportSelectModalVisible(false);
+    setCandidateImportItems([]);
+    showToast(`Imported ${selectedItems.length} transactions into paper ledger`, 'success');
+  }, [showToast]);
 
   // Share formatted calculation to WhatsApp
   const handleShareToWhatsApp = useCallback(async () => {
     if (items.length === 0) {
-      showInfoAlert('Empty Paper', 'Add or import transactions before sharing.');
+      showToast('Add or import transactions before sharing', 'info');
       return;
     }
 
@@ -879,8 +963,31 @@ export default function PaperLedgerScreen({ navigation }) {
             </View>
           </View>
 
-          {/* Rows or Clean Empty State */}
-          {items.length === 0 ? (
+          {/* Rows */}
+          {items.map((item, index) => (
+            <PaperSwipeableRow
+              key={item.id}
+              item={item}
+              index={index}
+              isIncome={item.type === 'income'}
+              formatLedgerAmount={formatLedgerAmount}
+              onRequestDelete={requestDeleteRow}
+              onRequestEdit={handleOpenEdit}
+              paperBg={cardBg}
+              rowDividerColor={rowDividerColor}
+              columnDividerColor={colDividerColor}
+              textColor={textColor}
+              textMuted={textMuted}
+              isDarkMode={isDarkMode}
+              isSelectionMode={isSelectionMode}
+              isSelected={selectedIds.has(item.id)}
+              onToggleSelect={handleToggleSelect}
+              onLongPress={handleEnterSelectionMode}
+            />
+          ))}
+
+          {/* Empty state notice (if 0 items) */}
+          {items.length === 0 && (
             <View style={styles.emptyNotice}>
               <View
                 style={[
@@ -889,52 +996,116 @@ export default function PaperLedgerScreen({ navigation }) {
                 ]}
               >
                 <MaterialCommunityIcons
-                  name="calculator-variant-outline"
+                  name="notebook-edit-outline"
                   size={36}
                   color={Colors.primary}
                 />
               </View>
               <Text style={[styles.emptyTitle, { color: textColor }]}>
-                Calculation Sheet Ready
+                Notepad Ledger Ready
               </Text>
               <Text style={[styles.emptyDesc, { color: textMuted }]}>
-                Add your first calculation row using "+ Add Line" above, or import transactions
-                directly from your database records.
+                Type directly below (e.g. Dinner 450 or Salary +50000) and press Enter ↵ to add rows instantly, or import from your database.
               </Text>
+            </View>
+          )}
+
+          {/* Inline Notepad Quick-Entry Bar (Type directly & press Enter to advance) */}
+          {!isSelectionMode && (
+            <View
+              style={[
+                styles.notepadBar,
+                {
+                  backgroundColor: isDarkMode ? '#111827' : '#F8FAFC',
+                  borderTopColor: rowDividerColor,
+                  borderBottomColor: rowDividerColor,
+                },
+              ]}
+            >
+              {/* Type toggle pill (Inflow + / Outflow −) */}
               <TouchableOpacity
-                style={[styles.emptyAddBtn, { backgroundColor: Colors.primary }]}
-                onPress={() => {
-                  setEditingItem(null);
-                  setIsAddModalVisible(true);
-                }}
+                style={[
+                  styles.notepadTypeToggle,
+                  {
+                    backgroundColor:
+                      notepadType === 'income'
+                        ? (isDarkMode ? '#064E3B' : '#ECFDF5')
+                        : (isDarkMode ? '#4C0519' : '#FFF1F2'),
+                    borderColor:
+                      notepadType === 'income'
+                        ? (isDarkMode ? '#065F46' : '#A7F3D0')
+                        : (isDarkMode ? '#881337' : '#FECDD3'),
+                  },
+                ]}
+                onPress={() => setNotepadType((prev) => (prev === 'income' ? 'expense' : 'income'))}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <MaterialCommunityIcons
+                  name={notepadType === 'income' ? 'plus-circle' : 'minus-circle'}
+                  size={14}
+                  color={notepadType === 'income' ? '#10B981' : '#EF4444'}
+                />
+                <Text
+                  style={[
+                    styles.notepadTypeToggleText,
+                    { color: notepadType === 'income' ? '#10B981' : '#EF4444' },
+                  ]}
+                >
+                  {notepadType === 'income' ? '+ Inflow' : '− Outflow'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Freeform Text Input */}
+              <TextInput
+                ref={notepadInputRef}
+                style={[
+                  styles.notepadTextInput,
+                  {
+                    color: textColor,
+                  },
+                ]}
+                placeholder="Type note & amount (e.g. Dinner 450, Salary +50000, 100+25)..."
+                placeholderTextColor={textMuted}
+                value={notepadInput}
+                onChangeText={setNotepadInput}
+                onSubmitEditing={handleCommitNotepadLine}
+                returnKeyType="next"
+                blurOnSubmit={false}
+              />
+
+              {/* Enter / Add Button */}
+              <TouchableOpacity
+                style={[
+                  styles.notepadAddBtn,
+                  {
+                    backgroundColor:
+                      notepadInput.trim().length > 0
+                        ? (theme.primary || Colors.primary)
+                        : (isDarkMode ? '#1E293B' : '#E2E8F0'),
+                  },
+                ]}
+                disabled={notepadInput.trim().length === 0}
+                onPress={handleCommitNotepadLine}
                 activeOpacity={0.8}
               >
-                <MaterialCommunityIcons name="plus" size={16} color="#FFF" style={{ marginRight: 4 }} />
-                <Text style={styles.emptyAddBtnText}>Add First Line</Text>
+                <MaterialCommunityIcons
+                  name="arrow-down-left"
+                  size={14}
+                  color={notepadInput.trim().length > 0 ? '#FFFFFF' : textMuted}
+                />
+                <Text
+                  style={[
+                    styles.notepadAddBtnText,
+                    {
+                      color: notepadInput.trim().length > 0 ? '#FFFFFF' : textMuted,
+                    },
+                  ]}
+                >
+                  ↵
+                </Text>
               </TouchableOpacity>
             </View>
-          ) : (
-            items.map((item, index) => (
-              <PaperSwipeableRow
-                key={item.id}
-                item={item}
-                index={index}
-                isIncome={item.type === 'income'}
-                formatLedgerAmount={formatLedgerAmount}
-                onRequestDelete={requestDeleteRow}
-                onRequestEdit={handleOpenEdit}
-                paperBg={cardBg}
-                rowDividerColor={rowDividerColor}
-                columnDividerColor={colDividerColor}
-                textColor={textColor}
-                textMuted={textMuted}
-                isDarkMode={isDarkMode}
-                isSelectionMode={isSelectionMode}
-                isSelected={selectedIds.has(item.id)}
-                onToggleSelect={handleToggleSelect}
-                onLongPress={handleEnterSelectionMode}
-              />
-            ))
           )}
 
           {/* Modern Fintech Hero Balance Summary Card */}
@@ -1062,11 +1233,35 @@ export default function PaperLedgerScreen({ navigation }) {
         <ContextualFAB
           icon="plus"
           onPress={() => {
-            setEditingItem(null);
-            setIsAddModalVisible(true);
+            if (notepadInputRef.current) {
+              notepadInputRef.current.focus();
+            } else {
+              setEditingItem(null);
+              setIsAddModalVisible(true);
+            }
           }}
         />
       )}
+
+      {/* Modern Floating In-App Toast */}
+      <PaperToast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onDismiss={hideToast}
+      />
+
+      {/* Modal: Selective Import Checklist */}
+      <PaperImportSelectModal
+        visible={isImportSelectModalVisible}
+        candidates={candidateImportItems}
+        monthLabel={importMonthLabel}
+        onClose={() => {
+          setIsImportSelectModalVisible(false);
+          setCandidateImportItems([]);
+        }}
+        onConfirmImport={handleConfirmImportSelected}
+      />
 
       {/* Modal: Add/Edit Row */}
       <PaperAddRowModal
@@ -1452,6 +1647,48 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
     letterSpacing: 0.3,
+  },
+  notepadBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    minHeight: 52,
+    gap: 8,
+  },
+  notepadTypeToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 4,
+  },
+  notepadTypeToggleText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  notepadTextInput: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
+    paddingHorizontal: 6,
+  },
+  notepadAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 2,
+  },
+  notepadAddBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
 

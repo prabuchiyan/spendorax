@@ -144,7 +144,6 @@ export default function PaperSwipeableRow({
           <View style={{ flex: 1, paddingRight: 6 }}>
             <Text
               style={[styles.itemTitle, { color: textColor || (isDarkMode ? '#F8FAFC' : '#0F172A') }]}
-              numberOfLines={2}
             >
               {item.title}
             </Text>
@@ -356,7 +355,7 @@ const styles = StyleSheet.create({
   },
   rowMain: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   serialBadge: {
     width: 26,
@@ -365,6 +364,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
+    marginTop: 1,
   },
   serialText: {
     fontSize: 11,

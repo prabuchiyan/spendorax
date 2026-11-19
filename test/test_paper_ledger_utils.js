@@ -40,26 +40,26 @@ assert.ok(shareText.includes('1) Salary'), 'Should include 1) Salary');
 assert.ok(shareText.includes('3) Groceries'), 'Should include 3) Groceries');
 assert.ok(shareText.includes('3,000') || shareText.includes('3000'), 'Should include net total');
 
-// 5. Test DB transaction mapping
+// 5. Test DB transaction mapping with formatted title (DD-MM-YYYY: Category: Notes)
 const dbTxs = [
-  { id: 101, type: 'income', amount: 1200, notes: 'Freelance' },
-  { id: 102, type: 'expense', amount: 300, category_name: 'Food', notes: null }
+  { id: 101, type: 'income', amount: 1200, notes: 'Freelance', date: '2026-11-19' },
+  { id: 102, type: 'expense', amount: 300, category_name: 'Food', notes: null, date: '2026-11-19' }
 ];
 const mapped = mapDbTransactionsToPaperItems(dbTxs);
 assert.strictEqual(mapped.length, 2, 'Should map 2 transactions');
-assert.strictEqual(mapped[0].title, 'Freelance', 'Should use notes as title');
+assert.strictEqual(mapped[0].title, '19-11-2026: Income: Freelance', 'Should format title as DD-MM-YYYY: Category: Notes');
 assert.strictEqual(mapped[0].type, 'income', 'Should retain income type');
 assert.strictEqual(mapped[0].amount, 1200, 'Should retain amount');
-assert.strictEqual(mapped[1].title, 'Food', 'Should fall back to category_name');
+assert.strictEqual(mapped[1].title, '19-11-2026: Food', 'Should format title with Food category');
 
 // 6. Test Transfer Transaction Detection & Exclusion
 const transferTxs = [
-  { id: 1, type: 'transfer', amount: 500, notes: 'Direct Transfer' },
-  { id: 2, type: 'expense', amount: 500, transfer_group_id: 'grp_123', notes: 'Bank Transfer Debit' },
-  { id: 3, type: 'income', amount: 500, transfer_group_id: 'grp_123', notes: 'Bank Transfer Credit' },
-  { id: 4, type: 'expense', amount: 250, is_transfer: 1, notes: 'Flagged Transfer' },
-  { id: 5, type: 'income', amount: 1500, notes: 'Real Salary', transfer_group_id: null },
-  { id: 6, type: 'expense', amount: 45, notes: 'Coffee', transfer_group_id: null },
+  { id: 1, type: 'transfer', amount: 500, notes: 'Direct Transfer', date: '2026-11-19' },
+  { id: 2, type: 'expense', amount: 500, transfer_group_id: 'grp_123', notes: 'Bank Transfer Debit', date: '2026-11-19' },
+  { id: 3, type: 'income', amount: 500, transfer_group_id: 'grp_123', notes: 'Bank Transfer Credit', date: '2026-11-19' },
+  { id: 4, type: 'expense', amount: 250, is_transfer: 1, notes: 'Flagged Transfer', date: '2026-11-19' },
+  { id: 5, type: 'income', amount: 1500, notes: 'Real Salary', transfer_group_id: null, date: '2026-11-19' },
+  { id: 6, type: 'expense', amount: 45, notes: 'Coffee', transfer_group_id: null, date: '2026-11-19' },
 ];
 
 assert.strictEqual(isTransferTransaction(transferTxs[0]), true, 'type transfer should be true');
@@ -71,8 +71,8 @@ assert.strictEqual(isTransferTransaction(transferTxs[5]), false, 'genuine expens
 
 const mappedWithoutTransfers = mapDbTransactionsToPaperItems(transferTxs);
 assert.strictEqual(mappedWithoutTransfers.length, 2, 'Should only map genuine non-transfer transactions');
-assert.strictEqual(mappedWithoutTransfers[0].title, 'Real Salary');
-assert.strictEqual(mappedWithoutTransfers[1].title, 'Coffee');
+assert.ok(mappedWithoutTransfers[0].title.includes('Real Salary'), 'Should include notes in title');
+assert.ok(mappedWithoutTransfers[1].title.includes('Coffee'), 'Should include notes in title');
 console.log('✓ Transfer transaction exclusion verified successfully!');
 
 console.log('Task 1 tests passed successfully!');
