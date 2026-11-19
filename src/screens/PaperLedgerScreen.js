@@ -24,6 +24,8 @@ import {
   mapDbTransactionsToPaperItems,
   isTransferTransaction,
   parseNotepadLine,
+  formatItemToFreeformLine,
+  parseNotepadDocument,
 } from '../utils/paperLedgerUtils';
 import PaperMonthPickerModal from '../components/PaperMonthPickerModal';
 import PaperSwipeableRow from '../components/PaperSwipeableRow';
@@ -34,6 +36,7 @@ import PaperSavedSheetsModal from '../components/PaperSavedSheetsModal';
 import PaperImportSelectModal from '../components/PaperImportSelectModal';
 import PaperToast from '../components/PaperToast';
 import ContextualFAB from '../components/ContextualFAB';
+import QlateNotepadSheet from '../components/QlateNotepadSheet';
 import {
   savePaperLedger,
   getPaperLedgers,
@@ -44,22 +47,28 @@ import {
 export default function PaperLedgerScreen({ navigation }) {
   const { isDarkMode, theme } = useTheme();
 
-  // Paper items state (pure scratchpad, not writing to DB)
-  const [items, setItems] = useState([]);
+  // Qlate Continuous Notepad Document state
+  const notepadRef = useRef(null);
+  const [notepadText, setNotepadText] = useState('');
+
+  // Live evaluation on every keystroke
+  const evaluatedDoc = useMemo(() => parseNotepadDocument(notepadText), [notepadText]);
+  const totals = {
+    totalIncome: evaluatedDoc.totalIncome,
+    totalExpense: evaluatedDoc.totalExpense,
+    netTotal: evaluatedDoc.netTotal,
+  };
+  const items = evaluatedDoc.items;
+
   const [categoriesMap, setCategoriesMap] = useState({});
   const [availableMonths, setAvailableMonths] = useState([]);
   const [loadingMonths, setLoadingMonths] = useState(false);
   const [importing, setImporting] = useState(false);
 
-  // Modals & Confirmation state (No modal for Add/Edit - 100% on-paper editing)
+  // Modals & Confirmation state (No modal for Add/Edit - 100% continuous document editing)
   const [isMonthModalVisible, setIsMonthModalVisible] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [resetRowCallback, setResetRowCallback] = useState(null);
-
-  // In-place on-paper editing & new line state
-  const newLineInputRef = useRef(null);
-  const [newLineText, setNewLineText] = useState('');
-  const [editingRowId, setEditingRowId] = useState(null);
 
   // Multi-select state
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -153,223 +162,31 @@ export default function PaperLedgerScreen({ navigation }) {
     };
   }, []);
 
-  // Compute live totals
-  const totals = useMemo(() => calculateLedgerTotals(items), [items]);
-
-  // Handle adding custom row or saving edits
-  const handleSaveRow = useCallback(
-    (rowPayload) => {
-      if (rowPayload.id) {
-        // Updating existing row
-        setItems((prev) =>
-          prev.map((it) => (it.id === rowPayload.id ? { ...it, ...rowPayload } : it))
-        );
-        if (resetEditRowCallback) {
-          resetEditRowCallback();
-        }
-      } else {
-        // Adding new row
-        const item = {
-          id: `custom_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-          title: rowPayload.title,
-          type: rowPayload.type,
-          amount: rowPayload.amount,
-          formula: rowPayload.formula || null,
-          date: new Date().toISOString(),
-        };
-        setItems((prev) => [...prev, item]);
-      }
-      setEditingItem(null);
-      setResetEditRowCallback(null);
-    },
-    []
-  );
-
-  // Start in-place editing on an existing ruled row (No modal!)
-  const handleStartEdit = useCallback((rowId) => {
-    setEditingRowId(rowId);
-  }, []);
-
-  // Cancel in-place editing
-  const handleCancelEdit = useCallback(() => {
-    setEditingRowId(null);
-  }, []);
-
-  // Commit in-place edit on an existing row directly on the paper
-  const handleCommitEdit = useCallback(
-    (rowId, text) => {
-      const trimmed = (text || '').trim();
-      if (!trimmed) {
-        setEditingRowId(null);
-        return;
-      }
-
-      const currentItem = items.find((it) => it.id === rowId);
-      const defaultType = currentItem?.type || 'expense';
-      const parsed = parseNotepadLine(trimmed, defaultType);
-
-      if (!parsed) {
-        showToast('Could not find amount in line. Try e.g. "Dinner 450"', 'error');
-        return;
-      }
-
-      setItems((prev) =>
-        prev.map((it) =>
-          it.id === rowId
-            ? {
-                ...it,
-                title: parsed.title,
-                amount: parsed.amount,
-                type: parsed.type,
-                formula: parsed.formula || null,
-              }
-            : it
-        )
-      );
-      setEditingRowId(null);
-      showToast(`Updated "${parsed.title}" (₹${formatLedgerAmount(parsed.amount)})`, 'success');
-    },
-    [items, showToast]
-  );
-
-  // Commit freeform line typed directly on the paper ruling (Enter key or Add button)
-  const handleCommitNewLine = useCallback(() => {
-    const raw = (newLineText || '').trim();
-    if (!raw) return;
-
-    const parsed = parseNotepadLine(raw, 'expense');
-    if (!parsed) {
-      showToast('Could not find amount in line. Try e.g. "Dinner 450"', 'error');
-      return;
-    }
-
-    const newItem = {
-      id: `paper_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      title: parsed.title,
-      type: parsed.type,
-      amount: parsed.amount,
-      formula: parsed.formula || null,
-      date: new Date().toISOString(),
-    };
-
-    setItems((prev) => [...prev, newItem]);
-    setNewLineText('');
-    showToast(`Added "${parsed.title}" (₹${formatLedgerAmount(parsed.amount)})`, 'success');
-
-    // Keep input focused so the next line can be typed immediately
-    setTimeout(() => {
-      newLineInputRef.current?.focus();
-    }, 60);
-  }, [newLineText, showToast]);
-
-  // Handle deleting single row
-  const handleDeleteRow = useCallback((rowId) => {
-    setItems((prev) => prev.filter((it) => it.id !== rowId));
-  }, []);
-
-  // Multi-select handlers
-  const handleToggleSelect = useCallback((id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
-  const handleSelectAll = useCallback(() => {
-    if (selectedIds.size === items.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(items.map((it) => it.id)));
-    }
-  }, [selectedIds.size, items]);
-
-  const handleEnterSelectionMode = useCallback((initialId = null) => {
-    setIsSelectionMode(true);
-    if (initialId) {
-      setSelectedIds(new Set([initialId]));
-    } else {
-      setSelectedIds(new Set());
-    }
-  }, []);
-
-  const handleExitSelectionMode = useCallback(() => {
-    setIsSelectionMode(false);
-    setSelectedIds(new Set());
-  }, []);
-
-  const handlePromptDeleteSelected = useCallback(() => {
-    if (selectedIds.size === 0) return;
-    const selectedItems = items.filter((it) => selectedIds.has(it.id));
-    const selectedAmount = selectedItems.reduce(
-      (acc, it) => acc + (Number(it.amount) || 0),
-      0
-    );
-
-    setItemToDelete({
-      isBatch: true,
-      count: selectedIds.size,
-      totalAmount: selectedAmount,
-    });
-  }, [selectedIds, items]);
-
-  // Request delete with cross-platform confirmation dialog (works on Web, iOS, Android)
-  const requestDeleteRow = useCallback((item, onCancel) => {
-    setItemToDelete(item);
-    setResetRowCallback(() => onCancel);
-  }, []);
-
-  const handleConfirmDelete = useCallback(() => {
-    if (itemToDelete) {
-      if (itemToDelete.isBatch) {
-        setItems((prev) => prev.filter((it) => !selectedIds.has(it.id)));
-        setSelectedIds(new Set());
-        setIsSelectionMode(false);
-      } else {
-        handleDeleteRow(itemToDelete.id);
-      }
-      setItemToDelete(null);
-      setResetRowCallback(null);
-    }
-  }, [itemToDelete, selectedIds, handleDeleteRow]);
-
-  const handleCancelDelete = useCallback(() => {
-    if (resetRowCallback) {
-      resetRowCallback();
-    }
-    setItemToDelete(null);
-    setResetRowCallback(null);
-  }, [resetRowCallback]);
-
-  // Handle clearing entire ledger
+  // Handle clearing entire notepad
   const handleClearAll = useCallback(() => {
-    if (items.length === 0) return;
+    if (!notepadText.trim()) return;
     setConfirmModalConfig({
-      title: 'Clear Paper Ledger',
-      message: 'Are you sure you want to remove all calculation entries from this sheet?',
+      title: 'Clear Notepad',
+      message: 'Are you sure you want to remove all notes and calculations from this sheet?',
       confirmLabel: 'Clear All',
       confirmIcon: 'trash-can-outline',
       confirmColor: '#EF4444',
       isDestructive: true,
       onConfirm: () => {
-        setItems([]);
+        setNotepadText('');
         setConfirmModalConfig(null);
       },
     });
-  }, [items.length]);
+  }, [notepadText]);
 
   // Handle prompt for saving
   const handlePromptSave = useCallback(() => {
-    if (items.length === 0) {
-      showToast('Please add calculation rows before saving', 'info');
+    if (!notepadText.trim()) {
+      showToast('Please type some notes or calculations before saving', 'info');
       return;
     }
     setIsSaveModalVisible(true);
-  }, [items.length, showToast]);
+  }, [notepadText, showToast]);
 
   // Handle saving sheet to DB (new or update)
   const handleSaveSheetSubmit = useCallback(
@@ -381,7 +198,8 @@ export default function PaperLedgerScreen({ navigation }) {
         const savedId = await savePaperLedger({
           id: targetId,
           title: titleToSave,
-          items,
+          raw_text: notepadText,
+          items: evaluatedDoc.items,
           totalIncome: totals.totalIncome,
           totalExpense: totals.totalExpense,
           netTotal: totals.netTotal,
@@ -404,12 +222,18 @@ export default function PaperLedgerScreen({ navigation }) {
         showToast('Failed to save sheet to database', 'error');
       }
     },
-    [activeSheetId, items, totals, loadSavedSheets, showToast]
+    [activeSheetId, notepadText, evaluatedDoc.items, totals, loadSavedSheets, showToast]
   );
 
   // Handle opening a saved sheet
   const handleSelectSheet = useCallback((sheet) => {
-    setItems(sheet.items || []);
+    if (sheet.raw_text !== undefined && sheet.raw_text !== null) {
+      setNotepadText(sheet.raw_text);
+    } else if (Array.isArray(sheet.items)) {
+      setNotepadText(sheet.items.map(formatItemToFreeformLine).join('\n'));
+    } else {
+      setNotepadText('');
+    }
     setActiveSheetId(sheet.id);
     setActiveSheetTitle(sheet.title);
     setActiveSheetLastUpdated(sheet.updated_at);
@@ -417,17 +241,17 @@ export default function PaperLedgerScreen({ navigation }) {
 
   // Handle starting a fresh sheet
   const handleNewSheet = useCallback(() => {
-    setItems([]);
+    setNotepadText('');
     setActiveSheetId(null);
     setActiveSheetTitle(null);
     setActiveSheetLastUpdated(null);
   }, []);
 
   const handlePromptNewSheet = useCallback(() => {
-    if (items.length > 0) {
+    if (notepadText.trim().length > 0) {
       setConfirmModalConfig({
         title: 'Start New Sheet?',
-        message: 'This will clear the current calculation entries and start a fresh sheet. Make sure your changes are saved.',
+        message: 'This will clear the current notepad and start a fresh sheet. Make sure your changes are saved.',
         confirmLabel: 'New Sheet',
         confirmIcon: 'plus-circle-outline',
         confirmColor: Colors.primary,
@@ -439,7 +263,7 @@ export default function PaperLedgerScreen({ navigation }) {
     } else {
       handleNewSheet();
     }
-  }, [items.length, handleNewSheet]);
+  }, [notepadText, handleNewSheet]);
 
   // Handle pin toggle
   const handleTogglePinSheet = useCallback(
@@ -573,23 +397,36 @@ export default function PaperLedgerScreen({ navigation }) {
     }
   }, [availableMonths, categoriesMap, showToast]);
 
-  // Handle confirming selected items from Selective Import modal
-  const handleConfirmImportSelected = useCallback((selectedItems) => {
-    if (!selectedItems || selectedItems.length === 0) return;
-    setItems((prev) => [...prev, ...selectedItems]);
-    setIsImportSelectModalVisible(false);
-    setCandidateImportItems([]);
-    showToast(`Imported ${selectedItems.length} transactions into paper ledger`, 'success');
-  }, [showToast]);
+  // Handle confirming selected items from Selective Import modal into continuous notepad
+  const handleConfirmImportSelected = useCallback(
+    (selectedItems) => {
+      if (!selectedItems || selectedItems.length === 0) return;
+      const newLines = selectedItems.map((item) => {
+        const sign = item.type === 'income' ? '+' : '';
+        return `${item.title} ${sign}${item.amount}`;
+      });
+      setNotepadText((prev) => {
+        const trimmed = (prev || '').trim();
+        if (!trimmed) {
+          return newLines.join('\n');
+        }
+        return `${trimmed}\n${newLines.join('\n')}`;
+      });
+      setIsImportSelectModalVisible(false);
+      setCandidateImportItems([]);
+      showToast(`Imported ${selectedItems.length} transactions into notepad`, 'success');
+    },
+    [showToast]
+  );
 
   // Share formatted calculation to WhatsApp
   const handleShareToWhatsApp = useCallback(async () => {
-    if (items.length === 0) {
-      showToast('Add or import transactions before sharing', 'info');
+    if (!notepadText.trim() || evaluatedDoc.validCount === 0) {
+      showToast('Add or import calculations before sharing', 'info');
       return;
     }
 
-    const shareText = formatWhatsAppLedgerText(items, totals.netTotal);
+    const shareText = formatWhatsAppLedgerText(evaluatedDoc.items, totals.netTotal);
     const encodedText = encodeURIComponent(shareText);
     const whatsappUrl = `whatsapp://send?text=${encodedText}`;
 
@@ -914,7 +751,7 @@ export default function PaperLedgerScreen({ navigation }) {
               </View>
 
               <View style={styles.fintechHeaderControls}>
-                {(activeSheetTitle || items.length > 0) && (
+                {(activeSheetTitle || notepadText.trim().length > 0) && (
                   <TouchableOpacity
                     style={[
                       styles.fintechNewBtn,
@@ -941,7 +778,7 @@ export default function PaperLedgerScreen({ navigation }) {
                   ]}
                 >
                   <Text style={[styles.fintechCountText, { color: textMuted }]}>
-                    {items.length} {items.length === 1 ? 'entry' : 'entries'}
+                    {evaluatedDoc.validCount} {evaluatedDoc.validCount === 1 ? 'calculation' : 'calculations'}
                   </Text>
                 </View>
               </View>
@@ -949,178 +786,27 @@ export default function PaperLedgerScreen({ navigation }) {
 
             <View style={styles.fintechHeaderSubRow}>
               <Text style={[styles.fintechSubText, { color: textMuted }]} numberOfLines={1}>
-                {isSelectionMode
-                  ? `${selectedIds.size} of ${items.length} selected • Tap rows to toggle`
-                  : activeSheetLastUpdated
-                    ? `Saved Sheet • Updated ${new Date(activeSheetLastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} • Swipe L/R to edit or delete`
-                    : 'Swipe right to delete • Swipe left to edit • Tap Save to keep in database'}
+                {activeSheetLastUpdated
+                  ? `Saved Sheet • Updated ${new Date(activeSheetLastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} • Qlate Notepad active`
+                  : 'Type notes & math freely on the left • Live results calculate automatically on the right'}
               </Text>
             </View>
           </View>
 
-          {/* Table Column Header: 65% / 35% Grid */}
-          <View
-            style={[
-              styles.tableRowHeader,
-              {
-                borderBottomColor: rowDividerColor,
-                backgroundColor: tableHeaderBg,
-              },
-            ]}
-          >
-            {/* 65% Left Header */}
-            <View
-              style={[
-                styles.col65,
-                styles.headerCol,
-                { borderRightColor: colDividerColor },
-              ]}
-            >
-              <Text style={[styles.headerLabel, { color: textMuted }]}>
-                TRANSACTION / FORMULA
-              </Text>
-            </View>
-
-            {/* 35% Right Header */}
-            <View style={[styles.col35, styles.headerColRight]}>
-              <Text style={[styles.headerLabelRight, { color: textMuted }]}>
-                AMOUNT (₹)
-              </Text>
-            </View>
-          </View>
-
-          {/* Rows */}
-          {items.map((item, index) => (
-            <PaperSwipeableRow
-              key={item.id}
-              item={item}
-              index={index}
-              isIncome={item.type === 'income'}
-              formatLedgerAmount={formatLedgerAmount}
-              onRequestDelete={requestDeleteRow}
-              isEditing={editingRowId === item.id}
-              onStartEdit={handleStartEdit}
-              onCommitEdit={handleCommitEdit}
-              onCancelEdit={handleCancelEdit}
-              paperBg={cardBg}
-              rowDividerColor={rowDividerColor}
-              columnDividerColor={colDividerColor}
-              textColor={textColor}
-              textMuted={textMuted}
-              isDarkMode={isDarkMode}
-              isSelectionMode={isSelectionMode}
-              isSelected={selectedIds.has(item.id)}
-              onToggleSelect={handleToggleSelect}
-              onLongPress={handleEnterSelectionMode}
-            />
-          ))}
-
-          {/* Empty state notice (if 0 items) */}
-          {items.length === 0 && (
-            <View style={styles.emptyNotice}>
-              <View
-                style={[
-                  styles.emptyIconCircle,
-                  { backgroundColor: isDarkMode ? '#172554' : '#EFF6FF' },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name="notebook-edit-outline"
-                  size={36}
-                  color={Colors.primary}
-                />
-              </View>
-              <Text style={[styles.emptyTitle, { color: textColor }]}>
-                Notepad Ledger Ready
-              </Text>
-              <Text style={[styles.emptyDesc, { color: textMuted }]}>
-                Type directly on the line below (e.g. Dinner 450 or Salary +50000) and press Enter ↵ to add rows instantly, or import from your database.
-              </Text>
-            </View>
-          )}
-
-          {/* Direct On-Paper Next Ruled Line (Type directly & press Enter to advance) */}
-          {!isSelectionMode && (
-            <View
-              style={[
-                styles.paperNewLineRow,
-                {
-                  borderBottomColor: rowDividerColor,
-                  backgroundColor: isDarkMode ? '#131926' : '#FFFFFF',
-                },
-              ]}
-            >
-              {/* 65% Left: Next Serial Number & Direct Borderless TextInput */}
-              <View
-                style={[
-                  styles.col65,
-                  styles.cell65,
-                  { borderRightColor: colDividerColor },
-                ]}
-              >
-                <View style={styles.rowMain}>
-                  <View
-                    style={[
-                      styles.serialBadge,
-                      {
-                        backgroundColor: newLineText.trim().length > 0
-                          ? (isDarkMode ? '#172554' : '#EFF6FF')
-                          : (isDarkMode ? '#1C2433' : '#F1F5F9'),
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.serialText,
-                        {
-                          color: newLineText.trim().length > 0
-                            ? '#3B82F6'
-                            : (isDarkMode ? '#8E9FB8' : '#64748B'),
-                        },
-                      ]}
-                    >
-                      {items.length + 1 < 10 ? `0${items.length + 1}` : `${items.length + 1}`}
-                    </Text>
-                  </View>
-
-                  <View style={{ flex: 1, paddingRight: 6 }}>
-                    <TextInput
-                      ref={newLineInputRef}
-                      style={[
-                        styles.paperLineInput,
-                        { color: textColor },
-                      ]}
-                      placeholder={items.length === 0 ? "Type line 01 (e.g. Dinner 450 or Salary +50000)..." : "Type next line here..."}
-                      placeholderTextColor={textMuted}
-                      value={newLineText}
-                      onChangeText={setNewLineText}
-                      onSubmitEditing={handleCommitNewLine}
-                      returnKeyType="next"
-                      blurOnSubmit={false}
-                    />
-                  </View>
-                </View>
-              </View>
-
-              {/* 35% Right: Action button or Enter prompt */}
-              <View style={[styles.col35, styles.cell35, { alignItems: 'flex-end', justifyContent: 'center' }]}>
-                {newLineText.trim().length > 0 ? (
-                  <TouchableOpacity
-                    style={[styles.paperLineAddBtn, { backgroundColor: theme.primary || Colors.primary }]}
-                    onPress={handleCommitNewLine}
-                    activeOpacity={0.8}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Text style={styles.paperLineAddText}>Add ↵</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <Text style={[styles.paperLineHint, { color: textMuted }]}>
-                    ↵ Enter
-                  </Text>
-                )}
-              </View>
-            </View>
-          )}
+          {/* Qlate Continuous Calculator + Notepad Sheet */}
+          <QlateNotepadSheet
+            text={notepadText}
+            onChangeText={setNotepadText}
+            evaluatedDoc={evaluatedDoc}
+            textInputRef={notepadRef}
+            isDarkMode={isDarkMode}
+            textColor={textColor}
+            textMuted={textMuted}
+            rowDividerColor={rowDividerColor}
+            colDividerColor={colDividerColor}
+            tableHeaderBg={tableHeaderBg}
+            cardBg={cardBg}
+          />
 
           {/* Modern Fintech Hero Balance Summary Card */}
           <View
@@ -1242,15 +928,13 @@ export default function PaperLedgerScreen({ navigation }) {
         </View>
       </ScrollView>
 
-      {/* App Floating Action Button (FAB) to Focus Paper Entry Line */}
-      {!isSelectionMode && (
-        <ContextualFAB
-          icon="plus"
-          onPress={() => {
-            newLineInputRef.current?.focus();
-          }}
-        />
-      )}
+      {/* App Floating Action Button (FAB) to Focus Qlate Notepad */}
+      <ContextualFAB
+        icon="pencil-plus"
+        onPress={() => {
+          notepadRef.current?.focus();
+        }}
+      />
 
       {/* Modern Floating In-App Toast */}
       <PaperToast

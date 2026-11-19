@@ -391,6 +391,119 @@ function formatItemToFreeformLine(item) {
   return title ? `${title} ${val}`.trim() : val;
 }
 
+/**
+ * Evaluates an entire multiline Qlate notepad document line-by-line in real time.
+ * @param {string} text
+ * @returns {{
+ *   lines: Array<{
+ *     text: string,
+ *     lineNum: number,
+ *     title: string | null,
+ *     amount: number | null,
+ *     type: 'income' | 'expense' | null,
+ *     formula: string | null,
+ *     resultText: string
+ *   }>,
+ *   items: Array<Object>,
+ *   totalIncome: number,
+ *   totalExpense: number,
+ *   netTotal: number,
+ *   validCount: number
+ * }}
+ */
+function parseNotepadDocument(text = '') {
+  const rawText = typeof text === 'string' ? text : '';
+  const lines = rawText.split('\n');
+
+  let totalIncome = 0;
+  let totalExpense = 0;
+  let validCount = 0;
+  const evaluatedLines = [];
+  const validItems = [];
+
+  for (let idx = 0; idx < lines.length; idx++) {
+    const line = lines[idx];
+    const lineNum = idx + 1;
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      evaluatedLines.push({
+        text: line,
+        lineNum,
+        title: null,
+        amount: null,
+        type: null,
+        formula: null,
+        resultText: '',
+      });
+      continue;
+    }
+
+    const parsed = parseNotepadLine(trimmed, 'expense');
+    if (!parsed || !parsed.isValid) {
+      // Commentary or text note with no math
+      evaluatedLines.push({
+        text: line,
+        lineNum,
+        title: trimmed,
+        amount: null,
+        type: null,
+        formula: null,
+        resultText: '',
+      });
+      continue;
+    }
+
+    const isIncome = parsed.type === 'income';
+    const absAmount = Math.abs(parsed.amount);
+
+    if (isIncome) {
+      totalIncome += absAmount;
+    } else {
+      totalExpense += absAmount;
+    }
+    validCount++;
+
+    const formattedAmt = formatLedgerAmount(absAmount);
+    const sign = isIncome ? '+ ' : '− ';
+    const resultText = `${sign}${formattedAmt}`;
+
+    const lineEval = {
+      text: line,
+      lineNum,
+      title: parsed.title,
+      amount: absAmount,
+      type: parsed.type,
+      formula: parsed.formula || null,
+      resultText,
+    };
+
+    evaluatedLines.push(lineEval);
+
+    validItems.push({
+      id: `line_${lineNum}_${absAmount}`,
+      title: parsed.title,
+      amount: absAmount,
+      type: parsed.type,
+      formula: parsed.formula || null,
+      date: new Date().toISOString(),
+    });
+  }
+
+  totalIncome = Math.round(totalIncome * 100) / 100;
+  totalExpense = Math.round(totalExpense * 100) / 100;
+  const netTotal = Math.round((totalIncome - totalExpense) * 100) / 100;
+
+  return {
+    lines: evaluatedLines,
+    items: validItems,
+    totalIncome,
+    totalExpense,
+    netTotal,
+    validCount,
+  };
+}
+
 module.exports = {
   calculateLedgerTotals,
   formatLedgerAmount,
@@ -401,6 +514,7 @@ module.exports = {
   formatImportTransactionTitle,
   parseNotepadLine,
   formatItemToFreeformLine,
+  parseNotepadDocument,
   selectAllCandidates,
   deselectAllCandidates,
   toggleCandidateSelection,

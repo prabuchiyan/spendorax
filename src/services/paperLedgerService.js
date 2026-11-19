@@ -20,6 +20,7 @@ export async function savePaperLedger({
   id = null,
   title,
   items = [],
+  raw_text = null,
   totalIncome = 0,
   totalExpense = 0,
   netTotal = 0,
@@ -30,7 +31,8 @@ export async function savePaperLedger({
     throw new Error('Title is required to save paper ledger');
   }
 
-  const dataJson = JSON.stringify(items);
+  const payload = raw_text !== null ? { raw_text, items } : items;
+  const dataJson = JSON.stringify(payload);
 
   if (id) {
     await executeSql(
@@ -59,15 +61,18 @@ export async function getPaperLedgers() {
   const rows = [];
   for (let i = 0; i < res.rows.length; i++) {
     const r = res.rows.item(i);
-    let parsedItems = [];
+    let parsedData = [];
     try {
-      parsedItems = JSON.parse(r.data || '[]');
+      parsedData = JSON.parse(r.data || '[]');
     } catch (e) {
       console.warn('Failed to parse paper ledger items JSON for sheet', r.id, e);
     }
+    const rawText = Array.isArray(parsedData) ? null : (parsedData?.raw_text || null);
+    const items = Array.isArray(parsedData) ? parsedData : (parsedData?.items || []);
     rows.push({
       ...r,
-      items: parsedItems,
+      raw_text: rawText,
+      items,
     });
   }
   return rows;

@@ -20,3 +20,4 @@ Transform the Paper Ledger into a true paper notepad interaction where users typ
    - Tapping the FAB scrolls to and focuses the direct on-paper new entry line.
 5. **No Push Constraint:**
    - Do NOT push code to remote git branch. Local commits only.
+

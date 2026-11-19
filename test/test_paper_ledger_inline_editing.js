@@ -81,3 +81,4 @@ assert.strictEqual(formatItemToFreeformLine({}), '');
 console.log('✓ Edge cases handled gracefully');
 
 console.log('All Inline Editing Formatter Tests Passed Successfully!');
+
