@@ -2,6 +2,7 @@
  * Utility functions for Paper Ledger screen
  * Calculations, WhatsApp formatting, and data mapping
  */
+const { evaluateMathExpression } = require('./mathExpressionParser');
 
 /**
  * Calculates total income, total expense, and net balance (Income - Expense)
@@ -117,6 +118,158 @@ function isTransferTransaction(tx) {
 }
 
 /**
+ * Formats a transaction date to DD-MM-YYYY
+ * @param {string|Date} dateVal
+ * @returns {string}
+ */
+function formatTxDate(dateVal) {
+  if (!dateVal) {
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2, '0');
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const yyyy = now.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+  }
+  const cleanStr = String(dateVal).split('T')[0].split(' ')[0];
+  const parts = cleanStr.split('-');
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      // YYYY-MM-DD -> DD-MM-YYYY
+      return `${parts[2].padStart(2, '0')}-${parts[1].padStart(2, '0')}-${parts[0]}`;
+    }
+    return `${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}-${parts[2]}`;
+  }
+  const d = new Date(dateVal);
+  if (!isNaN(d.getTime())) {
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+  }
+  return String(dateVal);
+}
+
+/**
+ * Formats import transaction title as: DD-MM-YYYY: Category: Notes
+ * If no notes, formats as: DD-MM-YYYY: Category
+ * @param {Object} tx
+ * @param {Object} [categoriesMap]
+ * @returns {string}
+ */
+function formatImportTransactionTitle(tx, categoriesMap = {}) {
+  if (!tx) return '';
+  const dateStr = formatTxDate(tx.date);
+  const isIncome = String(tx.type || '').toLowerCase() === 'income';
+  const cat = (
+    tx.category_name ||
+    (tx.category_id && categoriesMap[tx.category_id]?.name) ||
+    (isIncome ? 'Income' : 'Expense')
+  ).trim();
+  const note = (tx.notes || '').trim();
+
+  if (note && note.toLowerCase() !== cat.toLowerCase()) {
+    return `${dateStr}: ${cat}: ${note}`;
+  }
+  return `${dateStr}: ${cat}`;
+}
+
+/**
+ * Parses a freeform typed line into a paper ledger transaction item.
+ * Supports:
+ * - "Dinner 450" -> title: "Dinner", amount: 450, type: "expense", formula: null
+ * - "Salary +50000" or "+ Salary 50000" -> title: "Salary", amount: 50000, type: "income", formula: null
+ * - "Grocery Mart 100 + 25" -> title: "Grocery Mart", amount: 125, formula: "100 + 25", type: "expense"
+ * - "Freelance Design +100*5" -> title: "Freelance Design", amount: 500, formula: "100*5", type: "income"
+ * - "100 + 25" -> title: "Calculation", amount: 125, formula: "100 + 25", type: "expense"
+ *
+ * @param {string} rawText
+ * @param {'income'|'expense'} [defaultType='expense']
+ * @returns {{ title: string, amount: number, formula: string|null, type: 'income'|'expense', isValid: boolean, error?: string }}
+ */
+function parseNotepadLine(rawText, defaultType = 'expense') {
+  if (!rawText || typeof rawText !== 'string') {
+    return { isValid: false, error: 'Empty line' };
+  }
+  let text = rawText.trim();
+  if (!text) {
+    return { isValid: false, error: 'Empty line' };
+  }
+
+  let forcedType = null;
+  // Check leading sign
+  if (text.startsWith('+')) {
+    forcedType = 'income';
+    text = text.substring(1).trim();
+  } else if (text.startsWith('-') || text.startsWith('−')) {
+    forcedType = 'expense';
+    text = text.substring(1).trim();
+  }
+
+  // Check trailing sign
+  if (text.endsWith('+')) {
+    forcedType = 'income';
+    text = text.slice(0, -1).trim();
+  } else if (text.endsWith('-') || text.endsWith('−')) {
+    forcedType = 'expense';
+    text = text.slice(0, -1).trim();
+  }
+
+  if (!text) {
+    return { isValid: false, error: 'Incomplete line' };
+  }
+
+  // 1. Check if the entire string is a math expression or number (no words)
+  if (!/[a-zA-Z]/.test(text)) {
+    const wholeEval = evaluateMathExpression(text);
+    if (wholeEval.isValid) {
+      return {
+        title: 'Calculation',
+        amount: Math.abs(wholeEval.result),
+        formula: wholeEval.hasOperator ? text : null,
+        type: forcedType || (wholeEval.result < 0 ? 'expense' : defaultType),
+        isValid: true,
+      };
+    }
+  }
+
+  // 2. Split into title and trailing amount/expression
+  let match = text.match(/^(.*?)(?:\s+([+\-−]?\s*[\d(].*))$/);
+  if (!match) {
+    // Also try matching without whitespace if sign is present, e.g. "Store+100"
+    match = text.match(/^(.*?)([+\-−]\s*[\d(].*)$/);
+  }
+
+  if (!match) {
+    return { isValid: false, error: 'No amount or formula found' };
+  }
+
+  let title = match[1].trim();
+  let exprPart = match[2].trim();
+
+  // Check if expression part starts with sign
+  if (exprPart.startsWith('+')) {
+    forcedType = 'income';
+    exprPart = exprPart.substring(1).trim();
+  } else if (exprPart.startsWith('-') || exprPart.startsWith('−')) {
+    forcedType = 'expense';
+    exprPart = exprPart.substring(1).trim();
+  }
+
+  const evalRes = evaluateMathExpression(exprPart);
+  if (!evalRes.isValid || evalRes.result === null) {
+    return { isValid: false, error: evalRes.error || 'Invalid amount/expression' };
+  }
+
+  return {
+    title: title || 'Calculation',
+    amount: Math.abs(evalRes.result),
+    formula: evalRes.hasOperator ? exprPart : null,
+    type: forcedType || defaultType,
+    isValid: true,
+  };
+}
+
+/**
  * Maps raw database transactions to paper ledger items, excluding transfers
  * @param {Array<Object>} transactions
  * @param {Object} [categoriesMap]
@@ -127,14 +280,12 @@ function mapDbTransactionsToPaperItems(transactions = [], categoriesMap = {}) {
     .filter((tx) => !isTransferTransaction(tx))
     .map((tx, idx) => {
       const isIncome = String(tx.type || '').toLowerCase() === 'income';
-      const catName = tx.category_name || (tx.category_id && categoriesMap[tx.category_id]?.name) || '';
-      const note = (tx.notes || '').trim();
-      const title = note || catName || (isIncome ? 'Income' : 'Expense');
+      const formattedTitle = formatImportTransactionTitle(tx, categoriesMap);
       const amount = Math.abs(Number(tx.amount) || 0);
 
       return {
         id: `db_${tx.id || idx}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        title,
+        title: formattedTitle,
         type: isIncome ? 'income' : 'expense',
         amount,
         originalId: tx.id,
@@ -149,5 +300,8 @@ module.exports = {
   formatWhatsAppLedgerText,
   mapDbTransactionsToPaperItems,
   isTransferTransaction,
+  formatTxDate,
+  formatImportTransactionTitle,
+  parseNotepadLine,
 };
 
