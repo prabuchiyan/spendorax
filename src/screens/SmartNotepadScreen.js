@@ -555,6 +555,22 @@ export default function SmartNotepadScreen({ navigation }) {
           contentContainerStyle={styles.toolbarScrollContent}
         >
           <TouchableOpacity
+            style={[
+              styles.toolButtonOutline,
+              {
+                borderColor: '#F59E0B',
+                backgroundColor: isDarkMode ? '#2D2006' : '#FEF3C7',
+              },
+            ]}
+            onPress={() => setIsGuideModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="lightbulb-on-outline" size={16} color="#D97706" />
+            <Text style={[styles.toolButtonOutlineText, { color: isDarkMode ? '#FCD34D' : '#B45309' }]}>
+              How to Use
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[styles.toolButton, { backgroundColor: Colors.primary }]}
             onPress={() => setIsMonthModalVisible(true)}
             activeOpacity={0.8}
@@ -610,23 +626,6 @@ export default function SmartNotepadScreen({ navigation }) {
             <MaterialCommunityIcons name="book-open-outline" size={16} color={theme.textPrimary} />
             <Text style={[styles.toolButtonOutlineText, { color: theme.textPrimary }]}>
               Sheets ({savedSheets.length})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.toolButtonOutline,
-              {
-                borderColor: '#F59E0B',
-                backgroundColor: isDarkMode ? '#2D2006' : '#FEF3C7',
-              },
-            ]}
-            onPress={() => setIsGuideModalVisible(true)}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="lightbulb-on-outline" size={16} color="#D97706" />
-            <Text style={[styles.toolButtonOutlineText, { color: isDarkMode ? '#FCD34D' : '#B45309' }]}>
-              How to Use
             </Text>
           </TouchableOpacity>
 
@@ -748,7 +747,7 @@ export default function SmartNotepadScreen({ navigation }) {
               <Text style={[styles.fintechSubText, { color: textMuted }]} numberOfLines={1}>
                 {activeSheetLastUpdated
                   ? `Saved Sheet • Updated ${new Date(activeSheetLastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} • Smart Notepad active`
-                  : 'Type notes & math as paragraphs • Live results calculate automatically'}
+                  : 'Write notes & amounts like paper • Totals calculate automatically'}
               </Text>
             </View>
           </View>

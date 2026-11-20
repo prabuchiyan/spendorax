@@ -5,6 +5,7 @@ import {
   Modal,
   ScrollView,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   StyleSheet,
   Platform,
 } from 'react-native';
@@ -15,86 +16,76 @@ import { SAMPLE_SMART_NOTEPAD_TEXT, SAMPLE_PAPER_LEDGER_TEXT } from '../utils/sm
 
 export { SAMPLE_SMART_NOTEPAD_TEXT, SAMPLE_PAPER_LEDGER_TEXT };
 
-const MATH_EXAMPLES = [
+const EASY_EXAMPLES = [
   {
-    title: 'Income / Credit (Default)',
-    desc: 'Unsigned number or name + amount',
-    input: 'Dinner 450',
-    result: '+ ₹450',
-    isIncome: true,
+    input: 'Salary 50000',
+    meaning: 'Salary money received',
+    result: '+ ₹50,000',
+    type: 'income',
     icon: 'cash-plus',
   },
   {
-    title: 'Expense / Debit with (-)',
-    desc: 'Amount with minus sign (-)',
-    input: 'Dinner - 450',
-    result: '− ₹450',
-    isIncome: false,
-    icon: 'cart-outline',
+    input: 'Dinner 450',
+    meaning: 'Money received for dinner',
+    result: '+ ₹450',
+    type: 'income',
+    icon: 'cash',
   },
   {
-    title: 'Math Expression (Income)',
-    desc: 'Common math like multiplication',
-    input: '100*5',
+    input: 'Dinner - 450',
+    meaning: 'Money spent for dinner',
+    result: '− ₹450',
+    type: 'expense',
+    icon: 'silverware-fork-knife',
+  },
+  {
+    input: 'Tea -20',
+    meaning: 'Daily small tea expense',
+    result: '− ₹20',
+    type: 'expense',
+    icon: 'coffee',
+  },
+  {
+    input: '5 Shirts 100*5',
+    meaning: '5 shirts at ₹100 each',
     result: '+ ₹500',
-    isIncome: true,
+    type: 'income',
     icon: 'calculator-variant-outline',
   },
   {
-    title: 'Units in Name (400g, 5L, 3rd)',
-    desc: 'Takes only the last number as amount',
-    input: 'Gold 400g 700',
-    result: '+ ₹700',
-    isIncome: true,
-    icon: 'weight',
-  },
-  {
-    title: 'Units with Expense (-)',
-    desc: 'Units in title with expense amount',
-    input: 'Milk 5L -700',
-    result: '− ₹700',
-    isIncome: false,
+    input: 'Rice 25kg 1200',
+    meaning: 'Rice with weight unit (kg)',
+    result: '+ ₹1,200',
+    type: 'income',
     icon: 'scale',
   },
   {
-    title: 'Math Addition (+)',
-    desc: 'Common user math: 2000 + 5',
-    input: '2000 + 5',
-    result: '+ ₹2,005',
-    isIncome: true,
-    icon: 'plus',
+    input: 'Milk 2L -60',
+    meaning: 'Milk bought with litre unit (L)',
+    result: '− ₹60',
+    type: 'expense',
+    icon: 'cup-water',
   },
   {
-    title: 'Math Subtraction (−)',
-    desc: 'Common user math: 400- 100',
-    input: '400- 100',
-    result: '+ ₹300',
-    isIncome: true,
-    icon: 'minus',
+    input: 'Petrol 1000 + 200',
+    meaning: 'Two petrol bills added together',
+    result: '+ ₹1,200',
+    type: 'income',
+    icon: 'gas-station',
   },
   {
-    title: 'Expense with Minus & Bill',
-    desc: 'Split expense with minus sign',
-    input: 'Room Rent -2000',
-    result: '− ₹2,000',
-    isIncome: false,
-    icon: 'slash-forward',
+    input: 'House Rent -12000',
+    meaning: 'Monthly house rent paid',
+    result: '− ₹12,000',
+    type: 'expense',
+    icon: 'home-outline',
   },
   {
-    title: 'Percentage (%) Tip or Tax',
-    desc: 'Calculate tip, tax or discount %',
-    input: 'Restaurant Tip -50',
-    result: '− ₹50',
-    isIncome: false,
-    icon: 'percent-outline',
-  },
-  {
-    title: 'Plain Note / Heading',
-    desc: 'Lines without numbers are notes',
     input: '--- Trip Expenses ---',
-    result: '(Note only)',
-    isIncome: null,
-    icon: 'text',
+    meaning: 'Heading or note with no money',
+    result: 'Note',
+    type: 'note',
+    icon: 'format-text',
   },
 ];
 
@@ -105,215 +96,473 @@ export default function SmartNotepadGuideModal({
 }) {
   const { isDarkMode, theme } = useTheme();
 
-  const cardBg = isDarkMode ? '#1E293B' : '#FFFFFF';
-  const rowBorder = isDarkMode ? '#334155' : '#E2E8F0';
+  const cardBg = isDarkMode ? '#131926' : '#FFFFFF';
+  const rowBorder = isDarkMode ? '#283244' : '#E2E8F0';
   const textColor = isDarkMode ? '#F8FAFC' : '#0F172A';
   const textMuted = isDarkMode ? '#94A3B8' : '#64748B';
-  const codeBg = isDarkMode ? '#0F172A' : '#F1F5F9';
+  const codeBg = isDarkMode ? '#1E293B' : '#F1F5F9';
 
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="slide"
       onRequestClose={onClose}
     >
-      <View style={styles.backdrop}>
-        <View style={[styles.modalCard, { backgroundColor: cardBg }]}>
-          {/* Header */}
-          <View style={[styles.header, { borderBottomColor: rowBorder }]}>
-            <View style={styles.headerTitleRow}>
-              <View style={styles.headerIconCircle}>
-                <MaterialCommunityIcons name="lightbulb-on" size={20} color="#F59E0B" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.headerTitle, { color: textColor }]}>
-                  How to Use Smart Notepad
-                </Text>
-                <Text style={[styles.headerSubtitle, { color: textMuted }]}>
-                  Simple rules and all math calculations
-                </Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              onPress={onClose}
-              style={[styles.closeBtn, { backgroundColor: isDarkMode ? '#334155' : '#F1F5F9' }]}
-              activeOpacity={0.7}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={styles.backdrop}>
+          <TouchableWithoutFeedback>
+            <View
+              style={[
+                styles.bottomSheet,
+                {
+                  backgroundColor: cardBg,
+                  borderColor: rowBorder,
+                },
+              ]}
             >
-              <MaterialCommunityIcons name="close" size={18} color={textColor} />
-            </TouchableOpacity>
-          </View>
+              {/* Drag Handle */}
+              <View
+                style={[
+                  styles.dragHandle,
+                  { backgroundColor: isDarkMode ? '#334155' : '#CBD5E1' },
+                ]}
+              />
 
-          {/* Scrollable Body */}
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollBody}
-          >
-            {/* Quick Simple Rules */}
-            <View style={[styles.ruleBox, { backgroundColor: isDarkMode ? '#172554' : '#EFF6FF', borderColor: isDarkMode ? '#1E3A8A' : '#BFDBFE' }]}>
-              <Text style={[styles.ruleBoxTitle, { color: isDarkMode ? '#93C5FD' : '#1D4ED8' }]}>
-                4 Simple Rules for Common Users:
-              </Text>
+              {/* Header */}
+              <View style={[styles.header, { borderBottomColor: rowBorder }]}>
+                <View style={styles.headerTitleRow}>
+                  <View
+                    style={[
+                      styles.headerIconCircle,
+                      { backgroundColor: isDarkMode ? '#2D2006' : '#FEF3C7' },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="lightbulb-on"
+                      size={22}
+                      color="#F59E0B"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.headerTitle, { color: textColor }]}>
+                      How to Use Smart Notepad
+                    </Text>
+                    <Text style={[styles.headerSubtitle, { color: textMuted }]}>
+                      Very easy • Simple as writing on paper
+                    </Text>
+                  </View>
+                </View>
 
-              <View style={styles.ruleItem}>
-                <Text style={styles.ruleBullet}>1.</Text>
-                <Text style={[styles.ruleText, { color: textColor }]}>
-                  <Text style={{ fontWeight: '700' }}>Unsigned numbers or (+)</Text> = Income / Credit. Example: <Text style={styles.monoText}>Dinner 450</Text> → <Text style={{ color: '#10B981', fontWeight: '700' }}>+ ₹450</Text>, or <Text style={styles.monoText}>100*5</Text> → <Text style={{ color: '#10B981', fontWeight: '700' }}>+ ₹500</Text>
-                </Text>
-              </View>
-
-              <View style={styles.ruleItem}>
-                <Text style={styles.ruleBullet}>2.</Text>
-                <Text style={[styles.ruleText, { color: textColor }]}>
-                  <Text style={{ fontWeight: '700' }}>(-) Minus sign on amount</Text> = Expense / Debit. Example: <Text style={styles.monoText}>Dinner - 450</Text> or <Text style={styles.monoText}>Dinner -450</Text> → <Text style={{ color: '#EF4444', fontWeight: '700' }}>− ₹450</Text>
-                </Text>
-              </View>
-
-              <View style={styles.ruleItem}>
-                <Text style={styles.ruleBullet}>3.</Text>
-                <Text style={[styles.ruleText, { color: textColor }]}>
-                  <Text style={{ fontWeight: '700' }}>Units like 400g, 5L, 3rd</Text> stay in title. Example: <Text style={styles.monoText}>Gold 400g 700</Text> takes <Text style={styles.monoText}>700</Text> as amount.
-                </Text>
-              </View>
-
-              <View style={styles.ruleItem}>
-                <Text style={styles.ruleBullet}>4.</Text>
-                <Text style={[styles.ruleText, { color: textColor }]}>
-                  <Text style={{ fontWeight: '700' }}>Common math</Text> evaluates live: <Text style={styles.monoText}>2000 + 5</Text> gives <Text style={styles.monoText}>+ ₹2,005</Text>, and <Text style={styles.monoText}>400- 100</Text> gives <Text style={styles.monoText}>+ ₹300</Text>.
-                </Text>
-              </View>
-            </View>
-
-            {/* Calculations List */}
-            <Text style={[styles.sectionHeading, { color: textColor }]}>
-              All Math Calculations Supported:
-            </Text>
-
-            <View style={[styles.examplesList, { borderColor: rowBorder }]}>
-              {MATH_EXAMPLES.map((item, idx) => (
-                <View
-                  key={idx}
+                <TouchableOpacity
+                  onPress={onClose}
                   style={[
-                    styles.exampleRow,
+                    styles.closeBtn,
+                    { backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9' },
+                  ]}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <MaterialCommunityIcons name="close" size={18} color={textColor} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Scrollable Content */}
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollBody}
+              >
+                {/* 2 MAIN RULES IN SIMPLE CARDS */}
+                <Text style={[styles.mainSectionTitle, { color: textColor }]}>
+                  Only 2 Simple Rules to Remember:
+                </Text>
+
+                {/* Rule 1: Money In */}
+                <View
+                  style={[
+                    styles.simpleRuleCard,
                     {
-                      borderBottomColor: rowBorder,
-                      borderBottomWidth: idx === MATH_EXAMPLES.length - 1 ? 0 : 1,
+                      backgroundColor: isDarkMode ? '#06281E' : '#ECFDF5',
+                      borderColor: isDarkMode ? '#065F46' : '#A7F3D0',
                     },
                   ]}
                 >
-                  <View style={styles.exampleLeft}>
-                    <View style={styles.exampleTitleRow}>
-                      <MaterialCommunityIcons
-                        name={item.icon}
-                        size={14}
-                        color={item.isIncome === true ? '#10B981' : item.isIncome === false ? '#EF4444' : textMuted}
-                        style={{ marginRight: 5 }}
-                      />
-                      <Text style={[styles.exampleTitle, { color: textColor }]}>
-                        {item.title}
-                      </Text>
+                  <View style={styles.ruleBadgeRow}>
+                    <View style={[styles.rulePill, { backgroundColor: '#10B981' }]}>
+                      <MaterialCommunityIcons name="arrow-bottom-left" size={14} color="#FFF" />
+                      <Text style={styles.rulePillText}>Rule 1</Text>
                     </View>
-                    <Text style={[styles.exampleDesc, { color: textMuted }]}>
-                      {item.desc}
+                    <Text
+                      style={[
+                        styles.ruleCardTitle,
+                        { color: isDarkMode ? '#34D399' : '#065F46' },
+                      ]}
+                    >
+                      Money Coming In (Income / Cash Received)
                     </Text>
-                    <View style={[styles.codeBadge, { backgroundColor: codeBg }]}>
-                      <Text style={[styles.codeText, { color: textColor }]}>
-                        {item.input}
+                  </View>
+
+                  <Text
+                    style={[
+                      styles.ruleExplanationText,
+                      { color: isDarkMode ? '#D1FAE5' : '#064E3B' },
+                    ]}
+                  >
+                    Just write what it is and the amount. No minus sign needed!
+                  </Text>
+
+                  <View
+                    style={[
+                      styles.exampleVisualRow,
+                      { backgroundColor: isDarkMode ? '#0A3B2C' : '#FFFFFF' },
+                    ]}
+                  >
+                    <View style={styles.typeBox}>
+                      <Text style={styles.typeLabel}>You write:</Text>
+                      <Text style={[styles.typeCode, { color: textColor }]}>Dinner 450</Text>
+                    </View>
+                    <MaterialCommunityIcons name="arrow-right" size={18} color="#10B981" />
+                    <View style={styles.resultBox}>
+                      <Text style={styles.resultLabel}>Result:</Text>
+                      <Text style={[styles.resultGreen, { color: '#10B981' }]}>+ ₹450</Text>
+                    </View>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.exampleVisualRow,
+                      { backgroundColor: isDarkMode ? '#0A3B2C' : '#FFFFFF' },
+                    ]}
+                  >
+                    <View style={styles.typeBox}>
+                      <Text style={styles.typeLabel}>You write:</Text>
+                      <Text style={[styles.typeCode, { color: textColor }]}>Salary 25000</Text>
+                    </View>
+                    <MaterialCommunityIcons name="arrow-right" size={18} color="#10B981" />
+                    <View style={styles.resultBox}>
+                      <Text style={styles.resultLabel}>Result:</Text>
+                      <Text style={[styles.resultGreen, { color: '#10B981' }]}>+ ₹25,000</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Rule 2: Money Out */}
+                <View
+                  style={[
+                    styles.simpleRuleCard,
+                    {
+                      backgroundColor: isDarkMode ? '#2D0F16' : '#FFF1F2',
+                      borderColor: isDarkMode ? '#881337' : '#FECDD3',
+                    },
+                  ]}
+                >
+                  <View style={styles.ruleBadgeRow}>
+                    <View style={[styles.rulePill, { backgroundColor: '#EF4444' }]}>
+                      <MaterialCommunityIcons name="arrow-top-right" size={14} color="#FFF" />
+                      <Text style={styles.rulePillText}>Rule 2</Text>
+                    </View>
+                    <Text
+                      style={[
+                        styles.ruleCardTitle,
+                        { color: isDarkMode ? '#FB7185' : '#9F1239' },
+                      ]}
+                    >
+                      Money Going Out (Expense / Cash Spent)
+                    </Text>
+                  </View>
+
+                  <Text
+                    style={[
+                      styles.ruleExplanationText,
+                      { color: isDarkMode ? '#FFE4E6' : '#881337' },
+                    ]}
+                  >
+                    Put a minus sign <Text style={{ fontWeight: '800' }}>(-)</Text> with the amount whenever you spend money!
+                  </Text>
+
+                  <View
+                    style={[
+                      styles.exampleVisualRow,
+                      { backgroundColor: isDarkMode ? '#3B131D' : '#FFFFFF' },
+                    ]}
+                  >
+                    <View style={styles.typeBox}>
+                      <Text style={styles.typeLabel}>You write:</Text>
+                      <Text style={[styles.typeCode, { color: textColor }]}>Dinner - 450</Text>
+                    </View>
+                    <MaterialCommunityIcons name="arrow-right" size={18} color="#EF4444" />
+                    <View style={styles.resultBox}>
+                      <Text style={styles.resultLabel}>Result:</Text>
+                      <Text style={[styles.resultRed, { color: '#EF4444' }]}>− ₹450</Text>
+                    </View>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.exampleVisualRow,
+                      { backgroundColor: isDarkMode ? '#3B131D' : '#FFFFFF' },
+                    ]}
+                  >
+                    <View style={styles.typeBox}>
+                      <Text style={styles.typeLabel}>You write:</Text>
+                      <Text style={[styles.typeCode, { color: textColor }]}>Tea -20</Text>
+                    </View>
+                    <MaterialCommunityIcons name="arrow-right" size={18} color="#EF4444" />
+                    <View style={styles.resultBox}>
+                      <Text style={styles.resultLabel}>Result:</Text>
+                      <Text style={[styles.resultRed, { color: '#EF4444' }]}>− ₹20</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* HELPFUL DAILY TRICKS */}
+                <Text style={[styles.mainSectionTitle, { color: textColor, marginTop: 4 }]}>
+                  Helpful Everyday Features:
+                </Text>
+
+                <View
+                  style={[
+                    styles.tipsContainer,
+                    {
+                      backgroundColor: isDarkMode ? '#1A2234' : '#F8FAFC',
+                      borderColor: rowBorder,
+                    },
+                  ]}
+                >
+                  {/* Tip 1: Math calculation */}
+                  <View style={styles.tipRow}>
+                    <View
+                      style={[
+                        styles.tipIconCircle,
+                        { backgroundColor: isDarkMode ? '#1E293B' : '#EFF6FF' },
+                      ]}
+                    >
+                      <MaterialCommunityIcons name="calculator" size={18} color="#3B82F6" />
+                    </View>
+                    <View style={styles.tipContent}>
+                      <Text style={[styles.tipTitle, { color: textColor }]}>
+                        ⚡ Automatic Math (Multiplication & Plus)
+                      </Text>
+                      <Text style={[styles.tipText, { color: textMuted }]}>
+                        Buying 5 items at ₹100? Just write <Text style={styles.boldSnippet}>100*5</Text> ➔ gives <Text style={{ color: '#10B981', fontWeight: '700' }}>+ ₹500</Text>.
+                        {'\n'}Adding two bills? Write <Text style={styles.boldSnippet}>1000 + 200</Text> ➔ gives <Text style={{ color: '#10B981', fontWeight: '700' }}>+ ₹1,200</Text>.
                       </Text>
                     </View>
                   </View>
 
-                  <View style={styles.exampleRight}>
+                  <View style={[styles.tipDivider, { backgroundColor: rowBorder }]} />
+
+                  {/* Tip 2: Units like kg, litre, gram */}
+                  <View style={styles.tipRow}>
                     <View
                       style={[
-                        styles.resultBadge,
-                        {
-                          backgroundColor:
-                            item.isIncome === true
-                              ? isDarkMode ? '#064E3B' : '#ECFDF5'
-                              : item.isIncome === false
-                                ? isDarkMode ? '#4C0519' : '#FFF1F2'
-                                : isDarkMode ? '#334155' : '#F1F5F9',
-                          borderColor:
-                            item.isIncome === true
-                              ? isDarkMode ? '#065F46' : '#A7F3D0'
-                              : item.isIncome === false
-                                ? isDarkMode ? '#881337' : '#FECDD3'
-                                : isDarkMode ? '#475569' : '#CBD5E1',
-                        },
+                        styles.tipIconCircle,
+                        { backgroundColor: isDarkMode ? '#241433' : '#F5F3FF' },
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.resultBadgeText,
-                          {
-                            color:
-                              item.isIncome === true
-                                ? isDarkMode ? '#34D399' : '#059669'
-                                : item.isIncome === false
-                                  ? isDarkMode ? '#FB7185' : '#E11D48'
-                                  : textMuted,
-                          },
-                        ]}
-                      >
-                        {item.result}
+                      <MaterialCommunityIcons name="scale" size={18} color="#8B5CF6" />
+                    </View>
+                    <View style={styles.tipContent}>
+                      <Text style={[styles.tipTitle, { color: textColor }]}>
+                        ⚖️ Weights and Quantities (kg, Litre, Gram)
+                      </Text>
+                      <Text style={[styles.tipText, { color: textMuted }]}>
+                        You can freely write units! <Text style={styles.boldSnippet}>Rice 25kg 1200</Text> or <Text style={styles.boldSnippet}>Milk 2L -60</Text>. The app automatically knows the last number is your money!
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={[styles.tipDivider, { backgroundColor: rowBorder }]} />
+
+                  {/* Tip 3: Plain notes */}
+                  <View style={styles.tipRow}>
+                    <View
+                      style={[
+                        styles.tipIconCircle,
+                        { backgroundColor: isDarkMode ? '#2D2006' : '#FEF3C7' },
+                      ]}
+                    >
+                      <MaterialCommunityIcons name="format-title" size={18} color="#F59E0B" />
+                    </View>
+                    <View style={styles.tipContent}>
+                      <Text style={[styles.tipTitle, { color: textColor }]}>
+                        📝 Headings & Plain Notes
+                      </Text>
+                      <Text style={[styles.tipText, { color: textMuted }]}>
+                        Lines without numbers (like <Text style={styles.boldSnippet}>Trip to Village</Text> or <Text style={styles.boldSnippet}>Shopping List</Text>) stay as clean notes with no calculation.
                       </Text>
                     </View>
                   </View>
                 </View>
-              ))}
+
+                {/* REAL-LIFE EXAMPLES LIST */}
+                <Text style={[styles.mainSectionTitle, { color: textColor, marginTop: 4 }]}>
+                  Daily Life Examples:
+                </Text>
+
+                <View style={[styles.examplesList, { borderColor: rowBorder }]}>
+                  {EASY_EXAMPLES.map((item, idx) => {
+                    const isIncome = item.type === 'income';
+                    const isExpense = item.type === 'expense';
+                    const isNote = item.type === 'note';
+
+                    const badgeBg = isIncome
+                      ? isDarkMode ? '#064E3B' : '#ECFDF5'
+                      : isExpense
+                        ? isDarkMode ? '#4C0519' : '#FFF1F2'
+                        : isDarkMode ? '#1E293B' : '#F1F5F9';
+
+                    const badgeBorder = isIncome
+                      ? isDarkMode ? '#065F46' : '#A7F3D0'
+                      : isExpense
+                        ? isDarkMode ? '#881337' : '#FECDD3'
+                        : isDarkMode ? '#334155' : '#CBD5E1';
+
+                    const badgeColor = isIncome
+                      ? isDarkMode ? '#34D399' : '#059669'
+                      : isExpense
+                        ? isDarkMode ? '#FB7185' : '#E11D48'
+                        : textMuted;
+
+                    return (
+                      <View
+                        key={idx}
+                        style={[
+                          styles.exampleRow,
+                          {
+                            borderBottomColor: rowBorder,
+                            borderBottomWidth: idx === EASY_EXAMPLES.length - 1 ? 0 : 1,
+                            backgroundColor: idx % 2 === 0
+                              ? isDarkMode ? '#141C2B' : '#FAFAFA'
+                              : 'transparent',
+                          },
+                        ]}
+                      >
+                        <View style={styles.exampleLeft}>
+                          <View style={styles.exampleHeaderRow}>
+                            <MaterialCommunityIcons
+                              name={item.icon}
+                              size={15}
+                              color={isIncome ? '#10B981' : isExpense ? '#EF4444' : textMuted}
+                              style={{ marginRight: 6 }}
+                            />
+                            <View style={[styles.codeBadge, { backgroundColor: codeBg }]}>
+                              <Text style={[styles.codeText, { color: textColor }]}>
+                                {item.input}
+                              </Text>
+                            </View>
+                          </View>
+                          <Text style={[styles.exampleMeaning, { color: textMuted }]}>
+                            {item.meaning}
+                          </Text>
+                        </View>
+
+                        <View style={styles.exampleRight}>
+                          <View
+                            style={[
+                              styles.resultBadge,
+                              {
+                                backgroundColor: badgeBg,
+                                borderColor: badgeBorder,
+                              },
+                            ]}
+                          >
+                            <Text style={[styles.resultBadgeText, { color: badgeColor }]}>
+                              {item.result}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+
+                {/* BOTTOM SUMMARY CARD EXPLANATION */}
+                <View
+                  style={[
+                    styles.summaryHelpBox,
+                    {
+                      backgroundColor: isDarkMode ? '#162032' : '#F0F9FF',
+                      borderColor: isDarkMode ? '#1E3A8A' : '#BAE6FD',
+                    },
+                  ]}
+                >
+                  <Text style={[styles.summaryHelpTitle, { color: textColor }]}>
+                    What the Cards at the Bottom Mean:
+                  </Text>
+
+                  <View style={styles.summaryHelpItem}>
+                    <Text style={styles.summaryHelpIcon}>🟢</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.summaryHelpHeading, { color: '#10B981' }]}>
+                        Money In
+                      </Text>
+                      <Text style={[styles.summaryHelpText, { color: textMuted }]}>
+                        Total money you got, earned, or received.
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.summaryHelpItem}>
+                    <Text style={styles.summaryHelpIcon}>🔴</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.summaryHelpHeading, { color: '#EF4444' }]}>
+                        Money Out
+                      </Text>
+                      <Text style={[styles.summaryHelpText, { color: textMuted }]}>
+                        Total money you spent, bought, or paid out.
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.summaryHelpItem}>
+                    <Text style={styles.summaryHelpIcon}>⚖️</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[
+                          styles.summaryHelpHeading,
+                          { color: isDarkMode ? '#60A5FA' : (Colors.primary || '#2563EB') },
+                        ]}
+                      >
+                        Remaining Balance
+                      </Text>
+                      <Text style={[styles.summaryHelpText, { color: textMuted }]}>
+                        Money In minus Money Out (what is left in your pocket):
+                        {'\n'}• If <Text style={{ color: '#10B981', fontWeight: '700' }}>Green</Text>: You saved money! 🎉
+                        {'\n'}• If <Text style={{ color: '#EF4444', fontWeight: '700' }}>Red</Text>: You spent more than you earned.
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </ScrollView>
+
+              {/* Bottom Footer Actions */}
+              <View style={[styles.footer, { borderTopColor: rowBorder }]}>
+                <TouchableOpacity
+                  style={[styles.insertBtn, { backgroundColor: Colors.primary || '#3B82F6' }]}
+                  onPress={() => {
+                    if (onInsertTemplate) {
+                      onInsertTemplate(SAMPLE_PAPER_LEDGER_TEXT);
+                    }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <MaterialCommunityIcons name="content-paste" size={17} color="#FFF" />
+                  <Text style={styles.insertBtnText}>Try Sample in Notepad</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.closeFooterBtn, { borderColor: rowBorder }]}
+                  onPress={onClose}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.closeFooterBtnText, { color: textColor }]}>Got It</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-
-            {/* Summary Explanation Box */}
-            <View style={[styles.summaryBox, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: rowBorder }]}>
-              <Text style={[styles.summaryBoxTitle, { color: textColor }]}>
-                What the Bottom Numbers Mean:
-              </Text>
-              <Text style={[styles.summaryBoxLine, { color: textMuted }]}>
-                🟢 <Text style={{ fontWeight: '700', color: isDarkMode ? '#34D399' : '#059669' }}>Money In</Text>: Total amount earned or received.
-              </Text>
-              <Text style={[styles.summaryBoxLine, { color: textMuted }]}>
-                🔴 <Text style={{ fontWeight: '700', color: isDarkMode ? '#FB7185' : '#E11D48' }}>Money Out</Text>: Total amount spent or paid.
-              </Text>
-              <Text style={[styles.summaryBoxLine, { color: textMuted }]}>
-                ⚖️ <Text style={{ fontWeight: '700', color: Colors.primary }}>Remaining Balance</Text>: Money In minus Money Out.
-              </Text>
-              <Text style={[styles.summaryBoxLine, { color: textMuted }]}>
-                • If balance is positive, it shows <Text style={{ fontWeight: '700', color: '#10B981' }}>Saved</Text>.
-              </Text>
-              <Text style={[styles.summaryBoxLine, { color: textMuted }]}>
-                • If you spent more than you earned, it shows <Text style={{ fontWeight: '700', color: '#EF4444' }}>Overspent</Text>.
-              </Text>
-            </View>
-          </ScrollView>
-
-          {/* Footer Actions */}
-          <View style={[styles.footer, { borderTopColor: rowBorder }]}>
-            <TouchableOpacity
-              style={[styles.insertBtn, { backgroundColor: Colors.primary }]}
-              onPress={() => {
-                if (onInsertTemplate) {
-                  onInsertTemplate(SAMPLE_PAPER_LEDGER_TEXT);
-                }
-              }}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="content-paste" size={16} color="#FFF" />
-              <Text style={styles.insertBtnText}>Try Sample Notes in Smart Notepad</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.closeFooterBtn, { borderColor: rowBorder }]}
-              onPress={onClose}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.closeFooterBtnText, { color: textColor }]}>Got It</Text>
-            </TouchableOpacity>
-          </View>
+          </TouchableWithoutFeedback>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }
@@ -321,103 +570,191 @@ export default function SmartNotepadGuideModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'flex-end',
   },
-  modalCard: {
-    width: '100%',
-    maxWidth: 480,
-    maxHeight: '90%',
-    borderRadius: 16,
-    overflow: 'hidden',
+  bottomSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    maxHeight: Platform.OS === 'web' ? '88vh' : '88%',
+    paddingTop: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  dragHandle: {
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 10,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 18,
+    paddingBottom: 14,
     borderBottomWidth: 1,
   },
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: 10,
+    gap: 12,
   },
   headerIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FEF3C7',
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 15.5,
+    fontSize: 16.5,
     fontWeight: '700',
   },
   headerSubtitle: {
-    fontSize: 12,
-    marginTop: 1,
+    fontSize: 12.5,
+    marginTop: 2,
   },
   closeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   scrollBody: {
-    padding: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
     gap: 14,
   },
-  ruleBox: {
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 6,
-  },
-  ruleBoxTitle: {
-    fontSize: 13,
+  mainSectionTitle: {
+    fontSize: 14,
     fontWeight: '800',
-    marginBottom: 2,
     letterSpacing: 0.2,
   },
-  ruleItem: {
+  simpleRuleCard: {
+    borderRadius: 14,
+    borderWidth: 1.5,
+    padding: 14,
+    gap: 10,
+  },
+  ruleBadgeRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
+    alignItems: 'center',
+    gap: 8,
   },
-  ruleBullet: {
+  rulePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    gap: 4,
+  },
+  rulePillText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  ruleCardTitle: {
+    fontSize: 13.5,
     fontWeight: '700',
-    fontSize: 12.5,
-    color: '#3B82F6',
-  },
-  ruleText: {
-    fontSize: 12.5,
     flex: 1,
-    lineHeight: 18,
   },
-  monoText: {
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  ruleExplanationText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '500',
+  },
+  exampleVisualRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  typeBox: {
+    flex: 1,
+  },
+  typeLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    textTransform: 'uppercase',
     fontWeight: '600',
   },
-  sectionHeading: {
-    fontSize: 13,
+  typeCode: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  resultBox: {
+    alignItems: 'flex-end',
+    minWidth: 80,
+  },
+  resultLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    textTransform: 'uppercase',
+    fontWeight: '600',
+  },
+  resultGreen: {
+    fontSize: 14.5,
     fontWeight: '800',
-    letterSpacing: 0.3,
-    marginTop: 4,
+  },
+  resultRed: {
+    fontSize: 14.5,
+    fontWeight: '800',
+  },
+  tipsContainer: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    gap: 12,
+  },
+  tipRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  tipIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  tipContent: {
+    flex: 1,
+    gap: 3,
+  },
+  tipTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  tipText: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  boldSnippet: {
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  tipDivider: {
+    height: 1,
+    width: '100%',
   },
   examplesList: {
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     overflow: 'hidden',
   },
@@ -426,98 +763,108 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     gap: 10,
   },
   exampleLeft: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
-  exampleTitleRow: {
+  exampleHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  exampleTitle: {
-    fontSize: 12.5,
-    fontWeight: '700',
-  },
-  exampleDesc: {
-    fontSize: 11,
-  },
   codeBadge: {
-    alignSelf: 'flex-start',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
-    marginTop: 4,
   },
   codeText: {
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     fontWeight: '700',
+  },
+  exampleMeaning: {
+    fontSize: 11.5,
+    marginLeft: 2,
   },
   exampleRight: {
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
   resultBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
-    minWidth: 70,
+    minWidth: 80,
     alignItems: 'center',
   },
   resultBadgeText: {
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: '800',
   },
-  summaryBox: {
-    padding: 12,
-    borderRadius: 12,
+  summaryHelpBox: {
+    padding: 14,
+    borderRadius: 14,
     borderWidth: 1,
-    gap: 4,
+    gap: 8,
   },
-  summaryBoxTitle: {
-    fontSize: 12.5,
+  summaryHelpTitle: {
+    fontSize: 13,
     fontWeight: '700',
     marginBottom: 4,
   },
-  summaryBoxLine: {
-    fontSize: 12,
-    lineHeight: 18,
+  summaryHelpItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  summaryHelpIcon: {
+    fontSize: 14,
+    marginTop: 1,
+  },
+  summaryHelpHeading: {
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  summaryHelpText: {
+    fontSize: 11.5,
+    lineHeight: 17,
   },
   footer: {
-    padding: 12,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 32 : 18,
     borderTopWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   insertBtn: {
-    flex: 1,
+    flex: 1.4,
+    height: 44,
+    borderRadius: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 8,
-    gap: 6,
+    gap: 8,
   },
   insertBtnText: {
     color: '#FFF',
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '700',
   },
   closeFooterBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    flex: 1,
+    height: 44,
+    borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   closeFooterBtnText: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '600',
   },
 });
