@@ -573,35 +573,23 @@ export default function SmartNotepadScreen({ navigation }) {
               How to Use
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toolButton, { backgroundColor: Colors.primary }]}
-            onPress={() => setIsMonthModalVisible(true)}
-            activeOpacity={0.8}
-            disabled={importing}
-          >
-            {importing ? (
-              <ActivityIndicator size="small" color="#FFF" />
-            ) : (
-              <MaterialCommunityIcons name="calendar-import" size={16} color="#FFF" />
-            )}
-            <Text style={styles.toolButtonText}>Import Month</Text>
-          </TouchableOpacity>
+
 
           <TouchableOpacity
             style={[
               styles.toolButtonOutline,
               isSaveAndClearEnabled
                 ? {
-                    borderColor: activeSheetId ? '#10B981' : (Colors.primary || '#4B7CF3'),
-                    backgroundColor: activeSheetId
-                      ? isDarkMode ? '#0A2E20' : '#ECFDF5'
-                      : isDarkMode ? '#14223A' : '#EFF6FF',
-                  }
+                  borderColor: activeSheetId ? '#10B981' : (Colors.primary || '#4B7CF3'),
+                  backgroundColor: activeSheetId
+                    ? isDarkMode ? '#0A2E20' : '#ECFDF5'
+                    : isDarkMode ? '#14223A' : '#EFF6FF',
+                }
                 : {
-                    borderColor: isDarkMode ? '#2D3748' : '#E2E8F0',
-                    backgroundColor: isDarkMode ? '#171E2B' : '#F8FAFC',
-                    opacity: 0.45,
-                  },
+                  borderColor: isDarkMode ? '#2D3748' : '#E2E8F0',
+                  backgroundColor: isDarkMode ? '#171E2B' : '#F8FAFC',
+                  opacity: 0.45,
+                },
             ]}
             onPress={handlePromptSave}
             disabled={!isSaveAndClearEnabled}
@@ -629,37 +617,19 @@ export default function SmartNotepadScreen({ navigation }) {
               {activeSheetId ? 'Update' : 'Save'}
             </Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.toolButtonOutline,
-              {
-                borderColor: isDarkMode ? '#3B4863' : '#CBD5E1',
-                backgroundColor: isDarkMode ? '#171E2B' : '#FFFFFF',
-              },
-            ]}
-            onPress={() => setIsSavedSheetsModalVisible(true)}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="book-open-outline" size={16} color={theme.textPrimary} />
-            <Text style={[styles.toolButtonOutlineText, { color: theme.textPrimary }]}>
-              Sheets ({savedSheets.length})
-            </Text>
-          </TouchableOpacity>
-
           <TouchableOpacity
             style={[
               styles.toolButtonOutline,
               isSaveAndClearEnabled
                 ? {
-                    borderColor: isDarkMode ? '#4B252C' : '#FCA5A5',
-                    backgroundColor: isDarkMode ? '#231518' : '#FEF2F2',
-                  }
+                  borderColor: isDarkMode ? '#4B252C' : '#FCA5A5',
+                  backgroundColor: isDarkMode ? '#231518' : '#FEF2F2',
+                }
                 : {
-                    borderColor: isDarkMode ? '#2D3748' : '#E2E8F0',
-                    backgroundColor: isDarkMode ? '#171E2B' : '#F8FAFC',
-                    opacity: 0.45,
-                  },
+                  borderColor: isDarkMode ? '#2D3748' : '#E2E8F0',
+                  backgroundColor: isDarkMode ? '#171E2B' : '#F8FAFC',
+                  opacity: 0.45,
+                },
             ]}
             onPress={handleClearAll}
             disabled={!isSaveAndClearEnabled}
@@ -679,6 +649,36 @@ export default function SmartNotepadScreen({ navigation }) {
               ]}
             >
               Clear
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toolButton, { backgroundColor: Colors.primary }]}
+            onPress={() => setIsMonthModalVisible(true)}
+            activeOpacity={0.8}
+            disabled={importing}
+          >
+            {importing ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <MaterialCommunityIcons name="calendar-import" size={16} color="#FFF" />
+            )}
+            <Text style={styles.toolButtonText}>Import Month</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.toolButtonOutline,
+              {
+                borderColor: isDarkMode ? '#3B4863' : '#CBD5E1',
+                backgroundColor: isDarkMode ? '#171E2B' : '#FFFFFF',
+              },
+            ]}
+            onPress={() => setIsSavedSheetsModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="book-open-outline" size={16} color={theme.textPrimary} />
+            <Text style={[styles.toolButtonOutlineText, { color: theme.textPrimary }]}>
+              Sheets ({savedSheets.length})
             </Text>
           </TouchableOpacity>
 
