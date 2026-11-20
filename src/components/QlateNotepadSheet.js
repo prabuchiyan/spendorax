@@ -1,39 +1,111 @@
-import React from 'react';
+import React, { useRef, useImperativeHandle, forwardRef, useState } from 'react';
 import {
   View,
   Text,
   TextInput,
+  TouchableOpacity,
   StyleSheet,
   Platform,
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-const LINE_HEIGHT = 40;
+function QlateNotepadSheet(
+  {
+    text,
+    onChangeText,
+    evaluatedDoc,
+    textInputRef,
+    isDarkMode,
+    textColor,
+    textMuted,
+    rowDividerColor,
+    colDividerColor,
+    tableHeaderBg,
+    cardBg,
+  },
+  ref
+) {
+  const [focusedIndex, setFocusedIndex] = useState(null);
+  const inputRefs = useRef([]);
 
-export default function QlateNotepadSheet({
-  text,
-  onChangeText,
-  evaluatedDoc,
-  textInputRef,
-  isDarkMode,
-  textColor,
-  textMuted,
-  rowDividerColor,
-  colDividerColor,
-  tableHeaderBg,
-  cardBg,
-}) {
-  const lines = evaluatedDoc.lines || [];
-  const lineCount = Math.max(lines.length, 6); // Keep at least 6 ruled lines visible for an inviting pad
+  const rawLines = (text || '').split('\n');
+  const evaluatedLines = (evaluatedDoc && evaluatedDoc.lines) || [];
 
-  // Ensure result rows match at least lineCount
-  const displayLineCount = Math.max(lines.length, 6);
-  const displayLines = Array.from({ length: displayLineCount }, (_, idx) => {
-    return lines[idx] || { lineNum: idx + 1, amount: null, resultText: '' };
-  });
+  // Maintain at least 6 ruled lines for the open notebook look
+  const displayLineCount = Math.max(rawLines.length, 6);
+
+  // Expose focus() to external refs (e.g. pencil FAB)
+  const forwardedRef = ref || textInputRef;
+  useImperativeHandle(forwardedRef, () => ({
+    focus: () => {
+      let targetIdx = rawLines.length - 1;
+      if (targetIdx < 0) targetIdx = 0;
+      // If the last line already has text, append a new line
+      if (rawLines[targetIdx] && rawLines[targetIdx].trim().length > 0) {
+        const nextLines = [...rawLines, ''];
+        onChangeText(nextLines.join('\n'));
+        targetIdx = nextLines.length - 1;
+      }
+      setTimeout(() => {
+        inputRefs.current[targetIdx]?.focus();
+      }, 50);
+    },
+  }));
+
+  const handleLineChange = (index, newVal) => {
+    if (newVal.includes('\n')) {
+      // User pressed Enter on keyboard or pasted multiline text
+      const parts = newVal.split('\n');
+      const currentLines = (text || '').split('\n');
+      while (currentLines.length <= index) {
+        currentLines.push('');
+      }
+      currentLines.splice(index, 1, ...parts);
+      onChangeText(currentLines.join('\n'));
+
+      const nextIndex = index + parts.length - 1;
+      setTimeout(() => {
+        inputRefs.current[nextIndex]?.focus();
+      }, 30);
+      return;
+    }
+
+    const currentLines = (text || '').split('\n');
+    while (currentLines.length <= index) {
+      currentLines.push('');
+    }
+    currentLines[index] = newVal;
+    onChangeText(currentLines.join('\n'));
+  };
+
+  const handleKeyPress = (index, e) => {
+    if (e?.nativeEvent?.key === 'Backspace') {
+      const currentLines = (text || '').split('\n');
+      // If the line is empty and document has more than 1 line, delete line and focus previous
+      if (currentLines[index] === '' && currentLines.length > 1) {
+        currentLines.splice(index, 1);
+        onChangeText(currentLines.join('\n'));
+        const prevIdx = Math.max(0, index - 1);
+        setTimeout(() => {
+          inputRefs.current[prevIdx]?.focus();
+        }, 30);
+      }
+    }
+  };
+
+  const handleAddLine = () => {
+    const currentLines = (text || '').split('\n');
+    currentLines.push('');
+    onChangeText(currentLines.join('\n'));
+    const nextIdx = currentLines.length - 1;
+    setTimeout(() => {
+      inputRefs.current[nextIdx]?.focus();
+    }, 50);
+  };
 
   return (
     <View style={styles.sheetWrapper}>
-      {/* Table Column Header: Notepad (Left ~80%) | Results (Right ~20%) - No row numbers gutter */}
+      {/* Table Column Header: NOTE / CALCULATION (PARAGRAPH) on Left | = AMOUNT on Right */}
       <View
         style={[
           styles.tableHeader,
@@ -43,109 +115,150 @@ export default function QlateNotepadSheet({
           },
         ]}
       >
-        <View style={[styles.headerColNote, { borderRightColor: colDividerColor }]}>
+        <View style={styles.headerColNote}>
           <Text style={[styles.headerLabel, { color: textMuted }]}>
-            NOTE / CALCULATION (TYPE FREELY)
+            NOTE / CALCULATION (PARAGRAPH)
           </Text>
         </View>
 
         <View style={styles.headerColResult}>
           <Text style={[styles.headerLabelRight, { color: textMuted }]}>
-            RESULT (₹)
+            = AMOUNT
           </Text>
         </View>
       </View>
 
-      {/* Main Parallel Notepad Body */}
+      {/* Main Ruled Rows: Each transaction is a single paragraph row */}
       <View style={[styles.sheetBody, { backgroundColor: cardBg }]}>
-        {/* Left: Continuous Multiline Text Document (Expanded Space like Qlate) */}
-        <View style={[styles.textCol, { borderRightColor: colDividerColor }]}>
-          {/* Subtle background ruled horizontal lines */}
-          <View style={StyleSheet.absoluteFill} pointerEvents="none">
-            {displayLines.map((_, idx) => (
-              <View
-                key={`rule_${idx}`}
-                style={[
-                  styles.ruledGuideline,
-                  { height: LINE_HEIGHT, borderBottomColor: rowDividerColor },
-                ]}
-              />
-            ))}
-          </View>
+        {Array.from({ length: displayLineCount }).map((_, idx) => {
+          const lineValue = rawLines[idx] !== undefined ? rawLines[idx] : '';
+          const evalItem = idx < evaluatedLines.length ? evaluatedLines[idx] : null;
+          const isEvaluated = evalItem && evalItem.amount !== null;
+          const isIncome = evalItem && evalItem.type === 'income';
+          const isFocused = focusedIndex === idx;
 
-          <TextInput
-            ref={textInputRef}
-            multiline
-            scrollEnabled={false}
-            textAlignVertical="top"
-            value={text}
-            onChangeText={onChangeText}
-            placeholder={`Type notes and calculations here...\nDinner 450\nSalary +50000\nGrocery Mart 100+25\nElectricity Bill 1200`}
-            placeholderTextColor={isDarkMode ? '#475569' : '#94A3B8'}
-            style={[
-              styles.multilineInput,
-              {
-                color: textColor,
-                minHeight: displayLineCount * LINE_HEIGHT,
-              },
-            ]}
-          />
-        </View>
+          return (
+            <View
+              key={`paragraph_row_${idx}`}
+              style={[
+                styles.paragraphRow,
+                {
+                  borderBottomColor: rowDividerColor,
+                  backgroundColor: isFocused
+                    ? (isDarkMode ? 'rgba(59, 130, 246, 0.08)' : 'rgba(37, 99, 235, 0.04)')
+                    : 'transparent',
+                },
+              ]}
+            >
+              {/* Left Column: Note and Math Expression (Wraps freely as a single paragraph) */}
+              <View style={styles.noteInputWrapper}>
+                <TextInput
+                  ref={(el) => {
+                    inputRefs.current[idx] = el;
+                  }}
+                  multiline
+                  scrollEnabled={false}
+                  textAlignVertical="center"
+                  value={lineValue}
+                  onChangeText={(val) => handleLineChange(idx, val)}
+                  onKeyPress={(e) => handleKeyPress(idx, e)}
+                  onFocus={() => setFocusedIndex(idx)}
+                  onBlur={() => setFocusedIndex((prev) => (prev === idx ? null : prev))}
+                  placeholder={
+                    idx === 0 && !text
+                      ? 'Type note & calculation, e.g. Dinner -450'
+                      : ''
+                  }
+                  placeholderTextColor={isDarkMode ? '#475569' : '#94A3B8'}
+                  style={[
+                    styles.noteInput,
+                    {
+                      color: textColor,
+                    },
+                  ]}
+                />
+              </View>
 
-        {/* Right Margin: Parallel Live Calculation Results Column (Compact ~78px) */}
-        <View style={styles.resultsCol}>
-          {displayLines.map((lineItem, idx) => {
-            const isEvaluated = idx < lines.length && lines[idx].amount !== null;
-            const item = lines[idx];
-            const isIncome = item && item.type === 'income';
-
-            return (
-              <View
-                key={`res_${idx}`}
-                style={[
-                  styles.lineCellResult,
-                  { height: LINE_HEIGHT, borderBottomColor: rowDividerColor },
-                ]}
-              >
+              {/* Right Column: Inline Equals Sign and Amount Pill (Attached to THIS paragraph) */}
+              <View style={styles.resultColWrapper}>
                 {isEvaluated ? (
-                  <View
-                    style={[
-                      styles.resultPill,
-                      {
-                        backgroundColor: isIncome
-                          ? (isDarkMode ? '#064E3B' : '#ECFDF5')
-                          : (isDarkMode ? '#4C0519' : '#FFF1F2'),
-                        borderColor: isIncome
-                          ? (isDarkMode ? '#065F46' : '#A7F3D0')
-                          : (isDarkMode ? '#881337' : '#FECDD3'),
-                      },
-                    ]}
-                  >
+                  <View style={styles.resultInner}>
                     <Text
                       style={[
-                        styles.resultPillText,
+                        styles.equalsSymbol,
+                        { color: isDarkMode ? '#94A3B8' : '#64748B' },
+                      ]}
+                    >
+                      =
+                    </Text>
+                    <View
+                      style={[
+                        styles.resultPill,
                         {
-                          color: isIncome
-                            ? (isDarkMode ? '#34D399' : '#059669')
-                            : (isDarkMode ? '#FB7185' : '#E11D48'),
+                          backgroundColor: isIncome
+                            ? (isDarkMode ? '#064E3B' : '#ECFDF5')
+                            : (isDarkMode ? '#4C0519' : '#FFF1F2'),
+                          borderColor: isIncome
+                            ? (isDarkMode ? '#065F46' : '#A7F3D0')
+                            : (isDarkMode ? '#881337' : '#FECDD3'),
                         },
                       ]}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.7}
                     >
-                      {item.resultText}
-                    </Text>
+                      <Text
+                        style={[
+                          styles.resultPillText,
+                          {
+                            color: isIncome
+                              ? (isDarkMode ? '#34D399' : '#059669')
+                              : (isDarkMode ? '#FB7185' : '#E11D48'),
+                          },
+                        ]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.7}
+                      >
+                        {evalItem.resultText}
+                      </Text>
+                    </View>
                   </View>
                 ) : null}
               </View>
-            );
-          })}
-        </View>
+            </View>
+          );
+        })}
+
+        {/* Add Line Action Button */}
+        <TouchableOpacity
+          style={[
+            styles.addLineBtn,
+            {
+              borderTopColor: rowDividerColor,
+            },
+          ]}
+          onPress={handleAddLine}
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons
+            name="plus-circle-outline"
+            size={16}
+            color={isDarkMode ? '#60A5FA' : '#2563EB'}
+            style={styles.addLineIcon}
+          />
+          <Text
+            style={[
+              styles.addLineText,
+              { color: isDarkMode ? '#60A5FA' : '#2563EB' },
+            ]}
+          >
+            Add Line
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 }
+
+export default forwardRef(QlateNotepadSheet);
 
 const styles = StyleSheet.create({
   sheetWrapper: {
@@ -162,73 +275,79 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     justifyContent: 'center',
-    paddingLeft: 10,
-    borderRightWidth: 1,
+    paddingLeft: 12,
   },
   headerColResult: {
-    width: 78,
+    width: 96,
     height: '100%',
     justifyContent: 'center',
     alignItems: 'flex-end',
-    paddingRight: 8,
+    paddingRight: 10,
   },
   headerLabel: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '800',
     letterSpacing: 0.6,
   },
   headerLabelRight: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '800',
     letterSpacing: 0.6,
   },
   sheetBody: {
+    position: 'relative',
+  },
+  paragraphRow: {
     flexDirection: 'row',
-    alignItems: 'stretch',
-    position: 'relative',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    minHeight: 44,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
   },
-  textCol: {
+  noteInputWrapper: {
     flex: 1,
-    borderRightWidth: 1,
-    position: 'relative',
-  },
-  resultsCol: {
-    width: 78,
-  },
-  lineCellResult: {
+    paddingRight: 8,
     justifyContent: 'center',
-    alignItems: 'flex-end',
-    paddingRight: 6,
-    borderBottomWidth: 1,
   },
-  ruledGuideline: {
-    borderBottomWidth: 1,
-  },
-  multilineInput: {
-    fontSize: 13,
+  noteInput: {
+    fontSize: 13.5,
     fontWeight: '500',
-    lineHeight: LINE_HEIGHT,
-    paddingTop: 0,
-    paddingBottom: 0,
-    paddingHorizontal: 8,
+    lineHeight: 20,
+    paddingTop: 2,
+    paddingBottom: 2,
+    paddingHorizontal: 0,
     margin: 0,
     ...Platform.select({
       web: {
         outlineStyle: 'none',
-        whiteSpace: 'pre',
-        overflowX: 'auto',
       },
       android: {
         includeFontPadding: false,
       },
     }),
   },
+  resultColWrapper: {
+    width: 96,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  resultInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  equalsSymbol: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginRight: 4,
+  },
   resultPill: {
-    paddingHorizontal: 5,
-    paddingVertical: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
     borderRadius: 5,
     borderWidth: 1,
-    maxWidth: 72,
+    maxWidth: 78,
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
@@ -236,5 +355,19 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '700',
     letterSpacing: 0.1,
+  },
+  addLineBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  addLineIcon: {
+    marginRight: 6,
+  },
+  addLineText: {
+    fontSize: 12.5,
+    fontWeight: '600',
   },
 });

@@ -651,6 +651,7 @@ export default function SmartNotepadScreen({ navigation }) {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View
           style={[
@@ -769,8 +770,8 @@ export default function SmartNotepadScreen({ navigation }) {
             <View style={styles.fintechHeaderSubRow}>
               <Text style={[styles.fintechSubText, { color: textMuted }]} numberOfLines={1}>
                 {activeSheetLastUpdated
-                  ? `Saved Sheet • Updated ${new Date(activeSheetLastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} • Qlate Notepad active`
-                  : 'Type notes & math freely on the left • Live results calculate automatically on the right'}
+                  ? `Saved Sheet • Updated ${new Date(activeSheetLastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} • Smart Notepad active`
+                  : 'Type notes & math as paragraphs • Live results calculate at = amount on each line'}
               </Text>
             </View>
           </View>
