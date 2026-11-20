@@ -771,7 +771,7 @@ export default function SmartNotepadScreen({ navigation }) {
               <Text style={[styles.fintechSubText, { color: textMuted }]} numberOfLines={1}>
                 {activeSheetLastUpdated
                   ? `Saved Sheet • Updated ${new Date(activeSheetLastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} • Smart Notepad active`
-                  : 'Type notes & math as paragraphs • Live results calculate at = amount on each line'}
+                  : 'Type notes & math as paragraphs • Live results calculate automatically'}
               </Text>
             </View>
           </View>

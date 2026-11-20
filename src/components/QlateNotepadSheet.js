@@ -3,11 +3,9 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   StyleSheet,
   Platform,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 function QlateNotepadSheet(
   {
@@ -31,7 +29,7 @@ function QlateNotepadSheet(
   const rawLines = (text || '').split('\n');
   const evaluatedLines = (evaluatedDoc && evaluatedDoc.lines) || [];
 
-  // Maintain at least 6 ruled lines for the open notebook look
+  // Maintain at least 6 ruled lines for the open notebook stationery look
   const displayLineCount = Math.max(rawLines.length, 6);
 
   // Expose focus() to external refs (e.g. pencil FAB)
@@ -93,19 +91,9 @@ function QlateNotepadSheet(
     }
   };
 
-  const handleAddLine = () => {
-    const currentLines = (text || '').split('\n');
-    currentLines.push('');
-    onChangeText(currentLines.join('\n'));
-    const nextIdx = currentLines.length - 1;
-    setTimeout(() => {
-      inputRefs.current[nextIdx]?.focus();
-    }, 50);
-  };
-
   return (
     <View style={styles.sheetWrapper}>
-      {/* Table Column Header: NOTE / CALCULATION (PARAGRAPH) on Left | = AMOUNT on Right */}
+      {/* Table Column Header: NOTE / CALCULATION (PARAGRAPH) on Left | AMOUNT (₹) on Right */}
       <View
         style={[
           styles.tableHeader,
@@ -123,7 +111,7 @@ function QlateNotepadSheet(
 
         <View style={styles.headerColResult}>
           <Text style={[styles.headerLabelRight, { color: textMuted }]}>
-            = AMOUNT
+            AMOUNT (₹)
           </Text>
         </View>
       </View>
@@ -179,80 +167,43 @@ function QlateNotepadSheet(
                 />
               </View>
 
-              {/* Right Column: Inline Equals Sign and Amount Pill (Attached to THIS paragraph) */}
+              {/* Right Column: Amount Pill (Attached to THIS paragraph - No '=' symbol) */}
               <View style={styles.resultColWrapper}>
                 {isEvaluated ? (
-                  <View style={styles.resultInner}>
+                  <View
+                    style={[
+                      styles.resultPill,
+                      {
+                        backgroundColor: isIncome
+                          ? (isDarkMode ? '#064E3B' : '#ECFDF5')
+                          : (isDarkMode ? '#4C0519' : '#FFF1F2'),
+                        borderColor: isIncome
+                          ? (isDarkMode ? '#065F46' : '#A7F3D0')
+                          : (isDarkMode ? '#881337' : '#FECDD3'),
+                      },
+                    ]}
+                  >
                     <Text
                       style={[
-                        styles.equalsSymbol,
-                        { color: isDarkMode ? '#94A3B8' : '#64748B' },
-                      ]}
-                    >
-                      =
-                    </Text>
-                    <View
-                      style={[
-                        styles.resultPill,
+                        styles.resultPillText,
                         {
-                          backgroundColor: isIncome
-                            ? (isDarkMode ? '#064E3B' : '#ECFDF5')
-                            : (isDarkMode ? '#4C0519' : '#FFF1F2'),
-                          borderColor: isIncome
-                            ? (isDarkMode ? '#065F46' : '#A7F3D0')
-                            : (isDarkMode ? '#881337' : '#FECDD3'),
+                          color: isIncome
+                            ? (isDarkMode ? '#34D399' : '#059669')
+                            : (isDarkMode ? '#FB7185' : '#E11D48'),
                         },
                       ]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.7}
                     >
-                      <Text
-                        style={[
-                          styles.resultPillText,
-                          {
-                            color: isIncome
-                              ? (isDarkMode ? '#34D399' : '#059669')
-                              : (isDarkMode ? '#FB7185' : '#E11D48'),
-                          },
-                        ]}
-                        numberOfLines={1}
-                        adjustsFontSizeToFit
-                        minimumFontScale={0.7}
-                      >
-                        {evalItem.resultText}
-                      </Text>
-                    </View>
+                      {evalItem.resultText}
+                    </Text>
                   </View>
                 ) : null}
               </View>
             </View>
           );
         })}
-
-        {/* Add Line Action Button */}
-        <TouchableOpacity
-          style={[
-            styles.addLineBtn,
-            {
-              borderTopColor: rowDividerColor,
-            },
-          ]}
-          onPress={handleAddLine}
-          activeOpacity={0.7}
-        >
-          <MaterialCommunityIcons
-            name="plus-circle-outline"
-            size={16}
-            color={isDarkMode ? '#60A5FA' : '#2563EB'}
-            style={styles.addLineIcon}
-          />
-          <Text
-            style={[
-              styles.addLineText,
-              { color: isDarkMode ? '#60A5FA' : '#2563EB' },
-            ]}
-          >
-            Add Line
-          </Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -278,7 +229,7 @@ const styles = StyleSheet.create({
     paddingLeft: 12,
   },
   headerColResult: {
-    width: 96,
+    width: 84,
     height: '100%',
     justifyContent: 'center',
     alignItems: 'flex-end',
@@ -328,19 +279,9 @@ const styles = StyleSheet.create({
     }),
   },
   resultColWrapper: {
-    width: 96,
+    width: 84,
     alignItems: 'flex-end',
     justifyContent: 'center',
-  },
-  resultInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  equalsSymbol: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginRight: 4,
   },
   resultPill: {
     paddingHorizontal: 6,
@@ -355,19 +296,5 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '700',
     letterSpacing: 0.1,
-  },
-  addLineBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  addLineIcon: {
-    marginRight: 6,
-  },
-  addLineText: {
-    fontSize: 12.5,
-    fontWeight: '600',
   },
 });
