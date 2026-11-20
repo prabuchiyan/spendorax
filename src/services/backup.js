@@ -167,6 +167,18 @@ export async function generateBackupData() {
       autoBackupSettings = null;
     }
 
+    // Smart Notepads
+    let smartNotepads = [];
+    try {
+      const res = await executeSql('SELECT * FROM smart_notepads ORDER BY is_pinned DESC, updated_at DESC');
+      for (let i = 0; i < res.rows.length; i++) {
+        smartNotepads.push(res.rows.item(i));
+      }
+    } catch (e) {
+      console.warn('Direct smart_notepads query failed, falling back to empty list', e);
+      smartNotepads = [];
+    }
+
     const backupData = {
       version: BACKUP_VERSION,
       timestamp: new Date().toISOString(),
@@ -185,7 +197,8 @@ export async function generateBackupData() {
         credit_card_statements: creditCardStatements,
         credit_card_payments: creditCardPayments,
         notifications,
-        auto_backup_settings: autoBackupSettings
+        auto_backup_settings: autoBackupSettings,
+        smart_notepads: smartNotepads
       }
     };
 
@@ -314,6 +327,7 @@ export async function pickBackupFile() {
       backupData.data.credit_card_payments ??= [];
       backupData.data.notifications ??=
       backupData.data.notification_settings ?? [];
+      backupData.data.smart_notepads ??= backupData.data.paper_ledgers ?? [];
 
       return backupData;
     }
@@ -364,6 +378,7 @@ export async function pickBackupFile() {
       backupData.data.category_budgets ??= backupData.data.categoryBudgets ?? [];
       backupData.data.categoryBudgets ??= backupData.data.category_budgets ?? [];
       backupData.data.auto_backup_settings ??= null;
+      backupData.data.smart_notepads ??= backupData.data.paper_ledgers ?? [];
 
       return backupData;
     }
@@ -503,7 +518,8 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
     loan_payments: [],
     credit_cards: [],
     credit_card_statements: [],
-    credit_card_payments: []
+    credit_card_payments: [],
+    smart_notepads: []
   };
 
   try {
@@ -569,6 +585,13 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
     try {
       const ccp = await executeSql('SELECT * FROM credit_card_payments');
       for (let i = 0; i < ccp.rows.length; i++) originalData.credit_card_payments.push(ccp.rows.item(i));
+    } catch (e) {
+      // ignore if table missing
+    }
+    // Snapshot smart notepads (if table exists)
+    try {
+      const sns = await executeSql('SELECT * FROM smart_notepads');
+      for (let i = 0; i < sns.rows.length; i++) originalData.smart_notepads.push(sns.rows.item(i));
     } catch (e) {
       // ignore if table missing
     }
@@ -822,6 +845,28 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         }
       }
 
+      // Restore smart notepads
+      for (const sn of originalData.smart_notepads) {
+        try {
+          await executeSql(
+            `INSERT OR REPLACE INTO smart_notepads (id, title, data, total_income, total_expense, net_total, is_pinned, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              sn.id,
+              sn.title,
+              sn.data,
+              sn.total_income,
+              sn.total_expense,
+              sn.net_total,
+              sn.is_pinned,
+              sn.created_at,
+              sn.updated_at
+            ]
+          );
+        } catch (e) {
+          console.warn('Failed to restore smart notepad during rollback', sn.id, e);
+        }
+      }
+
       // Restore notification settings on rollback
       // Only restore preferences, then reschedule
       try {
@@ -870,8 +915,15 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       credit_card_statements = [],
       credit_card_payments = [],
       notifications = [],
-      notification_settings = [] // Backward compatibility
+      notification_settings = [], // Backward compatibility
+      smart_notepads = [],
+      paper_ledgers = [] // Legacy compatibility
     } = backupData.data || {};
+
+    const restoredSmartNotepads =
+      Array.isArray(smart_notepads) && smart_notepads.length > 0
+        ? smart_notepads
+        : (Array.isArray(paper_ledgers) ? paper_ledgers : []);
 
     const restoredCategoryBudgets =
     Array.isArray(category_budgets) && category_budgets.length > 0 ?
@@ -967,7 +1019,8 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
     credit_cards.length +
     credit_card_statements.length +
     credit_card_payments.length +
-    restoredNotifications.length;
+    restoredNotifications.length +
+    restoredSmartNotepads.length;
     let processedItems = 0;
 
     const updateProgress = (completedInChunk, stepMessage) => {
@@ -1816,6 +1869,75 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         console.warn(`Failed to backfill bill_id on transaction ${newTransactionId}`, e);
       }
     }
+
+    // 8e. Smart Notepads
+    if (restoredSmartNotepads.length > 0) {
+      await processBatch(
+        restoredSmartNotepads,
+        async (item) => {
+          const trimmedTitle = (item.title || '').trim();
+          if (!trimmedTitle) return;
+
+          if (mode === 'merge') {
+            const existing = await executeSql(
+              `SELECT id FROM smart_notepads WHERE title = ? LIMIT 1`,
+              [trimmedTitle]
+            );
+            if (existing.rows.length > 0) {
+              return;
+            }
+          }
+
+          let dataStr = '';
+          if (typeof item.data === 'string') {
+            dataStr = item.data;
+          } else if (item.data != null) {
+            dataStr = JSON.stringify(item.data);
+          } else {
+            dataStr = JSON.stringify([]);
+          }
+
+          if (mode === 'replace' && item.id != null) {
+            await executeSql(
+              `INSERT OR REPLACE INTO smart_notepads
+               (id, title, data, total_income, total_expense, net_total, is_pinned, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                item.id,
+                trimmedTitle,
+                dataStr,
+                Number(item.total_income) || 0,
+                Number(item.total_expense) || 0,
+                Number(item.net_total) || 0,
+                item.is_pinned ? 1 : 0,
+                item.created_at || new Date().toISOString(),
+                item.updated_at || new Date().toISOString()
+              ]
+            );
+          } else {
+            await executeSql(
+              `INSERT INTO smart_notepads
+               (title, data, total_income, total_expense, net_total, is_pinned, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                trimmedTitle,
+                dataStr,
+                Number(item.total_income) || 0,
+                Number(item.total_expense) || 0,
+                Number(item.net_total) || 0,
+                item.is_pinned ? 1 : 0,
+                item.created_at || new Date().toISOString(),
+                item.updated_at || new Date().toISOString()
+              ]
+            );
+          }
+        },
+        (count) => {
+          updateProgress(count, 'Importing Smart Notepads...');
+        }
+      );
+    }
+
     // Post-restore synchronization lifecycle
     safeOnProgress(95, 'Synchronizing credit cards & bills...');
 
