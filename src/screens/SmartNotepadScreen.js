@@ -252,7 +252,7 @@ export default function SmartNotepadScreen({ navigation }) {
         title: 'Start New Sheet?',
         subtitle: 'This will clear the current notepad and start a fresh sheet.',
         confirmLabel: 'Start New Sheet',
-        confirmIcon: 'file-document-plus-outline',
+        confirmIcon: 'file-plus-outline',
         type: 'warning',
         warnings: [
           { title: 'Save Progress', text: 'Make sure your current sheet has been saved to records if needed.' },
@@ -554,23 +554,6 @@ export default function SmartNotepadScreen({ navigation }) {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.toolbarScrollContent}
         >
-          <TouchableOpacity
-            style={[
-              styles.toolButtonOutline,
-              {
-                borderColor: isDarkMode ? '#3B4863' : '#CBD5E1',
-                backgroundColor: isDarkMode ? '#171E2B' : '#FFFFFF',
-              },
-            ]}
-            onPress={handlePromptNewSheet}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="file-document-plus-outline" size={16} color={theme.textPrimary} />
-            <Text style={[styles.toolButtonOutlineText, { color: theme.textPrimary }]}>
-              New Sheet
-            </Text>
-          </TouchableOpacity>
-
           <TouchableOpacity
             style={[styles.toolButton, { backgroundColor: Colors.primary }]}
             onPress={() => setIsMonthModalVisible(true)}
