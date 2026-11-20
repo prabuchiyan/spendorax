@@ -29,16 +29,15 @@ function QlateNotepadSheet(
   const rawLines = (text || '').split('\n');
   const evaluatedLines = (evaluatedDoc && evaluatedDoc.lines) || [];
 
-  // Maintain at least 6 ruled lines for the open notebook stationery look
-  const displayLineCount = Math.max(rawLines.length, 6);
+  // Maintain at least 8 compact ruled lines for the open notebook stationery look
+  const displayLineCount = Math.max(rawLines.length, 8);
 
-  // Expose focus() to external refs (e.g. pencil FAB)
+  // Expose focus() to external refs if needed
   const forwardedRef = ref || textInputRef;
   useImperativeHandle(forwardedRef, () => ({
     focus: () => {
       let targetIdx = rawLines.length - 1;
       if (targetIdx < 0) targetIdx = 0;
-      // If the last line already has text, append a new line
       if (rawLines[targetIdx] && rawLines[targetIdx].trim().length > 0) {
         const nextLines = [...rawLines, ''];
         onChangeText(nextLines.join('\n'));
@@ -52,7 +51,6 @@ function QlateNotepadSheet(
 
   const handleLineChange = (index, newVal) => {
     if (newVal.includes('\n')) {
-      // User pressed Enter on keyboard or pasted multiline text
       const parts = newVal.split('\n');
       const currentLines = (text || '').split('\n');
       while (currentLines.length <= index) {
@@ -79,7 +77,6 @@ function QlateNotepadSheet(
   const handleKeyPress = (index, e) => {
     if (e?.nativeEvent?.key === 'Backspace') {
       const currentLines = (text || '').split('\n');
-      // If the line is empty and document has more than 1 line, delete line and focus previous
       if (currentLines[index] === '' && currentLines.length > 1) {
         currentLines.splice(index, 1);
         onChangeText(currentLines.join('\n'));
@@ -93,7 +90,7 @@ function QlateNotepadSheet(
 
   return (
     <View style={styles.sheetWrapper}>
-      {/* Table Column Header: NOTE / CALCULATION (PARAGRAPH) on Left | AMOUNT (₹) on Right */}
+      {/* Compact Table Header: NOTE / CALCULATION | AMOUNT */}
       <View
         style={[
           styles.tableHeader,
@@ -105,7 +102,7 @@ function QlateNotepadSheet(
       >
         <View style={styles.headerColNote}>
           <Text style={[styles.headerLabel, { color: textMuted }]}>
-            NOTE / CALCULATION (PARAGRAPH)
+            NOTE / CALCULATION
           </Text>
         </View>
 
@@ -116,7 +113,7 @@ function QlateNotepadSheet(
         </View>
       </View>
 
-      {/* Main Ruled Rows: Each transaction is a single paragraph row */}
+      {/* Main Ruled Rows: Tight, equal line height, no amount background */}
       <View style={[styles.sheetBody, { backgroundColor: cardBg }]}>
         {Array.from({ length: displayLineCount }).map((_, idx) => {
           const lineValue = rawLines[idx] !== undefined ? rawLines[idx] : '';
@@ -138,7 +135,7 @@ function QlateNotepadSheet(
                 },
               ]}
             >
-              {/* Left Column: Note and Math Expression (Wraps freely as a single paragraph) */}
+              {/* Left Column: Note / Math Expression */}
               <View style={styles.noteInputWrapper}>
                 <TextInput
                   ref={(el) => {
@@ -167,38 +164,24 @@ function QlateNotepadSheet(
                 />
               </View>
 
-              {/* Right Column: Amount Pill (Attached to THIS paragraph - No '=' symbol) */}
+              {/* Right Column: Amount text with number ONLY (No background/pill) */}
               <View style={styles.resultColWrapper}>
                 {isEvaluated ? (
-                  <View
+                  <Text
                     style={[
-                      styles.resultPill,
+                      styles.resultText,
                       {
-                        backgroundColor: isIncome
-                          ? (isDarkMode ? '#064E3B' : '#ECFDF5')
-                          : (isDarkMode ? '#4C0519' : '#FFF1F2'),
-                        borderColor: isIncome
-                          ? (isDarkMode ? '#065F46' : '#A7F3D0')
-                          : (isDarkMode ? '#881337' : '#FECDD3'),
+                        color: isIncome
+                          ? (isDarkMode ? '#34D399' : '#059669')
+                          : (isDarkMode ? '#FB7185' : '#E11D48'),
                       },
                     ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
                   >
-                    <Text
-                      style={[
-                        styles.resultPillText,
-                        {
-                          color: isIncome
-                            ? (isDarkMode ? '#34D399' : '#059669')
-                            : (isDarkMode ? '#FB7185' : '#E11D48'),
-                        },
-                      ]}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.7}
-                    >
-                      {evalItem.resultText}
-                    </Text>
-                  </View>
+                    {evalItem.resultText}
+                  </Text>
                 ) : null}
               </View>
             </View>
@@ -220,28 +203,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
-    height: 38,
+    height: 32,
   },
   headerColNote: {
     flex: 1,
     height: '100%',
     justifyContent: 'center',
-    paddingLeft: 12,
+    paddingLeft: 10,
   },
   headerColResult: {
-    width: 84,
+    width: 80,
     height: '100%',
     justifyContent: 'center',
     alignItems: 'flex-end',
-    paddingRight: 10,
+    paddingRight: 8,
   },
   headerLabel: {
-    fontSize: 10.5,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.6,
   },
   headerLabelRight: {
-    fontSize: 10.5,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.6,
   },
@@ -251,22 +234,22 @@ const styles = StyleSheet.create({
   paragraphRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    minHeight: 44,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    minHeight: 32,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
   },
   noteInputWrapper: {
     flex: 1,
-    paddingRight: 8,
+    paddingRight: 6,
     justifyContent: 'center',
   },
   noteInput: {
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '500',
-    lineHeight: 20,
-    paddingTop: 2,
-    paddingBottom: 2,
+    lineHeight: 18,
+    paddingTop: 1,
+    paddingBottom: 1,
     paddingHorizontal: 0,
     margin: 0,
     ...Platform.select({
@@ -279,22 +262,14 @@ const styles = StyleSheet.create({
     }),
   },
   resultColWrapper: {
-    width: 84,
+    width: 80,
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
-  resultPill: {
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 5,
-    borderWidth: 1,
-    maxWidth: 78,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  resultPillText: {
-    fontSize: 11.5,
+  resultText: {
+    fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0.1,
+    letterSpacing: 0.2,
+    textAlign: 'right',
   },
 });

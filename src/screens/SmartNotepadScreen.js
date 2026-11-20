@@ -34,7 +34,6 @@ import SmartNotepadSavedSheetsModal from '../components/SmartNotepadSavedSheetsM
 import SmartNotepadImportSelectModal from '../components/SmartNotepadImportSelectModal';
 import SmartNotepadToast from '../components/SmartNotepadToast';
 import SmartNotepadGuideModal from '../components/SmartNotepadGuideModal';
-import ContextualFAB from '../components/ContextualFAB';
 import QlateNotepadSheet from '../components/QlateNotepadSheet';
 import {
   savePaperLedger,
@@ -910,14 +909,6 @@ export default function SmartNotepadScreen({ navigation }) {
           </View>
         </View>
       </ScrollView>
-
-      {/* App Floating Action Button (FAB) to Focus Qlate Notepad */}
-      <ContextualFAB
-        icon="pencil-plus"
-        onPress={() => {
-          notepadRef.current?.focus();
-        }}
-      />
 
       {/* Modern Floating In-App Toast */}
       <SmartNotepadToast
