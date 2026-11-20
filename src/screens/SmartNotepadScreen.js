@@ -156,9 +156,12 @@ export default function SmartNotepadScreen({ navigation }) {
     };
   }, []);
 
+  // Save & Clear enabled when transactions are typed or any sheet is currently opened
+  const isSaveAndClearEnabled = Boolean(activeSheetId) || notepadText.trim().length > 0;
+
   // Handle clearing entire notepad
   const handleClearAll = useCallback(() => {
-    if (!notepadText.trim()) return;
+    if (!notepadText.trim() && !activeSheetId) return;
     setConfirmModalConfig({
       title: 'Clear Notepad?',
       subtitle: 'Are you sure you want to remove all notes and calculations from this sheet?',
@@ -173,16 +176,16 @@ export default function SmartNotepadScreen({ navigation }) {
         setConfirmModalConfig(null);
       },
     });
-  }, [notepadText]);
+  }, [notepadText, activeSheetId]);
 
   // Handle prompt for saving
   const handlePromptSave = useCallback(() => {
-    if (!notepadText.trim()) {
+    if (!notepadText.trim() && !activeSheetId) {
       showToast('Please type some notes or calculations before saving', 'info');
       return;
     }
     setIsSaveModalVisible(true);
-  }, [notepadText, showToast]);
+  }, [notepadText, activeSheetId, showToast]);
 
   // Handle saving sheet to DB (new or update)
   const handleSaveSheetSubmit = useCallback(
@@ -587,25 +590,40 @@ export default function SmartNotepadScreen({ navigation }) {
           <TouchableOpacity
             style={[
               styles.toolButtonOutline,
-              {
-                borderColor: activeSheetId ? '#10B981' : Colors.primary,
-                backgroundColor: activeSheetId
-                  ? isDarkMode ? '#0A2E20' : '#ECFDF5'
-                  : isDarkMode ? '#14223A' : '#EFF6FF',
-              },
+              isSaveAndClearEnabled
+                ? {
+                    borderColor: activeSheetId ? '#10B981' : (Colors.primary || '#4B7CF3'),
+                    backgroundColor: activeSheetId
+                      ? isDarkMode ? '#0A2E20' : '#ECFDF5'
+                      : isDarkMode ? '#14223A' : '#EFF6FF',
+                  }
+                : {
+                    borderColor: isDarkMode ? '#2D3748' : '#E2E8F0',
+                    backgroundColor: isDarkMode ? '#171E2B' : '#F8FAFC',
+                    opacity: 0.45,
+                  },
             ]}
             onPress={handlePromptSave}
+            disabled={!isSaveAndClearEnabled}
             activeOpacity={0.8}
           >
             <MaterialCommunityIcons
               name={activeSheetId ? 'content-save-check-outline' : 'content-save-outline'}
               size={16}
-              color={activeSheetId ? '#10B981' : Colors.primary}
+              color={
+                isSaveAndClearEnabled
+                  ? activeSheetId ? '#10B981' : (Colors.primary || '#4B7CF3')
+                  : isDarkMode ? '#64748B' : '#94A3B8'
+              }
             />
             <Text
               style={[
                 styles.toolButtonOutlineText,
-                { color: activeSheetId ? '#10B981' : Colors.primary },
+                {
+                  color: isSaveAndClearEnabled
+                    ? activeSheetId ? '#10B981' : (Colors.primary || '#4B7CF3')
+                    : isDarkMode ? '#64748B' : '#94A3B8',
+                },
               ]}
             >
               {activeSheetId ? 'Update' : 'Save'}
@@ -629,24 +647,40 @@ export default function SmartNotepadScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
 
-          {notepadText.trim().length > 0 && (
-            <TouchableOpacity
+          <TouchableOpacity
+            style={[
+              styles.toolButtonOutline,
+              isSaveAndClearEnabled
+                ? {
+                    borderColor: isDarkMode ? '#4B252C' : '#FCA5A5',
+                    backgroundColor: isDarkMode ? '#231518' : '#FEF2F2',
+                  }
+                : {
+                    borderColor: isDarkMode ? '#2D3748' : '#E2E8F0',
+                    backgroundColor: isDarkMode ? '#171E2B' : '#F8FAFC',
+                    opacity: 0.45,
+                  },
+            ]}
+            onPress={handleClearAll}
+            disabled={!isSaveAndClearEnabled}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons
+              name="trash-can-outline"
+              size={16}
+              color={isSaveAndClearEnabled ? '#EF4444' : (isDarkMode ? '#64748B' : '#94A3B8')}
+            />
+            <Text
               style={[
-                styles.toolButtonOutline,
+                styles.toolButtonOutlineText,
                 {
-                  borderColor: isDarkMode ? '#4B252C' : '#FCA5A5',
-                  backgroundColor: isDarkMode ? '#231518' : '#FEF2F2',
+                  color: isSaveAndClearEnabled ? '#EF4444' : (isDarkMode ? '#64748B' : '#94A3B8'),
                 },
               ]}
-              onPress={handleClearAll}
-              activeOpacity={0.8}
             >
-              <MaterialCommunityIcons name="trash-can-outline" size={16} color="#EF4444" />
-              <Text style={[styles.toolButtonOutlineText, { color: '#EF4444' }]}>
-                Clear
-              </Text>
-            </TouchableOpacity>
-          )}
+              Clear
+            </Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.shareBtn, { backgroundColor: '#25D366' }]}
