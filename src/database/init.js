@@ -171,8 +171,8 @@ export async function initDB() {
     created_at TEXT DEFAULT (datetime('now'))
 );`);
 
-    // Paper Ledgers (math calculation sheets)
-    await executeSql(`CREATE TABLE IF NOT EXISTS paper_ledgers (
+    // Smart Notepads (continuous math calculation sheets)
+    await executeSql(`CREATE TABLE IF NOT EXISTS smart_notepads (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
       data TEXT NOT NULL,
@@ -183,6 +183,14 @@ export async function initDB() {
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );`);
+
+    // Migration from legacy paper_ledgers if present
+    try {
+      await executeSql(`INSERT OR IGNORE INTO smart_notepads SELECT * FROM paper_ledgers`);
+      await executeSql(`DROP TABLE IF EXISTS paper_ledgers`);
+    } catch (_) {
+      // Table doesn't exist, ignore
+    }
 
     // Migrate legacy is_paid rows to status column
     try {
@@ -430,7 +438,7 @@ export async function clearAllTables() {
     'loans',
     'notifications',
     'bill_deleted_occurrences',
-    'paper_ledgers'
+    'smart_notepads'
   ];
   console.log('Prabu tables', tables);
 

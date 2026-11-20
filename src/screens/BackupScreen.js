@@ -279,11 +279,10 @@ export default function BackupScreen() {
       credit_cards = [],
       credit_card_statements = [],
       credit_card_payments = [],
-      paper_ledgers = [],
       smart_notepads = []
     } = data.data;
 
-    const notepadsCount = (paper_ledgers && paper_ledgers.length) || (smart_notepads && smart_notepads.length) || 0;
+    const notepadsCount = (smart_notepads && smart_notepads.length) || 0;
     const catBudgetsCount = category_budgets.length || categoryBudgets.length;
     const dividerColor = theme.border || (isDarkMode ? '#333' : '#e0e0e0');
     const countStyle = { color: theme.textSecondary, alignSelf: 'center', fontWeight: '600' };

@@ -1,5 +1,5 @@
 /**
- * Safe Math Expression Parser & Evaluator for SpendoraX Paper Ledger
+ * Safe Math Expression Parser & Evaluator for SpendoraX Smart Notepad
  * Supports +, −, ×, ÷, % (percentage of base: A % B = A * (B / 100)), and parentheses ( ).
  * Does not use eval() or Function().
  */

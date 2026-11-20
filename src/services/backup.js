@@ -167,16 +167,16 @@ export async function generateBackupData() {
       autoBackupSettings = null;
     }
 
-    // Smart Notepads (Paper Ledgers)
-    let paperLedgers = [];
+    // Smart Notepads
+    let smartNotepads = [];
     try {
-      const res = await executeSql('SELECT * FROM paper_ledgers ORDER BY is_pinned DESC, updated_at DESC');
+      const res = await executeSql('SELECT * FROM smart_notepads ORDER BY is_pinned DESC, updated_at DESC');
       for (let i = 0; i < res.rows.length; i++) {
-        paperLedgers.push(res.rows.item(i));
+        smartNotepads.push(res.rows.item(i));
       }
     } catch (e) {
-      console.warn('Direct paper_ledgers query failed, falling back to empty list', e);
-      paperLedgers = [];
+      console.warn('Direct smart_notepads query failed, falling back to empty list', e);
+      smartNotepads = [];
     }
 
     const backupData = {
@@ -198,8 +198,7 @@ export async function generateBackupData() {
         credit_card_payments: creditCardPayments,
         notifications,
         auto_backup_settings: autoBackupSettings,
-        paper_ledgers: paperLedgers,
-        smart_notepads: paperLedgers
+        smart_notepads: smartNotepads
       }
     };
 
@@ -328,7 +327,6 @@ export async function pickBackupFile() {
       backupData.data.credit_card_payments ??= [];
       backupData.data.notifications ??=
       backupData.data.notification_settings ?? [];
-      backupData.data.paper_ledgers ??= backupData.data.smart_notepads ?? [];
       backupData.data.smart_notepads ??= backupData.data.paper_ledgers ?? [];
 
       return backupData;
@@ -380,7 +378,6 @@ export async function pickBackupFile() {
       backupData.data.category_budgets ??= backupData.data.categoryBudgets ?? [];
       backupData.data.categoryBudgets ??= backupData.data.category_budgets ?? [];
       backupData.data.auto_backup_settings ??= null;
-      backupData.data.paper_ledgers ??= backupData.data.smart_notepads ?? [];
       backupData.data.smart_notepads ??= backupData.data.paper_ledgers ?? [];
 
       return backupData;
@@ -522,7 +519,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
     credit_cards: [],
     credit_card_statements: [],
     credit_card_payments: [],
-    paper_ledgers: []
+    smart_notepads: []
   };
 
   try {
@@ -591,10 +588,10 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
     } catch (e) {
       // ignore if table missing
     }
-    // Snapshot paper ledgers / smart notepads (if table exists)
+    // Snapshot smart notepads (if table exists)
     try {
-      const pls = await executeSql('SELECT * FROM paper_ledgers');
-      for (let i = 0; i < pls.rows.length; i++) originalData.paper_ledgers.push(pls.rows.item(i));
+      const sns = await executeSql('SELECT * FROM smart_notepads');
+      for (let i = 0; i < sns.rows.length; i++) originalData.smart_notepads.push(sns.rows.item(i));
     } catch (e) {
       // ignore if table missing
     }
@@ -848,25 +845,25 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         }
       }
 
-      // Restore paper ledgers (Smart Notepads)
-      for (const pl of originalData.paper_ledgers) {
+      // Restore smart notepads
+      for (const sn of originalData.smart_notepads) {
         try {
           await executeSql(
-            `INSERT OR REPLACE INTO paper_ledgers (id, title, data, total_income, total_expense, net_total, is_pinned, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT OR REPLACE INTO smart_notepads (id, title, data, total_income, total_expense, net_total, is_pinned, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-              pl.id,
-              pl.title,
-              pl.data,
-              pl.total_income,
-              pl.total_expense,
-              pl.net_total,
-              pl.is_pinned,
-              pl.created_at,
-              pl.updated_at
+              sn.id,
+              sn.title,
+              sn.data,
+              sn.total_income,
+              sn.total_expense,
+              sn.net_total,
+              sn.is_pinned,
+              sn.created_at,
+              sn.updated_at
             ]
           );
         } catch (e) {
-          console.warn('Failed to restore paper ledger during rollback', pl.id, e);
+          console.warn('Failed to restore smart notepad during rollback', sn.id, e);
         }
       }
 
@@ -919,14 +916,14 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       credit_card_payments = [],
       notifications = [],
       notification_settings = [], // Backward compatibility
-      paper_ledgers = [],
-      smart_notepads = []
+      smart_notepads = [],
+      paper_ledgers = [] // Legacy compatibility
     } = backupData.data || {};
 
-    const restoredPaperLedgers =
-      Array.isArray(paper_ledgers) && paper_ledgers.length > 0
-        ? paper_ledgers
-        : (Array.isArray(smart_notepads) ? smart_notepads : []);
+    const restoredSmartNotepads =
+      Array.isArray(smart_notepads) && smart_notepads.length > 0
+        ? smart_notepads
+        : (Array.isArray(paper_ledgers) ? paper_ledgers : []);
 
     const restoredCategoryBudgets =
     Array.isArray(category_budgets) && category_budgets.length > 0 ?
@@ -1023,7 +1020,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
     credit_card_statements.length +
     credit_card_payments.length +
     restoredNotifications.length +
-    restoredPaperLedgers.length;
+    restoredSmartNotepads.length;
     let processedItems = 0;
 
     const updateProgress = (completedInChunk, stepMessage) => {
@@ -1873,17 +1870,17 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       }
     }
 
-    // 8e. Smart Notepads (Paper Ledgers)
-    if (restoredPaperLedgers.length > 0) {
+    // 8e. Smart Notepads
+    if (restoredSmartNotepads.length > 0) {
       await processBatch(
-        restoredPaperLedgers,
+        restoredSmartNotepads,
         async (item) => {
           const trimmedTitle = (item.title || '').trim();
           if (!trimmedTitle) return;
 
           if (mode === 'merge') {
             const existing = await executeSql(
-              `SELECT id FROM paper_ledgers WHERE title = ? LIMIT 1`,
+              `SELECT id FROM smart_notepads WHERE title = ? LIMIT 1`,
               [trimmedTitle]
             );
             if (existing.rows.length > 0) {
@@ -1902,7 +1899,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
 
           if (mode === 'replace' && item.id != null) {
             await executeSql(
-              `INSERT OR REPLACE INTO paper_ledgers
+              `INSERT OR REPLACE INTO smart_notepads
                (id, title, data, total_income, total_expense, net_total, is_pinned, created_at, updated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
               [
@@ -1919,7 +1916,7 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
             );
           } else {
             await executeSql(
-              `INSERT INTO paper_ledgers
+              `INSERT INTO smart_notepads
                (title, data, total_income, total_expense, net_total, is_pinned, created_at, updated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
               [

@@ -1,5 +1,5 @@
 /**
- * Utility functions for Paper Ledger screen
+ * Utility functions for Smart Notepad screen
  * Calculations, WhatsApp formatting, and data mapping
  */
 const { evaluateMathExpression } = require('./mathExpressionParser');
@@ -621,7 +621,7 @@ function parseNotepadDocument(text = '') {
   };
 }
 
-const SAMPLE_PAPER_LEDGER_TEXT = `--- Monthly Budget & Calculation ---
+const SAMPLE_SMART_NOTEPAD_TEXT = `--- Monthly Budget & Calculation ---
 Salary 50000
 Freelance Bonus 100*5
 House Rent -12000
@@ -632,7 +632,7 @@ Restaurant Tip -50
 Apples -240
 Shopping Discount -350`;
 
-const SAMPLE_SMART_NOTEPAD_TEXT = SAMPLE_PAPER_LEDGER_TEXT;
+const SAMPLE_PAPER_LEDGER_TEXT = SAMPLE_SMART_NOTEPAD_TEXT;
 const calculateNotepadTotals = calculateLedgerTotals;
 const formatNotepadAmount = formatLedgerAmount;
 const formatWhatsAppNotepadText = formatWhatsAppLedgerText;

@@ -37,10 +37,10 @@ import SmartNotepadToast from '../components/SmartNotepadToast';
 import SmartNotepadGuideModal from '../components/SmartNotepadGuideModal';
 import QlateNotepadSheet from '../components/QlateNotepadSheet';
 import {
-  savePaperLedger,
-  getPaperLedgers,
-  togglePinPaperLedger,
-  deletePaperLedger,
+  saveSmartNotepad,
+  getSmartNotepads,
+  togglePinSmartNotepad,
+  deleteSmartNotepad,
 } from '../services/smartNotepadService';
 
 export default function SmartNotepadScreen({ navigation }) {
@@ -117,7 +117,7 @@ export default function SmartNotepadScreen({ navigation }) {
   // Load saved sheets from database
   const loadSavedSheets = useCallback(async () => {
     try {
-      const sheets = await getPaperLedgers();
+      const sheets = await getSmartNotepads();
       setSavedSheets(sheets || []);
     } catch (err) {
       console.warn('Failed to load saved sheets', err);
@@ -197,7 +197,7 @@ export default function SmartNotepadScreen({ navigation }) {
           ? getNextCopyTitle(titleToSave || activeSheetTitle, savedSheets)
           : titleToSave;
 
-        const savedId = await savePaperLedger({
+        const savedId = await saveSmartNotepad({
           id: targetId,
           title: finalTitle,
           raw_text: notepadText,
@@ -294,7 +294,7 @@ export default function SmartNotepadScreen({ navigation }) {
   const handleTogglePinSheet = useCallback(
     async (id, currentPinned) => {
       try {
-        await togglePinPaperLedger(id, !currentPinned);
+        await togglePinSmartNotepad(id, !currentPinned);
         await loadSavedSheets();
       } catch (err) {
         console.warn('Failed to toggle pin state', err);
@@ -318,7 +318,7 @@ export default function SmartNotepadScreen({ navigation }) {
         onConfirm: async () => {
           setConfirmModalConfig(null);
           try {
-            await deletePaperLedger(sheet.id);
+            await deleteSmartNotepad(sheet.id);
             if (activeSheetId === sheet.id) {
               handleNewSheet();
             }

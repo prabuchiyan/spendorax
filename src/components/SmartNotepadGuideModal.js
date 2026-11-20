@@ -12,9 +12,9 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from './Theme';
-import { SAMPLE_SMART_NOTEPAD_TEXT, SAMPLE_PAPER_LEDGER_TEXT } from '../utils/smartNotepadUtils';
+import { SAMPLE_SMART_NOTEPAD_TEXT } from '../utils/smartNotepadUtils';
 
-export { SAMPLE_SMART_NOTEPAD_TEXT, SAMPLE_PAPER_LEDGER_TEXT };
+export { SAMPLE_SMART_NOTEPAD_TEXT };
 
 const EASY_EXAMPLES = [
   {
@@ -542,7 +542,7 @@ export default function SmartNotepadGuideModal({
                   style={[styles.insertBtn, { backgroundColor: Colors.primary || '#3B82F6' }]}
                   onPress={() => {
                     if (onInsertTemplate) {
-                      onInsertTemplate(SAMPLE_PAPER_LEDGER_TEXT);
+                      onInsertTemplate(SAMPLE_SMART_NOTEPAD_TEXT);
                     }
                   }}
                   activeOpacity={0.8}
