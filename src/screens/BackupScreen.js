@@ -278,9 +278,12 @@ export default function BackupScreen() {
       loan_payments = [],
       credit_cards = [],
       credit_card_statements = [],
-      credit_card_payments = []
+      credit_card_payments = [],
+      paper_ledgers = [],
+      smart_notepads = []
     } = data.data;
 
+    const notepadsCount = (paper_ledgers && paper_ledgers.length) || (smart_notepads && smart_notepads.length) || 0;
     const catBudgetsCount = category_budgets.length || categoryBudgets.length;
     const dividerColor = theme.border || (isDarkMode ? '#333' : '#e0e0e0');
     const countStyle = { color: theme.textSecondary, alignSelf: 'center', fontWeight: '600' };
@@ -378,6 +381,16 @@ export default function BackupScreen() {
             />
           </>
         )}
+        {notepadsCount > 0 && (
+          <>
+            <Divider style={{ backgroundColor: dividerColor }} />
+            <List.Item
+              title="Smart Notepads"
+              titleStyle={{ color: theme.textPrimary }}
+              right={() => <Text style={countStyle}>{notepadsCount}</Text>}
+            />
+          </>
+        )}
       </View>
     );
   };
@@ -397,7 +410,7 @@ export default function BackupScreen() {
               <MaterialCommunityIcons name="cloud-upload" size={24} color={Colors.primary} /> Export Data
             </Title>
             <Paragraph style={[styles.description, { color: theme.textSecondary }]}>
-              Create a backup of all your transactions, categories, sources, budgets, category budgets, bills, loans, and credit cards.
+              Create a backup of all your transactions, categories, sources, budgets, category budgets, bills, loans, credit cards, and smart notepads.
             </Paragraph>
             <Button
               mode="contained"

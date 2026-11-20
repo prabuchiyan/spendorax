@@ -167,6 +167,18 @@ export async function generateBackupData() {
       autoBackupSettings = null;
     }
 
+    // Smart Notepads (Paper Ledgers)
+    let paperLedgers = [];
+    try {
+      const res = await executeSql('SELECT * FROM paper_ledgers ORDER BY is_pinned DESC, updated_at DESC');
+      for (let i = 0; i < res.rows.length; i++) {
+        paperLedgers.push(res.rows.item(i));
+      }
+    } catch (e) {
+      console.warn('Direct paper_ledgers query failed, falling back to empty list', e);
+      paperLedgers = [];
+    }
+
     const backupData = {
       version: BACKUP_VERSION,
       timestamp: new Date().toISOString(),
@@ -185,7 +197,9 @@ export async function generateBackupData() {
         credit_card_statements: creditCardStatements,
         credit_card_payments: creditCardPayments,
         notifications,
-        auto_backup_settings: autoBackupSettings
+        auto_backup_settings: autoBackupSettings,
+        paper_ledgers: paperLedgers,
+        smart_notepads: paperLedgers
       }
     };
 
@@ -314,6 +328,8 @@ export async function pickBackupFile() {
       backupData.data.credit_card_payments ??= [];
       backupData.data.notifications ??=
       backupData.data.notification_settings ?? [];
+      backupData.data.paper_ledgers ??= backupData.data.smart_notepads ?? [];
+      backupData.data.smart_notepads ??= backupData.data.paper_ledgers ?? [];
 
       return backupData;
     }
@@ -364,6 +380,8 @@ export async function pickBackupFile() {
       backupData.data.category_budgets ??= backupData.data.categoryBudgets ?? [];
       backupData.data.categoryBudgets ??= backupData.data.category_budgets ?? [];
       backupData.data.auto_backup_settings ??= null;
+      backupData.data.paper_ledgers ??= backupData.data.smart_notepads ?? [];
+      backupData.data.smart_notepads ??= backupData.data.paper_ledgers ?? [];
 
       return backupData;
     }
@@ -503,7 +521,8 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
     loan_payments: [],
     credit_cards: [],
     credit_card_statements: [],
-    credit_card_payments: []
+    credit_card_payments: [],
+    paper_ledgers: []
   };
 
   try {
@@ -569,6 +588,13 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
     try {
       const ccp = await executeSql('SELECT * FROM credit_card_payments');
       for (let i = 0; i < ccp.rows.length; i++) originalData.credit_card_payments.push(ccp.rows.item(i));
+    } catch (e) {
+      // ignore if table missing
+    }
+    // Snapshot paper ledgers / smart notepads (if table exists)
+    try {
+      const pls = await executeSql('SELECT * FROM paper_ledgers');
+      for (let i = 0; i < pls.rows.length; i++) originalData.paper_ledgers.push(pls.rows.item(i));
     } catch (e) {
       // ignore if table missing
     }
@@ -822,6 +848,28 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         }
       }
 
+      // Restore paper ledgers (Smart Notepads)
+      for (const pl of originalData.paper_ledgers) {
+        try {
+          await executeSql(
+            `INSERT OR REPLACE INTO paper_ledgers (id, title, data, total_income, total_expense, net_total, is_pinned, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              pl.id,
+              pl.title,
+              pl.data,
+              pl.total_income,
+              pl.total_expense,
+              pl.net_total,
+              pl.is_pinned,
+              pl.created_at,
+              pl.updated_at
+            ]
+          );
+        } catch (e) {
+          console.warn('Failed to restore paper ledger during rollback', pl.id, e);
+        }
+      }
+
       // Restore notification settings on rollback
       // Only restore preferences, then reschedule
       try {
@@ -870,8 +918,15 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
       credit_card_statements = [],
       credit_card_payments = [],
       notifications = [],
-      notification_settings = [] // Backward compatibility
+      notification_settings = [], // Backward compatibility
+      paper_ledgers = [],
+      smart_notepads = []
     } = backupData.data || {};
+
+    const restoredPaperLedgers =
+      Array.isArray(paper_ledgers) && paper_ledgers.length > 0
+        ? paper_ledgers
+        : (Array.isArray(smart_notepads) ? smart_notepads : []);
 
     const restoredCategoryBudgets =
     Array.isArray(category_budgets) && category_budgets.length > 0 ?
@@ -967,7 +1022,8 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
     credit_cards.length +
     credit_card_statements.length +
     credit_card_payments.length +
-    restoredNotifications.length;
+    restoredNotifications.length +
+    restoredPaperLedgers.length;
     let processedItems = 0;
 
     const updateProgress = (completedInChunk, stepMessage) => {
@@ -1816,6 +1872,75 @@ export async function restoreBackup(backupData, mode = 'replace', onProgress = n
         console.warn(`Failed to backfill bill_id on transaction ${newTransactionId}`, e);
       }
     }
+
+    // 8e. Smart Notepads (Paper Ledgers)
+    if (restoredPaperLedgers.length > 0) {
+      await processBatch(
+        restoredPaperLedgers,
+        async (item) => {
+          const trimmedTitle = (item.title || '').trim();
+          if (!trimmedTitle) return;
+
+          if (mode === 'merge') {
+            const existing = await executeSql(
+              `SELECT id FROM paper_ledgers WHERE title = ? LIMIT 1`,
+              [trimmedTitle]
+            );
+            if (existing.rows.length > 0) {
+              return;
+            }
+          }
+
+          let dataStr = '';
+          if (typeof item.data === 'string') {
+            dataStr = item.data;
+          } else if (item.data != null) {
+            dataStr = JSON.stringify(item.data);
+          } else {
+            dataStr = JSON.stringify([]);
+          }
+
+          if (mode === 'replace' && item.id != null) {
+            await executeSql(
+              `INSERT OR REPLACE INTO paper_ledgers
+               (id, title, data, total_income, total_expense, net_total, is_pinned, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                item.id,
+                trimmedTitle,
+                dataStr,
+                Number(item.total_income) || 0,
+                Number(item.total_expense) || 0,
+                Number(item.net_total) || 0,
+                item.is_pinned ? 1 : 0,
+                item.created_at || new Date().toISOString(),
+                item.updated_at || new Date().toISOString()
+              ]
+            );
+          } else {
+            await executeSql(
+              `INSERT INTO paper_ledgers
+               (title, data, total_income, total_expense, net_total, is_pinned, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                trimmedTitle,
+                dataStr,
+                Number(item.total_income) || 0,
+                Number(item.total_expense) || 0,
+                Number(item.net_total) || 0,
+                item.is_pinned ? 1 : 0,
+                item.created_at || new Date().toISOString(),
+                item.updated_at || new Date().toISOString()
+              ]
+            );
+          }
+        },
+        (count) => {
+          updateProgress(count, 'Importing Smart Notepads...');
+        }
+      );
+    }
+
     // Post-restore synchronization lifecycle
     safeOnProgress(95, 'Synchronizing credit cards & bills...');
 
