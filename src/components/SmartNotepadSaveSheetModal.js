@@ -57,86 +57,130 @@ export default function SmartNotepadSaveSheetModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.backdrop}>
+        <View style={styles.overlay}>
           <TouchableWithoutFeedback>
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : undefined}
               style={[
-                styles.card,
+                styles.bottomSheet,
                 {
-                  backgroundColor: isDarkMode ? '#1E232E' : '#FFFFFF',
-                  borderColor: isDarkMode ? '#2E384D' : '#E2E8F0',
+                  backgroundColor: isDarkMode ? '#131926' : '#FFFFFF',
+                  borderColor: isDarkMode ? '#283244' : '#E2E8F0',
                 },
               ]}
             >
+              {/* Drag Handle */}
+              <View
+                style={[
+                  styles.dragHandle,
+                  { backgroundColor: isDarkMode ? '#334155' : '#CBD5E1' },
+                ]}
+              />
+
               {/* Header */}
               <View style={styles.header}>
-                <View style={styles.headerTitleRow}>
+                <View
+                  style={[
+                    styles.iconBox,
+                    {
+                      backgroundColor: isDarkMode ? '#1E293B' : '#EFF6FF',
+                    },
+                  ]}
+                >
                   <MaterialCommunityIcons
                     name={isUpdating ? 'content-save-edit-outline' : 'content-save-outline'}
                     size={22}
-                    color={Colors.primary}
-                    style={{ marginRight: 8 }}
+                    color={Colors.primary || '#4B7CF3'}
                   />
+                </View>
+
+                <View style={styles.headerText}>
                   <Text style={[styles.title, { color: theme.textPrimary }]}>
                     {isUpdating ? 'Update Smart Notepad' : 'Save Smart Notepad'}
                   </Text>
+                  <Text style={[styles.subtitle, { color: theme.textSecondary }]} numberOfLines={1}>
+                    {isUpdating
+                      ? 'Update this saved notepad in your records'
+                      : 'Save this notepad to your local records'}
+                  </Text>
                 </View>
-                <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <MaterialCommunityIcons name="close" size={22} color={theme.textSecondary} />
+
+                <TouchableOpacity
+                  onPress={onClose}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  style={styles.closeBtn}
+                >
+                  <MaterialCommunityIcons name="close" size={20} color={theme.textSecondary} />
                 </TouchableOpacity>
               </View>
 
-              <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                {isUpdating
-                  ? 'Update this saved notepad in your records.'
-                  : 'Save this notepad to your local records for future reference.'}
-              </Text>
-
-              {isUpdating && lastUpdated ? (
-                <View style={[styles.lastUpdatedRow, { backgroundColor: isDarkMode ? '#151C28' : '#F1F5F9' }]}>
-                  <MaterialCommunityIcons name="clock-outline" size={14} color={theme.textSecondary} />
-                  <Text style={[styles.lastUpdatedText, { color: theme.textSecondary }]}>
-                    Last saved: {new Date(lastUpdated).toLocaleString('en-IN', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </Text>
-                </View>
-              ) : null}
-
-              {/* Title Input */}
-              <Text style={[styles.label, { color: theme.textSecondary, marginTop: 12 }]}>
-                Sheet Name / Title
-              </Text>
-              <TextInput
+              {/* Form Card */}
+              <View
                 style={[
-                  styles.input,
+                  styles.formCard,
                   {
-                    backgroundColor: isDarkMode ? '#12161F' : '#F8FAFC',
-                    borderColor: isDarkMode ? '#334155' : '#CBD5E1',
-                    color: theme.textPrimary,
+                    backgroundColor: isDarkMode ? '#182030' : '#F8FAFC',
+                    borderColor: isDarkMode ? '#243044' : '#E2E8F0',
                   },
                 ]}
-                placeholder="e.g. November Household Expenses"
-                placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
-                value={title}
-                onChangeText={(t) => {
-                  setTitle(t);
-                  if (error) setError('');
-                }}
-                autoFocus
-                maxLength={60}
-              />
+              >
+                {isUpdating && lastUpdated ? (
+                  <View
+                    style={[
+                      styles.lastUpdatedRow,
+                      { backgroundColor: isDarkMode ? '#101622' : '#EFF6FF' },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="clock-outline"
+                      size={13}
+                      color={isDarkMode ? '#60A5FA' : Colors.primary}
+                    />
+                    <Text
+                      style={[
+                        styles.lastUpdatedText,
+                        { color: isDarkMode ? '#93C5FD' : '#2563EB' },
+                      ]}
+                    >
+                      Last saved: {new Date(lastUpdated).toLocaleString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </Text>
+                  </View>
+                ) : null}
 
-              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                  Sheet Name / Title
+                </Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: isDarkMode ? '#101622' : '#FFFFFF',
+                      borderColor: error ? '#EF4444' : (isDarkMode ? '#334155' : '#CBD5E1'),
+                      color: theme.textPrimary,
+                    },
+                  ]}
+                  placeholder="e.g. November Household Expenses"
+                  placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                  value={title}
+                  onChangeText={(t) => {
+                    setTitle(t);
+                    if (error) setError('');
+                  }}
+                  autoFocus
+                  maxLength={60}
+                />
+                {error ? <Text style={styles.errorText}>{error}</Text> : null}
+              </View>
 
-              {/* Actions */}
+              {/* Footer Actions */}
               <View style={styles.actionRow}>
                 <TouchableOpacity
                   style={[
@@ -144,6 +188,7 @@ export default function SmartNotepadSaveSheetModal({
                     { borderColor: isDarkMode ? '#334155' : '#CBD5E1' },
                   ]}
                   onPress={onClose}
+                  activeOpacity={0.7}
                 >
                   <Text style={[styles.cancelText, { color: theme.textSecondary }]}>
                     Cancel
@@ -154,21 +199,35 @@ export default function SmartNotepadSaveSheetModal({
                   <TouchableOpacity
                     style={[
                       styles.saveAsCopyBtn,
-                      { borderColor: Colors.primary, backgroundColor: isDarkMode ? '#172544' : '#EFF6FF' },
+                      {
+                        borderColor: Colors.primary || '#4B7CF3',
+                        backgroundColor: isDarkMode ? '#1E293B' : '#EFF6FF',
+                      },
                     ]}
                     onPress={() => handleSave(true)}
+                    activeOpacity={0.7}
                   >
-                    <Text style={[styles.saveAsCopyText, { color: Colors.primary }]}>
+                    <MaterialCommunityIcons
+                      name="content-copy"
+                      size={15}
+                      color={Colors.primary || '#4B7CF3'}
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={[styles.saveAsCopyText, { color: Colors.primary || '#4B7CF3' }]}>
                       Save as Copy
                     </Text>
                   </TouchableOpacity>
                 )}
 
                 <TouchableOpacity
-                  style={[styles.saveButton, { backgroundColor: Colors.primary }]}
+                  style={[
+                    styles.saveButton,
+                    { backgroundColor: Colors.primary || '#4B7CF3' },
+                  ]}
                   onPress={() => handleSave(false)}
+                  activeOpacity={0.8}
                 >
-                  <MaterialCommunityIcons name="check" size={18} color="#FFF" style={{ marginRight: 4 }} />
+                  <MaterialCommunityIcons name="check" size={17} color="#FFF" style={{ marginRight: 4 }} />
                   <Text style={styles.saveButtonText}>
                     {isUpdating ? 'Update Sheet' : 'Save Sheet'}
                   </Text>
@@ -183,109 +242,134 @@ export default function SmartNotepadSaveSheetModal({
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    justifyContent: 'flex-end',
   },
-  card: {
-    width: '100%',
-    maxWidth: 420,
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
+  bottomSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  dragHandle: {
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 14,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  headerTitleRow: {
-    flexDirection: 'row',
+  iconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerText: {
+    flex: 1,
+    marginLeft: 12,
   },
   title: {
-    fontSize: 18,
+    fontSize: 16.5,
     fontWeight: '700',
   },
   subtitle: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 10,
+    fontSize: 12.5,
+    marginTop: 2,
+  },
+  closeBtn: {
+    padding: 6,
+  },
+  formCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 16,
   },
   lastUpdatedRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
+    paddingVertical: 6,
+    borderRadius: 8,
     gap: 6,
-    marginBottom: 6,
+    marginBottom: 10,
   },
   lastUpdatedText: {
     fontSize: 11.5,
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  label: {
-    fontSize: 13,
+  inputLabel: {
+    fontSize: 12.5,
     fontWeight: '600',
     marginBottom: 6,
   },
   input: {
     borderWidth: 1,
     borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 15,
+    paddingHorizontal: 12,
+    height: 44,
+    fontSize: 14.5,
   },
   errorText: {
     color: '#EF4444',
-    fontSize: 12,
-    marginTop: 6,
+    fontSize: 11.5,
+    marginTop: 5,
     fontWeight: '500',
   },
   actionRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
     alignItems: 'center',
-    marginTop: 20,
-    gap: 10,
-    flexWrap: 'wrap',
+    gap: 8,
   },
   cancelButton: {
-    paddingVertical: 9,
-    paddingHorizontal: 14,
+    flex: 1,
+    height: 44,
     borderRadius: 10,
     borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cancelText: {
     fontSize: 13.5,
     fontWeight: '600',
   },
   saveAsCopyBtn: {
-    paddingVertical: 9,
-    paddingHorizontal: 12,
+    flex: 1.3,
+    height: 44,
     borderRadius: 10,
     borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   saveAsCopyText: {
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '700',
   },
   saveButton: {
+    flex: 1.4,
+    height: 44,
+    borderRadius: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 9,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    justifyContent: 'center',
   },
   saveButtonText: {
     color: '#FFF',

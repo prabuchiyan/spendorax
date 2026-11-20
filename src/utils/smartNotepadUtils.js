@@ -75,21 +75,39 @@ function formatWhatsAppLedgerText(items = [], netTotal = 0, dateStr = '') {
     '━━━━━━━━━━━━━━━━━━━━━━━━━'
   ];
 
-  if (items.length === 0) {
+  if (!items || items.length === 0) {
     lines.push('_No transactions in ledger_');
   } else {
+    let sumIncome = 0;
+    let sumExpense = 0;
+
     items.forEach((item, index) => {
       const serial = `${index + 1}) `;
       const isIncome = String(item.type || '').toLowerCase() === 'income';
       const typeLabel = isIncome ? '[+]' : '[-]';
+      const numAmount = Math.abs(Number(item.amount) || 0);
+      if (isIncome) {
+        sumIncome += numAmount;
+      } else {
+        sumExpense += numAmount;
+      }
+
       const rawTitle = (item.title || (isIncome ? 'Income' : 'Expense')).trim();
       const cleanTitle = rawTitle.replace(/\r?\n+/g, ' ');
-      const amtStr = `${isIncome ? '+' : '-'}${formatLedgerAmount(item.amount)}`;
-
       const formulaStr = item.formula ? ` [${item.formula}]` : '';
-      lines.push(`${serial}${cleanTitle}${formulaStr} ${typeLabel}`);
-      lines.push(`     └─► Amount: *${amtStr}*`);
+      const amtStr = `${isIncome ? '+' : '-'}${formatLedgerAmount(numAmount)}`;
+      const tag = isIncome ? '(Money In)' : '(Money Out)';
+
+      // Single, easily understandable line without complex tree branches
+      lines.push(`${serial}${cleanTitle}${formulaStr} ${typeLabel} : *${amtStr}* ${tag}`);
     });
+
+    lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━');
+    lines.push(`🟢 *Money In:* +${formatLedgerAmount(sumIncome)}`);
+    lines.push(`🔴 *Money Out:* -${formatLedgerAmount(sumExpense)}`);
+    const balanceSign = netTotal > 0 ? '+' : (netTotal < 0 ? '-' : '');
+    const balanceLabel = netTotal >= 0 ? 'Remaining Balance' : 'Overspent';
+    lines.push(`⚖️ *${balanceLabel}:* ${balanceSign}${formatLedgerAmount(Math.abs(netTotal))}`);
   }
 
   lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -99,6 +117,34 @@ function formatWhatsAppLedgerText(items = [], netTotal = 0, dateStr = '') {
   lines.push('Shared via SpendoraX Smart Notepad');
 
   return lines.join('\n');
+}
+
+/**
+ * Generates a numbered copy title like "test 1 (1)", "test 1 (2)".
+ * If baseTitle already ends with " (N)", strips the existing "(N)" to find the root "test 1"
+ * and increments to the next available number.
+ * @param {string} baseTitle
+ * @param {Array<{ title?: string }>} existingSheets
+ * @returns {string}
+ */
+function getNextCopyTitle(baseTitle = '', existingSheets = []) {
+  const raw = (baseTitle || '').trim();
+  if (!raw) return 'Smart Notepad (1)';
+
+  // Check if title already ends with " (N)" e.g. "test 1 (1)"
+  const match = raw.match(/^(.*?)\s*\((\d+)\)$/);
+  const rootTitle = match ? match[1].trim() : raw;
+
+  const existingTitles = new Set(
+    (existingSheets || []).map((s) => (s && s.title ? s.title.trim() : ''))
+  );
+
+  // Find the next available (N) starting from 1
+  let num = 1;
+  while (existingTitles.has(`${rootTitle} (${num})`)) {
+    num++;
+  }
+  return `${rootTitle} (${num})`;
 }
 
 /**
@@ -612,6 +658,7 @@ module.exports = {
   toggleCandidateSelection,
   filterSelectedCandidates,
   filterCandidatesBySearch,
+  getNextCopyTitle,
   SAMPLE_PAPER_LEDGER_TEXT,
   SAMPLE_SMART_NOTEPAD_TEXT,
 };

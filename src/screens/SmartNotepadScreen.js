@@ -26,9 +26,10 @@ import {
   parseNotepadLine,
   formatItemToFreeformLine,
   parseNotepadDocument,
+  getNextCopyTitle,
 } from '../utils/smartNotepadUtils';
 import SmartNotepadMonthPickerModal from '../components/SmartNotepadMonthPickerModal';
-import SmartNotepadConfirmModal from '../components/SmartNotepadConfirmModal';
+import CommonBottomSheetModal from '../components/CommonBottomSheetModal';
 import SmartNotepadSaveSheetModal from '../components/SmartNotepadSaveSheetModal';
 import SmartNotepadSavedSheetsModal from '../components/SmartNotepadSavedSheetsModal';
 import SmartNotepadImportSelectModal from '../components/SmartNotepadImportSelectModal';
@@ -159,12 +160,14 @@ export default function SmartNotepadScreen({ navigation }) {
   const handleClearAll = useCallback(() => {
     if (!notepadText.trim()) return;
     setConfirmModalConfig({
-      title: 'Clear Notepad',
-      message: 'Are you sure you want to remove all notes and calculations from this sheet?',
+      title: 'Clear Notepad?',
+      subtitle: 'Are you sure you want to remove all notes and calculations from this sheet?',
       confirmLabel: 'Clear All',
       confirmIcon: 'trash-can-outline',
-      confirmColor: '#EF4444',
-      isDestructive: true,
+      type: 'danger',
+      warnings: [
+        { title: 'Unsaved Changes', text: 'All written calculations and notes will be cleared.' },
+      ],
       onConfirm: () => {
         setNotepadText('');
         setConfirmModalConfig(null);
@@ -187,10 +190,13 @@ export default function SmartNotepadScreen({ navigation }) {
       try {
         const shouldCreateNew = asNew || !activeSheetId;
         const targetId = shouldCreateNew ? null : activeSheetId;
+        const finalTitle = asNew
+          ? getNextCopyTitle(titleToSave || activeSheetTitle, savedSheets)
+          : titleToSave;
 
         const savedId = await savePaperLedger({
           id: targetId,
-          title: titleToSave,
+          title: finalTitle,
           raw_text: notepadText,
           items: evaluatedDoc.items,
           totalIncome: totals.totalIncome,
@@ -199,15 +205,15 @@ export default function SmartNotepadScreen({ navigation }) {
         });
 
         setActiveSheetId(savedId);
-        setActiveSheetTitle(titleToSave);
+        setActiveSheetTitle(finalTitle);
         setActiveSheetLastUpdated(new Date().toISOString());
 
         await loadSavedSheets();
 
         showToast(
-          shouldCreateNew
-            ? `Sheet "${titleToSave}" saved to records`
-            : `Sheet "${titleToSave}" updated`,
+          asNew
+            ? `Saved copy as "${finalTitle}"`
+            : (!activeSheetId ? `Sheet "${finalTitle}" saved to records` : `Sheet "${finalTitle}" updated`),
           'success'
         );
       } catch (err) {
@@ -215,7 +221,7 @@ export default function SmartNotepadScreen({ navigation }) {
         showToast('Failed to save sheet to database', 'error');
       }
     },
-    [activeSheetId, notepadText, evaluatedDoc.items, totals, loadSavedSheets, showToast]
+    [activeSheetId, activeSheetTitle, savedSheets, notepadText, evaluatedDoc.items, totals, loadSavedSheets, showToast]
   );
 
   // Handle opening a saved sheet
@@ -244,10 +250,13 @@ export default function SmartNotepadScreen({ navigation }) {
     if (notepadText.trim().length > 0) {
       setConfirmModalConfig({
         title: 'Start New Sheet?',
-        message: 'This will clear the current notepad and start a fresh sheet. Make sure your changes are saved.',
-        confirmLabel: 'New Sheet',
-        confirmIcon: 'plus-circle-outline',
-        confirmColor: Colors.primary,
+        subtitle: 'This will clear the current notepad and start a fresh sheet.',
+        confirmLabel: 'Start New Sheet',
+        confirmIcon: 'file-document-plus-outline',
+        type: 'warning',
+        warnings: [
+          { title: 'Save Progress', text: 'Make sure your current sheet has been saved to records if needed.' },
+        ],
         onConfirm: () => {
           handleNewSheet();
           setConfirmModalConfig(null);
@@ -257,6 +266,26 @@ export default function SmartNotepadScreen({ navigation }) {
       handleNewSheet();
     }
   }, [notepadText, handleNewSheet]);
+
+  // Configure top navigation header right with a '+' icon to start a new notepad
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={handlePromptNewSheet}
+          style={{ marginRight: 16, padding: 4 }}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons
+            name="plus"
+            size={26}
+            color={isDarkMode ? '#60A5FA' : (Colors.primary || '#4B7CF3')}
+          />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, handlePromptNewSheet, isDarkMode]);
 
   // Handle pin toggle
   const handleTogglePinSheet = useCallback(
@@ -275,12 +304,14 @@ export default function SmartNotepadScreen({ navigation }) {
   const handleDeleteSheet = useCallback(
     (sheet) => {
       setConfirmModalConfig({
-        title: 'Delete Saved Notepad',
-        message: `Are you sure you want to delete "${sheet.title}"? This cannot be undone.`,
-        confirmLabel: 'Delete',
+        title: 'Delete Saved Notepad?',
+        subtitle: `Are you sure you want to permanently delete "${sheet.title}"?`,
+        confirmLabel: 'Delete Permanently',
         confirmIcon: 'trash-can-outline',
-        confirmColor: '#EF4444',
-        isDestructive: true,
+        type: 'danger',
+        warnings: [
+          { title: 'Cannot Be Undone', text: 'This sheet will be permanently removed from your saved records.' },
+        ],
         onConfirm: async () => {
           setConfirmModalConfig(null);
           try {
@@ -715,42 +746,6 @@ export default function SmartNotepadScreen({ navigation }) {
               </View>
 
               <View style={styles.fintechHeaderControls}>
-                {(activeSheetTitle || notepadText.trim().length > 0) && (
-                  <TouchableOpacity
-                    style={[
-                      styles.fintechNewBtn,
-                      {
-                        backgroundColor: isDarkMode ? '#172554' : '#EFF6FF',
-                        borderColor: isDarkMode ? '#1E3A8A' : '#BFDBFE',
-                      },
-                    ]}
-                    onPress={handlePromptNewSheet}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    activeOpacity={0.7}
-                  >
-                    <MaterialCommunityIcons name="plus" size={13} color="#3B82F6" />
-                    <Text style={styles.fintechNewBtnText}>New</Text>
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity
-                  style={[
-                    styles.fintechNewBtn,
-                    {
-                      backgroundColor: isDarkMode ? '#2D2006' : '#FEF3C7',
-                      borderColor: isDarkMode ? '#78350F' : '#FDE68A',
-                    },
-                  ]}
-                  onPress={() => setIsGuideModalVisible(true)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons name="lightbulb-on-outline" size={13} color="#D97706" />
-                  <Text style={[styles.fintechNewBtnText, { color: isDarkMode ? '#FCD34D' : '#B45309' }]}>
-                    Guide
-                  </Text>
-                </TouchableOpacity>
-
                 <View
                   style={[
                     styles.fintechCountBadge,
@@ -760,7 +755,7 @@ export default function SmartNotepadScreen({ navigation }) {
                   ]}
                 >
                   <Text style={[styles.fintechCountText, { color: textMuted }]}>
-                    {evaluatedDoc.validCount} {evaluatedDoc.validCount === 1 ? 'calculation' : 'calculations'}
+                    {evaluatedDoc.validCount} {evaluatedDoc.validCount === 1 ? 'entry' : 'entries'}
                   </Text>
                 </View>
               </View>
@@ -969,15 +964,17 @@ export default function SmartNotepadScreen({ navigation }) {
         onInsertTemplate={handleInsertSampleTemplate}
       />
 
-      {/* Modal: Action Confirmation (Cross-platform) */}
-      <SmartNotepadConfirmModal
+      {/* Modal: Action Confirmation using the app's standard CommonBottomSheetModal */}
+      <CommonBottomSheetModal
         visible={Boolean(confirmModalConfig)}
-        title={confirmModalConfig?.title}
-        message={confirmModalConfig?.message}
-        confirmLabel={confirmModalConfig?.confirmLabel}
+        type={confirmModalConfig?.type || 'warning'}
+        icon={confirmModalConfig?.confirmIcon}
+        title={confirmModalConfig?.title || 'Are you sure?'}
+        subtitle={confirmModalConfig?.subtitle || confirmModalConfig?.message}
+        confirmLabel={confirmModalConfig?.confirmLabel || 'Confirm'}
+        cancelLabel="Cancel"
         confirmIcon={confirmModalConfig?.confirmIcon}
-        confirmColor={confirmModalConfig?.confirmColor}
-        isDestructive={confirmModalConfig?.isDestructive}
+        warnings={confirmModalConfig?.warnings || []}
         onCancel={() => setConfirmModalConfig(null)}
         onConfirm={confirmModalConfig?.onConfirm}
       />

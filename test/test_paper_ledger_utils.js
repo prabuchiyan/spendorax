@@ -5,6 +5,7 @@ const {
   formatWhatsAppLedgerText,
   mapDbTransactionsToPaperItems,
   isTransferTransaction,
+  getNextCopyTitle,
 } = require('../src/utils/smartNotepadUtils');
 
 console.log('Running Task 1 tests...');
@@ -74,6 +75,13 @@ assert.strictEqual(mappedWithoutTransfers.length, 2, 'Should only map genuine no
 assert.ok(mappedWithoutTransfers[0].title.includes('Real Salary'), 'Should include notes in title');
 assert.ok(mappedWithoutTransfers[1].title.includes('Coffee'), 'Should include notes in title');
 console.log('✓ Transfer transaction exclusion verified successfully!');
+
+// 7. Test Save As Copy Title Incrementing: "test 1" -> "test 1 (1)" -> "test 1 (2)"
+assert.strictEqual(getNextCopyTitle('test 1', []), 'test 1 (1)', 'First copy of test 1 should be test 1 (1)');
+assert.strictEqual(getNextCopyTitle('test 1', [{ title: 'test 1 (1)' }]), 'test 1 (2)', 'Second copy should be test 1 (2)');
+assert.strictEqual(getNextCopyTitle('test 1 (1)', [{ title: 'test 1' }, { title: 'test 1 (1)' }]), 'test 1 (2)', 'Copying test 1 (1) should yield test 1 (2)');
+assert.strictEqual(getNextCopyTitle('test 1 (2)', [{ title: 'test 1' }, { title: 'test 1 (1)' }, { title: 'test 1 (2)' }]), 'test 1 (3)', 'Third copy should be test 1 (3)');
+console.log('✓ Save As Copy title incrementing verified successfully!');
 
 console.log('Task 1 tests passed successfully!');
 
