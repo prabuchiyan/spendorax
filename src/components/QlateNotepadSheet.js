@@ -113,7 +113,7 @@ function QlateNotepadSheet(
         </View>
       </View>
 
-      {/* Main Ruled Rows: Tight, equal line height, no amount background */}
+      {/* Main Ruled Rows: Tight, equal line height, single-line horizontal alignment */}
       <View style={[styles.sheetBody, { backgroundColor: cardBg }]}>
         {Array.from({ length: displayLineCount }).map((_, idx) => {
           const lineValue = rawLines[idx] !== undefined ? rawLines[idx] : '';
@@ -142,8 +142,8 @@ function QlateNotepadSheet(
                     inputRefs.current[idx] = el;
                   }}
                   multiline
+                  numberOfLines={1}
                   scrollEnabled={false}
-                  textAlignVertical="center"
                   value={lineValue}
                   onChangeText={(val) => handleLineChange(idx, val)}
                   onKeyPress={(e) => handleKeyPress(idx, e)}
@@ -164,7 +164,7 @@ function QlateNotepadSheet(
                 />
               </View>
 
-              {/* Right Column: Amount text with number ONLY (No background/pill) */}
+              {/* Right Column: Amount text on the exact same horizontal baseline */}
               <View style={styles.resultColWrapper}>
                 {isEvaluated ? (
                   <Text
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: StyleSheet.hairlineWidth,
     minHeight: 32,
-    paddingVertical: 2,
+    paddingVertical: 3,
     paddingHorizontal: 8,
   },
   noteInputWrapper: {
@@ -247,17 +247,29 @@ const styles = StyleSheet.create({
   noteInput: {
     fontSize: 13,
     fontWeight: '500',
-    lineHeight: 18,
-    paddingTop: 1,
-    paddingBottom: 1,
+    lineHeight: 20,
+    paddingTop: 0,
+    paddingBottom: 0,
     paddingHorizontal: 0,
     margin: 0,
     ...Platform.select({
       web: {
         outlineStyle: 'none',
+        fieldSizing: 'content',
+        height: 'auto',
+        minHeight: 20,
+        overflow: 'hidden',
+        resize: 'none',
       },
       android: {
         includeFontPadding: false,
+        paddingTop: 0,
+        paddingBottom: 0,
+        textAlignVertical: 'center',
+      },
+      ios: {
+        paddingTop: 0,
+        paddingBottom: 0,
       },
     }),
   },
@@ -267,9 +279,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   resultText: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '700',
+    lineHeight: 20,
     letterSpacing: 0.2,
     textAlign: 'right',
+    paddingTop: 0,
+    paddingBottom: 0,
+    margin: 0,
   },
 });
