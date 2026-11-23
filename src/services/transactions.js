@@ -677,61 +677,128 @@ export async function updateTransfer({
 
 export async function getTransactionNoteSuggestions() {
   if (Platform.OS === "web") {
-    const transactionsRes = await executeSql("SELECT * FROM transactions");
+    const transactionsRes = await executeSql("SELECT * FROM transactions ORDER BY date DESC, id DESC");
     const categoriesRes = await executeSql("SELECT * FROM categories");
     const categories = [];
     for (let i = 0; i < categoriesRes.rows.length; i++) {
       categories.push(categoriesRes.rows.item(i));
     }
-    const map = {};
+    const allTxs = [];
     for (let i = 0; i < transactionsRes.rows.length; i++) {
-      const tx = transactionsRes.rows.item(i);
+      allTxs.push(transactionsRes.rows.item(i));
+    }
+
+    const nonTransferMap = {};
+    const transferGroups = new Map();
+
+    for (const tx of allTxs) {
       if (!tx.notes || !tx.notes.trim()) continue;
 
-      const category = categories.find(
-        (c) => String(c.id) === String(tx.category_id),
-      );
-      const key = `${tx.category_id ?? "uncategorized"}_${tx.notes.toLowerCase()}`;
-
-      if (!map[key]) {
-        map[key] = {
-          notes: tx.notes,
-          category_id: tx.category_id ?? null,
-          category_name: category?.name ?? "Uncategorized",
-          icon: category?.icon ?? "currency-inr",
-          color: category?.color ?? "#4B7CF3",
-          usage_count: 1,
-          last_used: tx.date,
-        };
+      if (tx.transfer_group_id) {
+        if (!transferGroups.has(tx.transfer_group_id)) {
+          transferGroups.set(tx.transfer_group_id, {
+            notes: tx.notes,
+            fromAccount: null,
+            toAccount: null,
+            date: tx.date,
+          });
+        }
+        const grp = transferGroups.get(tx.transfer_group_id);
+        if (tx.direction === "debit" || (tx.type === "expense" && tx.direction !== "credit")) {
+          grp.fromAccount = tx.source_id;
+        } else if (tx.direction === "credit" || (tx.type === "income" && tx.direction !== "debit")) {
+          grp.toAccount = tx.source_id;
+        }
       } else {
-        map[key].usage_count++;
-        if (new Date(tx.date) > new Date(map[key].last_used)) {
-          map[key].last_used = tx.date;
+        const category = categories.find(
+          (c) => String(c.id) === String(tx.category_id),
+        );
+        const txType = tx.type || "expense";
+        const key = `${txType}_${tx.notes.toLowerCase().trim()}`;
+        if (!nonTransferMap[key]) {
+          nonTransferMap[key] = {
+            notes: tx.notes,
+            category_id: tx.category_id ?? null,
+            category_name: category?.name ?? "Uncategorized",
+            icon: category?.icon ?? "currency-inr",
+            color: category?.color ?? "#4B7CF3",
+            source_id: null, // Source selection only applies on transfer type
+            to_account: null,
+            type: txType,
+            usage_count: 1,
+            last_used: tx.date,
+          };
+        } else {
+          nonTransferMap[key].usage_count++;
+          if (new Date(tx.date) > new Date(nonTransferMap[key].last_used)) {
+            nonTransferMap[key].last_used = tx.date;
+            if (tx.category_id) nonTransferMap[key].category_id = tx.category_id;
+          }
         }
       }
     }
-    return Object.values(map).sort((a, b) => {
+
+    const transferNotesMap = new Map();
+    for (const [groupId, grp] of transferGroups.entries()) {
+      if (!grp.fromAccount || !grp.toAccount || grp.fromAccount === grp.toAccount) continue;
+      const noteKey = grp.notes.toLowerCase().trim();
+      if (!transferNotesMap.has(noteKey)) {
+        transferNotesMap.set(noteKey, {
+          notes: grp.notes,
+          type: "transfer",
+          source_id: grp.fromAccount,
+          to_account: grp.toAccount,
+          category_id: null,
+          category_name: "Transfer",
+          icon: "swap-horizontal",
+          color: "#3B82F6",
+          usage_count: 1,
+          last_used: grp.date,
+        });
+      } else {
+        const existing = transferNotesMap.get(noteKey);
+        existing.usage_count++;
+        if (new Date(grp.date) > new Date(existing.last_used)) {
+          existing.last_used = grp.date;
+          existing.source_id = grp.fromAccount;
+          existing.to_account = grp.toAccount;
+        }
+      }
+    }
+
+    const allSuggestions = [
+      ...Object.values(nonTransferMap),
+      ...Array.from(transferNotesMap.values()),
+    ];
+
+    return allSuggestions.sort((a, b) => {
       if (b.usage_count !== a.usage_count) return b.usage_count - a.usage_count;
       return new Date(b.last_used) - new Date(a.last_used);
     });
   }
 
-  const query = `
-    SELECT t.category_id, t.notes, MAX(t.date) as last_used, COUNT(*) as usage_count, c.name as category_name, c.icon, c.color
-    FROM transactions t
-    LEFT JOIN categories c ON t.category_id = c.id
-    WHERE t.notes IS NOT NULL AND t.notes != ''
-    GROUP BY t.category_id, lower(t.notes)
-    ORDER BY usage_count DESC, last_used DESC
-  `;
   try {
-    const res = await executeSql(query);
-    const rows = [];
+    // 1. Non-transfer suggestions (Expense & Income)
+    const nonTransferQuery = `
+      SELECT t.category_id, t.type, t.notes,
+             MAX(t.date) as last_used, COUNT(*) as usage_count,
+             c.name as category_name, c.icon, c.color
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      WHERE t.notes IS NOT NULL AND t.notes != '' AND (t.transfer_group_id IS NULL OR t.transfer_group_id = '')
+      GROUP BY lower(t.notes), t.type
+      ORDER BY usage_count DESC, last_used DESC
+    `;
+    const res = await executeSql(nonTransferQuery);
+    const suggestions = [];
     for (let i = 0; i < res.rows.length; i++) {
       const item = res.rows.item(i);
-      rows.push({
+      suggestions.push({
         notes: item.notes,
         category_id: item.category_id,
+        source_id: null, // Source selection only applies on transfer type
+        to_account: null,
+        type: item.type || "expense",
         category_name: item.category_name || "Uncategorized",
         icon: item.icon || "currency-inr",
         color: item.color || "#4B7CF3",
@@ -739,7 +806,67 @@ export async function getTransactionNoteSuggestions() {
         last_used: item.last_used,
       });
     }
-    return rows;
+
+    // 2. Transfer suggestions (With distinct Debit / From and Credit / To accounts)
+    const transferQuery = `
+      SELECT transfer_group_id, source_id, direction, type, notes, date
+      FROM transactions
+      WHERE notes IS NOT NULL AND notes != '' AND transfer_group_id IS NOT NULL AND transfer_group_id != ''
+      ORDER BY date DESC, id DESC
+    `;
+    const tRes = await executeSql(transferQuery);
+    const transferGroups = new Map();
+    for (let i = 0; i < tRes.rows.length; i++) {
+      const row = tRes.rows.item(i);
+      if (!transferGroups.has(row.transfer_group_id)) {
+        transferGroups.set(row.transfer_group_id, {
+          notes: row.notes,
+          fromAccount: null,
+          toAccount: null,
+          date: row.date,
+        });
+      }
+      const grp = transferGroups.get(row.transfer_group_id);
+      if (row.direction === "debit" || (row.type === "expense" && row.direction !== "credit")) {
+        grp.fromAccount = row.source_id;
+      } else if (row.direction === "credit" || (row.type === "income" && row.direction !== "debit")) {
+        grp.toAccount = row.source_id;
+      }
+    }
+
+    const transferNotesMap = new Map();
+    for (const [groupId, grp] of transferGroups.entries()) {
+      if (!grp.fromAccount || !grp.toAccount || grp.fromAccount === grp.toAccount) continue;
+      const noteKey = grp.notes.toLowerCase().trim();
+      if (!transferNotesMap.has(noteKey)) {
+        transferNotesMap.set(noteKey, {
+          notes: grp.notes,
+          type: "transfer",
+          source_id: grp.fromAccount,
+          to_account: grp.toAccount,
+          category_id: null,
+          category_name: "Transfer",
+          icon: "swap-horizontal",
+          color: "#3B82F6",
+          usage_count: 1,
+          last_used: grp.date,
+        });
+      } else {
+        const existing = transferNotesMap.get(noteKey);
+        existing.usage_count++;
+        if (new Date(grp.date) > new Date(existing.last_used)) {
+          existing.last_used = grp.date;
+          existing.source_id = grp.fromAccount;
+          existing.to_account = grp.toAccount;
+        }
+      }
+    }
+
+    const all = [...suggestions, ...Array.from(transferNotesMap.values())];
+    return all.sort((a, b) => {
+      if (b.usage_count !== a.usage_count) return b.usage_count - a.usage_count;
+      return new Date(b.last_used) - new Date(a.last_used);
+    });
   } catch (error) {
     console.error("getTransactionNoteSuggestions SQL error:", error);
     return [];

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useTheme } from "../context/ThemeContext";
 import {
   View,
@@ -7,9 +7,13 @@ import {
   FlatList,
   Modal,
   Text,
+  TextInput,
   Platform,
   BackHandler,
   ActivityIndicator,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Keyboard,
 } from "react-native";
 import {
   createTransaction,
@@ -27,27 +31,24 @@ import {
 } from "../services/loans";
 import { getCategories } from "../services/categories";
 import { getSources } from "../services/sources";
-import { getBillsForTransaction } from "../services/bills";
 import {
-  TextInput as PaperTextInput,
-  Button as PaperButton,
-  Chip,
-  Snackbar,
-} from "react-native-paper";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+  getBillsForTransaction,
+  getAvailableBillsForTransactionLink,
+  linkBillToTransaction,
+  unlinkBillFromTransaction,
+} from "../services/bills";
+import { Snackbar, Button as PaperButton } from "react-native-paper";
+import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import CategoryCreateScreen from "../screens/CategoryCreateScreen";
 import SourceCreateScreen from "../screens/SourceCreateScreen";
 import CommonBottomSheetModal from "./CommonBottomSheetModal";
 import MuiDateTimePicker from "./MuiDateTimePicker";
-import { Feather } from "@expo/vector-icons";
 import LinkedBillCard from "./LinkedBillCard";
 import { usePageLoader } from "../context/PageLoaderContext";
 import PageLoader from "../components/PageLoader";
 import { onCardTransactionChanged } from "../services/creditCardScheduler";
 
 export default function TransactionForm({
-
-  // ...props
   onCreated,
   onCancel,
   transaction,
@@ -63,110 +64,167 @@ export default function TransactionForm({
     show: showPageLoader,
     hide: hidePageLoader,
   } = usePageLoader();
+
+  // Form Field States
   const [amount, setAmount] = useState(
-    isEdit && transaction ? String(transaction.amount) : "",
+    isEdit && transaction ? String(transaction.amount) : ""
   );
   const [amountError, setAmountError] = useState(false);
   const [type, setType] = useState(
-    isEdit && transaction ? transaction.type : initialType || "expense",
+    isEdit && transaction ? transaction.type : initialType || "expense"
   );
   const [isReady, setIsReady] = useState(false);
   const [categories, setCategories] = useState([]);
   const [sources, setSources] = useState([]);
   const [categoryUsage, setCategoryUsage] = useState({});
   const [sourceUsage, setSourceUsage] = useState({});
+
   const [categoryId, setCategoryId] = useState(
     isEdit && transaction
       ? transaction.category_id
-      : (initialCategoryId ?? null),
+      : (initialCategoryId ?? null)
   );
   const [sourceId, setSourceId] = useState(
-    isEdit && transaction ? transaction.source_id : (initialSourceId ?? null),
+    isEdit && transaction ? transaction.source_id : (initialSourceId ?? null)
   );
   const [date, setDate] = useState(
-    isEdit && transaction ? transaction.date : new Date().toISOString(),
+    isEdit && transaction ? transaction.date : new Date().toISOString()
   );
   const [notes, setNotes] = useState(
-    isEdit && transaction ? transaction.notes : "",
+    isEdit && transaction ? transaction.notes : ""
   );
   const [transferGroupId, setTransferGroupId] = useState(
-    isEdit && transaction ? transaction.transfer_group_id : "",
+    isEdit && transaction ? transaction.transfer_group_id : ""
   );
-  const [showDateTimePicker, setShowDateTimePicker] = useState(false);
-  const [showCategoryCreateModal, setShowCategoryCreateModal] = useState(false);
-  const [pickerMode, setPickerMode] = useState("date");
-  const [notesError, setNotesError] = useState(false);
   const [toAccount, setToAccount] = useState(
     isEdit && transaction && transaction.type === "transfer"
       ? transaction.toAccount
-      : null,
+      : null
   );
-  const [selectingFor, setSelectingFor] = useState("from");
-  const [confirmVisible, setConfirmVisible] = useState(false);
-  const [noteSuggestions, setNoteSuggestions] = useState([]);
-  const [filteredSuggestions, setFilteredSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [showCategoryGrid, setShowCategoryGrid] = useState(
-    !((isEdit && transaction?.category_id) || (!isEdit && initialCategoryId)),
-  );
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [categorySearch, setCategorySearch] = useState("");
-  const categorySearchRef = useRef(null);
-  const [showSourceGrid, setShowSourceGrid] = useState(
-    !((isEdit && transaction?.source_id) || (!isEdit && initialSourceId)),
-  );
-  const [showToAccountGrid, setShowToAccountGrid] = useState(
-    !(isEdit && transaction?.type === "transfer" && transaction?.toAccount),
-  );
-  const [showSourceModal, setShowSourceModal] = useState(false);
-  const [sourceSearch, setSourceSearch] = useState("");
-  const sourceSearchRef = useRef(null);
-  const [showSourceCreateModal, setShowSourceCreateModal] = useState(false);
-  const [loansList, setLoansList] = useState([]);
-  const [showLoanModal, setShowLoanModal] = useState(false);
-  const [selectedLoanId, setSelectedLoanId] = useState(
-    isEdit && transaction ? transaction.loan_id : null,
-  );
-  const [linking, setLinking] = useState(false);
-  const [snackbarVisible, setSnackbarVisible] = useState(false);
-  const [snackbarMsg, setSnackbarMsg] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [loanSearch, setLoanSearch] = useState("");
-  const [pendingLoan, setPendingLoan] = useState(null);
-  const [showLoanActionSheet, setShowLoanActionSheet] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
-  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
-  const [showMoreOptions, setShowMoreOptions] = useState(false);
+
+  // Advanced Option States
   const [isCounted, setIsCounted] = useState(
     isEdit && transaction
       ? transaction.is_counted !== undefined
         ? Boolean(transaction.is_counted)
         : true
-      : true,
+      : true
   );
-  const [loanTab, setLoanTab] = useState("active");
-  const [hasLinkedBill, setHasLinkedBill] = useState(false);
+  const [loansList, setLoansList] = useState([]);
+  const [selectedLoanId, setSelectedLoanId] = useState(
+    isEdit && transaction ? transaction.loan_id : null
+  );
+
+  // Bill Linking States (Create & Edit Mode)
+  const [availableBills, setAvailableBills] = useState([]);
+  const [selectedBillId, setSelectedBillId] = useState(null);
   const [linkedBills, setLinkedBills] = useState([]);
+  const [hasLinkedBill, setHasLinkedBill] = useState(false);
+  const [showBillModal, setShowBillModal] = useState(false);
+  const [billSearch, setBillSearch] = useState("");
 
-  const isNotSpendOrIncome = !isCounted && type !== "transfer";
-  const isLoanLinked = Boolean(selectedLoanId);
-  const isBillLinked = Boolean(hasLinkedBill || linkedBills.length > 0);
-  const hasActiveHighlights = isNotSpendOrIncome || isLoanLinked || isBillLinked;
-  const activeHighlightsCount =
-    (isNotSpendOrIncome ? 1 : 0) +
-    (isLoanLinked ? 1 : 0) +
-    (isBillLinked ? 1 : 0);
+  // UI & Modal States
+  const [selectingFor, setSelectingFor] = useState("from"); // "from" or "to"
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
+  const categorySearchRef = useRef(null);
 
-  function markDirty() {
-    setIsDirty(true);
-  }
+  const [showSourceModal, setShowSourceModal] = useState(false);
+  const [sourceSearch, setSourceSearch] = useState("");
+  const sourceSearchRef = useRef(null);
 
+  const [showCategoryCreateModal, setShowCategoryCreateModal] = useState(false);
+  const [showSourceCreateModal, setShowSourceCreateModal] = useState(false);
+
+  const [showDateTimePicker, setShowDateTimePicker] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
+
+  // Loan Linking Modal States
+  const [showLoanModal, setShowLoanModal] = useState(false);
+  const [loanSearch, setLoanSearch] = useState("");
+  const [loanTab, setLoanTab] = useState("active");
+  const [pendingLoan, setPendingLoan] = useState(null);
+  const [showLoanActionSheet, setShowLoanActionSheet] = useState(false);
+  const [linking, setLinking] = useState(false);
+
+  // Notes & Suggestions
+  const [noteSuggestions, setNoteSuggestions] = useState([]);
+  const [filteredSuggestions, setFilteredSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [notesError, setNotesError] = useState(false);
+  const filterTimeoutRef = useRef(null);
+
+  // App & Workflow States
+  const [isDirty, setIsDirty] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMsg, setSnackbarMsg] = useState("");
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  // Track keyboard visibility so fixed bottom bar does not block form suggestions
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      () => setIsKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => setIsKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const markDirty = () => setIsDirty(true);
+
+  // Theme Helpers
+  const cardBg = isDarkMode ? (theme?.cardBg || "#1E293B") : "#FFFFFF";
+  const screenBg = isDarkMode ? (theme?.background || "#0F172A") : "#F8FAFC";
+  const textPrimary = isDarkMode ? "#F9FAFB" : "#111827";
+  const textSecondary = isDarkMode ? "#94A3B8" : "#64748B";
+  const borderColor = isDarkMode ? "#334155" : "#E2E8F0";
+  const dividerColor = isDarkMode ? "#293548" : "#F1F5F9";
+  const inputBg = isDarkMode ? "#1A2234" : "#F8FAFC";
+
+  const typeConfig = useMemo(() => {
+    switch (type) {
+      case "income":
+        return {
+          label: "Income",
+          color: "#10B981",
+          softBg: isDarkMode ? "#0E2A1E" : "#ECFDF5",
+          border: isDarkMode ? "#059669" : "#A7F3D0",
+          icon: "arrow-down-left",
+        };
+      case "transfer":
+        return {
+          label: "Transfer",
+          color: "#3B82F6",
+          softBg: isDarkMode ? "#17233B" : "#EFF6FF",
+          border: isDarkMode ? "#2563EB" : "#BFDBFE",
+          icon: "swap-horizontal",
+        };
+      case "expense":
+      default:
+        return {
+          label: "Expense",
+          color: "#EF4444",
+          softBg: isDarkMode ? "#2D1518" : "#FEF2F2",
+          border: isDarkMode ? "#DC2626" : "#FECACA",
+          icon: "arrow-up-right",
+        };
+    }
+  }, [type, isDarkMode]);
+
+  // Load Initial Data
   useEffect(() => {
     let cancelled = false;
     async function loadInitialData() {
       try {
-        /* Categories and sources are required for the initial form,
-         * so load them together instead of waiting for one after another. */
         const [cats, src] = await Promise.all([
           getCategories(true),
           getSources(true),
@@ -175,60 +233,48 @@ export default function TransactionForm({
         setCategories(cats || []);
         setSources(src || []);
         setIsReady(true);
-        /* Everything below is secondary data.
-         * It is intentionally loaded after the form's primary data has been rendered
-         * so opening Add Transaction does not wait for transaction history, notes or loans. */
 
-        // CATEGORY / SOURCE USAGE
         getCategoryAndSourceUsage(1)
           .then(({ categoryCount, sourceCount }) => {
             if (cancelled) return;
             setCategoryUsage(categoryCount || {});
             setSourceUsage(sourceCount || {});
           })
-          .catch((usageError) => {
-            console.warn(
-              "Unable to calculate category/source usage:",
-              usageError,
-            );
-            if (cancelled) return;
-            setCategoryUsage({});
-            setSourceUsage({});
-          });
-        //NOTE SUGGESTIONS
+          .catch(() => { });
+
         getTransactionNoteSuggestions()
           .then((notes) => {
             if (cancelled) return;
             setNoteSuggestions(notes || []);
           })
-          .catch((error) => {
-            console.warn("Unable to load transaction note suggestions:", error);
-            if (cancelled) return;
-            setNoteSuggestions([]);
-          });
-        // LOANS
+          .catch(() => { });
+
         getLoans()
           .then((lns) => {
             if (cancelled) return;
             setLoansList(lns || []);
           })
-          .catch((error) => {
-            console.warn("Unable to load loans:", error);
-            if (cancelled) return;
-            setLoansList([]);
-          });
+          .catch(() => { });
 
-        // LINKED BILLS
+        // Fetch available bills for linking
+        getAvailableBillsForTransactionLink(isEdit && transaction?.id ? transaction.id : null)
+          .then((bills) => {
+            if (cancelled) return;
+            setAvailableBills(bills || []);
+          })
+          .catch(() => { });
+
         if (isEdit && transaction?.id) {
           getBillsForTransaction(transaction.id, true)
             .then((bills) => {
               if (cancelled) return;
               setLinkedBills(bills || []);
               setHasLinkedBill(bills?.length > 0);
+              if (bills && bills.length > 0) {
+                setSelectedBillId(bills[0].id);
+              }
             })
-            .catch((error) => {
-              console.warn("Unable to load linked bills:", error);
-            });
+            .catch(() => { });
         }
       } catch (error) {
         if (cancelled) return;
@@ -242,64 +288,68 @@ export default function TransactionForm({
     };
   }, []);
 
+  // Category reset when switching types (clears category when changing type in both edit and create modes)
+  const prevTypeRef = useRef(type);
   useEffect(() => {
-    if (categories.length === 0) return;
+    if (prevTypeRef.current !== type) {
+      prevTypeRef.current = type;
+      setCategoryId(null);
+      return;
+    }
     if (type === "transfer") {
       setCategoryId(null);
       return;
     }
-    // Preserve category while editing.
-    // User can choose another category manually.
-    if (isEdit) return;
-    const exists = categories.some(
-      (c) => c.id === categoryId && c.type === type,
-    );
-    if (!exists) {
-      setCategoryId(null);
+    if (categories.length > 0 && categoryId) {
+      const exists = categories.some(
+        (c) => c.id === categoryId && c.type === type
+      );
+      if (!exists) {
+        setCategoryId(null);
+      }
     }
-  }, [type, categories, isEdit]);
+  }, [type, categories, categoryId]);
 
+  // Autofocus modal searches
   useEffect(() => {
     if (showCategoryModal) {
-      setTimeout(() => {
-        categorySearchRef.current?.focus();
-      }, 250);
+      setTimeout(() => categorySearchRef.current?.focus(), 250);
     }
   }, [showCategoryModal]);
 
   useEffect(() => {
     if (showSourceModal) {
-      setTimeout(() => {
-        sourceSearchRef.current?.focus();
-      }, 250);
+      setTimeout(() => sourceSearchRef.current?.focus(), 250);
     }
   }, [showSourceModal]);
 
+  // Sync edit transaction only when switching to a different transaction
+  const loadedTxIdRef = useRef(transaction?.id);
   useEffect(() => {
-    if (isEdit && transaction?.category_id) {
-      setCategoryId(transaction.category_id);
-      setShowCategoryGrid(false);
+    if (isEdit && transaction?.id && transaction.id !== loadedTxIdRef.current) {
+      loadedTxIdRef.current = transaction.id;
+      if (transaction.category_id) {
+        setCategoryId(transaction.category_id);
+      }
+      if (transaction.source_id) {
+        setSourceId(transaction.source_id);
+      }
+      if (transaction.type) {
+        setType(transaction.type);
+      }
     }
-    if (isEdit && transaction?.source_id) {
-      setSourceId(transaction.source_id);
-      setShowSourceGrid(false);
-    }
-  }, [isEdit, transaction]);
+  }, [isEdit, transaction?.id, transaction?.category_id, transaction?.source_id, transaction?.type]);
 
+  // Sync initial params on new transaction
   useEffect(() => {
     if (!isEdit) {
       if (initialType) setType(initialType);
-      if (initialCategoryId) {
-        setCategoryId(initialCategoryId);
-        setShowCategoryGrid(false);
-      }
-      if (initialSourceId) {
-        setSourceId(initialSourceId);
-        setShowSourceGrid(false);
-      }
+      if (initialCategoryId) setCategoryId(initialCategoryId);
+      if (initialSourceId) setSourceId(initialSourceId);
     }
   }, [initialType, initialCategoryId, initialSourceId, isEdit]);
 
+  // Hardware back button for unsaved changes
   useEffect(() => {
     if (Platform.OS !== "android") return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
@@ -312,206 +362,7 @@ export default function TransactionForm({
     return () => sub.remove();
   }, [isDirty]);
 
-  async function submit() {
-    if (submitting) return; // guard against double taps while a save is in flight
-    const val = parseFloat(amount);
-    if (!amount || isNaN(val) || val === 0) {
-      setAmountError(true);
-      return;
-    }
-    // Category is mandatory only while creating a new transaction
-    if (!isEdit && !categoryId && type !== "transfer") {
-      setSnackbarMsg("Please select a category.");
-      setSnackbarVisible(true);
-      return;
-    }
-    if (!sourceId) {
-      setSnackbarMsg("Please select a source.");
-      setSnackbarVisible(true);
-      return;
-    }
-    if (!notes.trim()) {
-      setNotesError(true);
-      return;
-    }
-
-    setSubmitting(true);
-    // Give React Native one frame to render the loading spinner
-    await new Promise((resolve) => requestAnimationFrame(resolve));
-
-    let id;
-    try {
-      if (type === "transfer") {
-        if (!sourceId || !toAccount) {
-          setSnackbarMsg("Select both accounts");
-          setSnackbarVisible(true);
-          return;
-        }
-        if (sourceId === toAccount) {
-          setSnackbarMsg("Cannot transfer to same account");
-          setSnackbarVisible(true);
-          return;
-        }
-        try {
-          if (isEdit && transaction && transaction.transfer_group_id) {
-            await updateTransfer({
-              groupId: transaction.transfer_group_id,
-              fromAccount: sourceId,
-              toAccount,
-              amount: val,
-              note: notes,
-              date,
-            });
-          } else {
-            await createTransfer({
-              fromAccount: sourceId,
-              toAccount,
-              amount: val,
-              note: notes,
-              date,
-            });
-          }
-        } catch (e) {
-          console.log(e);
-          setSnackbarMsg(e?.message || "Operation failed");
-          setSnackbarVisible(true);
-          return;
-        }
-        id = "transfer";
-      } else {
-        const transactionData = {
-          type,
-          amount: val,
-          category_id: categoryId || null,
-          source_id: sourceId,
-          date,
-          notes,
-          is_counted: isCounted ? 1 : 0,
-        };
-        try {
-          if (isEdit && transaction && transaction.id) {
-            id = await updateTransaction(transaction.id, transactionData);
-
-            // Handle loan link changes
-            if (selectedLoanId !== transaction.loan_id) {
-              try {
-                if (transaction.loan_id && !selectedLoanId) {
-                  await unlinkTransactionFromLoan(transaction.id);
-                } else if (selectedLoanId) {
-                  await linkTransactionToLoan(transaction.id, selectedLoanId, {
-                    paymentType: "LINKED",
-                    linkedDate: date,
-                  });
-                }
-              } catch (e) {
-                console.warn(e);
-              }
-            }
-          } else {
-            id = await createTransaction(transactionData);
-            if (selectedLoanId) {
-              try {
-                await linkTransactionToLoan(id, selectedLoanId, {
-                  paymentType: "LINKED",
-                  linkedDate: date,
-                });
-              } catch (e) {
-                console.warn(e);
-              }
-            }
-          }
-        } catch (e) {
-          console.log(e);
-          setSnackbarMsg(e?.message || "Operation failed");
-          setSnackbarVisible(true);
-          return;
-        }
-      }
-      // AFTER — add this block immediately after the type === 'transfer' / else block resolves,
-      // just before setIsDirty(false):
-      // Notify credit card scheduler if this source belongs to a card
-      try {
-        const affectedSourceId = type === "transfer" ? sourceId : sourceId;
-        await onCardTransactionChanged(affectedSourceId);
-        // For transfers, the destination may also be a credit card source
-        if (type === "transfer" && toAccount) {
-          await onCardTransactionChanged(toAccount);
-        }
-      } catch (e) {
-        // Non-critical — don't block save
-        console.warn("[TransactionForm] onCardTransactionChanged failed:", e);
-      }
-      setIsDirty(false);
-      if (onCreated) onCreated(id);
-      if (!isEdit) {
-        // Only reset form if it was a new transaction
-        setAmount("");
-        setNotes("");
-        setDate(new Date().toISOString());
-        setTransferGroupId("");
-      }
-      setAmountError(false);
-      setNotesError(false);
-
-      // Close the form now that the save has completed successfully.
-      if (onCancel) onCancel();
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  const handleDelete = async () => {
-    setSubmitting(true);
-    try {
-      await deleteTransaction(transaction.id);
-      // Notify scheduler — deleted transaction may affect a credit card statement
-      try {
-        if (transaction.source_id) {
-          await onCardTransactionChanged(transaction.source_id);
-        }
-      } catch (e) {
-        console.warn(
-          "[TransactionForm] onCardTransactionChanged on delete failed:",
-          e,
-        );
-      }
-      setConfirmVisible(false);
-      onCancel?.();
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  function formatDateTime(isoString) {
-    if (!isoString) return "";
-    const d = new Date(isoString);
-    const day = d.getDate();
-    const month = d.toLocaleString("en-IN", { month: "short" }); // Jun
-    const year = d.getFullYear();
-    let hours = d.getHours();
-    const minutes = d.getMinutes().toString().padStart(2, "0");
-    const ampm = hours >= 12 ? "PM" : "AM";
-    hours = hours % 12 || 12;
-    return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm}`;
-  }
-
-  const filterTimeoutRef = useRef(null);
-
-  if (!isReady) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: 200,
-        }}
-      >
-        <ActivityIndicator size="large" color="#4B7CF3" />
-      </View>
-    );
-  }
-
+  // Notes Search & Suggestions (Matches current transaction type and note text)
   const handleNotesChange = (text) => {
     setNotes(text);
     setNotesError(false);
@@ -527,3050 +378,2713 @@ export default function TransactionForm({
         setShowSuggestions(false);
         return;
       }
-      const searchText = text.toLowerCase();
+      const searchText = text.toLowerCase().trim();
       const matches = noteSuggestions.filter((item) => {
-        const category = categories.find((c) => c.id === item.category_id);
-        return (
-          item.notes.toLowerCase().includes(searchText) &&
-          // Match selected transaction type
-          (category?.type === type ||
-            // Include suggestions that don't have a category
-            !item.category_id)
-        );
+        const matchesText = (item.notes || "").toLowerCase().includes(searchText);
+        if (!matchesText) return false;
+        // Prioritize matching current transaction type
+        if (type === "transfer") {
+          return item.type === "transfer" || !item.type;
+        }
+        return item.type === type || !item.type;
       });
       setFilteredSuggestions(matches);
       setShowSuggestions(matches.length > 0);
     }, 150);
   };
 
-  // CATEGORIES
-  // Most-used categories come first.
-  // Usage = number of transactions.
-  const filteredCategories = categories
-    .filter((c) => {
+  // Submit Handler
+  async function submit() {
+    if (submitting) return;
+    const val = parseFloat(amount);
+    if (!amount || isNaN(val) || val <= 0) {
+      setAmountError(true);
+      return;
+    }
+    if (!isEdit && !categoryId && type !== "transfer") {
+      setSnackbarMsg("Please select a category.");
+      setSnackbarVisible(true);
+      return;
+    }
+    if (!sourceId) {
+      setSnackbarMsg("Please select a payment source.");
+      setSnackbarVisible(true);
+      return;
+    }
+    if (!notes.trim()) {
+      setNotesError(true);
+      return;
+    }
+
+    setSubmitting(true);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    let id;
+    try {
       if (type === "transfer") {
-        return false;
+        if (!sourceId || !toAccount) {
+          setSnackbarMsg("Select both accounts");
+          setSnackbarVisible(true);
+          setSubmitting(false);
+          return;
+        }
+        if (sourceId === toAccount) {
+          setSnackbarMsg("Cannot transfer to same account");
+          setSnackbarVisible(true);
+          setSubmitting(false);
+          return;
+        }
+        try {
+          if (isEdit && transaction && transaction.transfer_group_id) {
+            await updateTransfer({
+              groupId: transaction.transfer_group_id,
+              fromAccount: sourceId,
+              toAccount,
+              amount: val,
+              note: notes.trim(),
+              date,
+            });
+          } else {
+            await createTransfer({
+              fromAccount: sourceId,
+              toAccount,
+              amount: val,
+              note: notes.trim(),
+              date,
+            });
+          }
+        } catch (e) {
+          setSnackbarMsg(e?.message || "Transfer failed");
+          setSnackbarVisible(true);
+          setSubmitting(false);
+          return;
+        }
+        id = "transfer";
+      } else {
+        const transactionData = {
+          type,
+          amount: val,
+          category_id: categoryId || null,
+          source_id: sourceId,
+          date,
+          notes: notes.trim(),
+          is_counted: isCounted ? 1 : 0,
+        };
+        try {
+          if (isEdit && transaction && transaction.id) {
+            id = await updateTransaction(transaction.id, transactionData);
+
+            // Loan linking updates
+            if (selectedLoanId !== transaction.loan_id) {
+              try {
+                if (transaction.loan_id && !selectedLoanId) {
+                  await unlinkTransactionFromLoan(transaction.id);
+                } else if (selectedLoanId) {
+                  await linkTransactionToLoan(transaction.id, selectedLoanId, {
+                    paymentType: "LINKED",
+                    linkedDate: date,
+                  });
+                }
+              } catch (e) {
+                console.warn(e);
+              }
+            }
+
+            // Bill linking updates
+            const initialBillId = linkedBills[0]?.id || null;
+            if (selectedBillId !== initialBillId) {
+              try {
+                if (initialBillId && !selectedBillId) {
+                  await unlinkBillFromTransaction(initialBillId, transaction.id);
+                } else if (selectedBillId) {
+                  if (initialBillId) {
+                    await unlinkBillFromTransaction(initialBillId, transaction.id);
+                  }
+                  await linkBillToTransaction(selectedBillId, transaction.id);
+                }
+              } catch (e) {
+                console.warn("[TransactionForm] Bill link update failed:", e);
+              }
+            }
+          } else {
+            id = await createTransaction(transactionData);
+
+            // Loan link on create
+            if (selectedLoanId) {
+              try {
+                await linkTransactionToLoan(id, selectedLoanId, {
+                  paymentType: "LINKED",
+                  linkedDate: date,
+                });
+              } catch (e) {
+                console.warn(e);
+              }
+            }
+
+            // Bill link on create
+            if (selectedBillId) {
+              try {
+                await linkBillToTransaction(selectedBillId, id);
+              } catch (e) {
+                console.warn("[TransactionForm] Bill link on create failed:", e);
+              }
+            }
+          }
+        } catch (e) {
+          setSnackbarMsg(e?.message || "Operation failed");
+          setSnackbarVisible(true);
+          setSubmitting(false);
+          return;
+        }
       }
-      return c.type === type;
-    })
-    .sort((a, b) => {
-      const usageA = Number(categoryUsage[String(a.id)] || 0);
-      const usageB = Number(categoryUsage[String(b.id)] || 0);
-      // Most used first
-      if (usageA !== usageB) {
-        return usageB - usageA;
+
+      try {
+        const affectedSourceId = sourceId;
+        await onCardTransactionChanged(affectedSourceId);
+        if (type === "transfer" && toAccount) {
+          await onCardTransactionChanged(toAccount);
+        }
+      } catch (e) {
+        console.warn("[TransactionForm] onCardTransactionChanged failed:", e);
       }
-      // If usage is same, keep original ID order
-      return Number(a.id) - Number(b.id);
+
+      setIsDirty(false);
+      if (onCreated) onCreated(id);
+      if (!isEdit) {
+        setAmount("");
+        setNotes("");
+        setDate(new Date().toISOString());
+        setTransferGroupId("");
+        setSelectedBillId(null);
+      }
+      setAmountError(false);
+      setNotesError(false);
+      if (onCancel) onCancel();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // Delete Handler
+  const handleDelete = async () => {
+    setSubmitting(true);
+    try {
+      await deleteTransaction(transaction.id);
+      try {
+        if (transaction.source_id) {
+          await onCardTransactionChanged(transaction.source_id);
+        }
+      } catch (e) {
+        console.warn(
+          "[TransactionForm] onCardTransactionChanged on delete failed:",
+          e
+        );
+      }
+      setConfirmVisible(false);
+      onCancel?.();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Date Formatter
+  function formatDateTime(isoString) {
+    if (!isoString) return "";
+    const d = new Date(isoString);
+    const day = d.getDate();
+    const month = d.toLocaleString("en-IN", { month: "short" });
+    const year = d.getFullYear();
+    let hours = d.getHours();
+    const minutes = d.getMinutes().toString().padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12 || 12;
+
+    const today = new Date();
+    const isToday =
+      d.getDate() === today.getDate() &&
+      d.getMonth() === today.getMonth() &&
+      d.getFullYear() === today.getFullYear();
+
+    if (isToday) {
+      return `Today, ${hours}:${minutes} ${ampm}`;
+    }
+    return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm}`;
+  }
+
+  // Filtered & Sorted Categories
+  const filteredCategories = useMemo(() => {
+    return categories
+      .filter((c) => (type === "transfer" ? false : c.type === type))
+      .sort((a, b) => {
+        const usageA = Number(categoryUsage[String(a.id)] || 0);
+        const usageB = Number(categoryUsage[String(b.id)] || 0);
+        if (usageA !== usageB) return usageB - usageA;
+        return Number(a.id) - Number(b.id);
+      });
+  }, [categories, type, categoryUsage]);
+
+  const searchedCategories = useMemo(() => {
+    if (!categorySearch.trim()) return filteredCategories;
+    const lower = categorySearch.trim().toLowerCase();
+    return filteredCategories.filter((c) => c.name.toLowerCase().includes(lower));
+  }, [filteredCategories, categorySearch]);
+
+  const frequentCategories = useMemo(() => {
+    return filteredCategories.slice(0, 5);
+  }, [filteredCategories]);
+
+  // Filtered & Sorted Sources
+  const sortedSources = useMemo(() => {
+    return sources
+      .filter((s) => s.is_active === undefined || s.is_active)
+      .sort((a, b) => {
+        const usageA = Number(sourceUsage[String(a.id)] || 0);
+        const usageB = Number(sourceUsage[String(b.id)] || 0);
+        if (usageA !== usageB) return usageB - usageA;
+        return Number(a.id) - Number(b.id);
+      });
+  }, [sources, sourceUsage]);
+
+  const frequentSources = useMemo(() => {
+    return sortedSources.slice(0, 4);
+  }, [sortedSources]);
+
+  const destinationSources = useMemo(() => {
+    return sortedSources.filter((s) => s.id !== sourceId);
+  }, [sortedSources, sourceId]);
+
+  const frequentDestinationSources = useMemo(() => {
+    return destinationSources.slice(0, 4);
+  }, [destinationSources]);
+
+  const currentModalSources = selectingFor === "to" ? destinationSources : sortedSources;
+
+  const searchedSources = useMemo(() => {
+    if (!sourceSearch.trim()) return currentModalSources;
+    const lower = sourceSearch.trim().toLowerCase();
+    return currentModalSources.filter((s) => s.name.toLowerCase().includes(lower));
+  }, [currentModalSources, sourceSearch]);
+
+  // Selected Objects
+  const selectedCategory = categories.find((c) => c.id === categoryId);
+  const selectedSource = sources.find((s) => s.id === sourceId);
+  const selectedToAccount = sources.find((s) => s.id === toAccount);
+  const selectedLoan = loansList.find((l) => l.id === selectedLoanId);
+  const selectedBill =
+    availableBills.find((b) => b.id === selectedBillId) ||
+    linkedBills.find((b) => b.id === selectedBillId);
+
+  // Filtered Available Bills (ONLY unpaid or partially paid bills)
+  const searchedBills = useMemo(() => {
+    const unpaidBills = availableBills.filter((b) => {
+      if (b.is_completely_paid === true || b.is_completely_paid === 1 || String(b.is_completely_paid) === "true") return false;
+      const statusLower = String(b.status || "").toLowerCase();
+      if (statusLower === "paid" || statusLower === "skipped") return false;
+      if (Number(b.is_paid) === 1 || b.is_paid === true || String(b.is_paid) === "true") return false;
+      if (b.remaining_amount !== undefined && Number(b.remaining_amount) <= 0) return false;
+      return true;
     });
 
-  const visibleCategories = filteredCategories.slice(0, 8);
-  const searchedCategories = filteredCategories.filter((c) =>
-    c.name.toLowerCase().includes(categorySearch.toLowerCase()),
-  );
+    if (!billSearch.trim()) return unpaidBills;
+    const lower = billSearch.trim().toLowerCase();
+    return unpaidBills.filter((b) => (b.name || "").toLowerCase().includes(lower));
+  }, [availableBills, billSearch]);
 
-  // SOURCES
-  // Most-used sources come first.
-  // Usage = number of transactions.
-
-  const sortedSources = sources
-    .filter((s) => s.is_active === undefined || s.is_active)
-    .sort((a, b) => {
-      const usageA = Number(sourceUsage[String(a.id)] || 0);
-      const usageB = Number(sourceUsage[String(b.id)] || 0);
-      // Most used first
-      if (usageA !== usageB) {
-        return usageB - usageA;
-      }
-      // If usage is same, keep original ID order
-      return Number(a.id) - Number(b.id);
-    });
-
-  const searchedSources = sortedSources.filter((s) =>
-    s.name.toLowerCase().includes(sourceSearch.toLowerCase()),
-  );
-
-  // TO ACCOUNT SOURCES
-  // Exclude the selected "From" source BEFORE taking
-  // the first 4 sources.
-  // This ensures To Account always shows 4 sources
-  // whenever at least 4 valid alternatives exist.
-  const toAccountSources = searchedSources.filter((s) => s.id !== sourceId);
-  const visibleToAccountSources = toAccountSources.slice(0, 4);
-  const visibleSources = searchedSources.slice(0, 4);
-  const accent =
-    type === "expense" ? "#E46A6A" : type === "income" ? "#36B37E" : "#000";
+  // Loans list for loan modal
   const activeLoans = loansList.filter(
-    (loan) => String(loan.status || "").toLowerCase() === "active",
+    (loan) => String(loan.status || "").toLowerCase() === "active"
   );
   const closedLoans = loansList.filter(
-    (loan) => String(loan.status || "").toLowerCase() === "closed",
+    (loan) => String(loan.status || "").toLowerCase() === "closed"
   );
-
   const baseLoans = loanTab === "active" ? activeLoans : closedLoans;
-
-  const filteredLoans = [...baseLoans]
+  const filteredLoans = baseLoans
     .sort((a, b) => b.id - a.id)
     .filter(
       (l) =>
         (l.loan_name || "").toLowerCase().includes(loanSearch.toLowerCase()) ||
         (l.lender || "").toLowerCase().includes(loanSearch.toLowerCase()) ||
-        (l.loan_type || "").toLowerCase().includes(loanSearch.toLowerCase()),
+        (l.loan_type || "").toLowerCase().includes(loanSearch.toLowerCase())
     );
 
-  return (
-    <ScrollView
-      style={{ flex: 1 }}
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="none"
-      nestedScrollEnabled
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={{ borderRadius: 12, overflow: "hidden", marginBottom: 12 }}>
-        <View
-          style={{
-            backgroundColor:
-              type === "expense"
-                ? "#FFF2F2"
-                : type === "income"
-                  ? "#F1FFF6"
-                  : "#F5F5F5",
-            padding: 14,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <View>
-            <Text
-              style={{
-                color: accent,
-                fontSize: 14,
-                fontWeight: "700",
-                textTransform: "uppercase",
-              }}
-            >
-              {type || "expense"}
-            </Text>
-            <Text style={{ fontSize: 22, fontWeight: "800", color: accent }}>
-              {amount
-                ? Number(amount).toLocaleString("en-IN", {
-                  minimumFractionDigits: 2,
-                })
-                : "0.00"}
-            </Text>
-          </View>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <View style={{ alignItems: "center", marginRight: 12 }}>
-              <MaterialCommunityIcons
-                name={
-                  type === "transfer"
-                    ? "currency-inr"
-                    : (categories.find((x) => x.id === categoryId) || {})
-                      .icon || "currency-inr"
-                }
-                size={26}
-                color={
-                  (categories.find((x) => x.id === categoryId) || {}).color ||
-                  "#4B7CF3"
-                }
-              />
-              <Text style={{ fontSize: 12 }}>
-                {type === "transfer"
-                  ? "Uncategorized"
-                  : (categories.find((x) => x.id === categoryId) || {}).name ||
-                  "Uncategorized"}
-              </Text>
-            </View>
-            <View style={{ alignItems: "center" }}>
-              <MaterialCommunityIcons
-                name={
-                  (sources.find((x) => x.id === sourceId) || {}).icon || "cash"
-                }
-                size={26}
-                color={
-                  (sources.find((x) => x.id === sourceId) || {}).color ||
-                  "#4B7CF3"
-                }
-              />
-              <Text style={{ fontSize: 12 }}>
-                {(sources.find((x) => x.id === sourceId) || {}).name ||
-                  "Select Source"}
-              </Text>
-            </View>
-          </View>
-        </View>
+  if (!isReady) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: screenBg }]}>
+        <ActivityIndicator size="large" color="#3B82F6" />
       </View>
+    );
+  }
 
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 12,
-        }}
-      >
-        <View
-          style={{
-            flex: 1,
-            flexDirection: "row",
-            backgroundColor: "#F4F6F8",
-            borderRadius: 12,
-            padding: 3,
-            marginRight: isEdit ? 12 : 0,
-          }}
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={{ flex: 1 }}
+    >
+      <View style={[styles.mainContainer, { backgroundColor: screenBg }]}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {(isEdit && type === 'transfer'
-            ? [{ id: "transfer", label: "Transfer", activeColor: "#000" }]
-            : [
-              { id: "expense", label: "Expense", activeColor: "#E46A6A" },
-              { id: "income", label: "Income", activeColor: "#36B37E" },
-              ...(!isEdit
-                ? [{ id: "transfer", label: "Transfer", activeColor: "#000" }]
-                : []),
-            ]
-          ).map((tab) => {
-            const active = type === tab.id;
-            return (
+          {/* 1. TOP SEGMENTED TYPE CONTROL & HEADER ACTIONS */}
+          <View style={styles.headerBar}>
+            <View style={[styles.segmentedContainer, { backgroundColor: isDarkMode ? "#1E293B" : "#F1F5F9" }]}>
+              {(isEdit && type === "transfer"
+                ? [{ id: "transfer", label: "Transfer", color: "#3B82F6" }]
+                : [
+                  { id: "expense", label: "Expense", color: "#EF4444" },
+                  { id: "income", label: "Income", color: "#10B981" },
+                  ...(!isEdit
+                    ? [{ id: "transfer", label: "Transfer", color: "#3B82F6" }]
+                    : []),
+                ]
+              ).map((tab) => {
+                const active = type === tab.id;
+                return (
+                  <TouchableOpacity
+                    key={tab.id}
+                    disabled={submitting}
+                    activeOpacity={0.75}
+                    onPress={() => {
+                      const newType = tab.id;
+                      if (type !== newType) {
+                        if (
+                          (type === "transfer" && newType !== "transfer") ||
+                          (type !== "transfer" && newType === "transfer")
+                        ) {
+                          setNotes("");
+                          setFilteredSuggestions([]);
+                          setShowSuggestions(false);
+                          setNotesError(false);
+                        }
+                        setCategoryId(null);
+                        setType(newType);
+                        markDirty();
+                      }
+                    }}
+                    style={[
+                      styles.segmentTab,
+                      active && [
+                        styles.segmentTabActive,
+                        {
+                          backgroundColor: cardBg,
+                          shadowColor: isDarkMode ? "#000" : tab.color,
+                        },
+                      ],
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        {
+                          color: active ? tab.color : textSecondary,
+                          fontWeight: active ? "800" : "600",
+                        },
+                      ]}
+                    >
+                      {tab.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {isEdit && (
               <TouchableOpacity
-                key={tab.id}
+                onPress={() => setConfirmVisible(true)}
                 disabled={submitting}
-                onPress={() => {
-                  setType(tab.id);
+                activeOpacity={0.7}
+                style={[
+                  styles.deleteButton,
+                  {
+                    backgroundColor: isDarkMode ? "#371B20" : "#FEE2E2",
+                    borderColor: isDarkMode ? "#7F1D1D" : "#FECACA",
+                  },
+                ]}
+              >
+                <Feather name="trash-2" size={18} color="#EF4444" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* 2. HERO AMOUNT SECTION */}
+          <View
+            style={[
+              styles.heroAmountCard,
+              {
+                backgroundColor: typeConfig.softBg,
+                borderColor: typeConfig.border,
+              },
+            ]}
+          >
+            <View style={styles.amountHeaderRow}>
+              <Text style={[styles.amountLabel, { color: typeConfig.color }]}>
+                {typeConfig.label.toUpperCase()} AMOUNT
+              </Text>
+              {amount.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setAmount("");
+                    setAmountError(false);
+                    markDirty();
+                  }}
+                  activeOpacity={0.7}
+                  style={styles.amountClearBtn}
+                >
+                  <MaterialCommunityIcons
+                    name="close-circle"
+                    size={18}
+                    color={typeConfig.color}
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.amountInputRow}>
+              <Text style={[styles.currencyPrefix, { color: typeConfig.color }]}>
+                ₹
+              </Text>
+              <TextInput
+                value={amount}
+                onChangeText={(t) => {
+                  setAmount(t);
+                  if (amountError) setAmountError(false);
                   markDirty();
                 }}
-                style={{
-                  flex: 1,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  paddingVertical: 8,
-                  borderRadius: 9,
-                  backgroundColor: active ? "#FFFFFF" : "transparent",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "800",
-                    color: active ? tab.activeColor : "#718078",
-                  }}
-                >
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {isEdit && (
-          <TouchableOpacity
-            onPress={() => setConfirmVisible(true)}
-            disabled={submitting}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: "#E46A6A",
-              justifyContent: "center",
-              alignItems: "center",
-              opacity: submitting ? 0.5 : 1,
-            }}
-          >
-            <Feather name="trash-2" size={20} color="#E46A6A" />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <PaperTextInput
-        label="Amount"
-        value={amount}
-        onChangeText={(t) => {
-          setAmount(t);
-          if (amountError) setAmountError(false);
-          markDirty();
-        }}
-        keyboardType="numeric"
-        mode="outlined"
-        style={{ marginBottom: 12 }}
-        error={amountError}
-        contentStyle={{ fontSize: 24 }}
-        editable={!submitting}
-      />
-      {amountError ? (
-        <Text style={{ color: "#E46A6A", marginBottom: 8 }}>
-          Enter an amount greater than 0
-        </Text>
-      ) : null}
-
-      <View
-        style={{
-          position: "relative",
-          marginBottom: 12,
-          zIndex: 999,
-        }}
-      >
-        <PaperTextInput
-          label={
-            type === "expense"
-              ? "Where did you spend?"
-              : type === "income"
-                ? "How did you get this money?"
-                : "Where do you want to transfer?"
-          }
-          value={notes}
-          onChangeText={handleNotesChange}
-          mode="outlined"
-          error={notesError}
-          autoCorrect={false}
-          autoCapitalize="sentences"
-          editable={!submitting}
-          onBlur={() => {
-            setTimeout(() => {
-              setShowSuggestions(false);
-            }, 200);
-          }}
-          onFocus={() => {
-            if (filteredSuggestions.length > 0) {
-              setShowSuggestions(true);
-            }
-          }}
-          right={
-            notes.length > 0 ? (
-              <PaperTextInput.Icon
-                icon="close-circle-outline"
-                onPress={() => {
-                  setNotes("");
-                  setFilteredSuggestions([]);
-                  setShowSuggestions(false);
-                  setNotesError(false);
-                }}
-                forceTextInputFocus={false}
+                placeholder="0.00"
+                placeholderTextColor={isDarkMode ? "#64748B" : "#94A3B8"}
+                keyboardType="numeric"
+                editable={!submitting}
+                style={[styles.amountInput, { color: typeConfig.color }]}
+                selectionColor={typeConfig.color}
               />
-            ) : null
-          }
-        />
+            </View>
 
-        {showSuggestions && (
+            {amountError && (
+              <Text style={styles.errorText}>Enter an amount greater than 0</Text>
+            )}
+          </View>
+
+          {/* 3. NOTE / MERCHANT SECTION (PLACED RIGHT AFTER AMOUNT) */}
           <View
-            style={{
-              backgroundColor: "#fff",
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: "#E6EAF2",
-              marginTop: 4,
-              overflow: "hidden",
-            }}
+            style={[
+              styles.noteCardContainer,
+              {
+                backgroundColor: cardBg,
+                borderColor: notesError ? "#EF4444" : borderColor,
+              },
+            ]}
           >
-            {filteredSuggestions.slice(0, 4).map((item, index) => {
-              const category = categories.find(
-                (c) => c.id === item.category_id,
-              );
-              return (
+            <View style={styles.noteInputRow}>
+              <View
+                style={[
+                  styles.rowAvatar,
+                  {
+                    backgroundColor: isDarkMode ? "#33271D" : "#FEF3C7",
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="text-box-outline"
+                  size={20}
+                  color="#D97706"
+                />
+              </View>
+
+              <View style={styles.rowContent}>
+                <Text style={[styles.rowLabel, { color: textSecondary }]}>
+                  {type === "expense"
+                    ? "Where did you spend?"
+                    : type === "income"
+                      ? "How did you get this money?"
+                      : "Where do you want to transfer?"}
+                </Text>
+                <TextInput
+                  value={notes}
+                  onChangeText={handleNotesChange}
+                  onFocus={() => {
+                    if (filteredSuggestions.length > 0) setShowSuggestions(true);
+                  }}
+                  onBlur={() => {
+                    setTimeout(() => setShowSuggestions(false), 250);
+                  }}
+                  placeholder="e.g. Groceries, Dinner, Electricity"
+                  placeholderTextColor={textSecondary}
+                  editable={!submitting}
+                  style={[
+                    styles.noteTextInput,
+                    { color: textPrimary },
+                    notesError && { color: "#EF4444" },
+                  ]}
+                />
+              </View>
+
+              {notes.length > 0 && (
                 <TouchableOpacity
-                  key={`${item.notes}-${index}`}
                   onPress={() => {
-                    setNotes(item.notes);
-
-                    if (category) {
-                      setCategoryId(category.id);
-                      setShowCategoryGrid(false);
-                    }
-
-                    setShowSuggestions(false);
+                    setNotes("");
                     setFilteredSuggestions([]);
+                    setShowSuggestions(false);
                     setNotesError(false);
                   }}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    paddingHorizontal: 14,
-                    paddingVertical: 12,
-                    borderBottomWidth: 1,
-                    borderBottomColor: "#F2F2F2",
-                  }}
+                  activeOpacity={0.7}
+                  style={{ padding: 4 }}
+                >
+                  <MaterialCommunityIcons
+                    name="close-circle"
+                    size={18}
+                    color={textSecondary}
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {notesError && (
+              <Text style={[styles.errorText, { marginLeft: 48, marginTop: 4 }]}>
+                Please enter a description or note
+              </Text>
+            )}
+
+            {/* Note Suggestions Dropdown (Existing list style with auto-assignment) */}
+            {showSuggestions && filteredSuggestions.length > 0 && (
+              <View
+                style={[
+                  styles.suggestionsDropdown,
+                  {
+                    backgroundColor: cardBg,
+                    borderColor: borderColor,
+                  },
+                ]}
+              >
+                {filteredSuggestions.slice(0, 4).map((item, index) => {
+                  const itemCat = categories.find((c) => c.id === item.category_id);
+                  const itemSrc = sources.find((s) => s.id === item.source_id);
+                  const itemToSrc = sources.find((s) => s.id === item.to_account);
+
+                  // Derive subtitle showing auto-picked account/category
+                  const metaSub = (() => {
+                    if (type === "transfer") {
+                      if (itemSrc && itemToSrc) {
+                        return `${itemSrc.name} → ${itemToSrc.name}`;
+                      }
+                      if (itemSrc) return `From: ${itemSrc.name}`;
+                      return "Transfer";
+                    }
+                    return itemCat?.name || "Saved note";
+                  })();
+
+                  return (
+                    <TouchableOpacity
+                      key={`${item.notes}-${index}`}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setNotes(item.notes);
+                        // Auto-pick category only for expense and income
+                        if (type !== "transfer" && item.category_id) {
+                          setCategoryId(item.category_id);
+                        }
+                        // Source selection should ONLY happen on transfer type!
+                        if (type === "transfer") {
+                          if (item.source_id) {
+                            setSourceId(item.source_id);
+                          }
+                          if (item.to_account && item.to_account !== item.source_id) {
+                            setToAccount(item.to_account);
+                          }
+                        }
+                        setShowSuggestions(false);
+                        setFilteredSuggestions([]);
+                        setNotesError(false);
+                        markDirty();
+                      }}
+                      style={[
+                        styles.suggestionListItem,
+                        {
+                          borderBottomColor: dividerColor,
+                          borderBottomWidth: index < 3 ? 1 : 0,
+                        },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.suggestionIconCircle,
+                          { backgroundColor: itemCat?.color || itemSrc?.color || "#3B82F6" },
+                        ]}
+                      >
+                        <MaterialCommunityIcons
+                          name={itemCat?.icon || itemSrc?.icon || "tag"}
+                          size={18}
+                          color="#FFFFFF"
+                        />
+                      </View>
+
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text
+                          style={[
+                            styles.suggestionItemTitle,
+                            { color: textPrimary },
+                          ]}
+                        >
+                          {item.notes}
+                        </Text>
+                        <Text
+                          numberOfLines={1}
+                          style={[
+                            styles.suggestionItemSub,
+                            { color: textSecondary },
+                          ]}
+                        >
+                          {metaSub}
+                        </Text>
+                      </View>
+
+                      <MaterialCommunityIcons
+                        name="arrow-top-left"
+                        size={16}
+                        color={textSecondary}
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+
+          {/* 4. INSET-GROUPED TAP-TO-SELECT ROWS */}
+          <View
+            style={[
+              styles.groupedCard,
+              {
+                backgroundColor: cardBg,
+                borderColor: borderColor,
+              },
+            ]}
+          >
+            {/* ROW 1: CATEGORY (Expense & Income) */}
+            {type !== "transfer" && (
+              <>
+                <TouchableOpacity
+                  onPress={() => setShowCategoryModal(true)}
+                  disabled={submitting}
+                  activeOpacity={0.7}
+                  style={styles.tapRow}
                 >
                   <View
-                    style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: 19,
-                      backgroundColor: category?.color || "#4B7CF3",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      marginRight: 12,
-                    }}
+                    style={[
+                      styles.rowAvatar,
+                      {
+                        backgroundColor: selectedCategory?.color || (isDarkMode ? "#334155" : "#E2E8F0"),
+                      },
+                    ]}
                   >
                     <MaterialCommunityIcons
-                      name={category?.icon || "tag"}
-                      size={18}
-                      color="#fff"
+                      name={selectedCategory?.icon || "tag"}
+                      size={20}
+                      color={selectedCategory ? "#FFFFFF" : textSecondary}
                     />
                   </View>
 
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={{
-                        fontSize: 15,
-                        fontWeight: "600",
-                        color: "#222",
-                      }}
-                    >
-                      {item.notes}
+                  <View style={styles.rowContent}>
+                    <Text style={[styles.rowLabel, { color: textSecondary }]}>
+                      Category
                     </Text>
-
-                    {category && (
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          color: "#777",
-                          marginTop: 2,
-                        }}
-                      >
-                        {category.name}
-                      </Text>
-                    )}
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        styles.rowValue,
+                        {
+                          color: selectedCategory ? textPrimary : textSecondary,
+                          fontWeight: selectedCategory ? "700" : "500",
+                        },
+                      ]}
+                    >
+                      {selectedCategory?.name || "Select Category"}
+                    </Text>
                   </View>
+
+                  <MaterialCommunityIcons
+                    name="chevron-right"
+                    size={22}
+                    color={textSecondary}
+                  />
                 </TouchableOpacity>
-              );
-            })}
+                <View style={[styles.rowDivider, { backgroundColor: dividerColor }]} />
+              </>
+            )}
+
+            {/* ROW 2: PAYMENT SOURCE / FROM ACCOUNT */}
+            <View style={{ paddingBottom: 4 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectingFor("from");
+                  setShowSourceModal(true);
+                }}
+                disabled={submitting}
+                activeOpacity={0.7}
+                style={styles.tapRow}
+              >
+                <View
+                  style={[
+                    styles.rowAvatar,
+                    {
+                      backgroundColor: selectedSource?.color || (isDarkMode ? "#334155" : "#E2E8F0"),
+                    },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name={selectedSource?.icon || "cash"}
+                    size={20}
+                    color={selectedSource ? "#FFFFFF" : textSecondary}
+                  />
+                </View>
+
+                <View style={styles.rowContent}>
+                  <Text style={[styles.rowLabel, { color: textSecondary }]}>
+                    {type === "transfer" ? "From Account" : "Payment Account"}
+                  </Text>
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      styles.rowValue,
+                      {
+                        color: selectedSource ? textPrimary : textSecondary,
+                        fontWeight: selectedSource ? "700" : "500",
+                      },
+                    ]}
+                  >
+                    {selectedSource?.name || "Select Payment Account"}
+                  </Text>
+                </View>
+
+                <MaterialCommunityIcons
+                  name="chevron-right"
+                  size={22}
+                  color={textSecondary}
+                />
+              </TouchableOpacity>
+
+              {/* Recent Account Quick Chips directly on form */}
+              {frequentSources.length > 0 && (
+                <View style={styles.recentChipsContainer}>
+                  <Text style={[styles.recentChipsLabel, { color: textSecondary }]}>
+                    Recent:
+                  </Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.recentChipsScroll}
+                  >
+                    {frequentSources.map((s) => {
+                      const isSel = sourceId === s.id;
+                      return (
+                        <TouchableOpacity
+                          key={`rec-src-${s.id}`}
+                          onPress={() => {
+                            setSourceId(s.id);
+                            markDirty();
+                          }}
+                          style={[
+                            styles.recentChip,
+                            {
+                              backgroundColor: isSel
+                                ? s.color || "#3B82F6"
+                                : isDarkMode
+                                  ? "#1E293B"
+                                  : "#F1F5F9",
+                              borderColor: isSel ? s.color : borderColor,
+                            },
+                          ]}
+                        >
+                          <MaterialCommunityIcons
+                            name={s.icon || "cash"}
+                            size={12}
+                            color={isSel ? "#FFFFFF" : s.color || textSecondary}
+                            style={{ marginRight: 4 }}
+                          />
+                          <Text
+                            style={[
+                              styles.recentChipText,
+                              { color: isSel ? "#FFFFFF" : textPrimary },
+                            ]}
+                          >
+                            {s.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+
+            {/* ROW 3: TO ACCOUNT (Transfer Only) */}
+            {type === "transfer" && (
+              <>
+                <View style={[styles.rowDivider, { backgroundColor: dividerColor }]} />
+                <View style={{ paddingBottom: 4 }}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectingFor("to");
+                      setShowSourceModal(true);
+                    }}
+                    disabled={submitting}
+                    activeOpacity={0.7}
+                    style={styles.tapRow}
+                  >
+                    <View
+                      style={[
+                        styles.rowAvatar,
+                        {
+                          backgroundColor: selectedToAccount?.color || (isDarkMode ? "#334155" : "#E2E8F0"),
+                        },
+                      ]}
+                    >
+                      <MaterialCommunityIcons
+                        name={selectedToAccount?.icon || "bank-transfer-in"}
+                        size={20}
+                        color={selectedToAccount ? "#FFFFFF" : textSecondary}
+                      />
+                    </View>
+
+                    <View style={styles.rowContent}>
+                      <Text style={[styles.rowLabel, { color: textSecondary }]}>
+                        To Account
+                      </Text>
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.rowValue,
+                          {
+                            color: selectedToAccount ? textPrimary : textSecondary,
+                            fontWeight: selectedToAccount ? "700" : "500",
+                          },
+                        ]}
+                      >
+                        {selectedToAccount?.name || "Select Destination Account"}
+                      </Text>
+                    </View>
+
+                    <MaterialCommunityIcons
+                      name="chevron-right"
+                      size={22}
+                      color={textSecondary}
+                    />
+                  </TouchableOpacity>
+
+                  {/* Recent Destination Quick Chips */}
+                  {frequentDestinationSources.length > 0 && (
+                    <View style={styles.recentChipsContainer}>
+                      <Text style={[styles.recentChipsLabel, { color: textSecondary }]}>
+                        Recent:
+                      </Text>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.recentChipsScroll}
+                      >
+                        {frequentDestinationSources.map((s) => {
+                          const isSel = toAccount === s.id;
+                          return (
+                            <TouchableOpacity
+                              key={`rec-to-${s.id}`}
+                              onPress={() => {
+                                setToAccount(s.id);
+                                markDirty();
+                              }}
+                              style={[
+                                styles.recentChip,
+                                {
+                                  backgroundColor: isSel
+                                    ? s.color || "#3B82F6"
+                                    : isDarkMode
+                                      ? "#1E293B"
+                                      : "#F1F5F9",
+                                  borderColor: isSel ? s.color : borderColor,
+                                },
+                              ]}
+                            >
+                              <MaterialCommunityIcons
+                                name={s.icon || "bank-transfer-in"}
+                                size={12}
+                                color={isSel ? "#FFFFFF" : s.color || textSecondary}
+                                style={{ marginRight: 4 }}
+                              />
+                              <Text
+                                style={[
+                                  styles.recentChipText,
+                                  { color: isSel ? "#FFFFFF" : textPrimary },
+                                ]}
+                              >
+                                {s.name}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+              </>
+            )}
+
+            <View style={[styles.rowDivider, { backgroundColor: dividerColor }]} />
+
+            {/* ROW 4: DATE & TIME */}
+            <TouchableOpacity
+              onPress={() => setShowDateTimePicker(true)}
+              disabled={submitting}
+              activeOpacity={0.7}
+              style={styles.tapRow}
+            >
+              <View
+                style={[
+                  styles.rowAvatar,
+                  {
+                    backgroundColor: isDarkMode ? "#1E3A5F" : "#DBEAFE",
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="calendar-clock"
+                  size={20}
+                  color="#2563EB"
+                />
+              </View>
+
+              <View style={styles.rowContent}>
+                <Text style={[styles.rowLabel, { color: textSecondary }]}>
+                  Date & Time
+                </Text>
+                <Text style={[styles.rowValue, { color: textPrimary, fontWeight: "700" }]}>
+                  {formatDateTime(date)}
+                </Text>
+              </View>
+
+              <MaterialCommunityIcons
+                name="calendar-edit"
+                size={20}
+                color={textSecondary}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* 5. COMPACT ADVANCED OPTIONS PILL STRIP */}
+          <View style={styles.advancedStrip}>
+            {/* Visibility Toggle Pill: Count as Spend / Count as Income */}
+            {type !== "transfer" && (
+              <TouchableOpacity
+                onPress={() => {
+                  setIsCounted((v) => !v);
+                  markDirty();
+                }}
+                activeOpacity={0.75}
+                style={[
+                  styles.optionPill,
+                  {
+                    backgroundColor: isCounted
+                      ? isDarkMode
+                        ? "#152E20"
+                        : "#ECFDF5"
+                      : isDarkMode
+                        ? "#3E2914"
+                        : "#FEF3C7",
+                    borderColor: isCounted
+                      ? isDarkMode
+                        ? "#059669"
+                        : "#10B981"
+                      : isDarkMode
+                        ? "#B45309"
+                        : "#F59E0B",
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name={isCounted ? "check-circle-outline" : "eye-off-outline"}
+                  size={15}
+                  color={isCounted ? "#10B981" : "#D97706"}
+                />
+                <Text
+                  style={[
+                    styles.optionPillText,
+                    {
+                      color: isCounted ? (isDarkMode ? "#34D399" : "#059669") : "#B45309",
+                      fontWeight: isCounted ? "700" : "600",
+                    },
+                  ]}
+                >
+                  {isCounted
+                    ? type === "expense"
+                      ? "Count as Spend"
+                      : "Count as Income"
+                    : type === "expense"
+                      ? "Don't Count as Spend"
+                      : "Don't Count as Income"}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Bill Link Pill (Available during Create & Edit Mode) */}
+            <TouchableOpacity
+              onPress={() => {
+                setBillSearch("");
+                setShowBillModal(true);
+              }}
+              activeOpacity={0.75}
+              style={[
+                styles.optionPill,
+                {
+                  backgroundColor: selectedBill
+                    ? isDarkMode
+                      ? "#15243E"
+                      : "#EFF6FF"
+                    : isDarkMode
+                      ? "#1E293B"
+                      : "#F8FAFC",
+                  borderColor: selectedBill
+                    ? isDarkMode
+                      ? "#2563EB"
+                      : "#3B82F6"
+                    : borderColor,
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={selectedBill ? "receipt-text-check" : "receipt"}
+                size={15}
+                color={selectedBill ? "#3B82F6" : textSecondary}
+              />
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.optionPillText,
+                  {
+                    color: selectedBill ? "#2563EB" : textSecondary,
+                    fontWeight: selectedBill ? "700" : "600",
+                  },
+                ]}
+              >
+                {selectedBill ? `Bill: ${selectedBill.name}` : "+ Link Bill"}
+              </Text>
+              {selectedBill && (
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    setSelectedBillId(null);
+                    markDirty();
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <MaterialCommunityIcons name="close" size={14} color="#EF4444" />
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+
+            {/* Loan Link Pill (Expense & Income) */}
+            {type !== "transfer" && (
+              <TouchableOpacity
+                onPress={() => {
+                  setLoanSearch("");
+                  setShowLoanModal(true);
+                }}
+                activeOpacity={0.75}
+                style={[
+                  styles.optionPill,
+                  {
+                    backgroundColor: selectedLoan
+                      ? isDarkMode
+                        ? "#142D24"
+                        : "#ECFDF5"
+                      : isDarkMode
+                        ? "#1E293B"
+                        : "#F8FAFC",
+                    borderColor: selectedLoan
+                      ? isDarkMode
+                        ? "#059669"
+                        : "#10B981"
+                      : borderColor,
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name={selectedLoan ? "bank-check" : "bank-outline"}
+                  size={15}
+                  color={selectedLoan ? "#10B981" : textSecondary}
+                />
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.optionPillText,
+                    {
+                      color: selectedLoan ? (isDarkMode ? "#34D399" : "#059669") : textSecondary,
+                      fontWeight: selectedLoan ? "700" : "600",
+                    },
+                  ]}
+                >
+                  {selectedLoan ? `Loan: ${selectedLoan.loan_name}` : "+ Link Loan"}
+                </Text>
+                {selectedLoan && (
+                  <TouchableOpacity
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      if (isEdit && transaction?.id) {
+                        unlinkTransactionFromLoan(transaction.id).catch(() => { });
+                      }
+                      setSelectedLoanId(null);
+                      markDirty();
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <MaterialCommunityIcons name="close" size={14} color="#EF4444" />
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* In-scroll Save Action Button (rendered only when keyboard is visible to prevent duplicate buttons) */}
+          {isKeyboardVisible && (
+            <View style={styles.inScrollSaveContainer}>
+              <TouchableOpacity
+                onPress={submit}
+                disabled={submitting}
+                activeOpacity={0.85}
+                style={[
+                  styles.primarySaveBtn,
+                  {
+                    backgroundColor: typeConfig.color,
+                    shadowColor: typeConfig.color,
+                  },
+                ]}
+              >
+                {submitting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.primarySaveBtnText}>
+                    {isEdit ? "Update Transaction" : "Save Transaction"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+        </ScrollView>
+
+        {/* 6. FIXED BOTTOM ACTION BAR (Shown at the bottom when keyboard is NOT open) */}
+        {!isKeyboardVisible && (
+          <View
+            style={[
+              styles.bottomActionBar,
+              {
+                backgroundColor: cardBg,
+                borderTopColor: borderColor,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              onPress={submit}
+              disabled={submitting}
+              activeOpacity={0.85}
+              style={[
+                styles.primarySaveBtn,
+                {
+                  backgroundColor: typeConfig.color,
+                  shadowColor: typeConfig.color,
+                },
+              ]}
+            >
+              {submitting ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.primarySaveBtnText}>
+                  {isEdit ? "Update Transaction" : "Save Transaction"}
+                </Text>
+              )}
+            </TouchableOpacity>
           </View>
         )}
-      </View>
 
-      <View style={{ marginBottom: 12 }}>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          disabled={submitting}
-          onPress={() => {
-            setPickerMode("date");
-            setShowDateTimePicker(true);
-          }}
+        {/* MODAL 1: CATEGORY SELECTION BOTTOM SHEET */}
+        <Modal
+          visible={showCategoryModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowCategoryModal(false)}
         >
-          <PaperTextInput
-            label="Date & Time"
-            value={formatDateTime(date)}
-            editable={false}
-            pointerEvents="none"
-            mode="outlined"
-            style={{ marginBottom: 8 }}
-            right={
-              <PaperTextInput.Icon
-                icon="calendar"
-                onPress={() => {
-                  setPickerMode("date");
-                  setShowDateTimePicker(true);
-                }}
-              />
-            }
-          />
-        </TouchableOpacity>
-      </View>
+          <View style={styles.modalBackdrop}>
+            <View style={[styles.bottomSheetContainer, { backgroundColor: cardBg }]}>
+              <View style={styles.sheetHandle} />
 
-      {type !== "transfer" && (
-        <View style={{ marginBottom: 12 }}>
-          {!transferGroupId && (
-            <>
-              <Text style={{ marginBottom: 6, color: "#666" }}>Category</Text>
+              <View style={styles.sheetHeaderRow}>
+                <View>
+                  <Text style={[styles.sheetTitle, { color: textPrimary }]}>
+                    Select Category
+                  </Text>
+                  <Text style={[styles.sheetSubtitle, { color: textSecondary }]}>
+                    {searchedCategories.length} categories available
+                  </Text>
+                </View>
 
-              {showCategoryGrid ? (
-                <>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      flexWrap: "wrap",
-                      justifyContent: "flex-start",
-                      rowGap: 8,
-                      marginTop: 8,
-                    }}
-                  >
-                    {visibleCategories.map((c, index) => (
+                <TouchableOpacity
+                  onPress={() => setShowCategoryModal(false)}
+                  style={[styles.closeIconBtn, { backgroundColor: inputBg }]}
+                >
+                  <MaterialCommunityIcons name="close" size={20} color={textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={[styles.searchBarBox, { backgroundColor: inputBg, borderColor }]}>
+                <MaterialCommunityIcons name="magnify" size={20} color={textSecondary} />
+                <TextInput
+                  ref={categorySearchRef}
+                  value={categorySearch}
+                  onChangeText={setCategorySearch}
+                  placeholder="Search category..."
+                  placeholderTextColor={textSecondary}
+                  style={[styles.searchTextInput, { color: textPrimary }]}
+                  autoCorrect={false}
+                />
+                {categorySearch.length > 0 && (
+                  <TouchableOpacity onPress={() => setCategorySearch("")}>
+                    <MaterialCommunityIcons name="close-circle" size={18} color={textSecondary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {!categorySearch && frequentCategories.length > 0 && (
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={[styles.subHeaderLabel, { color: textSecondary }]}>
+                    MOST FREQUENT
+                  </Text>
+                  <View style={styles.quickChipsWrap}>
+                    {frequentCategories.map((c) => (
                       <TouchableOpacity
-                        key={c.id}
-                        disabled={submitting}
+                        key={`freq-${c.id}`}
                         onPress={() => {
                           setCategoryId(c.id);
                           setShowCategoryModal(false);
-                          setShowCategoryGrid(false);
                           setCategorySearch("");
                           markDirty();
                         }}
-                        style={{
-                          width: "23%",
-                          marginRight: index % 4 !== 3 ? "2.66%" : 0,
-                          height: 72,
-                          borderRadius: 10,
-                          marginBottom: 8,
-                          backgroundColor: c.color || "#4B7CF3",
-                          justifyContent: "center",
-                          alignItems: "center",
-                          paddingHorizontal: 4,
-                          paddingVertical: 6,
-                          borderColor: "#111",
-                        }}
+                        style={[
+                          styles.frequentChip,
+                          {
+                            backgroundColor: categoryId === c.id ? c.color : inputBg,
+                            borderColor: categoryId === c.id ? c.color : borderColor,
+                          },
+                        ]}
                       >
                         <MaterialCommunityIcons
                           name={c.icon || "tag"}
-                          size={18}
-                          color="#fff"
+                          size={14}
+                          color={categoryId === c.id ? "#FFFFFF" : c.color || "#3B82F6"}
+                          style={{ marginRight: 6 }}
                         />
-
-                        {categoryId === c.id && (
-                          <View
-                            style={{
-                              position: "absolute",
-                              top: 4,
-                              right: 4,
-                              width: 18,
-                              height: 18,
-                              borderRadius: 9,
-                              backgroundColor: "#fff",
-                              justifyContent: "center",
-                              alignItems: "center",
-                            }}
-                          >
-                            <MaterialCommunityIcons
-                              name="check"
-                              size={12}
-                              color="#2E7D32"
-                            />
-                          </View>
-                        )}
                         <Text
-                          numberOfLines={2}
-                          style={{
-                            color: "#fff",
-                            textAlign: "center",
-                            marginTop: 6,
-                            fontWeight: "600",
-                            fontSize: 12,
-                            lineHeight: 16,
-                          }}
+                          style={[
+                            styles.frequentChipText,
+                            { color: categoryId === c.id ? "#FFFFFF" : textPrimary },
+                          ]}
                         >
                           {c.name}
                         </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
-                </>
-              ) : (
-                <TouchableOpacity
-                  onPress={() => setShowCategoryModal(true)}
-                  activeOpacity={0.85}
-                  disabled={submitting}
-                  style={{
-                    backgroundColor: "#fff",
-                    borderRadius: 14,
-                    borderWidth: 1,
-                    borderColor: "#E6EAF2",
-                    paddingHorizontal: 14,
-                    paddingVertical: 12,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    elevation: 2,
-                  }}
-                >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      flex: 1,
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: 21,
-                        backgroundColor:
-                          categories.find((x) => x.id === categoryId)?.color ||
-                          "#4B7CF3",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        marginRight: 12,
-                      }}
-                    >
-                      <MaterialCommunityIcons
-                        name={
-                          categories.find((x) => x.id === categoryId)?.icon ||
-                          "tag"
-                        }
-                        size={22}
-                        color="#fff"
-                      />
-                    </View>
-
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          color: "#888",
-                        }}
-                      >
-                        Selected Category
-                      </Text>
-
-                      <Text
-                        numberOfLines={1}
-                        style={{
-                          fontSize: 16,
-                          fontWeight: "700",
-                          color: "#222",
-                        }}
-                      >
-                        {categories.find((x) => x.id === categoryId)?.name}
-                      </Text>
-                    </View>
-
-                    <MaterialCommunityIcons
-                      name="pencil-outline"
-                      size={22}
-                      color="#4B7CF3"
-                    />
-                  </View>
-                </TouchableOpacity>
-              )}
-
-              {showCategoryGrid && filteredCategories.length > 12 && (
-                <TouchableOpacity
-                  disabled={submitting}
-                  onPress={() => {
-                    setCategorySearch("");
-                    setShowCategoryModal(true);
-                  }}
-                  style={{
-                    alignItems: "center",
-                    paddingVertical: 8,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: "#4B7CF3",
-                      fontWeight: "700",
-                    }}
-                  >
-                    See More
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </>
-          )}
-        </View>
-      )}
-
-      <View style={{ marginBottom: 12 }}>
-        <Text
-          style={{
-            marginBottom: 8,
-            color: "#666",
-          }}
-        >
-          Payment Source
-        </Text>
-        {showSourceGrid ? (
-          <>
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                justifyContent: "flex-start",
-                marginTop: 8,
-              }}
-            >
-              {visibleSources.map((s, index) => (
-                <TouchableOpacity
-                  key={s.id}
-                  disabled={submitting}
-                  onPress={() => {
-                    setSourceId(s.id);
-                    setShowSourceGrid(false);
-                    setSourceSearch("");
-                    markDirty();
-                  }}
-                  style={{
-                    width: "23%",
-                    height: 72,
-                    marginBottom: 8,
-                    marginRight: (index + 1) % 4 === 0 ? 0 : "2.66%",
-                    borderRadius: 10,
-                    backgroundColor: s.color || "#4B7CF3",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    paddingHorizontal: 4,
-                    paddingVertical: 6,
-                    borderColor: "#111",
-                    transform: [
-                      {
-                        scale: sourceId === s.id ? 1.05 : 1,
-                      },
-                    ],
-                  }}
-                >
-                  <MaterialCommunityIcons
-                    name={s.icon || "cash"}
-                    size={18}
-                    color="#fff"
-                  />
-                  {sourceId === s.id && (
-                    <View
-                      style={{
-                        position: "absolute",
-                        top: 4,
-                        right: 4,
-                        width: 18,
-                        height: 18,
-                        borderRadius: 9,
-                        backgroundColor: "#fff",
-                        justifyContent: "center",
-                        alignItems: "center",
-                      }}
-                    >
-                      <MaterialCommunityIcons
-                        name="check"
-                        size={12}
-                        color="#2E7D32"
-                      />
-                    </View>
-                  )}
-
-                  <Text
-                    numberOfLines={2}
-                    style={{
-                      color: "#fff",
-                      textAlign: "center",
-                      marginTop: 6,
-                      fontWeight: "600",
-                      fontSize: 12,
-                      lineHeight: 16,
-                    }}
-                  >
-                    {s.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {searchedSources.length > 4 && (
-              <TouchableOpacity
-                disabled={submitting}
-                onPress={() => {
-                  setSourceSearch("");
-                  setShowSourceModal(true);
-                }}
-                style={{
-                  alignItems: "center",
-                  paddingVertical: 8,
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#4B7CF3",
-                    fontWeight: "700",
-                  }}
-                >
-                  See More
-                </Text>
-              </TouchableOpacity>
-            )}
-          </>
-        ) : (
-          <TouchableOpacity
-            disabled={submitting}
-            onPress={() => {
-              setSourceSearch("");
-              setShowSourceModal(true);
-            }}
-            activeOpacity={0.85}
-            style={{
-              backgroundColor: "#fff",
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: "#E6EAF2",
-              paddingHorizontal: 14,
-              paddingVertical: 12,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              elevation: 2,
-            }}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                flex: 1,
-              }}
-            >
-              <View
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 21,
-                  backgroundColor:
-                    sources.find((x) => x.id === sourceId)?.color || "#4B7CF3",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  marginRight: 12,
-                }}
-              >
-                <MaterialCommunityIcons
-                  name={sources.find((x) => x.id === sourceId)?.icon || "cash"}
-                  size={22}
-                  color="#fff"
-                />
-              </View>
-
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: "#888",
-                  }}
-                >
-                  Selected Source
-                </Text>
-
-                <Text
-                  numberOfLines={1}
-                  style={{
-                    fontSize: 16,
-                    fontWeight: "700",
-                    color: "#222",
-                  }}
-                >
-                  {sources.find((x) => x.id === sourceId)?.name}
-                </Text>
-              </View>
-
-              <MaterialCommunityIcons
-                name="pencil-outline"
-                size={22}
-                color="#4B7CF3"
-              />
-            </View>
-          </TouchableOpacity>
-        )}
-      </View>
-
-
-
-      {/* MORE OPTIONS BOTTOM SHEET MODAL */}
-      <Modal
-        visible={showMoreOptions}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowMoreOptions(false)}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.45)",
-            justifyContent: "flex-end",
-          }}
-        >
-          {/* Dismiss area */}
-          <TouchableOpacity
-            style={{ flex: 1, width: "100%" }}
-            activeOpacity={1}
-            onPress={() => setShowMoreOptions(false)}
-          />
-
-          <View
-            style={{
-              backgroundColor: theme.cardBg,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              padding: 20,
-              paddingBottom: 40,
-              maxHeight: "85%",
-            }}
-          >
-            {/* Drag Handle */}
-            <View
-              style={{
-                width: 40,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: "#D1D5DB",
-                alignSelf: "center",
-                marginBottom: 24,
-              }}
-            />
-
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 20,
-              }}
-            >
-              <Text style={{ fontSize: 20, fontWeight: "800", color: "#222" }}>
-                More Options
-              </Text>
-              <TouchableOpacity onPress={() => setShowMoreOptions(false)}>
-                <MaterialCommunityIcons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {type !== "transfer" && (
-                <View>
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "800",
-                      color: "#94A3B8",
-                      marginBottom: 12,
-                      textTransform: "uppercase",
-                      letterSpacing: 0.8,
-                    }}
-                  >
-                    Visibility
-                  </Text>
-                  {/* is_counted toggle ΓÇö only for expense and income, not transfer */}
-
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      marginTop: 10,
-                      marginBottom: 4,
-                      paddingHorizontal: 2,
-                    }}
-                  >
-                    <TouchableOpacity
-                      disabled={submitting}
-                      onPress={() => {
-                        setIsCounted((v) => !v);
-                        markDirty();
-                      }}
-                      activeOpacity={0.8}
-                      style={{
-                        flex: 1,
-                        flexDirection: "row",
-                        alignItems: "center",
-                        backgroundColor: isCounted
-                          ? type === "expense"
-                            ? "#FFF2F2"
-                            : "#F1FFF6"
-                          : "#F3F4F6",
-                        borderRadius: 20,
-                        borderWidth: 1,
-                        borderColor: isCounted
-                          ? type === "expense"
-                            ? "#E46A6A"
-                            : "#36B37E"
-                          : "#D1D5DB",
-                        paddingHorizontal: 12,
-                        paddingVertical: 7,
-                      }}
-                    >
-                      {/* Toggle track */}
-                      <View
-                        style={{
-                          width: 36,
-                          height: 20,
-                          borderRadius: 10,
-                          backgroundColor: isCounted
-                            ? type === "expense"
-                              ? "#E46A6A"
-                              : "#36B37E"
-                            : "#D1D5DB",
-                          justifyContent: "center",
-                          paddingHorizontal: 2,
-                          marginRight: 10,
-                        }}
-                      >
-                        <View
-                          style={{
-                            width: 16,
-                            height: 16,
-                            borderRadius: 8,
-                            backgroundColor: "#fff",
-                            alignSelf: isCounted ? "flex-end" : "flex-start",
-                          }}
-                        />
-                      </View>
-                      {/* Full-width text area */}
-                      <View style={{ flex: 1 }}>
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: "700",
-                            color: "#222",
-                          }}
-                        >
-                          {type === "expense"
-                            ? isCounted
-                              ? "Spend"
-                              : "Not a Spend"
-                            : isCounted
-                              ? "Income"
-                              : "Not a Income"}
-                        </Text>
-                        <Text
-                          style={{
-                            fontSize: 11,
-                            color: "#888",
-                            marginTop: 1,
-                          }}
-                        >
-                          {isCounted
-                            ? "Included in everywhere"
-                            : "Excluded from everywhere"}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-
-                  <View
-                    style={{
-                      height: 1,
-                      backgroundColor: "#F1F5F9",
-                      marginVertical: 24,
-                    }}
-                  />
-
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "800",
-                      color: "#94A3B8",
-                      marginBottom: 12,
-                      textTransform: "uppercase",
-                      letterSpacing: 0.8,
-                    }}
-                  >
-                    Linked Loan
-                  </Text>
-                  {/* Loan Payment */}
-                  {loansList.length > 0 && type !== "transfer" && (
-                    <View style={{ marginBottom: 18 }}>
-                      <Text style={{ marginBottom: 8, color: "#666" }}>
-                        Link to Loan (Optional)
-                      </Text>
-                      {!selectedLoanId ? (
-                        <TouchableOpacity
-                          disabled={submitting}
-                          activeOpacity={0.85}
-                          onPress={() => {
-                            setLoanSearch("");
-                            setShowLoanModal(true);
-                          }}
-                          style={{
-                            backgroundColor: "#EEF4FF",
-                            borderRadius: 16,
-                            borderWidth: 1,
-                            borderColor: "#4B7CF3",
-                            padding: 16,
-                          }}
-                        >
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              alignItems: "center",
-                            }}
-                          >
-                            <View
-                              style={{
-                                width: 54,
-                                height: 54,
-                                borderRadius: 27,
-                                backgroundColor: "#4B7CF3",
-                                justifyContent: "center",
-                                alignItems: "center",
-                                marginRight: 14,
-                              }}
-                            >
-                              <MaterialCommunityIcons
-                                name="bank-outline"
-                                size={28}
-                                color="#fff"
-                              />
-                            </View>
-
-                            <View style={{ flex: 1 }}>
-                              <Text
-                                style={{
-                                  fontSize: 17,
-                                  fontWeight: "700",
-                                  color: "#222",
-                                }}
-                              >
-                                Link to Loan
-                              </Text>
-                              <Text
-                                style={{
-                                  color: "#666",
-                                  marginTop: 3,
-                                  lineHeight: 20,
-                                }}
-                              >
-                                {type === "expense"
-                                  ? "Counts as EMI / prepayment on a borrowed loan, or lending more on a lent loan"
-                                  : "Counts as a top-up on a borrowed loan, or repayment received on a lent loan"}
-                              </Text>
-                            </View>
-
-                            <MaterialCommunityIcons
-                              name="chevron-right"
-                              size={28}
-                              color="#4B7CF3"
-                            />
-                          </View>
-                        </TouchableOpacity>
-                      ) : (
-                        (() => {
-                          const loan = loansList.find(
-                            (l) => l.id === selectedLoanId,
-                          );
-                          // Safety check:
-                          // If the selected loan is no longer active, don't display the linked loan card.
-                          if (!loan) {
-                            return null;
-                          }
-                          // Derive the effect label from loan direction + transaction type
-                          const loanDir = (
-                            loan?.loan_direction || "BORROWED"
-                          ).toUpperCase();
-                          const isLentLoan = loanDir === "LENT";
-
-                          // effect: what this transaction means for the loan
-                          const effectLabel = (() => {
-                            if (type === "expense") {
-                              return isLentLoan
-                                ? "Lend More (increases outstanding)"
-                                : "EMI / Payment (reduces outstanding)";
-                            }
-                            // income
-                            return isLentLoan
-                              ? "Repayment Received (reduces outstanding)"
-                              : "Top Up (increases outstanding)";
-                          })();
-
-                          const effectColor = (() => {
-                            if (type === "expense") {
-                              return isLentLoan ? "#7C3AED" : "#16A34A";
-                            }
-                            return isLentLoan ? "#16A34A" : "#7C3AED";
-                          })();
-
-                          const effectIcon = (() => {
-                            if (type === "expense") {
-                              return isLentLoan ? "cash-plus" : "cash-minus";
-                            }
-                            return isLentLoan ? "cash-check" : "bank-plus";
-                          })();
-
-                          return (
-                            <TouchableOpacity
-                              activeOpacity={0.9}
-                              style={{
-                                backgroundColor: "#F4FFF7",
-                                borderRadius: 16,
-                                borderWidth: 1,
-                                borderColor: "#36B37E",
-                                padding: 16,
-                              }}
-                            >
-                              <View
-                                style={{
-                                  flexDirection: "row",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <View
-                                  style={{
-                                    width: 54,
-                                    height: 54,
-                                    borderRadius: 27,
-                                    backgroundColor: "#36B37E",
-                                    justifyContent: "center",
-                                    alignItems: "center",
-                                    marginRight: 14,
-                                  }}
-                                >
-                                  <MaterialCommunityIcons
-                                    name="bank-check"
-                                    size={28}
-                                    color="#fff"
-                                  />
-                                </View>
-
-                                <View style={{ flex: 1 }}>
-                                  <Text
-                                    style={{
-                                      fontSize: 17,
-                                      fontWeight: "700",
-                                      color: "#222",
-                                    }}
-                                  >
-                                    {loan?.loan_name}
-                                  </Text>
-
-                                  <Text style={{ marginTop: 3, color: "#666" }}>
-                                    Outstanding ₹
-                                    {Number(
-                                      loan?.outstanding_amount || 0,
-                                    ).toLocaleString("en-IN")}
-                                  </Text>
-
-                                  {/* Effect indicator */}
-                                  <View
-                                    style={{
-                                      flexDirection: "row",
-                                      alignItems: "center",
-                                      marginTop: 8,
-                                      backgroundColor: effectColor + "15",
-                                      borderRadius: 8,
-                                      paddingHorizontal: 8,
-                                      paddingVertical: 5,
-                                      alignSelf: "flex-start",
-                                    }}
-                                  >
-                                    <MaterialCommunityIcons
-                                      name={effectIcon}
-                                      size={14}
-                                      color={effectColor}
-                                    />
-                                    <Text
-                                      style={{
-                                        marginLeft: 5,
-                                        fontSize: 12,
-                                        fontWeight: "700",
-                                        color: effectColor,
-                                      }}
-                                    >
-                                      {effectLabel}
-                                    </Text>
-                                  </View>
-
-                                  <Text
-                                    style={{
-                                      marginTop: 6,
-                                      color: "#36B37E",
-                                      fontWeight: "700",
-                                    }}
-                                  >
-                                    ✓ Linked
-                                  </Text>
-                                </View>
-                              </View>
-
-                              <View
-                                style={{
-                                  flexDirection: "row",
-                                  justifyContent: "flex-end",
-                                  marginTop: 14,
-                                }}
-                              >
-                                <PaperButton
-                                  compact
-                                  onPress={() => {
-                                    setLoanSearch("");
-                                    setShowLoanModal(true);
-                                  }}
-                                  disabled={submitting}
-                                >
-                                  Change
-                                </PaperButton>
-
-                                {isEdit ? (
-                                  <PaperButton
-                                    compact
-                                    textColor="#E46A6A"
-                                    disabled={linking || submitting}
-                                    onPress={() => {
-                                      if (
-                                        linking ||
-                                        submitting ||
-                                        !transaction?.id
-                                      )
-                                        return;
-                                      setLinking(true);
-                                      showPageLoader();
-
-                                      setTimeout(async () => {
-                                        try {
-                                          await unlinkTransactionFromLoan(
-                                            transaction.id,
-                                          );
-                                          setSelectedLoanId(null);
-                                          setLoanSearch("");
-                                        } catch (e) {
-                                          console.error(
-                                            "[TransactionForm] Unlink loan failed:",
-                                            e,
-                                          );
-                                        } finally {
-                                          setLinking(false);
-                                          hidePageLoader();
-                                        }
-                                      }, 0);
-                                    }}
-                                  >
-                                    Unlink
-                                  </PaperButton>
-                                ) : (
-                                  <PaperButton
-                                    compact
-                                    textColor="#E46A6A"
-                                    disabled={submitting}
-                                    onPress={() => {
-                                      setSelectedLoanId(null);
-                                      markDirty();
-                                    }}
-                                  >
-                                    Clear
-                                  </PaperButton>
-                                )}
-                              </View>
-                            </TouchableOpacity>
-                          );
-                        })()
-                      )}
-                    </View>
-                  )}
                 </View>
               )}
 
-              {isEdit && transaction?.id && (
-                <View style={{ marginTop: type !== "transfer" ? 16 : 0, marginBottom: 8 }}>
-                  {type !== "transfer" && (
-                    <View
-                      style={{
-                        height: 1,
-                        backgroundColor: "#F1F5F9",
-                        marginVertical: 16,
-                      }}
-                    />
-                  )}
-                  <LinkedBillCard
-                    transactionId={transaction.id}
-                    onPressBill={(bill) => {
-                      setShowMoreOptions(false);
-                      if (onPressBill) onPressBill(bill);
-                    }}
-                    onBillsChanged={() => {
-                      if (transaction?.id) {
-                        getBillsForTransaction(transaction.id, true).then((bills) => {
-                          setLinkedBills(bills || []);
-                          setHasLinkedBill(bills?.length > 0);
-                        });
-                      }
-                    }}
-                  />
-                </View>
-              )}
-            </ScrollView>
-
-            <PaperButton
-              mode="contained"
-              onPress={() => setShowMoreOptions(false)}
-              style={{
-                backgroundColor: "#4B7CF3",
-                marginTop: 24,
-                borderRadius: 12,
-                paddingVertical: 4,
-              }}
-              labelStyle={{ fontSize: 16, fontWeight: "700" }}
-            >
-              Done
-            </PaperButton>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={showCategoryModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCategoryModal(false)}
-      >
-        <View
-          style={{
-            alignItems: "center",
-            marginBottom: 12,
-          }}
-        >
-          <View
-            style={{
-              width: 42,
-              height: 5,
-              borderRadius: 3,
-              backgroundColor: "#D8D8D8",
-            }}
-          />
-        </View>
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.45)",
-            justifyContent: "flex-end",
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: "#fff",
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
-              padding: 16,
-              height: "85%",
-              paddingBottom: 20,
-            }}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 14,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 20,
-                  fontWeight: "700",
-                }}
-              >
-                Select Category
-              </Text>
-              <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
-                <MaterialCommunityIcons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            <PaperTextInput
-              ref={categorySearchRef}
-              label="Search category"
-              value={categorySearch}
-              onChangeText={setCategorySearch}
-              mode="outlined"
-              left={<PaperTextInput.Icon icon="magnify" />}
-              style={{ marginBottom: 16 }}
-            />
-
-            <Text
-              style={{
-                marginBottom: 10,
-                color: "#666",
-                fontSize: 13,
-              }}
-            >
-              {searchedCategories.length} Categories
-            </Text>
-
-            <View style={{ flex: 1 }}>
               <ScrollView
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{ paddingBottom: 90 }}
+                contentContainerStyle={{ paddingBottom: 80 }}
               >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    flexWrap: "wrap",
-                    justifyContent: "flex-start",
-                  }}
-                >
-                  {searchedCategories.map((c, index) => (
-                    <TouchableOpacity
-                      key={c.id}
-                      onPress={() => {
-                        setCategoryId(c.id);
-                        setCategorySearch("");
-                        setShowCategoryModal(false);
-                        setShowCategoryGrid(false);
-                        markDirty();
-                      }}
-                      activeOpacity={0.8}
-                      style={{
-                        width: "23%",
-                        height: 72,
-                        marginBottom: 10,
-                        marginRight: (index + 1) % 4 === 0 ? 0 : "2.66%",
-                        borderRadius: 10,
-                        backgroundColor: c.color || "#4B7CF3",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        paddingHorizontal: 4,
-                        paddingVertical: 6,
-                        borderColor: "#111",
-                      }}
+                <View style={styles.categoryGrid}>
+                  {/* Dedicated + New Category card in the grid */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowCategoryModal(false);
+                      setShowCategoryCreateModal(true);
+                    }}
+                    activeOpacity={0.8}
+                    style={[
+                      styles.categoryGridItem,
+                      {
+                        backgroundColor: isDarkMode ? "#1E293B" : "#F8FAFC",
+                        borderColor: typeConfig.color,
+                        borderStyle: "dashed",
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.categoryItemIconCircle,
+                        { backgroundColor: typeConfig.color },
+                      ]}
                     >
-                      <MaterialCommunityIcons
-                        name={c.icon || "tag"}
-                        size={18}
-                        color="#fff"
-                      />
-                      {categoryId === c.id && (
+                      <MaterialCommunityIcons name="plus" size={18} color="#FFFFFF" />
+                    </View>
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        styles.categoryItemText,
+                        { color: typeConfig.color, fontWeight: "800" },
+                      ]}
+                    >
+                      + New
+                    </Text>
+                  </TouchableOpacity>
+
+                  {searchedCategories.map((c) => {
+                    const isSelected = categoryId === c.id;
+                    return (
+                      <TouchableOpacity
+                        key={c.id}
+                        onPress={() => {
+                          setCategoryId(c.id);
+                          setShowCategoryModal(false);
+                          setCategorySearch("");
+                          markDirty();
+                        }}
+                        activeOpacity={0.8}
+                        style={[
+                          styles.categoryGridItem,
+                          {
+                            backgroundColor: isSelected
+                              ? c.color || "#3B82F6"
+                              : isDarkMode
+                                ? "#1E293B"
+                                : "#F8FAFC",
+                            borderColor: isSelected ? c.color : borderColor,
+                          },
+                        ]}
+                      >
                         <View
-                          style={{
-                            position: "absolute",
-                            top: 4,
-                            right: 4,
-                            width: 18,
-                            height: 18,
-                            borderRadius: 9,
-                            backgroundColor: "#fff",
-                            justifyContent: "center",
-                            alignItems: "center",
-                          }}
+                          style={[
+                            styles.categoryItemIconCircle,
+                            {
+                              backgroundColor: isSelected
+                                ? "rgba(255,255,255,0.25)"
+                                : c.color || "#3B82F6",
+                            },
+                          ]}
                         >
                           <MaterialCommunityIcons
-                            name="check"
-                            size={12}
-                            color="#2E7D32"
+                            name={c.icon || "tag"}
+                            size={18}
+                            color="#FFFFFF"
                           />
                         </View>
-                      )}
-
-                      <Text
-                        numberOfLines={2}
-                        style={{
-                          color: "#fff",
-                          fontSize: 10,
-                          fontWeight: "600",
-                          textAlign: "center",
-                          marginTop: 4,
-                          lineHeight: 12,
-                        }}
-                      >
-                        {c.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                        <Text
+                          numberOfLines={1}
+                          style={[
+                            styles.categoryItemText,
+                            {
+                              color: isSelected ? "#FFFFFF" : textPrimary,
+                              fontWeight: isSelected ? "700" : "600",
+                            },
+                          ]}
+                        >
+                          {c.name}
+                        </Text>
+                        {isSelected && (
+                          <View style={styles.categoryCheckBadge}>
+                            <MaterialCommunityIcons name="check" size={10} color="#FFFFFF" />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
 
                 {searchedCategories.length === 0 && (
-                  <Text
-                    style={{
-                      textAlign: "center",
-                      color: "#999",
-                      marginVertical: 30,
-                    }}
-                  >
-                    No categories found
-                  </Text>
+                  <View style={styles.emptyStateBox}>
+                    <Text style={[styles.emptyStateText, { color: textSecondary }]}>
+                      No categories found
+                    </Text>
+                    {categorySearch.trim().length > 0 && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setShowCategoryModal(false);
+                          setShowCategoryCreateModal(true);
+                        }}
+                        style={[styles.emptyCreateBtn, { backgroundColor: typeConfig.color }]}
+                      >
+                        <MaterialCommunityIcons name="plus" size={16} color="#FFFFFF" />
+                        <Text style={styles.emptyCreateBtnText}>
+                          Create "{categorySearch.trim()}"
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 )}
               </ScrollView>
             </View>
           </View>
+        </Modal>
 
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => {
-              setCategorySearch("");
-              setShowCategoryModal(false);
-              setShowCategoryCreateModal(true);
-            }}
-            style={{
-              position: "absolute",
-              right: 20,
-              bottom: 20,
-              width: 58,
-              height: 58,
-              borderRadius: 29,
-              backgroundColor: accent,
-              justifyContent: "center",
-              alignItems: "center",
-              elevation: 8,
-              shadowColor: "#000",
-              shadowOpacity: 0.25,
-              shadowRadius: 6,
-              shadowOffset: {
-                width: 0,
-                height: 3,
-              },
-            }}
-          >
-            <MaterialCommunityIcons name="plus" size={30} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={showSourceModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowSourceModal(false)}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(69, 48, 48, 0.45)",
-            justifyContent: "flex-end",
-          }}
+        {/* MODAL 2: SOURCE SELECTION BOTTOM SHEET */}
+        <Modal
+          visible={showSourceModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowSourceModal(false)}
         >
-          <View
-            style={{
-              backgroundColor: "#fff",
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
-              padding: 16,
-              height: "85%",
-            }}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 12,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 20,
-                  fontWeight: "700",
-                }}
-              >
-                Select Payment Source
-              </Text>
-              <TouchableOpacity onPress={() => setShowSourceModal(false)}>
-                <MaterialCommunityIcons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
+          <View style={styles.modalBackdrop}>
+            <View style={[styles.bottomSheetContainer, { backgroundColor: cardBg }]}>
+              <View style={styles.sheetHandle} />
 
-            <PaperTextInput
-              ref={sourceSearchRef}
-              label="Search Source"
-              value={sourceSearch}
-              onChangeText={setSourceSearch}
-              mode="outlined"
-              left={<PaperTextInput.Icon icon="magnify" />}
-              style={{ marginBottom: 12 }}
-            />
+              <View style={styles.sheetHeaderRow}>
+                <View>
+                  <Text style={[styles.sheetTitle, { color: textPrimary }]}>
+                    {selectingFor === "to" ? "Select Destination Account" : "Select Payment Account"}
+                  </Text>
+                  <Text style={[styles.sheetSubtitle, { color: textSecondary }]}>
+                    {searchedSources.length} accounts available
+                  </Text>
+                </View>
 
-            <Text
-              style={{
-                color: "#666",
-                marginBottom: 12,
-              }}
-            >
-              {searchedSources.length} Sources
-            </Text>
-
-            <View style={{ flex: 1 }}>
-              <ScrollView
-                keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{
-                  paddingBottom: 100,
-                }}
-              >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    flexWrap: "wrap",
-                    justifyContent: "flex-start",
-                  }}
+                <TouchableOpacity
+                  onPress={() => setShowSourceModal(false)}
+                  style={[styles.closeIconBtn, { backgroundColor: inputBg }]}
                 >
-                  {searchedSources.map((s, index) => (
-                    <TouchableOpacity
-                      key={s.id}
-                      onPress={() => {
-                        if (selectingFor === "from") {
-                          setSourceId(s.id);
-                          setShowSourceGrid(false);
-                        } else {
-                          setToAccount(s.id);
-                          setShowToAccountGrid(false);
-                        }
-                        setSourceSearch("");
-                        setShowSourceModal(false);
-                        markDirty();
-                      }}
-                      activeOpacity={0.8}
-                      style={{
-                        width: "23%",
-                        height: 72,
-                        marginBottom: 10,
-                        marginRight: (index + 1) % 4 === 0 ? 0 : "2.66%",
-                        borderRadius: 10,
-                        backgroundColor: s.color || accent,
-                        justifyContent: "center",
-                        alignItems: "center",
-                        paddingHorizontal: 4,
-                        paddingVertical: 6,
-                        borderColor: "#111",
-                      }}
-                    >
-                      <MaterialCommunityIcons
-                        name={s.icon || "cash"}
-                        size={18}
-                        color="#fff"
-                      />
+                  <MaterialCommunityIcons name="close" size={20} color={textSecondary} />
+                </TouchableOpacity>
+              </View>
 
-                      {sourceId === s.id && (
-                        <View
-                          style={{
-                            position: "absolute",
-                            top: 4,
-                            right: 4,
-                            width: 18,
-                            height: 18,
-                            borderRadius: 9,
-                            backgroundColor: "#fff",
-                            justifyContent: "center",
-                            alignItems: "center",
+              <View style={[styles.searchBarBox, { backgroundColor: inputBg, borderColor }]}>
+                <MaterialCommunityIcons name="magnify" size={20} color={textSecondary} />
+                <TextInput
+                  ref={sourceSearchRef}
+                  value={sourceSearch}
+                  onChangeText={setSourceSearch}
+                  placeholder="Search account or source..."
+                  placeholderTextColor={textSecondary}
+                  style={[styles.searchTextInput, { color: textPrimary }]}
+                  autoCorrect={false}
+                />
+                {sourceSearch.length > 0 && (
+                  <TouchableOpacity onPress={() => setSourceSearch("")}>
+                    <MaterialCommunityIcons name="close-circle" size={18} color={textSecondary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Recent / Most Used Account Quick Chips */}
+              {!sourceSearch && (selectingFor === "to" ? frequentDestinationSources : frequentSources).length > 0 && (
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={[styles.subHeaderLabel, { color: textSecondary }]}>
+                    RECENT / FREQUENT ACCOUNTS
+                  </Text>
+                  <View style={styles.quickChipsWrap}>
+                    {(selectingFor === "to" ? frequentDestinationSources : frequentSources).map((s) => {
+                      const isSel = selectingFor === "to" ? toAccount === s.id : sourceId === s.id;
+                      return (
+                        <TouchableOpacity
+                          key={`freq-src-${s.id}`}
+                          onPress={() => {
+                            if (selectingFor === "to") setToAccount(s.id);
+                            else setSourceId(s.id);
+                            setShowSourceModal(false);
+                            setSourceSearch("");
+                            markDirty();
                           }}
+                          style={[
+                            styles.frequentChip,
+                            {
+                              backgroundColor: isSel ? s.color || "#3B82F6" : inputBg,
+                              borderColor: isSel ? s.color : borderColor,
+                            },
+                          ]}
                         >
                           <MaterialCommunityIcons
-                            name="check"
-                            size={12}
-                            color="#2E7D32"
+                            name={s.icon || "cash"}
+                            size={14}
+                            color={isSel ? "#FFFFFF" : s.color || "#3B82F6"}
+                            style={{ marginRight: 6 }}
                           />
-                        </View>
-                      )}
-
-                      <Text
-                        numberOfLines={2}
-                        style={{
-                          color: "#fff",
-                          textAlign: "center",
-                          marginTop: 6,
-                          fontWeight: "600",
-                          fontSize: 12,
-                          lineHeight: 16,
-                        }}
-                      >
-                        {s.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                          <Text
+                            style={[
+                              styles.frequentChipText,
+                              { color: isSel ? "#FFFFFF" : textPrimary },
+                            ]}
+                          >
+                            {s.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
                 </View>
-              </ScrollView>
-              {searchedSources.length === 0 && (
-                <Text
-                  style={{
-                    textAlign: "center",
-                    color: "#999",
-                    marginTop: 30,
-                  }}
-                >
-                  No payment sources found
-                </Text>
               )}
-            </View>
-          </View>
-        </View>
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => {
-            setSourceSearch("");
-            setShowSourceModal(false);
-            setShowSourceCreateModal(true);
-          }}
-          style={{
-            position: "absolute",
-            right: 20,
-            bottom: 20,
-            width: 58,
-            height: 58,
-            borderRadius: 29,
-            backgroundColor: accent,
-            justifyContent: "center",
-            alignItems: "center",
-            elevation: 8,
-            shadowColor: "#000",
-            shadowOpacity: 0.25,
-            shadowRadius: 6,
-            shadowOffset: {
-              width: 0,
-              height: 3,
-            },
-          }}
-        >
-          <MaterialCommunityIcons name="plus" size={30} color="#fff" />
-        </TouchableOpacity>
-      </Modal>
 
-      {type === "transfer" && (
-        <View style={{ marginBottom: 12 }}>
-          <Text
-            style={{
-              marginBottom: 8,
-              color: "#666",
-            }}
-          >
-            To Account
-          </Text>
-
-          {showToAccountGrid ? (
-            <>
-              <View
-                style={{
-                  flexDirection: "row",
-                  flexWrap: "wrap",
-                  justifyContent: "flex-start",
-                  marginTop: 8,
-                }}
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingBottom: 80 }}
               >
-                {visibleToAccountSources.map((s, index) => (
+                <View style={styles.categoryGrid}>
+                  {/* Dedicated + New Account card in the grid */}
                   <TouchableOpacity
-                    key={s.id}
-                    disabled={submitting}
                     onPress={() => {
-                      setToAccount(s.id);
-                      setShowToAccountGrid(false);
-                      setSourceSearch("");
-                      markDirty();
+                      setShowSourceModal(false);
+                      setShowSourceCreateModal(true);
                     }}
-                    style={{
-                      width: "23%",
-                      height: 72,
-                      marginBottom: 8,
-                      marginRight: (index + 1) % 4 === 0 ? 0 : "2.66%",
-                      borderRadius: 10,
-                      backgroundColor: s.color || "#4B7CF3",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      paddingHorizontal: 4,
-                      paddingVertical: 6,
-                      transform: [
-                        {
-                          scale: toAccount === s.id ? 1.05 : 1,
-                        },
-                      ],
-                    }}
+                    activeOpacity={0.8}
+                    style={[
+                      styles.categoryGridItem,
+                      {
+                        backgroundColor: isDarkMode ? "#1E293B" : "#F8FAFC",
+                        borderColor: typeConfig.color,
+                        borderStyle: "dashed",
+                      },
+                    ]}
                   >
-                    <MaterialCommunityIcons
-                      name={s.icon || "cash"}
-                      size={18}
-                      color="#fff"
-                    />
-
-                    {toAccount === s.id && (
-                      <View
-                        style={{
-                          position: "absolute",
-                          top: 4,
-                          right: 4,
-                          width: 18,
-                          height: 18,
-                          borderRadius: 9,
-                          backgroundColor: "#fff",
-                          justifyContent: "center",
-                          alignItems: "center",
-                        }}
-                      >
-                        <MaterialCommunityIcons
-                          name="check"
-                          size={12}
-                          color="#2E7D32"
-                        />
-                      </View>
-                    )}
-
-                    <Text
-                      numberOfLines={2}
-                      style={{
-                        color: "#fff",
-                        textAlign: "center",
-                        marginTop: 6,
-                        fontWeight: "600",
-                        fontSize: 12,
-                        lineHeight: 16,
-                      }}
+                    <View
+                      style={[
+                        styles.categoryItemIconCircle,
+                        { backgroundColor: typeConfig.color },
+                      ]}
                     >
-                      {s.name}
+                      <MaterialCommunityIcons name="plus" size={18} color="#FFFFFF" />
+                    </View>
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        styles.categoryItemText,
+                        { color: typeConfig.color, fontWeight: "800" },
+                      ]}
+                    >
+                      + New
                     </Text>
                   </TouchableOpacity>
-                ))}
-              </View>
 
-              {toAccountSources.length > 4 && (
-                <TouchableOpacity
-                  disabled={submitting}
-                  onPress={() => {
-                    setSelectingFor("to");
-                    setSourceSearch("");
-                    setShowSourceModal(true);
-                  }}
-                  style={{
-                    alignItems: "center",
-                    paddingVertical: 8,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: "#4B7CF3",
-                      fontWeight: "700",
-                    }}
-                  >
-                    See More
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </>
-          ) : (
-            <TouchableOpacity
-              disabled={submitting}
-              onPress={() => {
-                setSelectingFor("to");
-                setSourceSearch("");
-                setShowSourceModal(true);
-              }}
-              activeOpacity={0.85}
-              style={{
-                backgroundColor: "#fff",
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: "#E6EAF2",
-                paddingHorizontal: 14,
-                paddingVertical: 12,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                elevation: 2,
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  flex: 1,
-                }}
-              >
-                <View
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 21,
-                    backgroundColor:
-                      sources.find((x) => x.id === toAccount)?.color ||
-                      "#4B7CF3",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    marginRight: 12,
-                  }}
-                >
-                  <MaterialCommunityIcons
-                    name={
-                      sources.find((x) => x.id === toAccount)?.icon || "cash"
-                    }
-                    size={22}
-                    color="#fff"
-                  />
-                </View>
-
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      color: "#888",
-                    }}
-                  >
-                    Destination Account
-                  </Text>
-                  <Text
-                    numberOfLines={1}
-                    style={{
-                      fontSize: 16,
-                      fontWeight: "700",
-                      color: "#222",
-                    }}
-                  >
-                    {sources.find((x) => x.id === toAccount)?.name}
-                  </Text>
-                </View>
-                <MaterialCommunityIcons
-                  name="pencil-outline"
-                  size={22}
-                  color="#4B7CF3"
-                />
-              </View>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
-      {/* MORE OPTIONS TRIGGER & ACTIVE HIGHLIGHTS (FOR ALL TYPES) */}
-      {(type !== "transfer" || (isEdit && transaction?.id)) && (
-        <View style={{ marginTop: 18, marginBottom: 14, alignItems: "center" }}>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setShowMoreOptions(true)}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              paddingVertical: 10,
-              paddingHorizontal: 20,
-              backgroundColor: hasActiveHighlights ? "#EFF6FF" : "#F4F6F8",
-              borderRadius: 24,
-              borderWidth: hasActiveHighlights ? 1.5 : 1,
-              borderColor: hasActiveHighlights ? "#3B82F6" : "#E2E8F0",
-              shadowColor: hasActiveHighlights ? "#3B82F6" : "transparent",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: hasActiveHighlights ? 0.12 : 0,
-              shadowRadius: 4,
-              elevation: hasActiveHighlights ? 2 : 0,
-            }}
-          >
-            <MaterialCommunityIcons
-              name={hasActiveHighlights ? "tune-variant" : "tune"}
-              size={18}
-              color={hasActiveHighlights ? "#2563EB" : "#64748B"}
-            />
-            <Text
-              style={{
-                marginLeft: 8,
-                fontSize: 14,
-                fontWeight: "700",
-                color: hasActiveHighlights ? "#1D4ED8" : "#475569",
-              }}
-            >
-              More Options
-            </Text>
-
-            {hasActiveHighlights && (
-              <View
-                style={{
-                  marginLeft: 8,
-                  backgroundColor: "#2563EB",
-                  borderRadius: 10,
-                  paddingHorizontal: 7,
-                  paddingVertical: 1,
-                  minWidth: 18,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#FFF",
-                    fontSize: 11,
-                    fontWeight: "800",
-                  }}
-                >
-                  {activeHighlightsCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          {/* ACTIVE HIGHLIGHT CHIPS */}
-          {hasActiveHighlights && (
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                justifyContent: "center",
-                alignItems: "center",
-                gap: 8,
-                marginTop: 10,
-                paddingHorizontal: 4,
-              }}
-            >
-              {isBillLinked && (
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => setShowMoreOptions(true)}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    backgroundColor: "#EFF6FF",
-                    borderColor: "#93C5FD",
-                    borderWidth: 1,
-                    borderRadius: 14,
-                    paddingHorizontal: 10,
-                    paddingVertical: 4,
-                  }}
-                >
-                  <MaterialCommunityIcons
-                    name="file-document-outline"
-                    size={14}
-                    color="#2563EB"
-                    style={{ marginRight: 5 }}
-                  />
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: "#1D4ED8" }}>
-                    {linkedBills.length > 1
-                      ? `${linkedBills.length} Bills Linked`
-                      : linkedBills[0]?.name
-                        ? `Bill: ${linkedBills[0].name}`
-                        : "Bill Linked"}
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              {isLoanLinked && (
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => setShowMoreOptions(true)}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    backgroundColor: "#F5F3FF",
-                    borderColor: "#C4B5FD",
-                    borderWidth: 1,
-                    borderRadius: 14,
-                    paddingHorizontal: 10,
-                    paddingVertical: 4,
-                  }}
-                >
-                  <MaterialCommunityIcons
-                    name="bank-outline"
-                    size={14}
-                    color="#7C3AED"
-                    style={{ marginRight: 5 }}
-                  />
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: "#6D28D9" }}>
-                    Loan Linked
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              {isNotSpendOrIncome && (
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => setShowMoreOptions(true)}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    backgroundColor: "#FFFBEB",
-                    borderColor: "#FCD34D",
-                    borderWidth: 1,
-                    borderRadius: 14,
-                    paddingHorizontal: 10,
-                    paddingVertical: 4,
-                  }}
-                >
-                  <MaterialCommunityIcons
-                    name="tag-off-outline"
-                    size={14}
-                    color="#D97706"
-                    style={{ marginRight: 5 }}
-                  />
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: "#B45309" }}>
-                    {type === "expense" ? "Not a Spend" : "Not a Income"}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-        </View>
-      )}
-
-      <View
-        style={{ flexDirection: "row", alignItems: "center", marginTop: 12 }}
-      >
-        <PaperButton
-          mode="contained"
-          onPress={submit}
-          loading={submitting}
-          disabled={submitting}
-          style={{ backgroundColor: accent }}
-          labelStyle={{ color: "#fff" }}
-        >
-          {submitting
-            ? isEdit
-              ? "Updating..."
-              : "Saving..."
-            : isEdit
-              ? "Update"
-              : "Save"}
-        </PaperButton>
-        <View style={{ width: 12 }} />
-        <PaperButton
-          mode="outlined"
-          disabled={submitting}
-          onPress={() => {
-            if (isDirty) {
-              setShowUnsavedDialog(true);
-            } else {
-              if (onCancel) onCancel();
-              else {
-                setAmount("");
-                setNotes("");
-              }
-            }
-          }}
-        >
-          Cancel
-        </PaperButton>
-        <View style={{ width: 12 }} />
-      </View>
-
-      {/* Date & Time Picker */}
-      <MuiDateTimePicker
-        visible={showDateTimePicker}
-        initialDate={date}
-        disableFutureDates={true}
-        onSelect={(newDate) => {
-          setDate(newDate.toISOString());
-          setShowDateTimePicker(false);
-          markDirty();
-        }}
-        onClose={() => setShowDateTimePicker(false)}
-      />
-
-      <CommonBottomSheetModal
-        visible={confirmVisible}
-        type="danger"
-        title="Delete Transaction?"
-        subtitle={`Are you sure you want to remove this ${type} transaction?`}
-        confirmLabel="Delete Transaction"
-        cancelLabel="Keep Transaction"
-        loading={submitting}
-        warnings={[
-          { title: 'Permanent Removal', text: 'Transaction will be permanently removed from account records.' },
-          { title: 'Balance Restored', text: 'Account balances and category monthly totals will update.' },
-          { title: 'Cannot Be Undone', text: 'This transaction cannot be recovered once deleted.' },
-        ]}
-        onCancel={() => {
-          if (!submitting) setConfirmVisible(false);
-        }}
-        onConfirm={handleDelete}
-      />
-
-      <CommonBottomSheetModal
-        visible={showUnsavedDialog}
-        type="warning"
-        icon="alert-circle-outline"
-        title="Discard Changes?"
-        subtitle={
-          isEdit
-            ? "You've made changes that haven't been saved yet."
-            : "You've started adding a new transaction."
-        }
-        confirmLabel="Discard"
-        cancelLabel="Keep Editing"
-        warningTitle="Unsaved Progress Notice"
-        warnings={[
-          { title: 'Edits Lost', text: 'If you leave now, all your unsaved modifications will be lost.' },
-          { title: 'Keep Editing', text: 'Tap "Keep Editing" to continue working on this transaction.' },
-        ]}
-        onCancel={() => setShowUnsavedDialog(false)}
-        onConfirm={() => {
-          setShowUnsavedDialog(false);
-          setIsDirty(false);
-          if (onCancel) onCancel();
-          else {
-            setAmount("");
-            setNotes("");
-          }
-        }}
-      />
-
-      <Modal
-        visible={showLoanModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => {
-          if (!linking) {
-            setShowLoanModal(false);
-          }
-        }}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.45)",
-            justifyContent: "flex-end",
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: "#fff",
-              borderTopLeftRadius: 22,
-              borderTopRightRadius: 22,
-              height: "82%",
-              padding: 16,
-            }}
-          >
-            {/* HEADER */}
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 14,
-              }}
-            >
-              <View>
-                <Text
-                  style={{
-                    fontSize: 20,
-                    fontWeight: "800",
-                    color: "#222",
-                  }}
-                >
-                  Link to Loan
-                </Text>
-
-                <Text
-                  style={{
-                    marginTop: 3,
-                    color: "#777",
-                    fontSize: 13,
-                  }}
-                >
-                  Select the loan for this payment
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                disabled={linking}
-                onPress={() => setShowLoanModal(false)}
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 19,
-                  backgroundColor: "#F3F4F6",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <MaterialCommunityIcons name="close" size={22} color="#555" />
-              </TouchableOpacity>
-            </View>
-
-            {/* SEARCH */}
-            <PaperTextInput
-              label="Search loan"
-              value={loanSearch}
-              onChangeText={setLoanSearch}
-              mode="outlined"
-              disabled={linking}
-              left={<PaperTextInput.Icon icon="magnify" />}
-              right={
-                loanSearch.length > 0 ? (
-                  <PaperTextInput.Icon
-                    icon="close-circle-outline"
-                    onPress={() => setLoanSearch("")}
-                  />
-                ) : null
-              }
-              style={{
-                marginBottom: 14,
-              }}
-            />
-
-            {/* LOAN TABS */}
-            <View style={{ flexDirection: "row", marginBottom: 14 }}>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  paddingVertical: 8,
-                  alignItems: "center",
-                  borderBottomWidth: 2,
-                  borderBottomColor: loanTab === "active" ? "#4B7CF3" : "transparent",
-                }}
-                onPress={() => {
-                  setLoanTab("active");
-                  setLoanSearch("");
-                }}
-              >
-                <Text style={{ fontWeight: "700", color: loanTab === "active" ? "#4B7CF3" : "#888" }}>
-                  Active ({activeLoans.length})
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  paddingVertical: 8,
-                  alignItems: "center",
-                  borderBottomWidth: 2,
-                  borderBottomColor: loanTab === "closed" ? "#4B7CF3" : "transparent",
-                }}
-                onPress={() => {
-                  setLoanTab("closed");
-                  setLoanSearch("");
-                }}
-              >
-                <Text style={{ fontWeight: "700", color: loanTab === "closed" ? "#4B7CF3" : "#888" }}>
-                  Closed ({closedLoans.length})
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* COUNT */}
-            <Text
-              style={{
-                color: "#777",
-                fontSize: 13,
-                marginBottom: 10,
-              }}
-            >
-              {filteredLoans.length}{" "}
-              {filteredLoans.length === 1 ? "Loan" : "Loans"}
-            </Text>
-
-            {/* LOAN LIST */}
-            <View style={{ flex: 1 }}>
-              {filteredLoans.length === 0 ? (
-                <View
-                  style={{
-                    flex: 1,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    paddingBottom: 40,
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: 32,
-                      backgroundColor: "#EEF4FF",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      marginBottom: 14,
-                    }}
-                  >
-                    <MaterialCommunityIcons
-                      name="bank-search-outline"
-                      size={32}
-                      color="#4B7CF3"
-                    />
-                  </View>
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      fontWeight: "700",
-                      color: "#333",
-                    }}
-                  >
-                    No loans found
-                  </Text>
-                  <Text
-                    style={{
-                      color: "#888",
-                      marginTop: 5,
-                      textAlign: "center",
-                    }}
-                  >
-                    Try a different loan name or lender.
-                  </Text>
-                </View>
-              ) : (
-                <FlatList
-                  data={filteredLoans}
-                  keyExtractor={(item) => String(item.id)}
-                  keyboardShouldPersistTaps="handled"
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{
-                    paddingBottom: 30,
-                  }}
-                  renderItem={({ item }) => {
-                    const isSelected = selectedLoanId === item.id;
-                    const isClosed = String(item.status || "").toLowerCase() === "closed";
+                  {searchedSources.map((s) => {
+                    const isSelected = selectingFor === "to" ? toAccount === s.id : sourceId === s.id;
+                    const itemColor = s.color || "#3B82F6";
                     return (
                       <TouchableOpacity
-                        activeOpacity={0.85}
-                        disabled={linking || submitting}
+                        key={s.id}
                         onPress={() => {
-                          if (linking || submitting) return;
-                          // Show action sheet to confirm what kind of link this is
-                          setPendingLoan(item);
-                          setShowLoanModal(false);
-                          setShowLoanActionSheet(true);
+                          if (selectingFor === "to") {
+                            setToAccount(s.id);
+                          } else {
+                            setSourceId(s.id);
+                          }
+                          setShowSourceModal(false);
+                          setSourceSearch("");
+                          markDirty();
                         }}
-                        style={{
-                          backgroundColor: isSelected ? "#F0FFF6" : isClosed ? "#F9FAFB" : "#fff",
-                          borderRadius: 16,
-                          borderWidth: 1,
-                          borderColor: isSelected ? "#36B37E" : "#E6EAF2",
-                          padding: 14,
-                          marginBottom: 10,
-                          opacity: isClosed ? 0.6 : (linking || submitting ? 0.65 : 1),
-                        }}
-                      >
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                          }}
-                        >
-                          {/* ICON */}
-                          <View
-                            style={{
-                              width: 48,
-                              height: 48,
-                              borderRadius: 24,
-                              backgroundColor: isSelected
-                                ? "#36B37E"
-                                : "#4B7CF3",
-                              justifyContent: "center",
-                              alignItems: "center",
-                              marginRight: 12,
-                            }}
-                          >
-                            <MaterialCommunityIcons
-                              name={isSelected ? "bank-check" : "bank-outline"}
-                              size={24}
-                              color="#fff"
-                            />
-                          </View>
-
-                          {/* DETAILS */}
-                          <View style={{ flex: 1 }}>
-                            <Text
-                              numberOfLines={1}
-                              style={{
-                                fontSize: 16,
-                                fontWeight: "800",
-                                color: "#222",
-                              }}
-                            >
-                              {item.loan_name}
-                            </Text>
-
-                            {!!item.lender && (
-                              <Text
-                                numberOfLines={1}
-                                style={{
-                                  marginTop: 3,
-                                  fontSize: 13,
-                                  color: "#777",
-                                }}
-                              >
-                                {item.lender}
-                              </Text>
-                            )}
-
-                            <View
-                              style={{
-                                flexDirection: "row",
-                                alignItems: "center",
-                                marginTop: 6,
-                              }}
-                            >
-                              <Text
-                                style={{
-                                  fontSize: 12,
-                                  color: "#666",
-                                }}
-                              >
-                                Outstanding
-                              </Text>
-
-                              <Text
-                                style={{
-                                  marginLeft: 5,
-                                  fontSize: 13,
-                                  fontWeight: "800",
-                                  color: "#333",
-                                }}
-                              >
-                                ₹
-                                {Number(
-                                  item.outstanding_amount || 0,
-                                ).toLocaleString("en-IN")}
-                              </Text>
-                            </View>
-                          </View>
-
-                          {/* RIGHT */}
-                          <View
-                            style={{
-                              marginLeft: 8,
-                              alignItems: "center",
-                              justifyContent: "center",
-                            }}
-                          >
-                            {isSelected ? (
-                              <View
-                                style={{
-                                  width: 30,
-                                  height: 30,
-                                  borderRadius: 15,
-                                  backgroundColor: "#36B37E",
-                                  justifyContent: "center",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <MaterialCommunityIcons
-                                  name="check"
-                                  size={18}
-                                  color="#fff"
-                                />
-                              </View>
-                            ) : (
-                              <MaterialCommunityIcons
-                                name="chevron-right"
-                                size={26}
-                                color="#999"
-                              />
-                            )}
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  }}
-                />
-              )}
-            </View>
-          </View>
-
-          {/* LOADER ΓÇö ABOVE THE LOAN POPUP */}
-          {linking && (
-            <View
-              pointerEvents="auto"
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: "rgba(255,255,255,0.72)",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 999999,
-                elevation: 999999,
-              }}
-            >
-              <View
-                style={{
-                  width: 170,
-                  height: 170,
-                  borderRadius: 36,
-                  backgroundColor: "rgba(255,255,255,0.97)",
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.95)",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  shadowColor: "#000",
-                  shadowOffset: {
-                    width: 0,
-                    height: 18,
-                  },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 28,
-                  elevation: 30,
-                }}
-              >
-                <ActivityIndicator size="large" color="#4B7CF3" />
-
-                <Text
-                  style={{
-                    marginTop: 14,
-                    fontSize: 14,
-                    fontWeight: "700",
-                    color: "#333",
-                  }}
-                >
-                  Linking loan...
-                </Text>
-              </View>
-            </View>
-          )}
-        </View>
-      </Modal>
-
-      {/* ================================================================= */}
-      {/* LOAN ACTION SHEET                                                  */}
-      {/* Shown after user picks a loan — confirms what this tx means        */}
-      {/* ================================================================= */}
-      <Modal
-        visible={showLoanActionSheet}
-        transparent
-        animationType="slide"
-        onRequestClose={() => {
-          if (!linking) {
-            setShowLoanActionSheet(false);
-            setPendingLoan(null);
-          }
-        }}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.45)",
-            justifyContent: "flex-end",
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: theme.cardBg,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              padding: 20,
-              paddingBottom: 36,
-            }}
-          >
-            {/* Handle */}
-            <View
-              style={{
-                width: 40,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: "#D1D5DB",
-                alignSelf: "center",
-                marginBottom: 18,
-              }}
-            />
-
-            {/* Loan name header */}
-            {pendingLoan &&
-              (() => {
-                const isLentLoan =
-                  (pendingLoan.loan_direction || "BORROWED").toUpperCase() ===
-                  "LENT";
-                // Options driven by BOTH loan direction AND transaction type
-                const options = isLentLoan
-                  ? type === "income"
-                    ? [
-                      {
-                        label: "Receive Payment",
-                        sublabel: "Borrower paid back part or full amount",
-                        icon: "cash-check",
-                        color: "#16A34A",
-                        bg: "#DCFCE7",
-                        paymentType: "EMI",
-                      },
-                    ]
-                    : [
-                      {
-                        label: "Lend More",
-                        sublabel: "Give additional money to the borrower",
-                        icon: "cash-plus",
-                        color: "#7C3AED",
-                        bg: "#EDE9FE",
-                        paymentType: "ADVANCE",
-                      },
-                    ]
-                  : type === "income"
-                    ? [
-                      {
-                        label: "Top Up",
-                        sublabel: "Received additional amount from lender",
-                        icon: "bank-plus",
-                        color: "#7C3AED",
-                        bg: "#EDE9FE",
-                        paymentType: "TOP_UP",
-                      },
-                    ]
-                    : [
-                      {
-                        label: "Pay EMI",
-                        sublabel: "Regular monthly instalment payment",
-                        icon: "cash-fast",
-                        color: "#2563EB",
-                        bg: "#DBEAFE",
-                        paymentType: "EMI",
-                      },
-                      {
-                        label: "Prepayment",
-                        sublabel: "Extra payment to reduce principal faster",
-                        icon: "trending-up",
-                        color: "#EA580C",
-                        bg: "#FED7AA",
-                        paymentType: "PREPAYMENT",
-                      },
-                      {
-                        label: "Foreclose",
-                        sublabel: "Close the loan with full & final payment",
-                        icon: "bank-remove",
-                        color: "#DC2626",
-                        bg: "#FEE2E2",
-                        paymentType: "FORECLOSURE",
-                      },
-                    ];
-
-                const isClosed = String(pendingLoan.status || "").toLowerCase() === "closed";
-                let displayOptions = options;
-                if (isClosed) {
-                  displayOptions = options
-                    .filter(opt => opt.paymentType !== "FORECLOSURE")
-                    .map(opt => ({
-                      ...opt,
-                      sublabel: `${opt.sublabel} (This will reopen the loan)`
-                    }));
-                }
-
-                const doLink = (paymentType) => {
-                  setLinking(true);
-                  showPageLoader();
-
-                  setTimeout(async () => {
-                    try {
-                      if (isEdit && transaction?.id) {
-                        await linkTransactionToLoan(
-                          transaction.id,
-                          pendingLoan.id,
+                        activeOpacity={0.8}
+                        style={[
+                          styles.categoryGridItem,
                           {
-                            paymentType,
-                            linkedDate: transaction.date || date,
+                            backgroundColor: isSelected
+                              ? itemColor
+                              : isDarkMode
+                                ? "#1E293B"
+                                : "#F8FAFC",
+                            borderColor: isSelected ? itemColor : borderColor,
                           },
-                        );
-                      }
-
-                      setSelectedLoanId(pendingLoan.id);
-                      setPendingLoan(null);
-                      setLoanSearch("");
-                      markDirty();
-                    } catch (e) {
-                      console.error("[TransactionForm] Link loan failed:", e);
-                    } finally {
-                      setLinking(false);
-                      hidePageLoader();
-                      setShowLoanActionSheet(false);
-                    }
-                  }, 0);
-                };
-
-                return (
-                  <>
-                    {/* Header */}
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        marginBottom: 20,
-                      }}
-                    >
-                      <View
-                        style={{
-                          width: 46,
-                          height: 46,
-                          borderRadius: 23,
-                          backgroundColor: "#2563EB",
-                          justifyContent: "center",
-                          alignItems: "center",
-                          marginRight: 12,
-                        }}
-                      >
-                        <MaterialCommunityIcons
-                          name="bank-outline"
-                          size={24}
-                          color="#fff"
-                        />
-                      </View>
-
-                      <View style={{ flex: 1 }}>
-                        <Text
-                          style={{
-                            fontSize: 11,
-                            color: "#94A3B8",
-                            fontWeight: "600",
-                            textTransform: "uppercase",
-                            letterSpacing: 0.5,
-                          }}
-                        >
-                          {isLentLoan ? "Lent Loan" : "Borrowed Loan"}
-                        </Text>
-                        <Text
-                          style={{
-                            fontSize: 17,
-                            fontWeight: "800",
-                            color: "#111827",
-                          }}
-                          numberOfLines={1}
-                        >
-                          {pendingLoan.loan_name}
-                        </Text>
-                        <Text style={{ fontSize: 12, color: "#64748B" }}>
-                          Outstanding ₹
-                          {Number(
-                            pendingLoan.outstanding_amount || 0,
-                          ).toLocaleString("en-IN")}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Question */}
-                    <Text
-                      style={{
-                        fontSize: 15,
-                        fontWeight: "700",
-                        color: "#374151",
-                        marginBottom: 14,
-                      }}
-                    >
-                      What does this {type} represent?
-                    </Text>
-
-                    {/* Options */}
-                    {displayOptions.map((opt) => (
-                      <TouchableOpacity
-                        key={opt.paymentType}
-                        activeOpacity={0.85}
-                        disabled={linking}
-                        onPress={() => doLink(opt.paymentType)}
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          backgroundColor: opt.bg,
-                          borderRadius: 16,
-                          padding: 14,
-                          marginBottom: 10,
-                          borderWidth: 1,
-                          borderColor: opt.color + "40",
-                        }}
+                        ]}
                       >
                         <View
-                          style={{
-                            width: 44,
-                            height: 44,
-                            borderRadius: 22,
-                            backgroundColor: opt.color,
-                            justifyContent: "center",
-                            alignItems: "center",
-                            marginRight: 14,
-                          }}
+                          style={[
+                            styles.categoryItemIconCircle,
+                            {
+                              backgroundColor: isSelected
+                                ? "rgba(255,255,255,0.25)"
+                                : itemColor,
+                            },
+                          ]}
                         >
                           <MaterialCommunityIcons
-                            name={opt.icon}
-                            size={22}
-                            color="#fff"
+                            name={s.icon || "cash"}
+                            size={18}
+                            color="#FFFFFF"
                           />
                         </View>
-
-                        <View style={{ flex: 1 }}>
-                          <Text
-                            style={{
-                              fontSize: 15,
-                              fontWeight: "800",
-                              color: "#111827",
-                            }}
-                          >
-                            {opt.label}
-                          </Text>
-                          <Text
-                            style={{
-                              fontSize: 12,
-                              color: "#64748B",
-                              marginTop: 2,
-                            }}
-                          >
-                            {opt.sublabel}
-                          </Text>
-                        </View>
-
-                        <MaterialCommunityIcons
-                          name="chevron-right"
-                          size={22}
-                          color={opt.color}
-                        />
+                        <Text
+                          numberOfLines={1}
+                          style={[
+                            styles.categoryItemText,
+                            {
+                              color: isSelected ? "#FFFFFF" : textPrimary,
+                              fontWeight: isSelected ? "700" : "600",
+                            },
+                          ]}
+                        >
+                          {s.name}
+                        </Text>
+                        {isSelected && (
+                          <View style={styles.categoryCheckBadge}>
+                            <MaterialCommunityIcons name="check" size={10} color="#FFFFFF" />
+                          </View>
+                        )}
                       </TouchableOpacity>
-                    ))}
+                    );
+                  })}
+                </View>
 
-                    {/* Cancel */}
-                    <TouchableOpacity
-                      onPress={() => {
-                        setShowLoanActionSheet(false);
-                        setPendingLoan(null);
-                        setShowLoanModal(true);
-                      }}
-                      style={{
-                        alignItems: "center",
-                        paddingVertical: 12,
-                        marginTop: 2,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: "#64748B",
-                          fontWeight: "600",
-                          fontSize: 14,
+                {searchedSources.length === 0 && (
+                  <View style={styles.emptyStateBox}>
+                    <Text style={[styles.emptyStateText, { color: textSecondary }]}>
+                      No payment accounts found
+                    </Text>
+                    {sourceSearch.trim().length > 0 && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setShowSourceModal(false);
+                          setShowSourceCreateModal(true);
                         }}
+                        style={[styles.emptyCreateBtn, { backgroundColor: typeConfig.color }]}
                       >
-                        ← Back to loans
-                      </Text>
-                    </TouchableOpacity>
-                  </>
-                );
-              })()}
-
-            {/* Loader overlay */}
-            {linking && (
-              <View
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: "rgba(255,255,255,0.8)",
-                  borderTopLeftRadius: 24,
-                  borderTopRightRadius: 24,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <ActivityIndicator size="large" color="#2563EB" />
-                <Text
-                  style={{
-                    marginTop: 12,
-                    fontWeight: "700",
-                    color: "#333",
-                  }}
-                >
-                  Linking...
-                </Text>
-              </View>
-            )}
+                        <MaterialCommunityIcons name="plus" size={16} color="#FFFFFF" />
+                        <Text style={styles.emptyCreateBtnText}>
+                          Create "{sourceSearch.trim()}"
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+              </ScrollView>
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
-      <Modal visible={showCategoryCreateModal} animationType="slide" onRequestClose={() => setShowCategoryCreateModal(false)}>
-        <CategoryCreateScreen
-          route={{
-            params: {
-              currentType: type,
-              onCategoryCreated: async (newCategory) => {
-                const cats = await getCategories(true);
-                setCategories(cats);
-                setCategoryId(newCategory.id);
-                requestAnimationFrame(() => {
-                  setShowCategoryCreateModal(false);
-                  setShowCategoryModal(false);
-                  setShowCategoryGrid(false);
-                  setCategorySearch("");
-                });
-              }
+        {/* MODAL 3: BILL SELECTION BOTTOM SHEET (CREATE & EDIT TIME) */}
+        <Modal
+          visible={showBillModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowBillModal(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={[styles.bottomSheetContainer, { backgroundColor: cardBg }]}>
+              <View style={styles.sheetHandle} />
+
+              <View style={styles.sheetHeaderRow}>
+                <View>
+                  <Text style={[styles.sheetTitle, { color: textPrimary }]}>
+                    Link to Bill
+                  </Text>
+                  <Text style={[styles.sheetSubtitle, { color: textSecondary }]}>
+                    Select an unpaid or pending bill
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowBillModal(false)}
+                  style={[styles.closeIconBtn, { backgroundColor: inputBg }]}
+                >
+                  <MaterialCommunityIcons name="close" size={20} color={textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={[styles.searchBarBox, { backgroundColor: inputBg, borderColor }]}>
+                <MaterialCommunityIcons name="magnify" size={20} color={textSecondary} />
+                <TextInput
+                  value={billSearch}
+                  onChangeText={setBillSearch}
+                  placeholder="Search bill by name..."
+                  placeholderTextColor={textSecondary}
+                  style={[styles.searchTextInput, { color: textPrimary }]}
+                  autoCorrect={false}
+                />
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                {searchedBills.map((b) => {
+                  const isSelected = selectedBillId === b.id;
+                  const bCat = categories.find((c) => c.id === b.category_id);
+                  const remAmt = b.remaining_amount !== undefined ? b.remaining_amount : b.amount;
+                  return (
+                    <TouchableOpacity
+                      key={b.id}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        setSelectedBillId(b.id);
+                        if (!amount || amount === "0" || amount === "0.00") {
+                          setAmount(String(remAmt || b.amount || ""));
+                        }
+                        if (!notes) {
+                          setNotes(b.name || "Bill Payment");
+                        }
+                        if (!categoryId && b.category_id) {
+                          setCategoryId(b.category_id);
+                        }
+                        setShowBillModal(false);
+                        markDirty();
+                      }}
+                      style={[
+                        styles.loanListItem,
+                        {
+                          backgroundColor: isSelected
+                            ? isDarkMode
+                              ? "#17253D"
+                              : "#EFF6FF"
+                            : cardBg,
+                          borderColor: isSelected ? "#3B82F6" : borderColor,
+                        },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.rowAvatar,
+                          { backgroundColor: bCat?.color || "#3B82F6" },
+                        ]}
+                      >
+                        <MaterialCommunityIcons
+                          name={bCat?.icon || "receipt"}
+                          size={20}
+                          color="#FFFFFF"
+                        />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={[styles.loanItemTitle, { color: textPrimary }]}>
+                          {b.name}
+                        </Text>
+                        <Text style={[styles.loanItemSub, { color: textSecondary }]}>
+                          {b.due_date ? `Due ${String(b.due_date).substring(0, 10)}` : "Pending bill"} • ₹
+                          {Number(remAmt || b.amount || 0).toLocaleString("en-IN")}
+                        </Text>
+                      </View>
+                      {isSelected ? (
+                        <View style={styles.checkedCircle}>
+                          <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />
+                        </View>
+                      ) : (
+                        <MaterialCommunityIcons name="chevron-right" size={22} color={textSecondary} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+
+                {searchedBills.length === 0 && (
+                  <View style={styles.emptyStateBox}>
+                    <Text style={[styles.emptyStateText, { color: textSecondary }]}>
+                      No pending bills found to link
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* MODAL 4: LOAN PICKER MODAL */}
+        <Modal
+          visible={showLoanModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => {
+            if (!linking) setShowLoanModal(false);
+          }}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={[styles.bottomSheetContainer, { backgroundColor: cardBg }]}>
+              <View style={styles.sheetHandle} />
+              <View style={styles.sheetHeaderRow}>
+                <View>
+                  <Text style={[styles.sheetTitle, { color: textPrimary }]}>
+                    Link to Loan
+                  </Text>
+                  <Text style={[styles.sheetSubtitle, { color: textSecondary }]}>
+                    Select loan for this payment
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  disabled={linking}
+                  onPress={() => setShowLoanModal(false)}
+                  style={[styles.closeIconBtn, { backgroundColor: inputBg }]}
+                >
+                  <MaterialCommunityIcons name="close" size={20} color={textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={[styles.searchBarBox, { backgroundColor: inputBg, borderColor }]}>
+                <MaterialCommunityIcons name="magnify" size={20} color={textSecondary} />
+                <TextInput
+                  value={loanSearch}
+                  onChangeText={setLoanSearch}
+                  placeholder="Search loan by name or lender..."
+                  placeholderTextColor={textSecondary}
+                  style={[styles.searchTextInput, { color: textPrimary }]}
+                  autoCorrect={false}
+                />
+              </View>
+
+              <View style={styles.loanTabsContainer}>
+                <TouchableOpacity
+                  onPress={() => setLoanTab("active")}
+                  style={[
+                    styles.loanTabBtn,
+                    loanTab === "active" && {
+                      borderBottomColor: "#3B82F6",
+                      borderBottomWidth: 2,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      color: loanTab === "active" ? "#3B82F6" : textSecondary,
+                      fontWeight: "700",
+                    }}
+                  >
+                    Active ({activeLoans.length})
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setLoanTab("closed")}
+                  style={[
+                    styles.loanTabBtn,
+                    loanTab === "closed" && {
+                      borderBottomColor: "#3B82F6",
+                      borderBottomWidth: 2,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      color: loanTab === "closed" ? "#3B82F6" : textSecondary,
+                      fontWeight: "700",
+                    }}
+                  >
+                    Closed ({closedLoans.length})
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                {filteredLoans.map((item) => {
+                  const isSelected = selectedLoanId === item.id;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        setPendingLoan(item);
+                        setShowLoanModal(false);
+                        setShowLoanActionSheet(true);
+                      }}
+                      style={[
+                        styles.loanListItem,
+                        {
+                          backgroundColor: isSelected
+                            ? isDarkMode
+                              ? "#17253D"
+                              : "#EFF6FF"
+                            : cardBg,
+                          borderColor: isSelected ? "#3B82F6" : borderColor,
+                        },
+                      ]}
+                    >
+                      <View style={[styles.rowAvatar, { backgroundColor: "#3B82F6" }]}>
+                        <MaterialCommunityIcons name="bank-outline" size={20} color="#FFFFFF" />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={[styles.loanItemTitle, { color: textPrimary }]}>
+                          {item.loan_name}
+                        </Text>
+                        <Text style={[styles.loanItemSub, { color: textSecondary }]}>
+                          Outstanding ₹
+                          {Number(item.outstanding_amount || 0).toLocaleString("en-IN")}
+                        </Text>
+                      </View>
+                      {isSelected ? (
+                        <View style={styles.checkedCircle}>
+                          <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />
+                        </View>
+                      ) : (
+                        <MaterialCommunityIcons name="chevron-right" size={22} color={textSecondary} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+
+                {filteredLoans.length === 0 && (
+                  <View style={styles.emptyStateBox}>
+                    <Text style={[styles.emptyStateText, { color: textSecondary }]}>
+                      No loans found
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* MODAL 5: LOAN ACTION SHEET */}
+        <Modal
+          visible={showLoanActionSheet}
+          transparent
+          animationType="slide"
+          onRequestClose={() => {
+            if (!linking) {
+              setShowLoanActionSheet(false);
+              setPendingLoan(null);
             }
           }}
-          navigation={{
-            goBack: () => setShowCategoryCreateModal(false)
-          }}
-        />
-      </Modal>
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={[styles.bottomSheetContainer, { backgroundColor: cardBg }]}>
+              <View style={styles.sheetHandle} />
+              {pendingLoan &&
+                (() => {
+                  const isLentLoan =
+                    (pendingLoan.loan_direction || "BORROWED").toUpperCase() === "LENT";
+                  const options = isLentLoan
+                    ? type === "income"
+                      ? [
+                        {
+                          label: "Receive Payment",
+                          sublabel: "Borrower paid back part or full amount",
+                          icon: "cash-check",
+                          color: "#16A34A",
+                          bg: isDarkMode ? "#142D20" : "#DCFCE7",
+                          paymentType: "EMI",
+                        },
+                      ]
+                      : [
+                        {
+                          label: "Lend More",
+                          sublabel: "Give additional money to the borrower",
+                          icon: "cash-plus",
+                          color: "#7C3AED",
+                          bg: isDarkMode ? "#2D1948" : "#EDE9FE",
+                          paymentType: "ADVANCE",
+                        },
+                      ]
+                    : type === "income"
+                      ? [
+                        {
+                          label: "Top Up",
+                          sublabel: "Received additional amount from lender",
+                          icon: "bank-plus",
+                          color: "#7C3AED",
+                          bg: isDarkMode ? "#2D1948" : "#EDE9FE",
+                          paymentType: "TOP_UP",
+                        },
+                      ]
+                      : [
+                        {
+                          label: "Pay EMI",
+                          sublabel: "Regular monthly instalment payment",
+                          icon: "cash-fast",
+                          color: "#2563EB",
+                          bg: isDarkMode ? "#17274D" : "#DBEAFE",
+                          paymentType: "EMI",
+                        },
+                        {
+                          label: "Prepayment",
+                          sublabel: "Extra payment to reduce principal faster",
+                          icon: "trending-up",
+                          color: "#EA580C",
+                          bg: isDarkMode ? "#3D2416" : "#FED7AA",
+                          paymentType: "PREPAYMENT",
+                        },
+                        {
+                          label: "Foreclose",
+                          sublabel: "Close the loan with full & final payment",
+                          icon: "bank-remove",
+                          color: "#DC2626",
+                          bg: isDarkMode ? "#371A1E" : "#FEE2E2",
+                          paymentType: "FORECLOSURE",
+                        },
+                      ];
 
-      <Modal
-        visible={showSourceCreateModal}
-        animationType="slide"
-        onRequestClose={() => setShowSourceCreateModal(false)}
-      >
-        <SourceCreateScreen
-          route={{
-            params: {
-              onSourceCreated: async () => {
-                const updatedSources = await getSources(true);
-                setSources(updatedSources);
-                const newestSource = [...updatedSources].sort(
-                  (a, b) => b.id - a.id,
-                )[0];
-                requestAnimationFrame(() => {
-                  if (newestSource) {
-                    setSourceId(newestSource.id);
-                  }
-                  setShowSourceGrid(false);
-                  setSourceSearch("");
-                  setShowSourceCreateModal(false);
-                  setShowSourceModal(false);
-                });
-              }
+                  const doLink = (paymentType) => {
+                    setLinking(true);
+                    showPageLoader();
+                    setTimeout(async () => {
+                      try {
+                        if (isEdit && transaction?.id) {
+                          await linkTransactionToLoan(transaction.id, pendingLoan.id, {
+                            paymentType,
+                            linkedDate: transaction.date || date,
+                          });
+                        }
+                        setSelectedLoanId(pendingLoan.id);
+                        setPendingLoan(null);
+                        setLoanSearch("");
+                        markDirty();
+                      } catch (e) {
+                        console.error("[TransactionForm] Link loan failed:", e);
+                      } finally {
+                        setLinking(false);
+                        hidePageLoader();
+                        setShowLoanActionSheet(false);
+                      }
+                    }, 0);
+                  };
+
+                  return (
+                    <View style={{ paddingBottom: 20 }}>
+                      <Text style={[styles.sheetTitle, { color: textPrimary, marginBottom: 4 }]}>
+                        {pendingLoan.loan_name}
+                      </Text>
+                      <Text style={[styles.sheetSubtitle, { color: textSecondary, marginBottom: 16 }]}>
+                        What does this {type} represent?
+                      </Text>
+
+                      {options.map((opt) => (
+                        <TouchableOpacity
+                          key={opt.paymentType}
+                          onPress={() => doLink(opt.paymentType)}
+                          style={[
+                            styles.loanActionRow,
+                            {
+                              backgroundColor: opt.bg,
+                              borderColor: opt.color + "40",
+                            },
+                          ]}
+                        >
+                          <View
+                            style={[styles.rowAvatar, { backgroundColor: opt.color }]}
+                          >
+                            <MaterialCommunityIcons name={opt.icon} size={22} color="#FFFFFF" />
+                          </View>
+                          <View style={{ flex: 1, marginLeft: 12 }}>
+                            <Text style={[styles.loanActionLabel, { color: textPrimary }]}>
+                              {opt.label}
+                            </Text>
+                            <Text style={[styles.loanActionSub, { color: textSecondary }]}>
+                              {opt.sublabel}
+                            </Text>
+                          </View>
+                          <MaterialCommunityIcons name="chevron-right" size={20} color={opt.color} />
+                        </TouchableOpacity>
+                      ))}
+
+                      <TouchableOpacity
+                        onPress={() => {
+                          setShowLoanActionSheet(false);
+                          setPendingLoan(null);
+                          setShowLoanModal(true);
+                        }}
+                        style={{ alignSelf: "center", marginTop: 12, padding: 8 }}
+                      >
+                        <Text style={{ color: "#3B82F6", fontWeight: "700" }}>
+                          ← Back to loans
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })()}
+            </View>
+          </View>
+        </Modal>
+
+        {/* MODAL 6: CREATE CATEGORY MODAL */}
+        <Modal
+          visible={showCategoryCreateModal}
+          animationType="slide"
+          onRequestClose={() => setShowCategoryCreateModal(false)}
+        >
+          <CategoryCreateScreen
+            route={{
+              params: {
+                currentType: type,
+                onCategoryCreated: async (newCategory) => {
+                  const cats = await getCategories(true);
+                  setCategories(cats);
+                  setCategoryId(newCategory.id);
+                  requestAnimationFrame(() => {
+                    setShowCategoryCreateModal(false);
+                    setShowCategoryModal(false);
+                    setCategorySearch("");
+                  });
+                },
+              },
+            }}
+            navigation={{
+              goBack: () => setShowCategoryCreateModal(false),
+            }}
+          />
+        </Modal>
+
+        {/* MODAL 7: CREATE SOURCE MODAL */}
+        <Modal
+          visible={showSourceCreateModal}
+          animationType="slide"
+          onRequestClose={() => setShowSourceCreateModal(false)}
+        >
+          <SourceCreateScreen
+            route={{
+              params: {
+                onSourceCreated: async () => {
+                  const updatedSources = await getSources(true);
+                  setSources(updatedSources);
+                  const newestSource = [...updatedSources].sort((a, b) => b.id - a.id)[0];
+                  requestAnimationFrame(() => {
+                    if (newestSource) {
+                      if (selectingFor === "to") setToAccount(newestSource.id);
+                      else setSourceId(newestSource.id);
+                    }
+                    setShowSourceCreateModal(false);
+                    setShowSourceModal(false);
+                    setSourceSearch("");
+                  });
+                },
+              },
+            }}
+            navigation={{ goBack: () => setShowSourceCreateModal(false) }}
+          />
+        </Modal>
+
+        {/* DATE & TIME PICKER */}
+        <MuiDateTimePicker
+          visible={showDateTimePicker}
+          initialDate={date}
+          disableFutureDates={true}
+          onSelect={(newDate) => {
+            setDate(newDate.toISOString());
+            setShowDateTimePicker(false);
+            markDirty();
+          }}
+          onClose={() => setShowDateTimePicker(false)}
+        />
+
+        {/* DELETE CONFIRMATION MODAL */}
+        <CommonBottomSheetModal
+          visible={confirmVisible}
+          type="danger"
+          title="Delete Transaction?"
+          subtitle={`Are you sure you want to remove this ${type} transaction?`}
+          confirmLabel="Delete Transaction"
+          cancelLabel="Keep Transaction"
+          loading={submitting}
+          warnings={[
+            { title: "Permanent Removal", text: "Transaction will be permanently removed from account records." },
+            { title: "Balance Restored", text: "Account balances and category monthly totals will update." },
+            { title: "Cannot Be Undone", text: "This transaction cannot be recovered once deleted." },
+          ]}
+          onCancel={() => {
+            if (!submitting) setConfirmVisible(false);
+          }}
+          onConfirm={handleDelete}
+        />
+
+        {/* UNSAVED CHANGES MODAL */}
+        <CommonBottomSheetModal
+          visible={showUnsavedDialog}
+          type="warning"
+          icon="alert-circle-outline"
+          title="Discard Changes?"
+          subtitle={
+            isEdit
+              ? "You've made changes that haven't been saved yet."
+              : "You've started adding a new transaction."
+          }
+          confirmLabel="Discard"
+          cancelLabel="Keep Editing"
+          warningTitle="Unsaved Progress Notice"
+          warnings={[
+            { title: "Edits Lost", text: "If you leave now, all your unsaved modifications will be lost." },
+            { title: "Keep Editing", text: 'Tap "Keep Editing" to continue working on this transaction.' },
+          ]}
+          onCancel={() => setShowUnsavedDialog(false)}
+          onConfirm={() => {
+            setShowUnsavedDialog(false);
+            setIsDirty(false);
+            if (onCancel) onCancel();
+            else {
+              setAmount("");
+              setNotes("");
             }
           }}
-          navigation={{ goBack: () => setShowSourceCreateModal(false) }}
         />
-      </Modal>
 
-      <Snackbar
-        visible={snackbarVisible}
-        onDismiss={() => setSnackbarVisible(false)}
-        duration={3000}
-        action={{ label: "OK", onPress: () => setSnackbarVisible(false) }}
-      >
-        {snackbarMsg}
-      </Snackbar>
-      <PageLoader visible={loaderVisible} />
-    </ScrollView>
+        {/* SNACKBAR */}
+        <Snackbar
+          visible={snackbarVisible}
+          onDismiss={() => setSnackbarVisible(false)}
+          duration={3000}
+          action={{ label: "OK", onPress: () => setSnackbarVisible(false) }}
+        >
+          {snackbarMsg}
+        </Snackbar>
+
+        <PageLoader visible={loaderVisible} />
+      </View>
+    </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  mainContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 24,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: 200,
+  },
+
+  /* 1. Header Bar */
+  headerBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  segmentedContainer: {
+    flex: 1,
+    flexDirection: "row",
+    borderRadius: 14,
+    padding: 4,
+  },
+  segmentTab: {
+    flex: 1,
+    paddingVertical: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+  },
+  segmentTabActive: {
+    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  segmentText: {
+    fontSize: 14,
+  },
+  deleteButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 10,
+  },
+
+  /* 2. Hero Amount Card */
+  heroAmountCard: {
+    borderRadius: 18,
+    borderWidth: 1.5,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    marginBottom: 10,
+  },
+  amountHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 2,
+  },
+  amountLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+  },
+  amountClearBtn: {
+    padding: 2,
+  },
+  amountInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  currencyPrefix: {
+    fontSize: 30,
+    fontWeight: "800",
+    marginRight: 6,
+  },
+  amountInput: {
+    flex: 1,
+    fontSize: 34,
+    fontWeight: "800",
+    padding: 0,
+    margin: 0,
+  },
+  errorText: {
+    fontSize: 12,
+    color: "#EF4444",
+    fontWeight: "600",
+    marginTop: 4,
+  },
+
+  /* 3. Note Card Container (Directly after Amount) */
+  noteCardContainer: {
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 10,
+    position: "relative",
+    zIndex: 99,
+  },
+  noteInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  noteTextInput: {
+    fontSize: 14,
+    fontWeight: "600",
+    padding: 0,
+    margin: 0,
+  },
+  suggestionsDropdown: {
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 10,
+    overflow: "hidden",
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  suggestionListItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  suggestionIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  suggestionItemTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  suggestionItemSub: {
+    fontSize: 11,
+    marginTop: 1,
+  },
+
+  /* 4. Inset-Grouped Card */
+  groupedCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    overflow: "hidden",
+    marginBottom: 10,
+  },
+  tapRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  rowAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  rowContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  rowLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  rowValue: {
+    fontSize: 15,
+  },
+  rowDivider: {
+    height: 1,
+    marginLeft: 62,
+  },
+
+  /* Recent Chips on Form */
+  recentChipsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 62,
+    marginTop: 2,
+    marginBottom: 4,
+    paddingRight: 10,
+  },
+  recentChipsLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    marginRight: 6,
+  },
+  recentChipsScroll: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  recentChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  recentChipText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+
+  /* 5. Advanced Strip */
+  advancedStrip: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  optionPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
+  },
+  optionPillText: {
+    fontSize: 12,
+  },
+
+  /* 6. Sticky Bottom Action Bar */
+  bottomActionBar: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+  },
+  inScrollSaveContainer: {
+    marginTop: 20,
+    marginBottom: 28,
+  },
+  primarySaveBtn: {
+    height: 48,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+  },
+  primarySaveBtnText: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
+  emptyCreateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 16,
+    marginTop: 12,
+    gap: 6,
+  },
+  emptyCreateBtnText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+
+  /* Modals / Bottom Sheet Common */
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  bottomSheetContainer: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    maxHeight: "85%",
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#CBD5E1",
+    alignSelf: "center",
+    marginBottom: 12,
+  },
+  sheetHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  sheetSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  closeIconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  searchBarBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  searchTextInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 14,
+    padding: 0,
+  },
+  subHeaderLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    marginBottom: 8,
+  },
+  quickChipsWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  frequentChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  frequentChipText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 4,
+  },
+  categoryGridItem: {
+    width: "31%",
+    height: 76,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 6,
+    position: "relative",
+  },
+  categoryItemIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
+  },
+  categoryItemText: {
+    fontSize: 11,
+    textAlign: "center",
+  },
+  categoryCheckBadge: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#10B981",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sourceListItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  sourceItemName: {
+    fontSize: 15,
+  },
+  sourceItemSub: {
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 2,
+  },
+  checkedCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#10B981",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyStateBox: {
+    alignItems: "center",
+    paddingVertical: 30,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+
+  /* Loan Modal Extras */
+  loanTabsContainer: {
+    flexDirection: "row",
+    marginBottom: 12,
+  },
+  loanTabBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+  loanListItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  loanItemTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  loanItemSub: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  loanActionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  loanActionLabel: {
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  loanActionSub: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+});

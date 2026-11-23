@@ -11,7 +11,7 @@ import {
 } from '../utils/transactionUtils';
 import CurrencyText from './CurrencyText';
 
-export default function TransactionListItem({
+function TransactionListItem({
   item,
   category,
   source,
@@ -425,3 +425,6 @@ export default function TransactionListItem({
     </TouchableOpacity>
   );
 }
+
+export default React.memo(TransactionListItem);
+

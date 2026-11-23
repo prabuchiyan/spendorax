@@ -1,36 +1,56 @@
 import React, { useLayoutEffect } from 'react';
-import { ScrollView } from 'react-native';
+import { View, StyleSheet, StatusBar } from 'react-native';
 import TransactionForm from '../components/TransactionForm';
-import Card from '../components/Card';
+import { useTheme } from '../context/ThemeContext';
 
 export default function TransactionAddScreen({ navigation, route }) {
   const params = route.params || {};
   const isEdit = !!params.isEdit;
+  const { isDarkMode, theme } = useTheme();
 
   useLayoutEffect(() => {
     navigation.setOptions({
       title: isEdit ? 'Edit Transaction' : 'Add Transaction',
+      headerStyle: {
+        backgroundColor: isDarkMode ? (theme?.headerBg || '#111827') : '#FFFFFF',
+        elevation: 0,
+        shadowOpacity: 0,
+        borderBottomWidth: 1,
+        borderBottomColor: isDarkMode ? '#1F2937' : '#F1F5F9',
+      },
+      headerTitleStyle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: isDarkMode ? '#F9FAFB' : '#111827',
+      },
+      headerTintColor: isDarkMode ? '#F9FAFB' : '#111827',
     });
-  }, [navigation, isEdit]);
+  }, [navigation, isEdit, isDarkMode, theme]);
+
+  const screenBg = isDarkMode ? (theme?.background || '#0F172A') : '#F8FAFC';
 
   return (
-    <ScrollView
-      style={{ flex: 1 }}
-      contentContainerStyle={{ padding: 4 }}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Card style={{ margin: 0 }}>
-        <TransactionForm
-          {...params}
-          onCancel={() => navigation.goBack()}
-          onPressBill={(bill) =>
-            navigation.navigate('BillDetail', {
-              billId: bill.parent_bill_id || bill.id,
-              occurrenceId: bill.id,
-            })
-          }
-        />
-      </Card>
-    </ScrollView>
+    <View style={[styles.container, { backgroundColor: screenBg }]}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={isDarkMode ? '#0B0F17' : '#0B1F3A'}
+      />
+      <TransactionForm
+        {...params}
+        onCancel={() => navigation.goBack()}
+        onPressBill={(bill) =>
+          navigation.navigate('BillDetail', {
+            billId: bill.parent_bill_id || bill.id,
+            occurrenceId: bill.id,
+          })
+        }
+      />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});

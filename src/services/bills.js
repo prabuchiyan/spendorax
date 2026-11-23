@@ -915,9 +915,13 @@ export async function getAvailableBillsForTransactionLink(transactionId) {
       const isCompletelyPaid =
         (roundedAmount > 0 ? roundedPaid >= roundedAmount : roundedPaid > 0) ||
         b.status === BILL_STATUS.PAID ||
+        String(b.status || '').toLowerCase() === 'paid' ||
         Number(b.is_paid) === 1;
       const isPartiallyPaid = roundedPaid > 0 && !isCompletelyPaid;
       const remainingAmount = Math.max(0, Math.round(roundedAmount - roundedPaid) / 100);
+
+      // Exclude completely paid bills from link candidates
+      if (isCompletelyPaid) continue;
 
       candidateBills.push({
         ...b,

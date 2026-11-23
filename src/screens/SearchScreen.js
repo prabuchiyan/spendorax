@@ -7,7 +7,8 @@ import {
   TextInput,
   Modal,
   ScrollView,
-  Dimensions
+  Dimensions,
+  ActivityIndicator
 } from
   'react-native';
 import { getTransactions, getAdvancedSearchTransactions, getAvailableMonths } from '../services/transactions';
@@ -48,6 +49,8 @@ export default function SearchScreen({ navigation }) {
   const [isAdvancedModalVisible, setAdvancedModalVisible] = useState(false);
   const [showCategoryPickerModal, setShowCategoryPickerModal] = useState(false);
   const [showSourcePickerModal, setShowSourcePickerModal] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const sectionListRef = useRef(null);
 
   const [advAmount, setAdvAmount] = useState(reduxFilter?.advAmount || '');
   const [advNote, setAdvNote] = useState(reduxFilter?.advNote || '');
@@ -75,6 +78,18 @@ export default function SearchScreen({ navigation }) {
   const selectedSource = useMemo(() => {
     return sources.find(s => String(s.id) === String(advSourceId));
   }, [sources, advSourceId]);
+
+  const categoryMap = useMemo(() => {
+    const map = new Map();
+    categories.forEach((c) => map.set(String(c.id), c));
+    return map;
+  }, [categories]);
+
+  const sourceMap = useMemo(() => {
+    const map = new Map();
+    sources.forEach((s) => map.set(String(s.id), s));
+    return map;
+  }, [sources]);
 
   const openAdvancedModal = () => {
     if (reduxFilter) {
@@ -219,8 +234,12 @@ export default function SearchScreen({ navigation }) {
     dispatch(resetSearchFilter());
     setSearchQuery('');
     dispatch(setFilteredTransactions([]));
+    setIsSearching(false);
     monthScrollRef.current?.scrollTo?.({ x: 0, animated: false });
     yearScrollRef.current?.scrollTo?.({ x: 0, animated: false });
+    try {
+      sectionListRef.current?.getScrollResponder?.()?.scrollTo?.({ y: 0, animated: false });
+    } catch (e) {}
   };
 
   // ---------------------------------------------------------
@@ -322,12 +341,20 @@ export default function SearchScreen({ navigation }) {
 
         if (isActive) {
           dispatch(setFilteredTransactions(filtered));
+          setIsSearching(false);
+          try {
+            sectionListRef.current?.getScrollResponder?.()?.scrollTo?.({ y: 0, animated: false });
+          } catch (err) {}
         }
       } catch (e) {
         console.warn(e);
+        if (isActive) setIsSearching(false);
       }
     };
 
+    if (searchQuery.trim().length >= 3 && searchQuery.trim().toLowerCase() !== 'advanced search active') {
+      setIsSearching(true);
+    }
     search();
 
     return () => { isActive = false; };
@@ -338,6 +365,7 @@ export default function SearchScreen({ navigation }) {
   // ---------------------------------------------------------
 
   const fetchAdvanced = useCallback(async () => {
+    setIsSearching(true);
     try {
       const activeAdv = reduxFilter?.isFilterActive ? reduxFilter : {
         advAmount,
@@ -391,8 +419,13 @@ export default function SearchScreen({ navigation }) {
       }
 
       dispatch(setFilteredTransactions(transactions));
+      try {
+        sectionListRef.current?.getScrollResponder?.()?.scrollTo?.({ y: 0, animated: false });
+      } catch (err) {}
     } catch (e) {
       console.warn(e);
+    } finally {
+      setIsSearching(false);
     }
   }, [
     reduxFilter,
@@ -418,6 +451,7 @@ export default function SearchScreen({ navigation }) {
 
   const handleAdvancedSearch = async () => {
     setAdvancedModalVisible(false);
+    setIsSearching(true);
     dispatch(setSearchFilter({
       searchQuery: 'Advanced Search Active',
       advAmount,
@@ -442,12 +476,12 @@ export default function SearchScreen({ navigation }) {
   // EDIT
   // ---------------------------------------------------------
 
-  const handleEdit = (item) => {
+  const handleEdit = useCallback((item) => {
     navigation.navigate('TransactionAdd', {
       isEdit: true,
       transaction: item
     });
-  };
+  }, [navigation]);
 
   // ---------------------------------------------------------
   // TRANSACTION TYPE
@@ -517,12 +551,74 @@ export default function SearchScreen({ navigation }) {
         }
 
         return {
+          key: dateKey,
           title,
           dateKey,
           data: groups[dateKey]
         };
       });
   }, [items, groupByOption, reduxFilter?.isFilterActive, reduxFilter?.groupByOption]);
+
+  const renderItem = useCallback(({ item, index, section }) => {
+    const category = categoryMap.get(String(item.category_id));
+    const source = sourceMap.get(String(item.source_id));
+    const toSource = (item.type === 'transfer' || item.transfer_group_id)
+      ? sourceMap.get(String(item.toAccount || item.to_account))
+      : null;
+    const isLast = index === section.data.length - 1;
+
+    return (
+      <TransactionListItem
+        item={item}
+        category={category}
+        source={source}
+        toSource={toSource}
+        isLast={isLast}
+        onPress={() => handleEdit(item)}
+      />
+    );
+  }, [categoryMap, sourceMap, handleEdit]);
+
+  const renderSectionHeader = useCallback(({ section }) => (
+    <View
+      style={{
+        paddingTop: 10,
+        paddingBottom: 7,
+        backgroundColor: theme.isDark ? '#111827' : '#F8F9FB'
+      }}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}
+      >
+        <View>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: '900',
+              color: theme.isDark ? '#F3F4F6' : Colors.text,
+              textTransform: 'uppercase',
+              letterSpacing: 0.4
+            }}
+          >
+            {section.title}
+          </Text>
+          <Text
+            style={{
+              fontSize: 11,
+              color: Colors.muted,
+              marginTop: 2
+            }}
+          >
+            {section.data.length} {section.data.length === 1 ? 'transaction' : 'transactions'}
+          </Text>
+        </View>
+      </View>
+    </View>
+  ), [theme.isDark]);
 
   // ---------------------------------------------------------
   // SCREEN
@@ -645,41 +741,71 @@ export default function SearchScreen({ navigation }) {
         </View>
       </View>
 
-      {/* RESULT COUNT */}
-
-      {searchQuery.trim().length >= 3 &&
-        items.length > 0 &&
+      {/* RESULT COUNT & LOADING INDICATOR */}
+      {isSearching ? (
         <View
           style={{
             paddingHorizontal: Spacing.s,
             paddingTop: 12,
-            paddingBottom: 2
-          }}>
-
+            paddingBottom: 4,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
+          <ActivityIndicator size="small" color={Colors.primary} style={{ marginRight: 8 }} />
           <Text
             style={{
               fontSize: 12,
               color: Colors.muted,
-              fontWeight: '600'
-            }}>
-
-            {items.length}{' '}
-            {items.length === 1 ?
-              'transaction' :
-              'transactions'} found
+              fontWeight: '600',
+            }}
+          >
+            Filtering transactions...
           </Text>
         </View>
-      }
+      ) : (
+        searchQuery.trim().length >= 3 &&
+        items.length > 0 && (
+          <View
+            style={{
+              paddingHorizontal: Spacing.s,
+              paddingTop: 12,
+              paddingBottom: 2,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 12,
+                color: Colors.muted,
+                fontWeight: '600',
+              }}
+            >
+              {items.length}{' '}
+              {items.length === 1 ?
+                'transaction' :
+                'transactions'} found
+            </Text>
+          </View>
+        )
+      )}
 
       {/* RESULTS */}
 
       <SectionList
+        ref={sectionListRef}
         sections={groupedResults}
-        keyExtractor={(item) =>
-          String(item.id)
+        keyExtractor={(item, index) =>
+          item.id ? `tx-${item.id}` : `idx-${index}`
         }
         showsVerticalScrollIndicator={false}
         stickySectionHeadersEnabled={false}
+        removeClippedSubviews={false}
+        initialNumToRender={15}
+        maxToRenderPerBatch={15}
+        windowSize={11}
+        updateCellsBatchingPeriod={50}
+        renderSectionHeader={renderSectionHeader}
+        renderItem={renderItem}
 
         contentContainerStyle={{
           paddingHorizontal: Spacing.s,
@@ -747,96 +873,7 @@ export default function SearchScreen({ navigation }) {
             </Text>
           </View>
         }
-
-        /* DATE HEADER */
-
-        renderSectionHeader={({ section }) =>
-          <View
-            style={{
-              paddingTop: 10,
-              paddingBottom: 7,
-              backgroundColor: '#F8F9FB'
-            }}>
-
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}>
-
-              <View>
-                <Text
-                  style={{
-                    fontSize: 13,
-                    fontWeight: '900',
-                    color: Colors.text,
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.4
-                  }}>
-
-                  {section.title}
-                </Text>
-
-                <Text
-                  style={{
-                    fontSize: 11,
-                    color: Colors.muted,
-                    marginTop: 2
-                  }}>
-
-                  {section.data.length}{' '}
-                  {section.data.length === 1 ?
-                    'transaction' :
-                    'transactions'}
-                </Text>
-              </View>
-            </View>
-          </View>
-        }
-
-        /* TRANSACTION CARD */
-
-        renderItem={({
-          item,
-          index,
-          section
-        }) => {
-          const category =
-            categories.find(
-              (x) =>
-                String(x.id) ===
-                String(item.category_id)
-            );
-
-          const source =
-            sources.find(
-              (x) =>
-                String(x.id) ===
-                String(item.source_id)
-            );
-
-          const toSource = item.type === 'transfer' || item.transfer_group_id
-            ? sources.find(
-              (x) => String(x.id) === String(item.toAccount || item.to_account)
-            )
-            : null;
-
-          const isLast =
-            index ===
-            section.data.length - 1;
-
-          return (
-            <TransactionListItem
-              item={item}
-              category={category}
-              source={source}
-              toSource={toSource}
-              isLast={isLast}
-              onPress={() => handleEdit(item)} />);
-
-
-        }} />
+      />
 
       <Modal
         visible={isAdvancedModalVisible}
