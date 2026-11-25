@@ -274,12 +274,12 @@ export default function LoanListScreen({ navigation, route }) {
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  backgroundColor: "#FFFFFF",
+                  backgroundColor: theme.cardBg,
                   borderRadius: 18,
                   height: 54,
                   paddingHorizontal: 16,
                   borderWidth: 1,
-                  borderColor: "#E2E8F0",
+                  borderColor: theme.border,
                   elevation: 2,
                   shadowColor: "#000",
                   shadowOpacity: 0.05,
@@ -293,14 +293,14 @@ export default function LoanListScreen({ navigation, route }) {
                 <MaterialCommunityIcons
                   name="magnify"
                   size={22}
-                  color="#64748B"
+                  color={theme.textSecondary}
                 />
 
                 <TextInput
                   value={search}
                   onChangeText={setSearch}
                   placeholder="Search loans..."
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={theme.textMuted}
                   autoCorrect={false}
                   autoCapitalize="none"
                   underlineColorAndroid="transparent"
@@ -312,7 +312,7 @@ export default function LoanListScreen({ navigation, route }) {
                       flex: 1,
                       marginLeft: 12,
                       fontSize: 15,
-                      color: "#111827",
+                      color: theme.textPrimary,
                       paddingVertical: 0,
                       borderWidth: 0,
                     },
@@ -417,14 +417,14 @@ export default function LoanListScreen({ navigation, route }) {
                           {
                             backgroundColor: isActive
                               ? tab.color + "18"
-                              : "#E2E8F0",
+                              : isDarkMode ? "#334155" : "#E2E8F0",
                           },
                         ]}
                       >
                         <Text
                           style={[
                             styles.countBadgeText,
-                            { color: isActive ? tab.color : "#64748B" },
+                            { color: isActive ? tab.color : theme.textSecondary },
                           ]}
                         >
                           {count}
@@ -443,17 +443,17 @@ export default function LoanListScreen({ navigation, route }) {
                   <MaterialCommunityIcons
                     name="filter-variant"
                     size={16}
-                    color="#64748B"
+                    color={theme.textSecondary}
                     style={{ marginRight: 6 }}
                   />
-                  <Text style={styles.filterLabel}>Status</Text>
+                  <Text style={[styles.filterLabel, { color: theme.textSecondary }]}>Status</Text>
                 </View>
-                <Text style={styles.filterSelectedHint}>
+                <Text style={[styles.filterSelectedHint, { color: theme.textSecondary }]}>
                   {filter === "ALL" ? "All statuses" : filter}
                 </Text>
               </View>
 
-              <View style={styles.segmentContainer}>
+              <View style={[styles.segmentContainer, { backgroundColor: isDarkMode ? "#1e293b" : "#F1F5F9", borderColor: theme.border }]}>
                 {[
                   {
                     key: "ALL",
@@ -484,7 +484,7 @@ export default function LoanListScreen({ navigation, route }) {
                       style={[
                         styles.segmentButton,
                         isActive && [
-                          styles.segmentButtonActive,
+                          [styles.segmentButtonActive, { backgroundColor: isDarkMode ? "#182234" : "#FFFFFF" }],
                           { borderColor: tab.color + "30" },
                         ],
                       ]}
@@ -515,14 +515,14 @@ export default function LoanListScreen({ navigation, route }) {
                           {
                             backgroundColor: isActive
                               ? tab.color + "18"
-                              : "#E2E8F0",
+                              : isDarkMode ? "#334155" : "#E2E8F0",
                           },
                         ]}
                       >
                         <Text
                           style={[
                             styles.countBadgeText,
-                            { color: isActive ? tab.color : "#64748B" },
+                            { color: isActive ? tab.color : theme.textSecondary },
                           ]}
                         >
                           {count}
@@ -566,6 +566,7 @@ export default function LoanListScreen({ navigation, route }) {
                 marginTop: 16,
                 fontSize: 18,
                 fontWeight: "700",
+                color: theme.textPrimary,
               }}
             >
               No loans found
@@ -573,7 +574,7 @@ export default function LoanListScreen({ navigation, route }) {
 
             <Text
               style={{
-                color: Colors.muted,
+                color: theme.textSecondary,
                 marginTop: 6,
               }}
             >

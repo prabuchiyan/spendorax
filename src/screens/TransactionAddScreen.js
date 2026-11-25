@@ -8,9 +8,17 @@ export default function TransactionAddScreen({ navigation, route }) {
   const isEdit = !!params.isEdit;
   const { isDarkMode, theme } = useTheme();
 
+  const initialType = params.initialType || 'expense';
+  const createTitle =
+    initialType === 'income'
+      ? 'Add Income'
+      : initialType === 'transfer'
+        ? 'Add Transfer'
+        : 'Add Expense';
+
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: isEdit ? 'Edit Transaction' : 'Add Transaction',
+      title: isEdit ? 'Edit Transaction' : createTitle,
       headerStyle: {
         backgroundColor: isDarkMode ? (theme?.headerBg || '#111827') : '#FFFFFF',
         elevation: 0,
@@ -25,7 +33,7 @@ export default function TransactionAddScreen({ navigation, route }) {
       },
       headerTintColor: isDarkMode ? '#F9FAFB' : '#111827',
     });
-  }, [navigation, isEdit, isDarkMode, theme]);
+  }, [navigation, isEdit, createTitle, isDarkMode, theme]);
 
   const screenBg = isDarkMode ? (theme?.background || '#0F172A') : '#F8FAFC';
 

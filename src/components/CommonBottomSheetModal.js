@@ -2,16 +2,15 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  Modal,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Pressable,
   ActivityIndicator,
   Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import ResponsiveBottomSheet from './ResponsiveBottomSheet';
 
 export default function CommonBottomSheetModal({
   visible,
@@ -181,30 +180,24 @@ export default function CommonBottomSheetModal({
   const warningItems = Array.isArray(warnings) ? warnings : [];
 
   return (
-    <Modal
+    <ResponsiveBottomSheet
       visible={visible}
-      transparent
       animationType="fade"
-      statusBarTranslucent
+      backdropColor="rgba(15, 23, 42, 0.65)"
+      maxHeightRatio={0.85}
+      disableBackdropPress={isLoading}
       onRequestClose={() => {
         if (!isLoading) onCancel?.();
-      }}>
-      <View style={styles.overlay}>
-        <Pressable
-          style={styles.backdrop}
-          onPress={() => {
-            if (!isLoading) onCancel?.();
-          }}
-        />
-
-        <View
-          style={[
-            styles.sheetContainer,
-            {
-              backgroundColor: modalBg,
-              borderColor: cardBorder,
-            },
-          ]}>
+      }}
+      sheetStyle={[
+        styles.sheetContainer,
+        {
+          backgroundColor: modalBg,
+          borderColor: cardBorder,
+        },
+      ]}>
+      {({ maxHeight }) => (
+        <>
           {/* Top Drag Handle */}
           <View style={styles.handleWrap}>
             <View
@@ -218,6 +211,7 @@ export default function CommonBottomSheetModal({
           <ScrollView
             showsVerticalScrollIndicator={false}
             bounces={false}
+            style={{ maxHeight: Math.max(180, maxHeight - 32) }}
             contentContainerStyle={styles.scrollContent}>
             {/* Header Icon + Title */}
             <View style={styles.headerRow}>
@@ -399,25 +393,15 @@ export default function CommonBottomSheetModal({
               </TouchableOpacity>
             </View>
           </ScrollView>
-        </View>
-      </View>
-    </Modal>
+        </>
+      )}
+    </ResponsiveBottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-  },
   sheetContainer: {
     width: '100%',
-    maxHeight: '85%',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderWidth: 1,
@@ -436,7 +420,7 @@ const styles = StyleSheet.create({
   },
   handleWrap: {
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   sheetHandle: {
     width: 44,
@@ -444,28 +428,30 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 28,
+    paddingHorizontal: 18,
+    paddingBottom: 22,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   iconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 18,
+    width: 50,
+    height: 50,
+    borderRadius: 16,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 12,
+    flexShrink: 0,
   },
   titleWrap: {
     flex: 1,
+    minWidth: 0,
   },
   title: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
@@ -476,27 +462,29 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   previewContainer: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   warningBox: {
-    borderRadius: 18,
-    padding: 16,
+    borderRadius: 16,
+    padding: 14,
     borderWidth: 1,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   warningBoxHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
     gap: 8,
   },
   warningBoxTitle: {
+    flex: 1,
+    minWidth: 0,
     fontSize: 13.5,
     fontWeight: '800',
     letterSpacing: 0.1,
   },
   noticeList: {
-    gap: 10,
+    gap: 9,
   },
   noticeItem: {
     flexDirection: 'row',
@@ -514,6 +502,7 @@ const styles = StyleSheet.create({
   },
   noticeText: {
     flex: 1,
+    minWidth: 0,
     fontSize: 12.5,
     lineHeight: 18,
     fontWeight: '500',
@@ -523,22 +512,24 @@ const styles = StyleSheet.create({
   },
   messageBox: {
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     borderWidth: 1,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   messageText: {
+    minWidth: 0,
     fontSize: 13.5,
     lineHeight: 20,
     fontWeight: '500',
   },
   actionButtonsRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   cancelBtn: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 13,
+    paddingHorizontal: 8,
     borderRadius: 14,
     borderWidth: 1,
     alignItems: 'center',
@@ -550,7 +541,8 @@ const styles = StyleSheet.create({
   },
   confirmBtn: {
     flex: 1.3,
-    paddingVertical: 14,
+    paddingVertical: 13,
+    paddingHorizontal: 10,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',

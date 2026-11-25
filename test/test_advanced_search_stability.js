@@ -44,5 +44,15 @@ assert(!searchContent.includes('dispatch(setFilteredTransactions(transactions));
 // 7. Memoized TransactionListItem
 assert(listItemContent.includes('React.memo'), 'TransactionListItem must be wrapped in React.memo');
 
+// 8. Advanced Search pickers use unified Transaction-page card design without name truncation
+const pickerContent = fs.readFileSync(
+  path.resolve(__dirname, '../src/components/SearchableItemPickerModal.js'),
+  'utf8'
+);
+assert(searchContent.includes('<SearchableItemPickerModal'), 'SearchScreen must use SearchableItemPickerModal');
+assert(searchContent.includes('<ResponsiveBottomSheet'), 'Advanced Filters sheet must use ResponsiveBottomSheet so picker portals stack above it cleanly');
+assert(pickerContent.includes('itemIconCircle'), 'Advanced Search pickers must match Transaction circular icon card design');
+assert(pickerContent.includes('minHeight: 88'), 'Advanced Search picker tiles must preserve consistent height for single & wrapped 2-line names');
+
 console.log('✓ All Advanced Search Stability tests passed successfully!');
 

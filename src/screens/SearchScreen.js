@@ -5,7 +5,6 @@ import {
   SectionList,
   TouchableOpacity,
   TextInput,
-  Modal,
   ScrollView,
   Dimensions,
   ActivityIndicator
@@ -33,6 +32,7 @@ import { getDateKey } from '../utils/dateUtils';
 import TransactionListItem from '../components/TransactionListItem';
 import ContextualFAB from '../components/ContextualFAB';
 import SearchableItemPickerModal from '../components/SearchableItemPickerModal';
+import ResponsiveBottomSheet from '../components/ResponsiveBottomSheet';
 
 export default function SearchScreen({ navigation }) {
   const { isDarkMode, theme } = useTheme();
@@ -905,22 +905,35 @@ export default function SearchScreen({ navigation }) {
         }
       />
 
-      <Modal
+      <ResponsiveBottomSheet
         visible={isAdvancedModalVisible}
+        avoidKeyboard
         animationType="slide"
-        transparent={true}
+        maxHeightRatio={0.9}
         onRequestClose={() => setAdvancedModalVisible(false)}
+        sheetStyle={{
+          backgroundColor: theme.cardBg,
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
+          paddingHorizontal: 20,
+          paddingTop: 18,
+          paddingBottom: 16,
+        }}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: theme.cardBg, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingVertical: 20, maxHeight: '92%' }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        {({ maxHeight }) => (
+          <>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <Text style={{ fontSize: 22, fontWeight: '800', color: Colors.text, letterSpacing: -0.5 }}>Advanced Filters</Text>
               <TouchableOpacity onPress={() => setAdvancedModalVisible(false)} style={{ backgroundColor: '#F3F4F6', padding: 6, borderRadius: 20 }}>
                 <MaterialCommunityIcons name="close" size={22} color="#6B7280" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              style={{ flexGrow: 0, flexShrink: 1, maxHeight: Math.max(220, maxHeight - 88) }}
+            >
 
               <Text style={{ fontSize: 13, fontWeight: '700', textTransform: 'uppercase', color: '#6B7280', letterSpacing: 0.8, marginBottom: 12 }}>Transaction Type</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -1227,9 +1240,9 @@ export default function SearchScreen({ navigation }) {
               </View>
 
             </ScrollView>
-          </View>
-        </View>
-      </Modal>
+          </>
+        )}
+      </ResponsiveBottomSheet>
 
       <MuiDateTimePicker
         visible={!!datePickerTarget}
@@ -1306,6 +1319,9 @@ export default function SearchScreen({ navigation }) {
         onSelect={(id) => setAdvSourceId(id)}
         allLabel="All Accounts"
         allIcon="wallet-outline"
+        defaultIcon="cash"
+        itemSingular="account"
+        itemPlural="accounts"
       />
 
       {/* CATEGORY PICKER MODAL */}
@@ -1319,6 +1335,9 @@ export default function SearchScreen({ navigation }) {
         onSelect={(id) => setAdvCategoryId(id)}
         allLabel="All Categories"
         allIcon="tag-multiple-outline"
+        defaultIcon="tag"
+        itemSingular="category"
+        itemPlural="categories"
       />
     </View>);
 

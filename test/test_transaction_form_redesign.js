@@ -128,14 +128,24 @@ assert.strictEqual(switchType('transfer', 'expense', 'To Savings').notes, '', 'S
 assert.strictEqual(switchType('transfer', 'income', 'To Savings').notes, '', 'Switching from transfer to income must clear notes');
 
 // 12. Verification of the 3 latest user requests:
-// 1) Same category grid design applied to source modal
-assert(formContent.includes('<View style={styles.categoryGrid}>'), 'Must use categoryGrid in modals');
-const sourceModalStartIndex = formContent.indexOf('visible={showSourceModal}');
-const sourceModalBlock = formContent.substring(sourceModalStartIndex, formContent.indexOf('visible={showBillModal}', sourceModalStartIndex));
-assert(sourceModalBlock.includes('styles.categoryGridItem'), 'Source modal must use categoryGridItem');
-assert(sourceModalBlock.includes('styles.categoryItemIconCircle'), 'Source modal must use categoryItemIconCircle');
-assert(sourceModalBlock.includes('styles.categoryItemText'), 'Source modal must use categoryItemText');
-assert(sourceModalBlock.includes('styles.categoryCheckBadge'), 'Source modal must use categoryCheckBadge');
+// 1) Shared SearchableItemPickerModal applies the Transaction 3-column circular-icon card design to both Transaction & Advanced Search
+const pickerModalPath = path.resolve(__dirname, '../src/components/SearchableItemPickerModal.js');
+const pickerModalContent = fs.readFileSync(pickerModalPath, 'utf8');
+assert(formContent.includes('import SearchableItemPickerModal from "./SearchableItemPickerModal"'), 'TransactionForm must import SearchableItemPickerModal');
+assert(formContent.includes('<SearchableItemPickerModal'), 'Must render SearchableItemPickerModal for Category and Source pickers');
+assert(formContent.includes('showAllOption={false}'), 'TransactionForm pickers must hide "All" filter tile');
+const categoryPickerStart = formContent.indexOf('visible={showCategoryModal}');
+const sourcePickerStart = formContent.indexOf('visible={showSourceModal}');
+assert(categoryPickerStart !== -1 && sourcePickerStart !== -1, 'Both Category and Source modals must use SearchableItemPickerModal');
+assert(pickerModalContent.includes('itemIconCircle'), 'Picker must use Transaction page circular icon avatar design');
+assert(pickerModalContent.includes('checkBadge'), 'Picker must render checkBadge when an item is selected');
+assert(pickerModalContent.includes('viewportWidth') && pickerModalContent.includes('/ 3'), 'Picker 3-column grid must size dynamically from measured viewportWidth');
+assert(pickerModalContent.includes('minHeight: 88'), 'Picker cards must maintain uniform card design across single and multi-line labels');
+const pickerGridBlock = pickerModalContent.slice(
+  pickerModalContent.indexOf('ITEMS GRID'),
+  pickerModalContent.indexOf('</ScrollView>', pickerModalContent.indexOf('ITEMS GRID'))
+);
+assert(!pickerGridBlock.includes('numberOfLines='), 'Category/source grid tile labels must wrap fully without truncation');
 
 // 2) Unpaid bills only in bill link list
 const billsPath = path.resolve(__dirname, '../src/services/bills.js');
@@ -166,18 +176,51 @@ assert.strictEqual(filtered[1].id, 3);
 assert(formContent.includes('prevTypeRef'), 'Must track previous type to detect type change');
 assert(formContent.includes('loadedTxIdRef'), 'Must not overwrite categoryId on edit rerenders');
 
-// 13. Verification of latest UI bug fixes:
-// Fix 1: Exactly one save button rendered (mutually exclusive)
-assert(formContent.includes('{isKeyboardVisible && ('), 'In-scroll save button only rendered when keyboard is visible');
-assert(formContent.includes('{!isKeyboardVisible && ('), 'Fixed bottom bar only rendered when keyboard is not visible');
+// 13. Verification of latest UI improvements & fixed screen requirements:
+// Fix 1: Fixed non-scrolling layout on create & edit, single bottom action bar
+assert(formContent.includes('styles.fixedFormBody'), 'Main form must use fixed non-scrolling View container');
+assert(!formContent.includes('styles.headerBar'), 'Must remove top segmented chip bar during create and replace bulky top header bar');
+assert(formContent.includes('styles.inlineEditTypeGroup'), 'Edit mode must use compact inline type switcher inside amount header');
+assert(formContent.includes('{!isKeyboardVisible && ('), 'Fixed bottom bar rendered when keyboard is not visible');
 
-// Fix 2: StatusBar on TransactionAddScreen matches dark navy app theme
+// Fix 2: Count as spend switch row & inline linked bill/loan detail cards
+assert(formContent.includes('styles.countToggleCard'), 'Must render improved Count as Spend toggle card with Switch');
+assert(formContent.includes('styles.linkedDetailCard'), 'Must show inline linked Bill and Loan details right on the form');
+assert(formContent.includes('getBillDisplayStatus'), 'Must reuse billUtils getBillDisplayStatus for inline bill details');
+assert(formContent.includes('selectedLoanPaymentType'), 'Must preserve and display selected loan payment type badge');
+
+// Fix 3: StatusBar on TransactionAddScreen matches dark navy app theme & contextual title
 assert(screenContent.includes("backgroundColor={isDarkMode ? '#0B0F17' : '#0B1F3A'}"), 'Status bar must match app dark navy background');
 assert(screenContent.includes('barStyle="light-content"'), 'Status bar icons must be light content');
+assert(screenContent.includes('createTitle'), 'Header must indicate contextual type on create without top chip bar');
 
-// Fix 3: New Category and New Account removed from next to the header, provided cleanly inside grid
+// Fix 4: New Category and New Account removed from next to the header, provided cleanly inside grid
 assert(!formContent.includes('styles.headerAddBtn'), 'Must remove add category/source button from next to the header');
 assert(!formContent.includes('styles.floatingAddBtn'), 'Must not float add button over grid items');
 assert(formContent.includes('+ New'), 'Must provide + New card cleanly in the grid');
+
+// Fix 5: Unlink warning confirmation popup for bills & loans, and responsive viewport-contained sheets
+const sheetHelperContent = fs.readFileSync(
+  path.join(__dirname, '../src/components/ResponsiveBottomSheet.js'),
+  'utf8'
+);
+const commonSheetContent = fs.readFileSync(
+  path.join(__dirname, '../src/components/CommonBottomSheetModal.js'),
+  'utf8'
+);
+
+assert(formContent.includes('unlinkConfirmTarget'), 'Must confirm before unlinking a bill or loan');
+assert(formContent.includes('Unlink Bill?') && formContent.includes('Unlink Loan?'), 'Must display Bill and Loan unlink warning popups via CommonBottomSheetModal');
+assert(formContent.includes('<ResponsiveBottomSheet'), 'TransactionForm picker sheets must use ResponsiveBottomSheet');
+assert(!formContent.includes('styles.modalBackdrop'), 'Bottom sheets should rely on ResponsiveBottomSheet rather than bare Modal backdrops');
+assert(formContent.includes('keyboardShouldPersistTaps="handled"'), 'Must handle taps smoothly when search keyboard is open');
+assert(formContent.includes('<FlatList'), 'Must render Bills and Loans lists with FlatList for responsive scrolling');
+assert(formContent.includes('maxWidth: "42%"'), 'Right amount/status column in Bill/Loan rows must cap width to prevent row overflow');
+
+assert(sheetHelperContent.includes('<Portal>') && sheetHelperContent.includes("Platform.OS === 'web'"), 'ResponsiveBottomSheet must render via Portal on web so sheets stay within app root bounds');
+assert(sheetHelperContent.includes('useWindowDimensions') && sheetHelperContent.includes('onLayout'), 'ResponsiveBottomSheet must measure actual overlay bounds via onLayout');
+assert(pickerModalContent.includes('<ResponsiveBottomSheet'), 'SearchableItemPickerModal must use ResponsiveBottomSheet for viewport containment');
+assert(commonSheetContent.includes('<ResponsiveBottomSheet'), 'CommonBottomSheetModal must use ResponsiveBottomSheet for viewport containment');
+assert(commonSheetContent.includes('minWidth: 0'), 'CommonBottomSheetModal text containers must set minWidth: 0 to wrap inside narrow viewports');
 
 console.log('✓ All user requests verified 100% successfully!');
