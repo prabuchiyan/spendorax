@@ -35,7 +35,13 @@ assert(searchContent.includes('const renderSectionHeader = useCallback'), 'Must 
 assert(searchContent.includes('isSearching'), 'Must track isSearching state');
 assert(searchContent.includes('ActivityIndicator'), 'Must show ActivityIndicator during search/filter fetch');
 
-// 6. Memoized TransactionListItem
+// 6. Preserve scroll offset after editing/returning; only scroll to top on explicit filter/search change
+assert(searchContent.includes('shouldScrollToTopRef'), 'Must guard scroll-to-top with shouldScrollToTopRef');
+assert(searchContent.includes('handleSearchQueryChange'), 'Must use handleSearchQueryChange to mark explicit query changes');
+assert(searchContent.includes('if (shouldScrollToTopRef.current)'), 'Must only reset scroll position when explicitly requested');
+assert(!searchContent.includes('dispatch(setFilteredTransactions(transactions));\n      try {\n        sectionListRef.current'), 'Must NOT unconditionally scroll to top on focus refresh');
+
+// 7. Memoized TransactionListItem
 assert(listItemContent.includes('React.memo'), 'TransactionListItem must be wrapped in React.memo');
 
 console.log('✓ All Advanced Search Stability tests passed successfully!');

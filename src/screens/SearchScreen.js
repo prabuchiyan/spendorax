@@ -51,6 +51,9 @@ export default function SearchScreen({ navigation }) {
   const [showSourcePickerModal, setShowSourcePickerModal] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const sectionListRef = useRef(null);
+  const shouldScrollToTopRef = useRef(false);
+  const hasItemsRef = useRef(items.length > 0);
+  hasItemsRef.current = items.length > 0;
 
   const [advAmount, setAdvAmount] = useState(reduxFilter?.advAmount || '');
   const [advNote, setAdvNote] = useState(reduxFilter?.advNote || '');
@@ -149,7 +152,7 @@ export default function SearchScreen({ navigation }) {
           y: 0,
           animated,
         });
-      } catch (e) {}
+      } catch (e) { }
 
       const node = monthScrollRef.current.getScrollableNode?.() || monthScrollRef.current;
       if (node && typeof node.scrollLeft === 'number' && !animated) {
@@ -183,7 +186,7 @@ export default function SearchScreen({ navigation }) {
           y: 0,
           animated,
         });
-      } catch (e) {}
+      } catch (e) { }
 
       const node = yearScrollRef.current.getScrollableNode?.() || yearScrollRef.current;
       if (node && typeof node.scrollLeft === 'number' && !animated) {
@@ -232,6 +235,7 @@ export default function SearchScreen({ navigation }) {
     setAdvSourceId(null);
     setGroupByOption('day');
     dispatch(resetSearchFilter());
+    shouldScrollToTopRef.current = false;
     setSearchQuery('');
     dispatch(setFilteredTransactions([]));
     setIsSearching(false);
@@ -239,8 +243,31 @@ export default function SearchScreen({ navigation }) {
     yearScrollRef.current?.scrollTo?.({ x: 0, animated: false });
     try {
       sectionListRef.current?.getScrollResponder?.()?.scrollTo?.({ y: 0, animated: false });
-    } catch (e) {}
+    } catch (e) { }
   };
+
+  const resetScrollToTopIfNeeded = useCallback(() => {
+    if (shouldScrollToTopRef.current) {
+      shouldScrollToTopRef.current = false;
+      requestAnimationFrame(() => {
+        try {
+          sectionListRef.current?.getScrollResponder?.()?.scrollTo?.({ y: 0, animated: false });
+        } catch (err) { }
+      });
+    }
+  }, []);
+
+  const handleSearchQueryChange = useCallback((text) => {
+    if (text !== searchQuery) {
+      shouldScrollToTopRef.current = true;
+      if (text.trim().length >= 3 && text.trim().toLowerCase() !== 'advanced search active') {
+        setIsSearching(true);
+      } else {
+        setIsSearching(false);
+      }
+    }
+    setSearchQuery(text);
+  }, [searchQuery]);
 
   // ---------------------------------------------------------
   // SEARCH
@@ -282,7 +309,9 @@ export default function SearchScreen({ navigation }) {
       }
 
       if (q.length < 3) {
+        shouldScrollToTopRef.current = false;
         dispatch(setFilteredTransactions([]));
+        setIsSearching(false);
         return;
       }
 
@@ -342,9 +371,7 @@ export default function SearchScreen({ navigation }) {
         if (isActive) {
           dispatch(setFilteredTransactions(filtered));
           setIsSearching(false);
-          try {
-            sectionListRef.current?.getScrollResponder?.()?.scrollTo?.({ y: 0, animated: false });
-          } catch (err) {}
+          resetScrollToTopIfNeeded();
         }
       } catch (e) {
         console.warn(e);
@@ -352,20 +379,26 @@ export default function SearchScreen({ navigation }) {
       }
     };
 
-    if (searchQuery.trim().length >= 3 && searchQuery.trim().toLowerCase() !== 'advanced search active') {
+    if (
+      searchQuery.trim().length >= 3 &&
+      searchQuery.trim().toLowerCase() !== 'advanced search active' &&
+      (shouldScrollToTopRef.current || !hasItemsRef.current)
+    ) {
       setIsSearching(true);
     }
     search();
 
     return () => { isActive = false; };
-  }, [searchQuery, categories, sources, refreshKey]);
+  }, [searchQuery, categories, sources, refreshKey, resetScrollToTopIfNeeded]);
 
   // ---------------------------------------------------------
   // ADVANCED SEARCH
   // ---------------------------------------------------------
 
   const fetchAdvanced = useCallback(async () => {
-    setIsSearching(true);
+    if (shouldScrollToTopRef.current || !hasItemsRef.current) {
+      setIsSearching(true);
+    }
     try {
       const activeAdv = reduxFilter?.isFilterActive ? reduxFilter : {
         advAmount,
@@ -419,9 +452,7 @@ export default function SearchScreen({ navigation }) {
       }
 
       dispatch(setFilteredTransactions(transactions));
-      try {
-        sectionListRef.current?.getScrollResponder?.()?.scrollTo?.({ y: 0, animated: false });
-      } catch (err) {}
+      resetScrollToTopIfNeeded();
     } catch (e) {
       console.warn(e);
     } finally {
@@ -440,7 +471,8 @@ export default function SearchScreen({ navigation }) {
     advEndDate,
     advCategoryId,
     advSourceId,
-    dispatch
+    dispatch,
+    resetScrollToTopIfNeeded
   ]);
 
   useEffect(() => {
@@ -451,6 +483,7 @@ export default function SearchScreen({ navigation }) {
 
   const handleAdvancedSearch = async () => {
     setAdvancedModalVisible(false);
+    shouldScrollToTopRef.current = true;
     setIsSearching(true);
     dispatch(setSearchFilter({
       searchQuery: 'Advanced Search Active',
@@ -706,7 +739,7 @@ export default function SearchScreen({ navigation }) {
 
           <TextInput
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={handleSearchQueryChange}
             placeholder="Search transactions..."
             placeholderTextColor="#9CA3AF"
             autoCorrect={false}
@@ -722,10 +755,7 @@ export default function SearchScreen({ navigation }) {
 
           {searchQuery.length > 0 &&
             <TouchableOpacity
-              onPress={() => {
-                setSearchQuery('');
-                clearAdvancedSearch();
-              }}
+              onPress={clearAdvancedSearch}
               activeOpacity={0.7}
               style={{
                 padding: 3
