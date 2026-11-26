@@ -77,12 +77,11 @@ export default function SearchableItemPickerModal({
           Math.floor((viewportWidth - horizontalPad * 2 - gridGap * 2) / 3)
         );
         const showFrequent = !searchText.trim() && Array.isArray(frequentItems) && frequentItems.length > 0;
-        const headerReserve = showFrequent ? 235 : 165;
-        const scrollMaxHeight = Math.max(150, maxHeight - headerReserve);
+        const scrollMaxHeight = Math.max(80, maxHeight - 135);
         const countWord = filteredItems.length === 1 ? itemSingular : itemPlural;
 
         return (
-          <View style={{ paddingHorizontal: horizontalPad }}>
+          <View style={{ paddingHorizontal: horizontalPad, flexShrink: 1, maxHeight }}>
             {/* DRAG HANDLE */}
             <View style={styles.handleContainer}>
               <View style={[styles.handle, { backgroundColor: isDarkMode ? '#475569' : '#CBD5E1' }]} />
@@ -107,7 +106,7 @@ export default function SearchableItemPickerModal({
               </TouchableOpacity>
             </View>
 
-            {/* SEARCH INPUT */}
+            {/* SEARCH INPUT (always pinned above scrollable content) */}
             <View style={[styles.searchBar, { backgroundColor: searchBg, borderColor: searchBorder }]}>
               <MaterialCommunityIcons name="magnify" size={20} color={textSecondary} style={{ marginRight: 8 }} />
               <TextInput
@@ -127,62 +126,62 @@ export default function SearchableItemPickerModal({
               )}
             </View>
 
-            {/* OPTIONAL FREQUENT / RECENT QUICK CHIPS */}
-            {showFrequent && (
-              <View style={styles.frequentSection}>
-                {!!frequentLabel && (
-                  <Text style={[styles.subHeaderLabel, { color: textSecondary }]}>
-                    {frequentLabel}
-                  </Text>
-                )}
-                <View style={styles.quickChipsWrap}>
-                  {frequentItems.map((fItem) => {
-                    const isFreqSel = selectedId !== null && selectedId !== undefined && String(selectedId) === String(fItem.id);
-                    const fColor = fItem.color || Colors.primary;
-                    return (
-                      <TouchableOpacity
-                        key={`freq-${String(fItem.id)}`}
-                        onPress={() => {
-                          onSelect(fItem.id);
-                          onClose();
-                        }}
-                        activeOpacity={0.8}
-                        style={[
-                          styles.frequentChip,
-                          {
-                            backgroundColor: isFreqSel ? fColor : searchBg,
-                            borderColor: isFreqSel ? fColor : searchBorder,
-                          },
-                        ]}
-                      >
-                        <MaterialCommunityIcons
-                          name={fItem.icon || defaultIcon}
-                          size={14}
-                          color={isFreqSel ? '#FFFFFF' : fColor}
-                          style={{ marginRight: 6 }}
-                        />
-                        <Text
-                          style={[
-                            styles.frequentChipText,
-                            { color: isFreqSel ? '#FFFFFF' : textPrimary },
-                          ]}
-                        >
-                          {fItem.name}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            )}
-
-            {/* ITEMS GRID (Transaction 3-column circular-avatar card design) */}
+            {/* SCROLLABLE CONTENT: Frequent Chips + Items Grid */}
             <ScrollView
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               style={{ flexGrow: 0, flexShrink: 1, maxHeight: scrollMaxHeight }}
               contentContainerStyle={styles.scrollContent}
             >
+              {showFrequent && (
+                <View style={styles.frequentSection}>
+                  {!!frequentLabel && (
+                    <Text style={[styles.subHeaderLabel, { color: textSecondary }]}>
+                      {frequentLabel}
+                    </Text>
+                  )}
+                  <View style={styles.quickChipsWrap}>
+                    {frequentItems.map((fItem) => {
+                      const isFreqSel = selectedId !== null && selectedId !== undefined && String(selectedId) === String(fItem.id);
+                      const fColor = fItem.color || Colors.primary;
+                      return (
+                        <TouchableOpacity
+                          key={`freq-${String(fItem.id)}`}
+                          onPress={() => {
+                            onSelect(fItem.id);
+                            onClose();
+                          }}
+                          activeOpacity={0.8}
+                          style={[
+                            styles.frequentChip,
+                            {
+                              backgroundColor: isFreqSel ? fColor : searchBg,
+                              borderColor: isFreqSel ? fColor : searchBorder,
+                            },
+                          ]}
+                        >
+                          <MaterialCommunityIcons
+                            name={fItem.icon || defaultIcon}
+                            size={14}
+                            color={isFreqSel ? '#FFFFFF' : fColor}
+                            style={{ marginRight: 6 }}
+                          />
+                          <Text
+                            style={[
+                              styles.frequentChipText,
+                              { color: isFreqSel ? '#FFFFFF' : textPrimary },
+                            ]}
+                          >
+                            {fItem.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+
+              {/* ITEMS GRID */}
               <View style={[styles.grid, { gap: gridGap }]}>
                 {/* OPTIONAL "ALL" OPTION */}
                 {showAllOption && (

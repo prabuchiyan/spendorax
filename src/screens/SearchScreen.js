@@ -932,7 +932,7 @@ export default function SearchScreen({ navigation }) {
             <ScrollView
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
-              style={{ flexGrow: 0, flexShrink: 1, maxHeight: Math.max(220, maxHeight - 88) }}
+              style={{ flexGrow: 0, flexShrink: 1, maxHeight: Math.max(120, maxHeight - 82) }}
             >
 
               <Text style={{ fontSize: 13, fontWeight: '700', textTransform: 'uppercase', color: '#6B7280', letterSpacing: 0.8, marginBottom: 12 }}>Transaction Type</Text>

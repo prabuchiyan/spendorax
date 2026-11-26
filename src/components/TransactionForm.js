@@ -1899,7 +1899,7 @@ export default function TransactionForm({
           visible={showBillModal}
           avoidKeyboard
           animationType="slide"
-          maxHeightRatio={isKeyboardVisible ? 0.56 : 0.8}
+          maxHeightRatio={0.8}
           onRequestClose={() => setShowBillModal(false)}
           sheetStyle={[styles.bottomSheetContainer, { backgroundColor: cardBg }]}
         >
@@ -1949,7 +1949,7 @@ export default function TransactionForm({
                 style={{
                   flexGrow: 0,
                   flexShrink: 1,
-                  maxHeight: Math.max(140, maxHeight - 155),
+                  maxHeight: Math.max(90, maxHeight - 145),
                 }}
                 contentContainerStyle={{ paddingBottom: 18 }}
                 renderItem={({ item: b }) => {
@@ -2075,7 +2075,7 @@ export default function TransactionForm({
           visible={showLoanModal}
           avoidKeyboard
           animationType="slide"
-          maxHeightRatio={isKeyboardVisible ? 0.56 : 0.8}
+          maxHeightRatio={0.8}
           disableBackdropPress={linking}
           onRequestClose={() => {
             if (!linking) setShowLoanModal(false);
@@ -2171,7 +2171,7 @@ export default function TransactionForm({
                 style={{
                   flexGrow: 0,
                   flexShrink: 1,
-                  maxHeight: Math.max(140, maxHeight - 205),
+                  maxHeight: Math.max(90, maxHeight - 195),
                 }}
                 contentContainerStyle={{ paddingBottom: 18 }}
                 renderItem={({ item }) => {

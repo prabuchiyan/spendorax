@@ -4,6 +4,8 @@ import {
   View,
   Pressable,
   KeyboardAvoidingView,
+  Keyboard,
+  StatusBar,
   Platform,
   StyleSheet,
   useWindowDimensions,
@@ -19,7 +21,8 @@ const activeWebSheetStack = [];
  * Uses react-native-paper <Portal> on web so sheets stay strictly inside the
  * app's rendered <Portal.Host> root bounds (avoiding RNW <Modal> attaching to
  * document.body with mismatched viewport dimensions), and native <Modal> on
- * iOS/Android for status-bar translucency and hardware back-button support.
+ * iOS/Android for status-bar translucency, keyboard-aware height clamping, and
+ * hardware back-button support.
  */
 export default function ResponsiveBottomSheet({
   visible,
@@ -34,10 +37,38 @@ export default function ResponsiveBottomSheet({
 }) {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const [keyboardMetrics, setKeyboardMetrics] = useState({ height: 0, screenY: 0 });
   const sheetIdRef = useRef(null);
   if (sheetIdRef.current === null) {
     sheetIdRef.current = nextSheetId++;
   }
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return undefined;
+    if (!visible) {
+      setKeyboardMetrics({ height: 0, screenY: 0 });
+      return undefined;
+    }
+
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      const end = e?.endCoordinates || {};
+      setKeyboardMetrics({
+        height: Number(end.height) || 0,
+        screenY: Number(end.screenY) || 0,
+      });
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardMetrics({ height: 0, screenY: 0 });
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [visible]);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || !visible || typeof window === 'undefined') {
@@ -82,7 +113,36 @@ export default function ResponsiveBottomSheet({
     containerSize.height > 0 ? containerSize.height : windowHeight || 720;
   const effectiveWidth =
     containerSize.width > 0 ? containerSize.width : windowWidth || 360;
-  const computedMaxHeight = Math.max(220, Math.round(effectiveHeight * maxHeightRatio));
+
+  const isNativeKeyboardOpen =
+    Platform.OS !== 'web' && avoidKeyboard && keyboardMetrics.height > 0;
+  const topSafeInset =
+    Platform.OS === 'android'
+      ? Math.max(StatusBar.currentHeight || 28, 28)
+      : Platform.OS === 'ios'
+        ? 48
+        : 8;
+
+  const availableHeight = isNativeKeyboardOpen
+    ? Math.min(
+        effectiveHeight,
+        keyboardMetrics.screenY > 0
+          ? keyboardMetrics.screenY
+          : Math.max(200, (windowHeight || effectiveHeight) - keyboardMetrics.height)
+      )
+    : effectiveHeight;
+
+  const safeMaxHeightCap = Math.max(180, availableHeight - topSafeInset - 8);
+  const computedMaxHeight = isNativeKeyboardOpen
+    ? safeMaxHeightCap
+    : Math.min(
+        Math.max(220, Math.round(effectiveHeight * maxHeightRatio)),
+        safeMaxHeightCap
+      );
+  const androidKeyboardBottomPad =
+    Platform.OS === 'android' && isNativeKeyboardOpen
+      ? Math.max(0, effectiveHeight - availableHeight)
+      : 0;
 
   // Before onLayout fires on web, use percentage height so a mismatched outer
   // windowHeight cannot push the sheet beyond the Portal.Host root frame.
@@ -144,18 +204,28 @@ export default function ResponsiveBottomSheet({
       animationType={animationType}
       onRequestClose={onRequestClose}
     >
-      {avoidKeyboard ? (
+      {avoidKeyboard && Platform.OS === 'ios' ? (
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior="padding"
           onLayout={handleLayout}
-          style={[styles.nativeOverlay, { backgroundColor: backdropColor }]}
+          style={[
+            styles.nativeOverlay,
+            { backgroundColor: backdropColor, paddingTop: topSafeInset },
+          ]}
         >
           {innerContent}
         </KeyboardAvoidingView>
       ) : (
         <View
           onLayout={handleLayout}
-          style={[styles.nativeOverlay, { backgroundColor: backdropColor }]}
+          style={[
+            styles.nativeOverlay,
+            {
+              backgroundColor: backdropColor,
+              paddingTop: topSafeInset,
+              paddingBottom: androidKeyboardBottomPad,
+            },
+          ]}
         >
           {innerContent}
         </View>

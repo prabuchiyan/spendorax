@@ -219,7 +219,12 @@ assert(formContent.includes('maxWidth: "42%"'), 'Right amount/status column in B
 
 assert(sheetHelperContent.includes('<Portal>') && sheetHelperContent.includes("Platform.OS === 'web'"), 'ResponsiveBottomSheet must render via Portal on web so sheets stay within app root bounds');
 assert(sheetHelperContent.includes('useWindowDimensions') && sheetHelperContent.includes('onLayout'), 'ResponsiveBottomSheet must measure actual overlay bounds via onLayout');
+assert(sheetHelperContent.includes('keyboardDidShow') && sheetHelperContent.includes('safeMaxHeightCap'), 'ResponsiveBottomSheet must clamp sheet height between status bar and mobile keyboard');
 assert(pickerModalContent.includes('<ResponsiveBottomSheet'), 'SearchableItemPickerModal must use ResponsiveBottomSheet for viewport containment');
+const pickerSearchIdx = pickerModalContent.indexOf('SEARCH INPUT');
+const pickerScrollIdx = pickerModalContent.indexOf('<ScrollView');
+const pickerFrequentIdx = pickerModalContent.indexOf('showFrequent &&');
+assert(pickerSearchIdx < pickerScrollIdx && pickerScrollIdx < pickerFrequentIdx, 'Search bar must remain fixed above ScrollView while frequent chips scroll inside it when keyboard is open');
 assert(commonSheetContent.includes('<ResponsiveBottomSheet'), 'CommonBottomSheetModal must use ResponsiveBottomSheet for viewport containment');
 assert(commonSheetContent.includes('minWidth: 0'), 'CommonBottomSheetModal text containers must set minWidth: 0 to wrap inside narrow viewports');
 
