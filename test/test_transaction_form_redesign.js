@@ -43,9 +43,15 @@ assert(formContent.includes('getAvailableBillsForTransactionLink'), 'Must load a
 assert(formContent.includes('linkBillToTransaction'), 'Must link bill to created transaction');
 assert(formContent.includes('selectedBillId'), 'Must support selectedBillId during creation');
 
-// 8. Recent Account Chips
+// 8. Recent Account & Category Chips (only visible when unselected; hidden once selected on create/edit)
 assert(formContent.includes('frequentSources'), 'Must calculate frequent/recent sources');
-assert(formContent.includes('recentChipsContainer'), 'Must render recent account chips');
+assert(formContent.includes('frequentCategories'), 'Must calculate frequent/recent categories');
+assert(formContent.includes('recentChipsContainer'), 'Must render recent chips strip');
+assert(formContent.includes('renderRecentChips'), 'Must share a single renderRecentChips helper across category and sources');
+assert(formContent.includes('visible: !selectedCategory'), 'Category recent chips must disappear once a category is selected');
+assert(formContent.includes('visible: !selectedSource'), 'Source recent chips must disappear once a source is selected');
+assert(formContent.includes('visible: !selectedToAccount'), 'Destination source recent chips must disappear once a destination account is selected');
+assert(formContent.includes('isTallScreen') && formContent.includes('rowPadVertical'), 'Form must adapt card spacing/sizing proportionally to fill blank space cleanly without scrolling');
 
 // 9. Validation Logic Tests
 function validateTransactionInput({ amount, type, categoryId, sourceId, toAccount, notes, isEdit }) {

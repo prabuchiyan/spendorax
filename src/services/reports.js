@@ -108,50 +108,77 @@ export async function getSourceBalances() {
   return result;
 }
 
+function parseLocalDateForReport(rawDate) {
+  if (!rawDate) return null;
+  const trimmed = String(rawDate).trim();
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (dateOnlyMatch) {
+    return new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]));
+  }
+  const d = new Date(trimmed.replace(' ', 'T'));
+  return isNaN(d.getTime()) ? null : d;
+}
+
 export function groupTransactions(transactions, mode) {
   if (!transactions) return [];
   const groups = {};
+  const pad = (n) => String(n).padStart(2, '0');
 
   transactions.forEach(tx => {
     // Skip uncounted transactions in all grouped views
-    if (tx.is_counted === 0) return;
+    if (tx.is_counted === 0 || tx.is_counted === '0' || tx.is_counted === false) return;
+    if (tx.transfer_group_id) return;
+    if (tx.type !== 'income' && tx.type !== 'expense') return;
 
     const amount = Number(tx.amount) || 0;
-    const rawDate = tx.date ? String(tx.date) : '';
-    const dateStr = rawDate.replace(' ', 'T');
-    const dateObj = new Date(dateStr || rawDate);
-    if (isNaN(dateObj.getTime())) return;
+    const dateObj = parseLocalDateForReport(tx.date);
+    if (!dateObj) return;
 
     let key = '';
     if (mode === 'daily') {
-      key = dateStr.split('T')[0];
+      key = `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())}`;
     } else if (mode === 'weekly') {
-      const day = dateObj.getDay();
-      const diff = dateObj.getDate() - day;
-      const weekStart = new Date(dateObj.setDate(diff));
-      key = weekStart.toISOString().split('T')[0];
+      const weekStart = new Date(
+        dateObj.getFullYear(),
+        dateObj.getMonth(),
+        dateObj.getDate() - dateObj.getDay()
+      );
+      key = `${weekStart.getFullYear()}-${pad(weekStart.getMonth() + 1)}-${pad(weekStart.getDate())}`;
     } else if (mode === 'monthly') {
-      key = dateStr.substring(0, 7);
+      key = `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}`;
     } else if (mode === 'yearly') {
-      key = dateStr.substring(0, 4);
+      key = String(dateObj.getFullYear());
     }
 
+    if (!key) return;
+
     if (!groups[key]) {
-      groups[key] = { label: key, income: 0, expense: 0, balance: 0, categories: {} };
+      groups[key] = { label: key, income: 0, expense: 0, balance: 0, txCount: 0, categories: {} };
     }
 
     const cid = tx.category_id || 'uncategorized';
     if (!groups[key].categories[cid]) {
-      groups[key].categories[cid] = { income: 0, expense: 0 };
+      groups[key].categories[cid] = {
+        income: 0,
+        expense: 0,
+        incomeCount: 0,
+        expenseCount: 0,
+      };
     }
 
     if (tx.type === 'income') {
       groups[key].income += amount;
       groups[key].categories[cid].income += amount;
+      groups[key].categories[cid].incomeCount += 1;
+      groups[key].txCount += 1;
     } else if (tx.type === 'expense') {
       groups[key].expense += amount;
       groups[key].categories[cid].expense += amount;
+      groups[key].categories[cid].expenseCount += 1;
+      groups[key].txCount += 1;
     }
+
+    groups[key].balance = groups[key].income - groups[key].expense;
   });
 
   const result = Object.values(groups);

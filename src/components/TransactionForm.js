@@ -15,6 +15,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Keyboard,
+  useWindowDimensions,
 } from "react-native";
 import ResponsiveBottomSheet from "./ResponsiveBottomSheet";
 import SearchableItemPickerModal from "./SearchableItemPickerModal";
@@ -79,6 +80,8 @@ export default function TransactionForm({
   initialType,
 }) {
   const { theme, isDarkMode } = useTheme();
+  const { height: windowHeight } = useWindowDimensions();
+  const isTallScreen = windowHeight >= 780;
   const {
     visible: loaderVisible,
     show: showPageLoader,
@@ -941,6 +944,58 @@ export default function TransactionForm({
 
   const showLoanControl = type !== "transfer";
   const showLinkRow = !selectedBill || (showLoanControl && !selectedLoan);
+  const sectionSpacing = isTallScreen ? 14 : 11;
+  const rowPadVertical = isTallScreen ? 13 : 11;
+  const heroPadVertical = isTallScreen ? 16 : 13;
+
+  const renderRecentChips = ({ visible, items, onSelectItem, fallbackIcon, keyPrefix }) => {
+    if (!visible || !items || items.length === 0) return null;
+    return (
+      <View style={styles.recentChipsContainer}>
+        <Text style={[styles.recentChipsLabel, { color: textSecondary }]}>
+          Recent:
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.recentChipsScroll}
+        >
+          {items.map((item) => (
+            <TouchableOpacity
+              key={`${keyPrefix}-${item.id}`}
+              onPress={() => {
+                Keyboard.dismiss();
+                onSelectItem(item.id);
+                markDirty();
+              }}
+              style={[
+                styles.recentChip,
+                {
+                  backgroundColor: isDarkMode ? "#1E293B" : "#F1F5F9",
+                  borderColor: borderColor,
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={item.icon || fallbackIcon}
+                size={12}
+                color={item.color || textSecondary}
+                style={{ marginRight: 4 }}
+              />
+              <Text
+                style={[
+                  styles.recentChipText,
+                  { color: textPrimary },
+                ]}
+              >
+                {item.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
 
   return (
     <KeyboardAvoidingView
@@ -957,6 +1012,8 @@ export default function TransactionForm({
               {
                 backgroundColor: typeConfig.softBg,
                 borderColor: typeConfig.border,
+                paddingVertical: heroPadVertical,
+                marginBottom: sectionSpacing,
               },
             ]}
           >
@@ -1112,6 +1169,8 @@ export default function TransactionForm({
               {
                 backgroundColor: cardBg,
                 borderColor: notesError ? "#EF4444" : borderColor,
+                paddingVertical: rowPadVertical,
+                marginBottom: sectionSpacing,
                 elevation: showSuggestions && filteredSuggestions.length > 0 ? 12 : 0,
               },
             ]}
@@ -1127,7 +1186,7 @@ export default function TransactionForm({
               >
                 <MaterialCommunityIcons
                   name="text-box-outline"
-                  size={17}
+                  size={19}
                   color="#D97706"
                 />
               </View>
@@ -1305,66 +1364,78 @@ export default function TransactionForm({
               {
                 backgroundColor: cardBg,
                 borderColor: borderColor,
+                marginBottom: sectionSpacing,
               },
             ]}
           >
             {/* ROW 1: CATEGORY (Expense & Income) */}
             {type !== "transfer" && (
               <>
-                <TouchableOpacity
-                  onPress={() => {
-                    Keyboard.dismiss();
-                    setShowCategoryModal(true);
-                  }}
-                  disabled={submitting}
-                  activeOpacity={0.7}
-                  style={styles.tapRow}
-                >
-                  <View
-                    style={[
-                      styles.rowAvatar,
-                      {
-                        backgroundColor: selectedCategory?.color || (isDarkMode ? "#334155" : "#E2E8F0"),
-                      },
-                    ]}
+                <View style={{ paddingBottom: !selectedCategory && frequentCategories.length > 0 ? 7 : 0 }}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      setShowCategoryModal(true);
+                    }}
+                    disabled={submitting}
+                    activeOpacity={0.7}
+                    style={[styles.tapRow, { paddingVertical: rowPadVertical }]}
                   >
-                    <MaterialCommunityIcons
-                      name={selectedCategory?.icon || "tag"}
-                      size={17}
-                      color={selectedCategory ? "#FFFFFF" : textSecondary}
-                    />
-                  </View>
-
-                  <View style={styles.rowContent}>
-                    <Text style={[styles.rowLabel, { color: textSecondary }]}>
-                      Category
-                    </Text>
-                    <Text
-                      numberOfLines={1}
+                    <View
                       style={[
-                        styles.rowValue,
+                        styles.rowAvatar,
                         {
-                          color: selectedCategory ? textPrimary : textSecondary,
-                          fontWeight: selectedCategory ? "700" : "500",
+                          backgroundColor: selectedCategory?.color || (isDarkMode ? "#334155" : "#E2E8F0"),
                         },
                       ]}
                     >
-                      {selectedCategory?.name || "Select Category"}
-                    </Text>
-                  </View>
+                      <MaterialCommunityIcons
+                        name={selectedCategory?.icon || "tag"}
+                        size={19}
+                        color={selectedCategory ? "#FFFFFF" : textSecondary}
+                      />
+                    </View>
 
-                  <MaterialCommunityIcons
-                    name="chevron-right"
-                    size={20}
-                    color={textSecondary}
-                  />
-                </TouchableOpacity>
+                    <View style={styles.rowContent}>
+                      <Text style={[styles.rowLabel, { color: textSecondary }]}>
+                        Category
+                      </Text>
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.rowValue,
+                          {
+                            color: selectedCategory ? textPrimary : textSecondary,
+                            fontWeight: selectedCategory ? "700" : "500",
+                          },
+                        ]}
+                      >
+                        {selectedCategory?.name || "Select Category"}
+                      </Text>
+                    </View>
+
+                    <MaterialCommunityIcons
+                      name="chevron-right"
+                      size={20}
+                      color={textSecondary}
+                    />
+                  </TouchableOpacity>
+
+                  {/* Recent Category Chips (only when no category is selected) */}
+                  {renderRecentChips({
+                    visible: !selectedCategory,
+                    items: frequentCategories,
+                    onSelectItem: setCategoryId,
+                    fallbackIcon: "tag",
+                    keyPrefix: "rec-cat",
+                  })}
+                </View>
                 <View style={[styles.rowDivider, { backgroundColor: dividerColor }]} />
               </>
             )}
 
             {/* ROW 2: PAYMENT SOURCE / FROM ACCOUNT */}
-            <View style={{ paddingBottom: frequentSources.length > 0 ? 5 : 0 }}>
+            <View style={{ paddingBottom: !selectedSource && frequentSources.length > 0 ? 7 : 0 }}>
               <TouchableOpacity
                 onPress={() => {
                   Keyboard.dismiss();
@@ -1373,7 +1444,7 @@ export default function TransactionForm({
                 }}
                 disabled={submitting}
                 activeOpacity={0.7}
-                style={styles.tapRow}
+                style={[styles.tapRow, { paddingVertical: rowPadVertical }]}
               >
                 <View
                   style={[
@@ -1385,7 +1456,7 @@ export default function TransactionForm({
                 >
                   <MaterialCommunityIcons
                     name={selectedSource?.icon || "cash"}
-                    size={17}
+                    size={19}
                     color={selectedSource ? "#FFFFFF" : textSecondary}
                   />
                 </View>
@@ -1415,66 +1486,21 @@ export default function TransactionForm({
                 />
               </TouchableOpacity>
 
-              {/* Recent Account Quick Chips directly on form */}
-              {frequentSources.length > 0 && (
-                <View style={styles.recentChipsContainer}>
-                  <Text style={[styles.recentChipsLabel, { color: textSecondary }]}>
-                    Recent:
-                  </Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.recentChipsScroll}
-                  >
-                    {frequentSources.map((s) => {
-                      const isSel = sourceId === s.id;
-                      return (
-                        <TouchableOpacity
-                          key={`rec-src-${s.id}`}
-                          onPress={() => {
-                            Keyboard.dismiss();
-                            setSourceId(s.id);
-                            markDirty();
-                          }}
-                          style={[
-                            styles.recentChip,
-                            {
-                              backgroundColor: isSel
-                                ? s.color || "#3B82F6"
-                                : isDarkMode
-                                  ? "#1E293B"
-                                  : "#F1F5F9",
-                              borderColor: isSel ? s.color : borderColor,
-                            },
-                          ]}
-                        >
-                          <MaterialCommunityIcons
-                            name={s.icon || "cash"}
-                            size={11}
-                            color={isSel ? "#FFFFFF" : s.color || textSecondary}
-                            style={{ marginRight: 3 }}
-                          />
-                          <Text
-                            style={[
-                              styles.recentChipText,
-                              { color: isSel ? "#FFFFFF" : textPrimary },
-                            ]}
-                          >
-                            {s.name}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-              )}
+              {/* Recent Account Chips (only when no source is selected) */}
+              {renderRecentChips({
+                visible: !selectedSource,
+                items: frequentSources,
+                onSelectItem: setSourceId,
+                fallbackIcon: "cash",
+                keyPrefix: "rec-src",
+              })}
             </View>
 
             {/* ROW 3: TO ACCOUNT (Transfer Only) */}
             {type === "transfer" && (
               <>
                 <View style={[styles.rowDivider, { backgroundColor: dividerColor }]} />
-                <View style={{ paddingBottom: frequentDestinationSources.length > 0 ? 5 : 0 }}>
+                <View style={{ paddingBottom: !selectedToAccount && frequentDestinationSources.length > 0 ? 7 : 0 }}>
                   <TouchableOpacity
                     onPress={() => {
                       Keyboard.dismiss();
@@ -1483,7 +1509,7 @@ export default function TransactionForm({
                     }}
                     disabled={submitting}
                     activeOpacity={0.7}
-                    style={styles.tapRow}
+                    style={[styles.tapRow, { paddingVertical: rowPadVertical }]}
                   >
                     <View
                       style={[
@@ -1495,7 +1521,7 @@ export default function TransactionForm({
                     >
                       <MaterialCommunityIcons
                         name={selectedToAccount?.icon || "bank-transfer-in"}
-                        size={17}
+                        size={19}
                         color={selectedToAccount ? "#FFFFFF" : textSecondary}
                       />
                     </View>
@@ -1525,59 +1551,14 @@ export default function TransactionForm({
                     />
                   </TouchableOpacity>
 
-                  {/* Recent Destination Quick Chips */}
-                  {frequentDestinationSources.length > 0 && (
-                    <View style={styles.recentChipsContainer}>
-                      <Text style={[styles.recentChipsLabel, { color: textSecondary }]}>
-                        Recent:
-                      </Text>
-                      <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.recentChipsScroll}
-                      >
-                        {frequentDestinationSources.map((s) => {
-                          const isSel = toAccount === s.id;
-                          return (
-                            <TouchableOpacity
-                              key={`rec-to-${s.id}`}
-                              onPress={() => {
-                                Keyboard.dismiss();
-                                setToAccount(s.id);
-                                markDirty();
-                              }}
-                              style={[
-                                styles.recentChip,
-                                {
-                                  backgroundColor: isSel
-                                    ? s.color || "#3B82F6"
-                                    : isDarkMode
-                                      ? "#1E293B"
-                                      : "#F1F5F9",
-                                  borderColor: isSel ? s.color : borderColor,
-                                },
-                              ]}
-                            >
-                              <MaterialCommunityIcons
-                                name={s.icon || "bank-transfer-in"}
-                                size={11}
-                                color={isSel ? "#FFFFFF" : s.color || textSecondary}
-                                style={{ marginRight: 3 }}
-                              />
-                              <Text
-                                style={[
-                                  styles.recentChipText,
-                                  { color: isSel ? "#FFFFFF" : textPrimary },
-                                ]}
-                              >
-                                {s.name}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </ScrollView>
-                    </View>
-                  )}
+                  {/* Recent Destination Chips (only when no destination account is selected) */}
+                  {renderRecentChips({
+                    visible: !selectedToAccount,
+                    items: frequentDestinationSources,
+                    onSelectItem: setToAccount,
+                    fallbackIcon: "bank-transfer-in",
+                    keyPrefix: "rec-to",
+                  })}
                 </View>
               </>
             )}
@@ -1592,7 +1573,7 @@ export default function TransactionForm({
               }}
               disabled={submitting}
               activeOpacity={0.7}
-              style={styles.tapRow}
+              style={[styles.tapRow, { paddingVertical: rowPadVertical }]}
             >
               <View
                 style={[
@@ -1604,7 +1585,7 @@ export default function TransactionForm({
               >
                 <MaterialCommunityIcons
                   name="calendar-clock"
-                  size={17}
+                  size={19}
                   color="#2563EB"
                 />
               </View>
@@ -1639,6 +1620,8 @@ export default function TransactionForm({
                 styles.countToggleCard,
                 {
                   backgroundColor: cardBg,
+                  paddingVertical: rowPadVertical,
+                  marginBottom: sectionSpacing,
                   borderColor: isCounted
                     ? isDarkMode
                       ? "#065F46"
@@ -1665,7 +1648,7 @@ export default function TransactionForm({
               >
                 <MaterialCommunityIcons
                   name={isCounted ? "check-circle-outline" : "eye-off-outline"}
-                  size={17}
+                  size={19}
                   color={isCounted ? "#10B981" : "#D97706"}
                 />
               </View>
@@ -1727,6 +1710,7 @@ export default function TransactionForm({
                       {
                         backgroundColor: cardBg,
                         borderColor: borderColor,
+                        paddingVertical: isTallScreen ? 15 : 13,
                       },
                     ]}
                   >
@@ -1738,7 +1722,7 @@ export default function TransactionForm({
                     >
                       <MaterialCommunityIcons
                         name="receipt"
-                        size={15}
+                        size={17}
                         color="#3B82F6"
                       />
                     </View>
@@ -1769,6 +1753,7 @@ export default function TransactionForm({
                       {
                         backgroundColor: cardBg,
                         borderColor: borderColor,
+                        paddingVertical: isTallScreen ? 15 : 13,
                       },
                     ]}
                   >
@@ -1780,7 +1765,7 @@ export default function TransactionForm({
                     >
                       <MaterialCommunityIcons
                         name="bank-outline"
-                        size={15}
+                        size={17}
                         color="#10B981"
                       />
                     </View>
@@ -2644,7 +2629,7 @@ const styles = StyleSheet.create({
   fixedFormBody: {
     flex: 1,
     paddingHorizontal: 14,
-    paddingTop: 8,
+    paddingTop: 12,
   },
   loadingContainer: {
     flex: 1,
@@ -2655,17 +2640,17 @@ const styles = StyleSheet.create({
 
   /* 1. Hero Amount Card & Inline Edit Type Controls */
   heroAmountCard: {
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1.5,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    marginBottom: 11,
   },
   amountHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 3,
+    marginBottom: 5,
   },
   amountHeaderLeft: {
     flexDirection: "row",
@@ -2720,7 +2705,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   amountLabel: {
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: "800",
     letterSpacing: 0.8,
   },
@@ -2732,13 +2717,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   currencyPrefix: {
-    fontSize: 26,
+    fontSize: 30,
     fontWeight: "800",
-    marginRight: 5,
+    marginRight: 6,
   },
   amountInput: {
     flex: 1,
-    fontSize: 28,
+    fontSize: 34,
     fontWeight: "800",
     padding: 0,
     margin: 0,
@@ -2752,11 +2737,11 @@ const styles = StyleSheet.create({
 
   /* 2. Note Card Container (Directly after Amount, Floating Suggestions) */
   noteCardContainer: {
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    marginBottom: 11,
     position: "relative",
     zIndex: 100,
   },
@@ -2765,7 +2750,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   noteTextInput: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "600",
     padding: 0,
     margin: 0,
@@ -2810,70 +2795,70 @@ const styles = StyleSheet.create({
 
   /* 3. Inset-Grouped Card */
   groupedCard: {
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     overflow: "hidden",
-    marginBottom: 8,
+    marginBottom: 11,
   },
   tapRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
   },
   rowAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: "center",
     alignItems: "center",
   },
   rowContent: {
     flex: 1,
-    marginLeft: 10,
+    marginLeft: 12,
   },
   rowLabel: {
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: "600",
-    marginBottom: 1,
+    marginBottom: 2,
   },
   rowValue: {
-    fontSize: 14,
+    fontSize: 15,
   },
   rowDivider: {
     height: 1,
-    marginLeft: 54,
+    marginLeft: 64,
   },
 
   /* Recent Chips on Form */
   recentChipsContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginLeft: 54,
+    marginLeft: 64,
     marginTop: 0,
-    marginBottom: 2,
-    paddingRight: 10,
+    marginBottom: 4,
+    paddingRight: 12,
   },
   recentChipsLabel: {
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: "600",
-    marginRight: 5,
+    marginRight: 6,
   },
   recentChipsScroll: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: 6,
   },
   recentChip: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 7,
-    paddingVertical: 2.5,
-    borderRadius: 10,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 11,
     borderWidth: 1,
   },
   recentChipText: {
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: "700",
   },
 
@@ -2881,45 +2866,45 @@ const styles = StyleSheet.create({
   countToggleCard: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    marginBottom: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    marginBottom: 11,
   },
   countToggleTextWrap: {
     flex: 1,
-    marginLeft: 10,
-    marginRight: 6,
+    marginLeft: 12,
+    marginRight: 8,
   },
   countToggleTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
   },
   countToggleSub: {
-    fontSize: 10.5,
-    marginTop: 1,
+    fontSize: 11.5,
+    marginTop: 2,
   },
   compactSwitch: {
-    transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }],
+    transform: [{ scaleX: 0.92 }, { scaleY: 0.92 }],
   },
   linkedSection: {
-    gap: 7,
+    gap: 10,
   },
   linkedDetailCard: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderLeftWidth: 3.5,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    gap: 8,
+    borderLeftWidth: 4,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    gap: 10,
   },
   linkedIconCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -2932,7 +2917,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   linkedTitleText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
     flexShrink: 1,
   },
@@ -2946,53 +2931,53 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   linkedSubText: {
-    fontSize: 11,
-    marginTop: 1,
+    fontSize: 11.5,
+    marginTop: 2,
   },
   linkedMiniBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  linkActionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  linkActionCard: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 13,
-    borderWidth: 1,
-    paddingHorizontal: 11,
-    paddingVertical: 8,
-    gap: 8,
-  },
-  linkActionIconBadge: {
     width: 28,
     height: 28,
     borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
   },
+  linkActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  linkActionCard: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 15,
+    borderWidth: 1,
+    paddingHorizontal: 13,
+    paddingVertical: 13,
+    gap: 10,
+  },
+  linkActionIconBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   linkActionCardText: {
     flex: 1,
-    fontSize: 12.5,
+    fontSize: 13.5,
     fontWeight: "700",
   },
 
   /* 5. Sticky Bottom Action Bar */
   bottomActionBar: {
     paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingVertical: 11,
     borderTopWidth: 1,
   },
   primarySaveBtn: {
-    height: 46,
-    borderRadius: 13,
+    height: 50,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
     elevation: 4,
@@ -3001,7 +2986,7 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
   },
   primarySaveBtnText: {
-    fontSize: 15.5,
+    fontSize: 16,
     fontWeight: "800",
     color: "#FFFFFF",
   },

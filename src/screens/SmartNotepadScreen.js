@@ -11,7 +11,10 @@ import {
   Share,
   Platform,
   ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../components/Theme';
@@ -45,10 +48,28 @@ import {
 
 export default function SmartNotepadScreen({ navigation }) {
   const { isDarkMode, theme } = useTheme();
+  const insets = useSafeAreaInsets();
 
   // Qlate Continuous Notepad Document state
   const notepadRef = useRef(null);
+  const paperScrollRef = useRef(null);
   const [notepadText, setNotepadText] = useState('');
+  const [paperViewportHeight, setPaperViewportHeight] = useState(0);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => {
+      showSub?.remove?.();
+      hideSub?.remove?.();
+    };
+  }, []);
+
+  const dynamicMinLines = useMemo(() => {
+    if (!paperViewportHeight || paperViewportHeight <= 34) return 10;
+    return Math.max(8, Math.floor((paperViewportHeight - 34) / 34));
+  }, [paperViewportHeight]);
 
   // Live evaluation on every keystroke
   const evaluatedDoc = useMemo(() => parseNotepadDocument(notepadText), [notepadText]);
@@ -541,75 +562,112 @@ export default function SmartNotepadScreen({ navigation }) {
   }, [totals.netTotal, isDarkMode, textMuted]);
 
   return (
-    <View style={[styles.screen, { backgroundColor: screenBg }]}>
-      {/* Top Action Bar (Horizontally scrollable, never cuts off) */}
+    <KeyboardAvoidingView
+      style={[styles.screen, { backgroundColor: screenBg }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      {/* Top Action Bar (Clean Uniform Single-Row 5-Tile Bar) */}
       <View
         style={[
           styles.toolbarWrapper,
           {
-            backgroundColor: isDarkMode ? '#19202C' : '#FFFFFF',
-            borderBottomColor: isDarkMode ? '#283244' : '#E2E8F0',
+            backgroundColor: isDarkMode ? '#141B26' : '#FFFFFF',
+            borderBottomColor: isDarkMode ? '#242F42' : '#E2E8F0',
           },
         ]}
       >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.toolbarScrollContent}
-        >
+        <View style={styles.toolbarRow}>
           <TouchableOpacity
             style={[
-              styles.toolButtonOutline,
+              styles.toolbarTile,
               {
-                borderColor: '#F59E0B',
-                backgroundColor: isDarkMode ? '#2D2006' : '#FEF3C7',
+                backgroundColor: isDarkMode ? '#17253B' : '#EFF6FF',
+                borderColor: isDarkMode ? '#29446B' : '#BFDBFE',
               },
             ]}
-            onPress={() => setIsGuideModalVisible(true)}
+            onPress={() => setIsMonthModalVisible(true)}
             activeOpacity={0.8}
+            disabled={importing}
           >
-            <MaterialCommunityIcons name="lightbulb-on-outline" size={16} color="#D97706" />
-            <Text style={[styles.toolButtonOutlineText, { color: isDarkMode ? '#FCD34D' : '#B45309' }]}>
-              How to Use
+            <View
+              style={[
+                styles.toolbarTileIconBox,
+                { backgroundColor: isDarkMode ? '#1D3354' : '#DBEAFE' },
+              ]}
+            >
+              {importing ? (
+                <ActivityIndicator size="small" color={isDarkMode ? '#60A5FA' : '#2563EB'} />
+              ) : (
+                <MaterialCommunityIcons
+                  name="calendar-import"
+                  size={16}
+                  color={isDarkMode ? '#60A5FA' : '#2563EB'}
+                />
+              )}
+            </View>
+            <Text
+              numberOfLines={1}
+              style={[styles.toolbarTileLabel, { color: isDarkMode ? '#93C5FD' : '#1D4ED8' }]}
+            >
+              Import
             </Text>
           </TouchableOpacity>
 
-
           <TouchableOpacity
             style={[
-              styles.toolButtonOutline,
+              styles.toolbarTile,
               isSaveAndClearEnabled
                 ? {
-                  borderColor: activeSheetId ? '#10B981' : (Colors.primary || '#4B7CF3'),
                   backgroundColor: activeSheetId
-                    ? isDarkMode ? '#0A2E20' : '#ECFDF5'
-                    : isDarkMode ? '#14223A' : '#EFF6FF',
+                    ? isDarkMode ? '#0F291E' : '#ECFDF5'
+                    : isDarkMode ? '#1C2534' : '#F8FAFC',
+                  borderColor: activeSheetId
+                    ? isDarkMode ? '#1B5E42' : '#A7F3D0'
+                    : isDarkMode ? '#334155' : '#CBD5E1',
                 }
                 : {
-                  borderColor: isDarkMode ? '#2D3748' : '#E2E8F0',
                   backgroundColor: isDarkMode ? '#171E2B' : '#F8FAFC',
-                  opacity: 0.45,
+                  borderColor: isDarkMode ? '#252F40' : '#E2E8F0',
+                  opacity: 0.5,
                 },
             ]}
             onPress={handlePromptSave}
             disabled={!isSaveAndClearEnabled}
             activeOpacity={0.8}
           >
-            <MaterialCommunityIcons
-              name={activeSheetId ? 'content-save-check-outline' : 'content-save-outline'}
-              size={16}
-              color={
-                isSaveAndClearEnabled
-                  ? activeSheetId ? '#10B981' : (Colors.primary || '#4B7CF3')
-                  : isDarkMode ? '#64748B' : '#94A3B8'
-              }
-            />
-            <Text
+            <View
               style={[
-                styles.toolButtonOutlineText,
+                styles.toolbarTileIconBox,
+                {
+                  backgroundColor: isSaveAndClearEnabled
+                    ? activeSheetId
+                      ? isDarkMode ? '#164E38' : '#D1FAE5'
+                      : isDarkMode ? '#23324D' : '#E0E7FF'
+                    : isDarkMode ? '#212A3A' : '#F1F5F9',
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={activeSheetId ? 'content-save-check-outline' : 'content-save-outline'}
+                size={16}
+                color={
+                  isSaveAndClearEnabled
+                    ? activeSheetId
+                      ? '#10B981'
+                      : isDarkMode ? '#818CF8' : (Colors.primary || '#4B7CF3')
+                    : isDarkMode ? '#64748B' : '#94A3B8'
+                }
+              />
+            </View>
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.toolbarTileLabel,
                 {
                   color: isSaveAndClearEnabled
-                    ? activeSheetId ? '#10B981' : (Colors.primary || '#4B7CF3')
+                    ? activeSheetId
+                      ? isDarkMode ? '#34D399' : '#059669'
+                      : theme.textPrimary
                     : isDarkMode ? '#64748B' : '#94A3B8',
                 },
               ]}
@@ -617,181 +675,271 @@ export default function SmartNotepadScreen({ navigation }) {
               {activeSheetId ? 'Update' : 'Save'}
             </Text>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={[
-              styles.toolButtonOutline,
+              styles.toolbarTile,
+              {
+                backgroundColor: isDarkMode ? '#1C2534' : '#F8FAFC',
+                borderColor: isDarkMode ? '#2F3B52' : '#E2E8F0',
+              },
+            ]}
+            onPress={() => setIsSavedSheetsModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <View
+              style={[
+                styles.toolbarTileIconBox,
+                { backgroundColor: isDarkMode ? '#252F47' : '#EEF2FF' },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="book-open-outline"
+                size={16}
+                color={isDarkMode ? '#A5B4FC' : '#4338CA'}
+              />
+              <View
+                style={[
+                  styles.toolbarCountPill,
+                  {
+                    backgroundColor:
+                      savedSheets.length > 0
+                        ? (Colors.primary || '#4B7CF3')
+                        : isDarkMode ? '#334155' : '#94A3B8',
+                    borderColor: isDarkMode ? '#1C2534' : '#F8FAFC',
+                  },
+                ]}
+              >
+                <Text style={styles.toolbarCountPillText}>{savedSheets.length}</Text>
+              </View>
+            </View>
+            <Text numberOfLines={1} style={[styles.toolbarTileLabel, { color: theme.textPrimary }]}>
+              Sheets
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.toolbarTile,
+              {
+                backgroundColor: isDarkMode ? '#14261E' : '#F0FDF4',
+                borderColor: isDarkMode ? '#1E4631' : '#BBF7D0',
+              },
+            ]}
+            onPress={handleShareToWhatsApp}
+            activeOpacity={0.8}
+          >
+            <View
+              style={[
+                styles.toolbarTileIconBox,
+                { backgroundColor: isDarkMode ? '#13422B' : '#DCFCE7' },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="whatsapp"
+                size={16}
+                color={isDarkMode ? '#4ADE80' : '#16A34A'}
+              />
+            </View>
+            <Text
+              numberOfLines={1}
+              style={[styles.toolbarTileLabel, { color: isDarkMode ? '#4ADE80' : '#15803D' }]}
+            >
+              Share
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.toolbarTile,
               isSaveAndClearEnabled
                 ? {
-                  borderColor: isDarkMode ? '#4B252C' : '#FCA5A5',
-                  backgroundColor: isDarkMode ? '#231518' : '#FEF2F2',
+                  backgroundColor: isDarkMode ? '#26161B' : '#FEF2F2',
+                  borderColor: isDarkMode ? '#4B252C' : '#FECACA',
                 }
                 : {
-                  borderColor: isDarkMode ? '#2D3748' : '#E2E8F0',
                   backgroundColor: isDarkMode ? '#171E2B' : '#F8FAFC',
-                  opacity: 0.45,
+                  borderColor: isDarkMode ? '#252F40' : '#E2E8F0',
+                  opacity: 0.5,
                 },
             ]}
             onPress={handleClearAll}
             disabled={!isSaveAndClearEnabled}
             activeOpacity={0.8}
           >
-            <MaterialCommunityIcons
-              name="trash-can-outline"
-              size={16}
-              color={isSaveAndClearEnabled ? '#EF4444' : (isDarkMode ? '#64748B' : '#94A3B8')}
-            />
-            <Text
+            <View
               style={[
-                styles.toolButtonOutlineText,
+                styles.toolbarTileIconBox,
                 {
-                  color: isSaveAndClearEnabled ? '#EF4444' : (isDarkMode ? '#64748B' : '#94A3B8'),
+                  backgroundColor: isSaveAndClearEnabled
+                    ? isDarkMode ? '#3B1820' : '#FEE2E2'
+                    : isDarkMode ? '#212A3A' : '#F1F5F9',
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="trash-can-outline"
+                size={16}
+                color={isSaveAndClearEnabled ? '#EF4444' : (isDarkMode ? '#64748B' : '#94A3B8')}
+              />
+            </View>
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.toolbarTileLabel,
+                {
+                  color: isSaveAndClearEnabled
+                    ? isDarkMode ? '#FCA5A5' : '#DC2626'
+                    : isDarkMode ? '#64748B' : '#94A3B8',
                 },
               ]}
             >
               Clear
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toolButton, { backgroundColor: Colors.primary }]}
-            onPress={() => setIsMonthModalVisible(true)}
-            activeOpacity={0.8}
-            disabled={importing}
-          >
-            {importing ? (
-              <ActivityIndicator size="small" color="#FFF" />
-            ) : (
-              <MaterialCommunityIcons name="calendar-import" size={16} color="#FFF" />
-            )}
-            <Text style={styles.toolButtonText}>Import Month</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.toolButtonOutline,
-              {
-                borderColor: isDarkMode ? '#3B4863' : '#CBD5E1',
-                backgroundColor: isDarkMode ? '#171E2B' : '#FFFFFF',
-              },
-            ]}
-            onPress={() => setIsSavedSheetsModalVisible(true)}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="book-open-outline" size={16} color={theme.textPrimary} />
-            <Text style={[styles.toolButtonOutlineText, { color: theme.textPrimary }]}>
-              Sheets ({savedSheets.length})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.shareBtn, { backgroundColor: '#25D366' }]}
-            onPress={handleShareToWhatsApp}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="whatsapp" size={16} color="#FFF" />
-            <Text style={styles.shareBtnText}>Share</Text>
-          </TouchableOpacity>
-        </ScrollView>
+        </View>
       </View>
 
-      {/* Main Notebook Paper Area */}
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      {/* Main Responsive Full-Height Notebook Area */}
+      <View
+        style={[
+          styles.fintechSheet,
+          {
+            backgroundColor: cardBg,
+            borderColor: cardBorder,
+          },
+        ]}
       >
+        {/* Top Paper Sheet Header */}
         <View
           style={[
-            styles.fintechSheet,
+            styles.fintechHeader,
             {
-              backgroundColor: cardBg,
-              borderColor: cardBorder,
+              backgroundColor: headerBg,
+              borderBottomColor: headerBorder,
             },
           ]}
         >
-          {/* Top Fintech Card Header */}
-          <View
-            style={[
-              styles.fintechHeader,
-              {
-                backgroundColor: headerBg,
-                borderBottomColor: headerBorder,
-              },
-            ]}
-          >
-            <View style={styles.fintechHeaderMainRow}>
-              <View style={styles.fintechTitleBlock}>
-                <View
+          <View style={styles.fintechHeaderMainRow}>
+            <View style={styles.fintechTitleBlock}>
+              <View
+                style={[
+                  styles.titleIconBadge,
+                  {
+                    backgroundColor: isDarkMode ? '#172554' : '#EFF6FF',
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name={activeSheetTitle ? 'bookmark-check' : 'calculator-variant-outline'}
+                  size={16}
+                  color={activeSheetTitle ? '#3B82F6' : '#6366F1'}
+                />
+              </View>
+
+              <Text
+                style={[styles.fintechSheetTitle, { color: textColor }]}
+                numberOfLines={1}
+              >
+                {activeSheetTitle ? activeSheetTitle : 'Smart Notepad'}
+              </Text>
+
+              {activeSheetTitle && (
+                <TouchableOpacity
+                  onPress={() => setIsSaveModalVisible(true)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   style={[
-                    styles.titleIconBadge,
-                    {
-                      backgroundColor: isDarkMode ? '#172554' : '#EFF6FF',
-                    },
+                    styles.editTitleBtn,
+                    { backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9' },
                   ]}
+                  activeOpacity={0.7}
                 >
                   <MaterialCommunityIcons
-                    name={activeSheetTitle ? 'bookmark-check' : 'calculator-variant-outline'}
-                    size={16}
-                    color={activeSheetTitle ? '#3B82F6' : '#6366F1'}
+                    name="pencil"
+                    size={12}
+                    color={isDarkMode ? '#94A3B8' : '#64748B'}
                   />
-                </View>
-
-                <Text
-                  style={[styles.fintechSheetTitle, { color: textColor }]}
-                  numberOfLines={1}
-                >
-                  {activeSheetTitle ? activeSheetTitle : 'Smart Notepad'}
-                </Text>
-
-                {activeSheetTitle && (
-                  <TouchableOpacity
-                    onPress={() => setIsSaveModalVisible(true)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    style={[
-                      styles.editTitleBtn,
-                      { backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9' },
-                    ]}
-                    activeOpacity={0.7}
-                  >
-                    <MaterialCommunityIcons
-                      name="pencil"
-                      size={12}
-                      color={isDarkMode ? '#94A3B8' : '#64748B'}
-                    />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              <View style={styles.fintechHeaderControls}>
-                <View
-                  style={[
-                    styles.fintechCountBadge,
-                    {
-                      backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9',
-                    },
-                  ]}
-                >
-                  <Text style={[styles.fintechCountText, { color: textMuted }]}>
-                    {evaluatedDoc.validCount} {evaluatedDoc.validCount === 1 ? 'entry' : 'entries'}
-                  </Text>
-                </View>
-              </View>
+                </TouchableOpacity>
+              )}
             </View>
 
-            <View style={styles.fintechHeaderSubRow}>
-              <Text style={[styles.fintechSubText, { color: textMuted }]} numberOfLines={1}>
-                {activeSheetLastUpdated
-                  ? `Saved Sheet • Updated ${new Date(activeSheetLastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} • Smart Notepad active`
-                  : 'Write notes & amounts like paper • Totals calculate automatically'}
-              </Text>
+            <View style={[styles.fintechHeaderControls, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}>
+              <TouchableOpacity
+                style={[
+                  styles.headerGuidePill,
+                  {
+                    backgroundColor: isDarkMode ? '#2D2006' : '#FEF3C7',
+                    borderColor: isDarkMode ? '#78350F' : '#FDE68A',
+                  },
+                ]}
+                onPress={() => setIsGuideModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons
+                  name="lightbulb-on-outline"
+                  size={13}
+                  color={isDarkMode ? '#FBBF24' : '#D97706'}
+                />
+                <Text
+                  style={[
+                    styles.headerGuidePillText,
+                    { color: isDarkMode ? '#FCD34D' : '#B45309' },
+                  ]}
+                >
+                  Guide
+                </Text>
+              </TouchableOpacity>
+
+              <View
+                style={[
+                  styles.fintechCountBadge,
+                  {
+                    backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9',
+                  },
+                ]}
+              >
+                <Text style={[styles.fintechCountText, { color: textMuted }]}>
+                  {evaluatedDoc.validCount} {evaluatedDoc.validCount === 1 ? 'entry' : 'entries'}
+                </Text>
+              </View>
             </View>
           </View>
 
-          {/* Qlate Continuous Calculator + Notepad Sheet */}
+          {!keyboardVisible && (
+            <View style={styles.fintechHeaderSubRow}>
+              <Text style={[styles.fintechSubText, { color: textMuted }]} numberOfLines={1}>
+                {activeSheetLastUpdated
+                  ? `Saved Sheet • Updated ${new Date(activeSheetLastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`
+                  : 'Write notes & amounts like paper • Totals calculate automatically'}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Flex-1 Scrollable Ruled Paper Filling All Remaining Viewport Height */}
+        <ScrollView
+          ref={paperScrollRef}
+          style={styles.paperScroll}
+          contentContainerStyle={styles.paperScrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          onLayout={(e) => {
+            const h = e?.nativeEvent?.layout?.height || 0;
+            if (h > 0 && Math.abs(h - paperViewportHeight) > 4) {
+              setPaperViewportHeight(h);
+            }
+          }}
+        >
           <QlateNotepadSheet
             text={notepadText}
             onChangeText={setNotepadText}
             evaluatedDoc={evaluatedDoc}
             textInputRef={notepadRef}
+            minVisibleLines={dynamicMinLines}
+            onLineFocus={(idx) => {
+              const targetY = Math.max(0, idx * 34 - 80);
+              paperScrollRef.current?.scrollTo({ y: targetY, animated: true });
+            }}
             isDarkMode={isDarkMode}
             textColor={textColor}
             textMuted={textMuted}
@@ -800,14 +948,46 @@ export default function SmartNotepadScreen({ navigation }) {
             tableHeaderBg={tableHeaderBg}
             cardBg={cardBg}
           />
+        </ScrollView>
 
-          {/* Modern Fintech Hero Balance Summary Card */}
+        {/* Anchored Bottom Summary Dock (No Empty Bottom Space; Slim Strip When Keyboard Open) */}
+        {keyboardVisible ? (
+          <View
+            style={[
+              styles.compactKeyboardSummary,
+              {
+                borderTopColor: rowDividerColor,
+                backgroundColor: isDarkMode ? '#0E1420' : '#F8FAFC',
+              },
+            ]}
+          >
+            <View style={styles.compactMetricGroup}>
+              <Text style={[styles.compactMetricChip, { color: isDarkMode ? '#34D399' : '#059669' }]}>
+                In +{formatLedgerAmount(totals.totalIncome)}
+              </Text>
+              <Text style={[styles.compactMetricDivider, { color: textMuted }]}>•</Text>
+              <Text style={[styles.compactMetricChip, { color: isDarkMode ? '#FB7185' : '#E11D48' }]}>
+                Out −{formatLedgerAmount(totals.totalExpense)}
+              </Text>
+            </View>
+
+            <View style={styles.compactNetRight}>
+              <View style={[styles.netStatusPill, { backgroundColor: netStatus.bg }]}>
+                <Text style={[styles.netStatusText, { color: netStatus.color }]}>
+                  {totals.netTotal > 0 ? '+' : ''}
+                  {formatLedgerAmount(totals.netTotal)}
+                </Text>
+              </View>
+            </View>
+          </View>
+        ) : (
           <View
             style={[
               styles.heroSummaryContainer,
               {
                 borderTopColor: rowDividerColor,
                 backgroundColor: isDarkMode ? '#0E1420' : '#F8FAFC',
+                paddingBottom: Math.max(insets.bottom, 12),
               },
             ]}
           >
@@ -825,11 +1005,11 @@ export default function SmartNotepadScreen({ navigation }) {
                 <View style={[styles.breakdownChipIcon, { backgroundColor: isDarkMode ? '#065F46' : '#D1FAE5' }]}>
                   <MaterialCommunityIcons name="arrow-bottom-left" size={13} color="#059669" />
                 </View>
-                <View>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={[styles.breakdownChipLabel, { color: isDarkMode ? '#6EE7B7' : '#059669' }]}>
                     Money In
                   </Text>
-                  <Text style={[styles.breakdownChipValue, { color: isDarkMode ? '#34D399' : '#059669' }]}>
+                  <Text numberOfLines={1} style={[styles.breakdownChipValue, { color: isDarkMode ? '#34D399' : '#059669' }]}>
                     {totals.totalIncome > 0 ? '+' : ''}
                     {formatLedgerAmount(totals.totalIncome)}
                   </Text>
@@ -848,11 +1028,11 @@ export default function SmartNotepadScreen({ navigation }) {
                 <View style={[styles.breakdownChipIcon, { backgroundColor: isDarkMode ? '#881337' : '#FFE4E6' }]}>
                   <MaterialCommunityIcons name="arrow-top-right" size={13} color="#E11D48" />
                 </View>
-                <View>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={[styles.breakdownChipLabel, { color: isDarkMode ? '#FDA4AF' : '#E11D48' }]}>
                     Money Out
                   </Text>
-                  <Text style={[styles.breakdownChipValue, { color: isDarkMode ? '#FB7185' : '#E11D48' }]}>
+                  <Text numberOfLines={1} style={[styles.breakdownChipValue, { color: isDarkMode ? '#FB7185' : '#E11D48' }]}>
                     {totals.totalExpense > 0 ? '−' : ''}
                     {formatLedgerAmount(totals.totalExpense)}
                   </Text>
@@ -883,7 +1063,6 @@ export default function SmartNotepadScreen({ navigation }) {
                   </Text>
                 </View>
 
-                {/* Status Pill: Surplus / Deficit / Balanced */}
                 <View style={[styles.netStatusPill, { backgroundColor: netStatus.bg }]}>
                   <MaterialCommunityIcons
                     name={netStatus.icon}
@@ -918,8 +1097,8 @@ export default function SmartNotepadScreen({ navigation }) {
               </Text>
             </View>
           </View>
-        </View>
-      </ScrollView>
+        )}
+      </View>
 
       {/* Modern Floating In-App Toast */}
       <SmartNotepadToast
@@ -994,7 +1173,7 @@ export default function SmartNotepadScreen({ navigation }) {
         onCancel={() => setConfirmModalConfig(null)}
         onConfirm={confirmModalConfig?.onConfirm}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1005,101 +1184,105 @@ const styles = StyleSheet.create({
   toolbarWrapper: {
     borderBottomWidth: 1,
   },
-  toolbarScrollContent: {
+  toolbarRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
+    alignItems: 'stretch',
+    paddingHorizontal: 10,
     paddingVertical: 8,
-    gap: 8,
+    gap: 6,
   },
-  toolbarLeft: {
-    flexDirection: 'row',
+  toolbarTile: {
+    flex: 1,
     alignItems: 'center',
-    gap: 8,
-  },
-  toolbarRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  toolButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    gap: 5,
-  },
-  toolButtonText: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  toolButtonOutline: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 6,
-    paddingHorizontal: 11,
-    borderRadius: 8,
+    paddingHorizontal: 3,
+    borderRadius: 11,
     borderWidth: 1,
     gap: 4,
   },
-  toolButtonOutlineText: {
-    fontSize: 13,
-    fontWeight: '600',
+  toolbarTileIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
   },
-  selectionCountPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+  toolbarTileLabel: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    letterSpacing: -0.1,
   },
-  selectionCountText: {
-    fontSize: 13,
-    fontWeight: '600',
+  toolbarCountPill: {
+    position: 'absolute',
+    top: -4,
+    right: -6,
+    minWidth: 15,
+    height: 15,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
   },
-  deleteSelectedBtn: {
+  toolbarCountPillText: {
+    color: '#FFFFFF',
+    fontSize: 8.5,
+    fontWeight: '800',
+  },
+  headerGuidePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 999,
+    borderWidth: 1,
     gap: 4,
   },
-  deleteSelectedBtnText: {
-    color: '#FFF',
-    fontSize: 13,
+  headerGuidePillText: {
+    fontSize: 11,
     fontWeight: '700',
-  },
-  shareBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    gap: 5,
-  },
-  shareBtnText: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  scrollContent: {
-    paddingHorizontal: 0,
-    paddingTop: 4,
-    paddingBottom: 96,
   },
   fintechSheet: {
+    flex: 1,
+    width: '100%',
     borderRadius: 0,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderLeftWidth: 0,
-    borderRightWidth: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    borderTopWidth: 0,
+    borderBottomWidth: 0,
     overflow: 'hidden',
+  },
+  paperScroll: {
+    flex: 1,
+  },
+  paperScrollContent: {
+    flexGrow: 1,
+  },
+  compactKeyboardSummary: {
+    borderTopWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  compactMetricGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    minWidth: 0,
+  },
+  compactMetricChip: {
+    fontSize: 12.5,
+    fontWeight: '800',
+  },
+  compactMetricDivider: {
+    fontSize: 12,
+  },
+  compactNetRight: {
+    flexShrink: 0,
+    marginLeft: 8,
   },
   fintechHeader: {
     paddingVertical: 10,

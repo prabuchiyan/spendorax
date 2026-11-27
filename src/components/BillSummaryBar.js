@@ -1,346 +1,585 @@
 import React, { memo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import CurrencyText from './CurrencyText';
 import { useTheme } from '../context/ThemeContext';
+import { useBalanceVisibility } from '../context/BalanceVisibilityContext';
 
-function BillSummaryBar({ summary, isDarkMode: propIsDark }) {
-  const { isDarkMode: globalIsDark } = useTheme();
+function BillSummaryBar({
+  summary,
+  monthLabel,
+  activeStatusFilter = 'all',
+  onFilterPress,
+  isDarkMode: propIsDark,
+}) {
+  const { isDarkMode: globalIsDark, theme } = useTheme();
+  const { balanceVisible, toggleBalance } = useBalanceVisibility();
   const isDarkMode = propIsDark !== undefined ? propIsDark : globalIsDark;
+
   if (!summary) return null;
 
-  const theme = isDarkMode
+  const palette = isDarkMode
     ? {
-      cardBg: "#182234",
-      cardBorder: "#334155",
-      textPrimary: "#F3F4F6",
-      textSecondary: "#9CA3AF",
-      badgeBg: "rgba(13, 148, 136, 0.15)",
-      badgeBorder: "rgba(45, 212, 191, 0.3)",
-      badgeDot: "#2dd4bf",
-      badgeText: "#5eead4",
-      progressTrack: "rgba(244, 63, 94, 0.25)",
-      progressFill: "#2dd4bf",
-      progressRemaining: "#f43f5e",
-      boxPaidBg: "rgba(30, 41, 59, 0.7)",
-      boxPaidBorder: "#334155",
-      boxPaidIcon: "#2dd4bf",
-      boxOverdueBg: "rgba(159, 18, 57, 0.3)",
-      boxOverdueBorder: "rgba(244, 63, 94, 0.3)",
-      boxOverdueText: "#fda4af",
-      boxUpcomingBg: "rgba(30, 41, 59, 0.7)",
-      boxUpcomingBorder: "#334155",
-      boxUpcomingIcon: "#fbbf24",
-    }
+        cardBg: theme?.cardBg || '#182234',
+        cardBorder: theme?.cardBorder || '#334155',
+        surfaceSubtle: '#1E293B',
+        textPrimary: theme?.textPrimary || '#F3F4F6',
+        textSecondary: theme?.textSecondary || '#9CA3AF',
+        textMuted: '#64748B',
+        primary: theme?.primary || '#4B7CF3',
+        primarySoft: 'rgba(75, 124, 243, 0.16)',
+        positive: '#34D399',
+        positiveBg: 'rgba(16, 185, 129, 0.14)',
+        positiveBorder: 'rgba(52, 211, 153, 0.28)',
+        negative: '#F87171',
+        negativeBg: 'rgba(239, 68, 68, 0.14)',
+        negativeBorder: 'rgba(248, 113, 113, 0.30)',
+        warning: '#FBBF24',
+        warningBg: 'rgba(245, 158, 11, 0.15)',
+        warningBorder: 'rgba(251, 191, 36, 0.28)',
+        badgeBg: '#1E293B',
+        badgeText: '#CBD5E1',
+      }
     : {
-      cardBg: "#ffffff",
-      cardBorder: "#e2ebf8",
-      textPrimary: "#0b1c30",
-      textSecondary: "#45464d",
-      badgeBg: "#e6f7f3",
-      badgeBorder: "#a7f3d0",
-      badgeDot: "#006a61",
-      badgeText: "#006a61",
-      progressTrack: "#fee2e2",
-      progressFill: "#006a61",
-      progressRemaining: "#ba1a1a",
-      boxPaidBg: "#f8faff",
-      boxPaidBorder: "#e2ebf8",
-      boxPaidIcon: "#006a61",
-      boxOverdueBg: "#fff1f2",
-      boxOverdueBorder: "#fecdd3",
-      boxOverdueText: "#ba1a1a",
-      boxUpcomingBg: "#f8faff",
-      boxUpcomingBorder: "#e2ebf8",
-      boxUpcomingIcon: "#c76c00",
-    };
+        cardBg: theme?.cardBg || '#FFFFFF',
+        cardBorder: theme?.cardBorder || '#E2E8F0',
+        surfaceSubtle: '#F1F5F9',
+        textPrimary: theme?.textPrimary || '#0B1C30',
+        textSecondary: theme?.textSecondary || '#64748B',
+        textMuted: '#94A3B8',
+        primary: theme?.primary || '#4B7CF3',
+        primarySoft: '#EFF4FF',
+        positive: '#059669',
+        positiveBg: '#ECFDF5',
+        positiveBorder: '#A7F3D0',
+        negative: '#DC2626',
+        negativeBg: '#FEF2F2',
+        negativeBorder: '#FECACA',
+        warning: '#D97706',
+        warningBg: '#FFFBEB',
+        warningBorder: '#FDE68A',
+        badgeBg: '#E2E8F0',
+        badgeText: '#475569',
+      };
 
-  const total = Number(summary.totalThisMonth) || 0;
-  const paid = Number(summary.totalPaid) || 0;
-  const overdue = Number(summary.overdueAmount) || 0;
+  const total = Number(summary.totalThisMonth || 0);
+  const paid = Number(summary.totalPaid || 0);
+  const overdue = Number(summary.overdueAmount || 0);
+  const overdueCount = Number(summary.overdueCount || 0);
+  const paidCount = Number(summary.paidCount || 0);
+  const upcoming7 = Number(summary.upcoming7 || 0);
+  const dueThisMonthCount = Number(summary.dueThisMonthCount || 0);
 
   const paidPct = total > 0 ? Math.min(100, Math.max(0, (paid / total) * 100)) : 0;
-  const remainingPct = 100 - paidPct;
+
+  let statusPill = {
+    label: '100% Settled',
+    color: palette.positive,
+    bg: palette.positiveBg,
+  };
+  if (overdueCount > 0 || overdue > 0) {
+    statusPill = {
+      label: `${overdueCount || 1} Overdue`,
+      color: palette.negative,
+      bg: palette.negativeBg,
+    };
+  } else if (dueThisMonthCount > 0) {
+    statusPill = {
+      label: `${Math.round(paidPct)}% Settled`,
+      color: paidPct >= 70 ? palette.positive : palette.warning,
+      bg: paidPct >= 70 ? palette.positiveBg : palette.warningBg,
+    };
+  } else if (upcoming7 > 0) {
+    statusPill = {
+      label: 'Month Clear',
+      color: palette.positive,
+      bg: palette.positiveBg,
+    };
+  }
+
+  const paidDecimals = paid % 1 !== 0 ? 2 : 0;
+  const overdueDecimals = overdue % 1 !== 0 ? 2 : 0;
+  const upcomingDecimals = upcoming7 % 1 !== 0 ? 2 : 0;
+
+  const isPaidFilterActive = activeStatusFilter === 'paid';
+  const secondTileIsOverdue = overdueCount > 0 || overdue > 0;
+  const secondTileFilterKey = secondTileIsOverdue ? 'overdue' : 'pending';
+  const isSecondTileActive = activeStatusFilter === secondTileFilterKey;
+
+  const handleTileTap = (key) => {
+    if (typeof onFilterPress === 'function') {
+      onFilterPress(activeStatusFilter === key ? 'all' : key);
+    }
+  };
 
   return (
     <View
       style={[
-        styles.heroContainer,
+        styles.heroCard,
         {
-          backgroundColor: theme.cardBg,
-          borderColor: theme.cardBorder,
+          backgroundColor: palette.cardBg,
+          borderColor: palette.cardBorder,
         },
+        !isDarkMode && styles.cardShadowLight,
       ]}
     >
-      {/* Status Header Bar */}
-      <View style={styles.headerRow}>
-        <Text style={[styles.headerLabel, { color: theme.textSecondary }]}>
-          This Month Total
-        </Text>
-        <View style={styles.headerRightRow}>
-          <View
+      {/* Top Header Row */}
+      <View style={styles.heroTopRow}>
+        <View style={styles.heroTitleGroup}>
+          <View style={[styles.heroBadgeIcon, { backgroundColor: palette.primarySoft }]}>
+            <MaterialCommunityIcons
+              name="receipt"
+              size={18}
+              color={palette.primary}
+            />
+          </View>
+          <View style={styles.heroTitleTextCol}>
+            <Text style={[styles.heroEyebrow, { color: palette.textSecondary }]}>
+              THIS MONTH BILLS
+            </Text>
+            <Text numberOfLines={1} style={[styles.heroSubMeta, { color: palette.textMuted }]}>
+              {monthLabel ? `${monthLabel} · ` : ''}
+              {paidCount} {paidCount === 1 ? 'bill' : 'bills'} paid
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.heroRightControls}>
+          <View style={[styles.statusBadge, { backgroundColor: statusPill.bg }]}>
+            <View style={[styles.statusDot, { backgroundColor: statusPill.color }]} />
+            <Text style={[styles.statusBadgeText, { color: statusPill.color }]}>
+              {statusPill.label}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={toggleBalance}
+            activeOpacity={0.75}
+            accessibilityLabel={balanceVisible ? 'Hide bill totals' : 'Show bill totals'}
             style={[
-              styles.settledBadge,
+              styles.eyeToggleBtn,
               {
-                backgroundColor: theme.badgeBg,
-                borderColor: theme.badgeBorder,
+                backgroundColor: palette.surfaceSubtle,
+                borderColor: palette.cardBorder,
               },
             ]}
           >
-            <View style={[styles.settledDot, { backgroundColor: theme.badgeDot }]} />
-            <Text style={[styles.settledText, { color: theme.badgeText }]}>
-              {Math.round(paidPct)}% Settled
-            </Text>
-          </View>
-          <Text style={[styles.paidCountSub, { color: theme.textSecondary }]}>
-            {summary.paidCount || 0} bills paid
-          </Text>
+            <MaterialCommunityIcons
+              name={balanceVisible ? 'eye-outline' : 'eye-off-outline'}
+              size={18}
+              color={palette.textSecondary}
+            />
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* Big Amount Display */}
-      <View style={styles.amountContainer}>
-        <Text
-          numberOfLines={1}
-          style={[styles.bigAmountText, { color: theme.textPrimary }]}
-        >
-          <CurrencyText amount={summary.totalThisMonth} />
-        </Text>
-      </View>
+      {/* Hero Total */}
+      <CurrencyText
+        amount={total}
+        numberOfLines={1}
+        style={[styles.heroTotalAmount, { color: palette.textPrimary }]}
+      />
 
-      {/* Dual-Tone Progress Settlement Bar */}
-      <View style={[styles.progressTrack, { backgroundColor: theme.progressTrack }]}>
+      {/* Settlement Progress Track */}
+      <View style={styles.progressBlock}>
+        <View style={styles.progressLabelsRow}>
+          <Text style={[styles.progressLabel, { color: palette.textSecondary }]}>
+            Monthly Settlement
+          </Text>
+          <Text
+            style={[
+              styles.progressPctText,
+              { color: overdueCount > 0 ? palette.negative : palette.positive },
+            ]}
+          >
+            {Math.round(paidPct)}% paid
+            {overdueCount > 0 ? ` · ${overdueCount} overdue` : ''}
+          </Text>
+        </View>
         <View
           style={[
-            styles.progressFill,
+            styles.progressTrack,
             {
-              width: `${paidPct}%`,
-              backgroundColor: theme.progressFill,
+              backgroundColor:
+                overdue > 0 ? palette.negativeBg : palette.surfaceSubtle,
             },
           ]}
-        />
-        {remainingPct > 0 && overdue > 0 && (
+        >
           <View
             style={[
-              styles.progressRemaining,
+              styles.progressFill,
               {
-                width: `${remainingPct}%`,
-                backgroundColor: theme.progressRemaining,
+                width: `${paidPct}%`,
+                backgroundColor: palette.positive,
               },
             ]}
           />
-        )}
+        </View>
       </View>
 
-      {/* Summary Micro-Pill Cards Grid (3 cards) */}
-      <View style={styles.microGrid}>
-        {/* Paid Box */}
-        <View
+      {/* Two Spacious Interactive Breakdown Tiles (Prevents ₹10,000.... truncation) */}
+      <View style={styles.statsRow}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => handleTileTap('paid')}
           style={[
-            styles.microBox,
+            styles.statTile,
             {
-              backgroundColor: theme.boxPaidBg,
-              borderColor: theme.boxPaidBorder,
-              marginRight: 6,
+              backgroundColor: isPaidFilterActive ? palette.positiveBg : palette.surfaceSubtle,
+              borderColor: isPaidFilterActive ? palette.positive : palette.cardBorder,
+              borderWidth: isPaidFilterActive ? 1.5 : 1,
             },
           ]}
         >
-          <View style={styles.microBoxHeader}>
-            <MaterialCommunityIcons
-              name="check-circle"
-              size={15}
-              color={theme.boxPaidIcon}
-            />
-            <Text
+          <View style={styles.statTileTop}>
+            <View style={[styles.statIconBox, { backgroundColor: palette.positiveBg }]}>
+              <MaterialCommunityIcons name="check-circle" size={16} color={palette.positive} />
+            </View>
+            <View
               style={[
-                styles.microBoxLabel,
-                { color: theme.textSecondary, marginLeft: 4 },
+                styles.statCountPill,
+                { backgroundColor: isPaidFilterActive ? palette.positive : palette.badgeBg },
               ]}
             >
-              Paid
-            </Text>
+              <Text
+                style={[
+                  styles.statCountText,
+                  { color: isPaidFilterActive ? '#FFFFFF' : palette.badgeText },
+                ]}
+              >
+                {paidCount}
+              </Text>
+            </View>
           </View>
-          <Text
+          <Text style={[styles.statLabel, { color: palette.textSecondary }]}>Paid</Text>
+          <CurrencyText
+            amount={paid}
+            minimumFractionDigits={paidDecimals}
+            maximumFractionDigits={paidDecimals}
             numberOfLines={1}
-            style={[styles.microBoxValue, { color: theme.textPrimary }]}
-          >
-            <CurrencyText amount={summary.totalPaid} />
-          </Text>
-        </View>
+            style={[styles.statValue, { color: palette.positive }]}
+          />
+        </TouchableOpacity>
 
-        {/* Overdue Box */}
-        <View
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => handleTileTap(secondTileFilterKey)}
           style={[
-            styles.microBox,
+            styles.statTile,
             {
-              backgroundColor: theme.boxOverdueBg,
-              borderColor: theme.boxOverdueBorder,
-              marginRight: 6,
+              backgroundColor: isSecondTileActive
+                ? secondTileIsOverdue
+                  ? palette.negativeBg
+                  : palette.warningBg
+                : secondTileIsOverdue
+                  ? palette.negativeBg
+                  : palette.surfaceSubtle,
+              borderColor: isSecondTileActive
+                ? secondTileIsOverdue
+                  ? palette.negative
+                  : palette.warning
+                : secondTileIsOverdue
+                  ? palette.negativeBorder
+                  : palette.cardBorder,
+              borderWidth: isSecondTileActive ? 1.5 : 1,
             },
           ]}
         >
-          <View style={styles.microBoxHeader}>
-            <MaterialCommunityIcons
-              name="alert"
-              size={15}
-              color={theme.boxOverdueText}
-            />
-            <Text
-              numberOfLines={1}
+          <View style={styles.statTileTop}>
+            <View
               style={[
-                styles.microBoxLabel,
-                { color: theme.boxOverdueText, marginLeft: 4, fontWeight: "700" },
+                styles.statIconBox,
+                {
+                  backgroundColor: secondTileIsOverdue
+                    ? isDarkMode
+                      ? 'rgba(239, 68, 68, 0.24)'
+                      : '#FEE2E2'
+                    : palette.warningBg,
+                },
               ]}
             >
-              Overdue ({summary.overdueCount || 0})
-            </Text>
+              <MaterialCommunityIcons
+                name={secondTileIsOverdue ? 'alert-circle' : 'clock-outline'}
+                size={16}
+                color={secondTileIsOverdue ? palette.negative : palette.warning}
+              />
+            </View>
+            {secondTileIsOverdue ? (
+              <View
+                style={[
+                  styles.statCountPill,
+                  { backgroundColor: isSecondTileActive ? palette.negative : palette.badgeBg },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statCountText,
+                    { color: isSecondTileActive ? '#FFFFFF' : palette.negative },
+                  ]}
+                >
+                  {overdueCount}
+                </Text>
+              </View>
+            ) : null}
           </View>
           <Text
-            numberOfLines={1}
-            style={[styles.microBoxValue, { color: theme.boxOverdueText }]}
+            style={[
+              styles.statLabel,
+              {
+                color: secondTileIsOverdue ? palette.negative : palette.textSecondary,
+                fontWeight: secondTileIsOverdue ? '700' : '700',
+              },
+            ]}
           >
-            <CurrencyText amount={summary.overdueAmount} />
+            {secondTileIsOverdue ? 'Overdue' : 'Next 7 Days'}
           </Text>
-        </View>
+          <CurrencyText
+            amount={secondTileIsOverdue ? overdue : upcoming7}
+            minimumFractionDigits={secondTileIsOverdue ? overdueDecimals : upcomingDecimals}
+            maximumFractionDigits={secondTileIsOverdue ? overdueDecimals : upcomingDecimals}
+            numberOfLines={1}
+            style={[
+              styles.statValue,
+              { color: secondTileIsOverdue ? palette.negative : palette.textPrimary },
+            ]}
+          />
+        </TouchableOpacity>
+      </View>
 
-        {/* Next 7d Box */}
-        <View
+      {/* Dedicated Full-Width Next 7 Days Bar when Overdue also exists */}
+      {secondTileIsOverdue && upcoming7 > 0 && (
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => handleTileTap('pending')}
           style={[
-            styles.microBox,
+            styles.upcomingStrip,
             {
-              backgroundColor: theme.boxUpcomingBg,
-              borderColor: theme.boxUpcomingBorder,
+              backgroundColor:
+                activeStatusFilter === 'pending' ? palette.warningBg : palette.surfaceSubtle,
+              borderColor:
+                activeStatusFilter === 'pending' ? palette.warning : palette.cardBorder,
             },
           ]}
         >
-          <View style={styles.microBoxHeader}>
+          <View style={styles.upcomingLeft}>
             <MaterialCommunityIcons
               name="clock-outline"
               size={15}
-              color={theme.boxUpcomingIcon}
+              color={palette.warning}
             />
-            <Text
-              style={[
-                styles.microBoxLabel,
-                { color: theme.textSecondary, marginLeft: 4 },
-              ]}
-            >
-              Next 7d
+            <Text style={[styles.upcomingLabel, { color: palette.textSecondary }]}>
+              Upcoming in next 7 days
             </Text>
           </View>
-          <Text
-            numberOfLines={1}
-            style={[styles.microBoxValue, { color: theme.textPrimary }]}
-          >
-            <CurrencyText amount={summary.upcoming7} />
-          </Text>
-        </View>
-      </View>
+          <View style={styles.upcomingRight}>
+            <CurrencyText
+              amount={upcoming7}
+              minimumFractionDigits={upcomingDecimals}
+              maximumFractionDigits={upcomingDecimals}
+              style={[styles.upcomingAmount, { color: palette.textPrimary }]}
+            />
+            <Feather name="chevron-right" size={14} color={palette.textMuted} />
+          </View>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  heroContainer: {
-    borderRadius: 20,
+  cardShadowLight: Platform.select({
+    ios: {
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.06,
+      shadowRadius: 10,
+    },
+    android: {
+      elevation: 2,
+    },
+    default: {
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+    },
+  }),
+  heroCard: {
+    borderRadius: 22,
+    borderWidth: 1,
     padding: 16,
-    borderWidth: 1,
-    shadowColor: "#0b1c30",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  headerLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    fontFamily: "Inter",
+  heroTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
   },
-  headerRightRow: {
-    flexDirection: "row",
-    alignItems: "center",
+  heroBadgeIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
   },
-  settledBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 2.5,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginRight: 6,
+  heroTitleTextCol: {
+    flex: 1,
+    minWidth: 0,
   },
-  settledDot: {
+  heroEyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  heroSubMeta: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  heroRightControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 8,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  statusDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    marginRight: 4,
+    marginRight: 5,
   },
-  settledText: {
-    fontSize: 11,
-    fontWeight: "800",
-    fontFamily: "Inter",
+  statusBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '800',
   },
-  paidCountSub: {
-    fontSize: 11,
-    fontWeight: "500",
-    fontFamily: "Inter",
+  eyeToggleBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  amountContainer: {
-    marginTop: 8,
-    marginBottom: 10,
-  },
-  bigAmountText: {
-    fontSize: 32,
-    fontWeight: "800",
-    fontFamily: "Plus Jakarta Sans",
+  heroTotalAmount: {
+    fontSize: 28,
+    fontWeight: '900',
     letterSpacing: -0.6,
-  },
-  progressTrack: {
-    width: "100%",
-    height: 8,
-    borderRadius: 4,
-    flexDirection: "row",
-    overflow: "hidden",
     marginBottom: 12,
   },
+  progressBlock: {
+    marginBottom: 14,
+  },
+  progressLabelsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  progressLabel: {
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  progressPctText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+  progressTrack: {
+    height: 7,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
   progressFill: {
-    height: "100%",
+    height: '100%',
     borderRadius: 4,
   },
-  progressRemaining: {
-    height: "100%",
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
   },
-  microGrid: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  microBox: {
+  statTile: {
     flex: 1,
+    borderRadius: 16,
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 12,
+  },
+  statTileTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  statIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statCountPill: {
+    minWidth: 24,
+    height: 20,
+    paddingHorizontal: 7,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statCountText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  upcomingStrip: {
+    marginTop: 10,
+    borderRadius: 13,
     borderWidth: 1,
-    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  microBoxHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
+  upcomingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    flex: 1,
+    minWidth: 0,
   },
-  microBoxLabel: {
-    fontSize: 10.5,
-    fontWeight: "600",
-    fontFamily: "Inter",
+  upcomingLabel: {
+    fontSize: 12,
+    fontWeight: '700',
   },
-  microBoxValue: {
-    fontSize: 14.5,
-    fontWeight: "800",
-    fontFamily: "Plus Jakarta Sans",
+  upcomingRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 8,
+  },
+  upcomingAmount: {
+    fontSize: 13.5,
+    fontWeight: '900',
   },
 });
 

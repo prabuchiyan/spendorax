@@ -1,19 +1,37 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { TextInput as PaperTextInput, Button as PaperButton, Searchbar, Chip } from 'react-native-paper';
-import IconPicker from '../components/IconPicker';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import {
+  View,
+  Text,
+  TextInput,
+  ScrollView,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  InteractionManager,
+  Platform,
+} from 'react-native';
+import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { getCategories, softDeleteCategory } from '../services/categories';
+import { getCategoryAndSourceUsage } from '../services/transactions';
 import CommonBottomSheetModal from '../components/CommonBottomSheetModal';
-import ColorPickerModal from '../components/ColorPickerModal';
-import { getCategories, softDeleteCategory, updateCategory } from '../services/categories';
-import Card from '../components/Card';
-import IconButton from '../components/IconButton';
-import { useTheme } from '../context/ThemeContext';
-import { Colors } from '../components/Theme';
+import ResponsiveBottomSheet from '../components/ResponsiveBottomSheet';
 import ContextualFAB from '../components/ContextualFAB';
+import { useTheme } from '../context/ThemeContext';
 import { useCategories, useAppDispatch } from '../redux/hooks';
 import { setCategories, setCategoriesMap } from '../redux/slices/categorySlice';
+
+const FILTER_OPTIONS = [
+  { key: 'all', label: 'All' },
+  { key: 'expense', label: 'Expense' },
+  { key: 'income', label: 'Income' },
+];
+
+const SORT_MODES = [
+  { key: 'default', label: 'Default', icon: 'sort' },
+  { key: 'most_used', label: 'Most Used', icon: 'sort-descending' },
+  { key: 'name_desc', label: 'Name Z–A', icon: 'sort-alphabetical-descending' },
+];
 
 export default function CategoriesScreen({ route, navigation }) {
   const { isDarkMode, theme } = useTheme();
@@ -21,746 +39,974 @@ export default function CategoriesScreen({ route, navigation }) {
   const reduxItems = useCategories();
   const items = reduxItems || [];
 
-  const [name, setName] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [initialCategoryType, setInitialCategoryType] = useState('expense');
-  const [editCategory, setEditCategory] = useState(null);
-  const [type, setType] = useState('expense');
-  const [editingId, setEditingId] = useState(null);
-  const [editName, setEditName] = useState('');
-  const [editType, setEditType] = useState('expense');
-  const [selectedIcon, setSelectedIcon] = useState('tag');
-  const [selectedColor, setSelectedColor] = useState('#4B7CF3');
-  const [editIcon, setEditIcon] = useState('tag');
-  const [editColor, setEditColor] = useState('#4B7CF3');
-  const [showIconPickerForAdd, setShowIconPickerForAdd] = useState(false);
-  const [showIconPickerForEdit, setShowIconPickerForEdit] = useState(false);
-  const [userPickedIconAdd, setUserPickedIconAdd] = useState(false);
-  const [userPickedIconEdit, setUserPickedIconEdit] = useState(false);
-  const [showColorPickerForAdd, setShowColorPickerForAdd] = useState(false);
-  const [showColorPickerForEdit, setShowColorPickerForEdit] = useState(false);
+  const [usageMap, setUsageMap] = useState({});
   const [confirmVisible, setConfirmVisible] = useState(false);
-  const [confirmTargetId, setConfirmTargetId] = useState(null);
-  const [confirmMessage, setConfirmMessage] = useState('Are you sure you want to delete this item?');
+  const [confirmTargetItem, setConfirmTargetItem] = useState(null);
+  const [actionSheetItem, setActionSheetItem] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+  const [typeFilter, setTypeFilter] = useState('all'); // 'all' | 'expense' | 'income'
+  const [sortMode, setSortMode] = useState('default'); // 'default' | 'most_used' | 'name_desc'
   const [isDeletingCategory, setIsDeletingCategory] = useState(false);
 
-  async function load() {
-    const rows = await getCategories(true);
-    dispatch(setCategories(rows));
-
-    const catMap = {};
-    rows.forEach((c) => {catMap[c.id] = c;});
-    dispatch(setCategoriesMap(catMap));
-  }
-
-  useEffect(() => {
-    load();
-    const unsubscribe = navigation.addListener('focus', () => {
-      load();
-    });
-    return unsubscribe;
-  }, [navigation]);
-
-  // If navigated with an editId param, start editing that category
-  useEffect(() => {
-    if (route && route.params && route.params.editId) {
-      const id = route.params.editId;
-      const item = items.find((i) => i.id === id);
-      if (item) startEdit(item);
+  const palette = useMemo(() => {
+    const primary = theme?.primary || '#4B7CF3';
+    if (isDarkMode) {
+      return {
+        bg: theme?.bg || '#0B0F17',
+        cardBg: theme?.cardBg || '#182234',
+        cardBorder: theme?.cardBorder || '#334155',
+        surfaceSubtle: '#1E293B',
+        inputBg: '#131C2E',
+        textPrimary: theme?.textPrimary || '#F3F4F6',
+        textSecondary: theme?.textSecondary || '#9CA3AF',
+        textMuted: '#64748B',
+        divider: '#253248',
+        primary,
+        primarySoft: 'rgba(75, 124, 243, 0.16)',
+        primaryBorder: 'rgba(96, 165, 250, 0.32)',
+        primaryText: '#93C5FD',
+        income: '#34D399',
+        incomeBg: 'rgba(16, 185, 129, 0.14)',
+        incomeBorder: 'rgba(52, 211, 153, 0.28)',
+        expense: '#F87171',
+        expenseBg: 'rgba(239, 68, 68, 0.14)',
+        expenseBorder: 'rgba(248, 113, 113, 0.28)',
+        editBg: 'rgba(59, 130, 246, 0.15)',
+        editBorder: 'rgba(96, 165, 250, 0.28)',
+        editIcon: '#60A5FA',
+        deleteBg: 'rgba(239, 68, 68, 0.14)',
+        deleteBorder: 'rgba(248, 113, 113, 0.28)',
+        deleteIcon: '#F87171',
+        badgeBg: '#1E293B',
+        badgeText: '#CBD5E1',
+      };
     }
-  }, [route, items]);
+
+    return {
+      bg: theme?.bg || '#F8F9FF',
+      cardBg: theme?.cardBg || '#FFFFFF',
+      cardBorder: theme?.cardBorder || '#E2E8F0',
+      surfaceSubtle: '#F1F5F9',
+      inputBg: '#FFFFFF',
+      textPrimary: theme?.textPrimary || '#0B1C30',
+      textSecondary: theme?.textSecondary || '#64748B',
+      textMuted: '#94A3B8',
+      divider: '#F1F5F9',
+      primary,
+      primarySoft: '#EFF4FF',
+      primaryBorder: '#BFDBFE',
+      primaryText: '#2563EB',
+      income: '#059669',
+      incomeBg: '#ECFDF5',
+      incomeBorder: '#A7F3D0',
+      expense: '#DC2626',
+      expenseBg: '#FEF2F2',
+      expenseBorder: '#FECACA',
+      editBg: '#EFF6FF',
+      editBorder: '#DBEAFE',
+      editIcon: '#2563EB',
+      deleteBg: '#FEF2F2',
+      deleteBorder: '#FEE2E2',
+      deleteIcon: '#EF4444',
+      badgeBg: '#E2E8F0',
+      badgeText: '#475569',
+    };
+  }, [isDarkMode, theme]);
+
+  const navigateTarget = useCallback(
+    (screenName, params) => {
+      const parent = navigation.getParent?.();
+      if (parent && typeof parent.navigate === 'function') {
+        parent.navigate(screenName, params);
+      } else {
+        navigation.navigate(screenName, params);
+      }
+    },
+    [navigation]
+  );
+
+  const load = useCallback(async () => {
+    try {
+      const [rows, usage] = await Promise.all([
+        getCategories(true),
+        getCategoryAndSourceUsage(1).catch(() => ({ categoryCount: {} })),
+      ]);
+
+      const safeRows = rows || [];
+      dispatch(setCategories(safeRows));
+
+      const catMap = {};
+      safeRows.forEach((c) => {
+        catMap[c.id] = c;
+      });
+      dispatch(setCategoriesMap(catMap));
+      setUsageMap(usage?.categoryCount || {});
+    } catch (e) {
+      console.warn('CategoriesScreen load error:', e);
+    }
+  }, [dispatch]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      InteractionManager.runAfterInteractions(() => {
+        if (active) {
+          load();
+        }
+      });
+      return () => {
+        active = false;
+      };
+    }, [load])
+  );
+
+  // Support deep-link / param editId by opening CategoryCreate directly
+  useEffect(() => {
+    const editId = route?.params?.editId;
+    if (!editId || items.length === 0) return;
+
+    const match = items.find((i) => String(i.id) === String(editId));
+    if (match) {
+      navigation.setParams?.({ editId: undefined });
+      navigation.navigate('CategoryCreate', {
+        editData: match,
+        currentType: match.type || 'expense',
+      });
+    }
+  }, [route?.params?.editId, items, navigation]);
+
+  const summary = useMemo(() => {
+    return items.reduce(
+      (acc, item) => {
+        const uses = Number(usageMap[String(item.id)] || 0);
+        acc.totalUses += uses;
+        if (String(item.type || '').toLowerCase() === 'income') {
+          acc.incomeCount += 1;
+          acc.incomeUses += uses;
+        } else {
+          acc.expenseCount += 1;
+          acc.expenseUses += uses;
+        }
+        return acc;
+      },
+      {
+        expenseCount: 0,
+        incomeCount: 0,
+        expenseUses: 0,
+        incomeUses: 0,
+        totalUses: 0,
+      }
+    );
+  }, [items, usageMap]);
 
   const filteredItems = useMemo(() => {
-    if (!searchQuery) return items;
-    const q = searchQuery.toLowerCase();
-    return items.filter((item) =>
-    (item.name || '').toLowerCase().includes(q)
-    );
-  }, [items, searchQuery]);
+    const q = searchQuery.trim().toLowerCase();
+    const matched = items.filter((item) => {
+      const itemType = String(item.type || 'expense').toLowerCase() === 'income' ? 'income' : 'expense';
+      if (typeFilter === 'expense' && itemType !== 'expense') return false;
+      if (typeFilter === 'income' && itemType !== 'income') return false;
+      if (q && !(item.name || '').toLowerCase().includes(q)) return false;
+      return true;
+    });
 
-  async function startEdit(item) {
-    setEditingId(item.id);
-    setEditName(item.name || '');
-    setEditType(item.type || 'expense');
-    setEditIcon(item.icon || 'tag');
-    setEditColor(item.color || '#4B7CF3');
-    setUserPickedIconEdit(false);
-  }
-
-  function handleEditNameChange(t) {
-    setEditName(t);
-    if (userPickedIconEdit) setUserPickedIconEdit(false);
-  }
-
-  async function saveEdit() {
-    setIsSaving(true);
-    try {
-      await updateCategory(editingId, { name: editName, type: editType, icon: editIcon, color: editColor, is_active: 1 });
-      setEditingId(null);
-      setEditName('');
-      setEditType('expense');
-      setEditIcon('tag');
-      setEditColor('#4B7CF3');
-      setUserPickedIconEdit(false);
-      load();
-    } finally {
-      setIsSaving(false);
+    if (sortMode === 'most_used') {
+      return [...matched].sort((a, b) => {
+        const diff = Number(usageMap[String(b.id)] || 0) - Number(usageMap[String(a.id)] || 0);
+        if (diff !== 0) return diff;
+        return String(a.name || '').localeCompare(String(b.name || ''));
+      });
     }
-  }
+    if (sortMode === 'name_desc') {
+      return [...matched].sort((a, b) =>
+        String(b.name || '').localeCompare(String(a.name || ''))
+      );
+    }
+    return matched;
+  }, [items, searchQuery, typeFilter, sortMode, usageMap]);
 
-  function cancelEdit() {
-    setEditingId(null);
-    setEditName('');
-    setEditType('expense');
-  }
+  const activeSort = SORT_MODES.find((m) => m.key === sortMode) || SORT_MODES[0];
+
+  const cycleSortMode = () => {
+    const idx = SORT_MODES.findIndex((m) => m.key === sortMode);
+    const next = SORT_MODES[(idx + 1) % SORT_MODES.length];
+    setSortMode(next.key);
+  };
 
   async function remove(id) {
     await softDeleteCategory(id);
-    load();
+    await load();
   }
 
-  // Simple suggestions map: keyword -> preferred icon
-  function suggestIconForText(text) {
-    if (!text) return 'tag';
-    const t = text.toLowerCase().trim().replace(/[^a-z0-9\s]/g, ' ');
-    const tokens = t.split(/\s+/).filter(Boolean);
-    const suggestions = {
-      gym: 'dumbbell',
-      fitness: 'dumbbell',
-      snack: 'food-apple',
-      food: 'food',
-      coffee: 'coffee',
-      tea: 'coffee',
-      veg: 'leaf',
-      vegetable: 'leaf',
-      non: 'food-drumstick',
-      meat: 'food-drumstick',
-      dinner: 'silverware-fork-knife',
-      lunch: 'silverware-fork-knife',
-      breakfast: 'silverware-fork-knife',
-      rent: 'home',
-      grocer: 'shopping',
-      grocery: 'shopping',
-      salary: 'cash',
-      income: 'cash',
-      transport: 'car',
-      travel: 'car',
-      movie: 'movie',
-      music: 'music'
-    };
+  const toggleTypeFilter = (target) => {
+    setTypeFilter((prev) => (prev === target ? 'all' : target));
+  };
 
-    const glyph = MaterialCommunityIcons && MaterialCommunityIcons.glyphMap ? MaterialCommunityIcons.glyphMap : {};
-    const isValid = (ic) => !!glyph[ic];
-    const fallbackList = ['tag', 'shopping', 'home', 'cash', 'credit-card', 'wallet', 'food', 'gift', 'account'];
-    function chooseValid(ic) {
-      if (isValid(ic)) return ic;
-      for (const f of fallbackList) if (isValid(f)) return f;
-      return 'tag';
-    }
+  const expenseShare = items.length > 0 ? Math.round((summary.expenseCount / items.length) * 100) : 0;
+  const incomeShare = items.length > 0 ? Math.round((summary.incomeCount / items.length) * 100) : 0;
 
-    // 1) exact token lookup
-    for (const token of tokens) {
-      if (suggestions[token]) return chooseValid(suggestions[token]);
-    }
-    // 2) whole text word-boundary lookup
-    for (const key of Object.keys(suggestions)) {
-      try {
-        const re = new RegExp('\\b' + key + '\\b');
-        if (re.test(t)) return chooseValid(suggestions[key]);
-      } catch (e) {}
-    }
-    // 3) fuzzy token contains
-    for (const token of tokens) {
-      for (const key of Object.keys(suggestions)) if (token.includes(key) || key.includes(token)) return chooseValid(suggestions[key]);
-    }
+  const renderStatTile = ({
+    filterKey,
+    count,
+    label,
+    metaText,
+    icon,
+    tintColor,
+    bgColor,
+  }) => {
+    const isActive = typeFilter === filterKey;
+    return (
+      <TouchableOpacity
+        key={filterKey}
+        activeOpacity={0.8}
+        onPress={() => toggleTypeFilter(filterKey)}
+        style={[
+          styles.heroStatTile,
+          {
+            backgroundColor: isActive ? bgColor : palette.surfaceSubtle,
+            borderColor: isActive ? tintColor : palette.cardBorder,
+            borderWidth: isActive ? 1.5 : 1,
+          },
+        ]}
+      >
+        <View style={styles.heroStatTop}>
+          <View style={[styles.heroStatIcon, { backgroundColor: bgColor }]}>
+            <MaterialCommunityIcons name={icon} size={16} color={tintColor} />
+          </View>
+          <View
+            style={[
+              styles.heroStatCountPill,
+              { backgroundColor: isActive ? tintColor : palette.badgeBg },
+            ]}
+          >
+            <Text
+              style={[
+                styles.heroStatCountText,
+                { color: isActive ? '#FFFFFF' : palette.badgeText },
+              ]}
+            >
+              {count}
+            </Text>
+          </View>
+        </View>
 
-    // fallback to a safe default
-    return chooseValid('tag');
-  }
+        <Text style={[styles.heroStatLabel, { color: palette.textSecondary }]}>
+          {label}
+        </Text>
+        <Text numberOfLines={1} style={[styles.heroStatValue, { color: tintColor }]}>
+          {metaText}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
-  // Auto-suggest icon while typing (unless user manually picked one)
-  React.useEffect(() => {
-    if (!userPickedIconAdd) {
-      const s = suggestIconForText(name);
-      setSelectedIcon(s);
-    }
-  }, [name, userPickedIconAdd]);
+  const listHeader = (
+    <View style={styles.headerBlock}>
+      {/* Adaptive Light / Dark Categories Overview Hero Card */}
+      <View
+        style={[
+          styles.heroCard,
+          {
+            backgroundColor: palette.cardBg,
+            borderColor: palette.cardBorder,
+          },
+          !isDarkMode && styles.cardShadowLight,
+        ]}
+      >
+        <View style={styles.heroTopRow}>
+          <View style={styles.heroTitleGroup}>
+            <View style={[styles.heroBadgeIcon, { backgroundColor: palette.primarySoft }]}>
+              <MaterialCommunityIcons
+                name="shape-outline"
+                size={18}
+                color={palette.primary}
+              />
+            </View>
+            <View style={styles.heroTitleTextCol}>
+              <Text style={[styles.heroEyebrow, { color: palette.textSecondary }]}>
+                CATEGORIES OVERVIEW
+              </Text>
+              <Text style={[styles.heroSubMeta, { color: palette.textMuted }]}>
+                Organize income & expenses
+              </Text>
+            </View>
+          </View>
 
-  React.useEffect(() => {
-    if (!userPickedIconEdit && editName) {
-      const s = suggestIconForText(editName);
-      setEditIcon(s);
-    }
-  }, [editName, userPickedIconEdit]);
+          <TouchableOpacity
+            onPress={() => navigateTarget('CategoryBudgetsDashboard')}
+            activeOpacity={0.75}
+            style={[
+              styles.budgetsPillBtn,
+              {
+                backgroundColor: palette.primarySoft,
+                borderColor: palette.primaryBorder,
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="chart-arc"
+              size={14}
+              color={palette.primaryText}
+            />
+            <Text style={[styles.budgetsPillText, { color: palette.primaryText }]}>
+              Budgets
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.heroHeadlineRow}>
+          <Text style={[styles.heroTotalValue, { color: palette.textPrimary }]}>
+            {items.length}
+          </Text>
+          <View style={styles.heroHeadlineMetaCol}>
+            <Text style={[styles.heroHeadlineUnit, { color: palette.textPrimary }]}>
+              {items.length === 1 ? 'Category' : 'Categories'}
+            </Text>
+            <Text style={[styles.heroHeadlineSub, { color: palette.textSecondary }]}>
+              {summary.totalUses} {summary.totalUses === 1 ? 'entry' : 'entries'} in past year
+            </Text>
+          </View>
+        </View>
+
+        {/* Interactive Expense & Income Filter Tiles */}
+        <View style={styles.heroStatsRow}>
+          {renderStatTile({
+            filterKey: 'expense',
+            count: summary.expenseCount,
+            label: 'Expenses',
+            metaText: `${expenseShare}% · ${summary.expenseUses} txns`,
+            icon: 'arrow-down',
+            tintColor: palette.expense,
+            bgColor: palette.expenseBg,
+          })}
+          {renderStatTile({
+            filterKey: 'income',
+            count: summary.incomeCount,
+            label: 'Income',
+            metaText: `${incomeShare}% · ${summary.incomeUses} txns`,
+            icon: 'arrow-up',
+            tintColor: palette.income,
+            bgColor: palette.incomeBg,
+          })}
+        </View>
+      </View>
+
+      {/* Search Bar */}
+      <View
+        style={[
+          styles.searchBarBox,
+          {
+            backgroundColor: palette.inputBg,
+            borderColor: palette.cardBorder,
+          },
+          !isDarkMode && styles.cardShadowLight,
+        ]}
+      >
+        <MaterialCommunityIcons name="magnify" size={20} color={palette.textSecondary} />
+        <TextInput
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search categories by name..."
+          placeholderTextColor={palette.textMuted}
+          style={[styles.searchInput, { color: palette.textPrimary }]}
+          autoCorrect={false}
+          returnKeyType="search"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity
+            onPress={() => setSearchQuery('')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <MaterialCommunityIcons name="close-circle" size={18} color={palette.textMuted} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Filter Pills + Sort Row */}
+      <View style={styles.controlsRow}>
+        <View style={styles.filterPillsWrap}>
+          {FILTER_OPTIONS.map((opt) => {
+            const count =
+              opt.key === 'all'
+                ? items.length
+                : opt.key === 'expense'
+                  ? summary.expenseCount
+                  : summary.incomeCount;
+            const active = typeFilter === opt.key;
+            const activeBg =
+              opt.key === 'expense'
+                ? palette.expense
+                : opt.key === 'income'
+                  ? palette.income
+                  : palette.primary;
+
+            return (
+              <TouchableOpacity
+                key={opt.key}
+                activeOpacity={0.8}
+                onPress={() => setTypeFilter(opt.key)}
+                style={[
+                  styles.filterPill,
+                  {
+                    backgroundColor: active ? activeBg : palette.cardBg,
+                    borderColor: active ? activeBg : palette.cardBorder,
+                  },
+                ]}
+              >
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.filterPillText,
+                    { color: active ? '#FFFFFF' : palette.textSecondary },
+                  ]}
+                >
+                  {opt.label} ({count})
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={cycleSortMode}
+          style={[
+            styles.sortPill,
+            {
+              backgroundColor: sortMode !== 'default' ? palette.primarySoft : palette.cardBg,
+              borderColor: sortMode !== 'default' ? palette.primaryBorder : palette.cardBorder,
+            },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name={activeSort.icon}
+            size={15}
+            color={sortMode !== 'default' ? palette.primaryText : palette.textSecondary}
+          />
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.sortPillText,
+              { color: sortMode !== 'default' ? palette.primaryText : palette.textSecondary },
+            ]}
+          >
+            {sortMode === 'default' ? 'Sort' : activeSort.label}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Section Title */}
+      {filteredItems.length > 0 && (
+        <View style={styles.listHeader}>
+          <Text style={[styles.listTitle, { color: palette.textPrimary }]}>
+            {typeFilter === 'expense'
+              ? 'Expense Categories'
+              : typeFilter === 'income'
+                ? 'Income Categories'
+                : 'All Categories'}
+          </Text>
+          <View style={[styles.listCountBadge, { backgroundColor: palette.badgeBg }]}>
+            <Text style={[styles.listCountText, { color: palette.badgeText }]}>
+              {filteredItems.length}
+            </Text>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+
+  const renderCategoryCard = ({ item }) => {
+    const isIncome = String(item.type || 'expense').toLowerCase() === 'income';
+    const itemColor = item.color || palette.primary;
+    const typeColor = isIncome ? palette.income : palette.expense;
+    const typeSoftBg = isIncome ? palette.incomeBg : palette.expenseBg;
+    const avatarTint = isDarkMode ? `${itemColor}2E` : `${itemColor}18`;
+    const txCount = Number(usageMap[String(item.id)] || 0);
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.82}
+        onPress={() => {
+          navigateTarget('CategoriesDetails', {
+            categoryId: item.id,
+            categoryName: item.name,
+          });
+        }}
+        onLongPress={() => setActionSheetItem(item)}
+        delayLongPress={260}
+        style={[
+          styles.categoryCard,
+          {
+            backgroundColor: palette.cardBg,
+            borderColor: palette.cardBorder,
+            borderLeftColor: itemColor,
+          },
+          !isDarkMode && styles.cardShadowLight,
+        ]}
+      >
+        <View style={styles.categoryTopRow}>
+          <View style={[styles.categoryIconBox, { backgroundColor: avatarTint }]}>
+            <MaterialCommunityIcons
+              name={item.icon || 'tag'}
+              size={22}
+              color={itemColor}
+            />
+          </View>
+
+          <View style={styles.categoryInfoCol}>
+            <Text
+              numberOfLines={2}
+              style={[styles.categoryName, { color: palette.textPrimary }]}
+            >
+              {item.name}
+            </Text>
+
+            <View style={styles.categoryStatusRow}>
+              <View style={[styles.statusBadge, { backgroundColor: typeSoftBg }]}>
+                <View style={[styles.statusDot, { backgroundColor: typeColor }]} />
+                <Text numberOfLines={1} style={[styles.statusBadgeText, { color: typeColor }]}>
+                  {isIncome ? 'Income' : 'Expense'}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.categoryUsageCol}>
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.categoryUsageValue,
+                { color: txCount > 0 ? palette.textPrimary : palette.textMuted },
+              ]}
+            >
+              {txCount}
+            </Text>
+            <View style={styles.usageCaptionRow}>
+              <Text style={[styles.usageCaption, { color: palette.textMuted }]}>
+                USES (1Y)
+              </Text>
+              {txCount > 0 && (
+                <MaterialCommunityIcons
+                  name="arrow-top-right"
+                  size={11}
+                  color={typeColor}
+                />
+              )}
+            </View>
+          </View>
+        </View>
+
+        <View style={[styles.categoryFooter, { borderTopColor: palette.divider }]}>
+          <View style={styles.footerMetaRow}>
+            <MaterialCommunityIcons
+              name="chart-timeline-variant"
+              size={14}
+              color={palette.textMuted}
+            />
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.footerMetaText,
+                { color: txCount > 0 ? palette.textSecondary : palette.textMuted },
+              ]}
+            >
+              {txCount > 0
+                ? 'Tap for analytics & history'
+                : 'No entries in past year'}
+            </Text>
+          </View>
+
+          <View style={styles.cardActionsRow}>
+            <TouchableOpacity
+              activeOpacity={0.75}
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                setActionSheetItem(item);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel={`More actions for ${item.name}`}
+              style={[
+                styles.moreActionsPill,
+                {
+                  backgroundColor: palette.surfaceSubtle,
+                  borderColor: palette.cardBorder,
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="dots-horizontal"
+                size={18}
+                color={palette.textSecondary}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <View style={styles.container}>
-      {/* ───────────── Header / Summary ───────────── */}
-      <View style={styles.headerSection}>
-        <View style={styles.titleRow}>
-          <View>
-            <Text style={styles.pageTitle}>Categories</Text>
-            <Text style={styles.pageSubtitle}>
-              Organize your income & expenses
-            </Text>
-          </View>
-
-          <View style={styles.totalBadge}>
-            <Text style={styles.totalBadgeNumber}>
-              {items.length}
-            </Text>
-            <Text style={styles.totalBadgeLabel}>
-              TOTAL
-            </Text>
-          </View>
-        </View>
-
-        {/* Summary stats */}
-        <View style={styles.statsRow}>
-          <View style={[styles.statCard, styles.expenseStat]}>
-            <View style={styles.statIconExpense}>
-              <MaterialCommunityIcons
-                name="arrow-down"
-                size={16}
-                color="#E46A6A" />
-              
-            </View>
-
-            <View>
-              <Text style={styles.statValue}>
-                {items.filter((i) => i.type === 'expense').length}
-              </Text>
-              <Text style={styles.statLabel}>
-                Expenses
-              </Text>
-            </View>
-          </View>
-
-          <View style={[styles.statCard, styles.incomeStat]}>
-            <View style={styles.statIconIncome}>
-              <MaterialCommunityIcons
-                name="arrow-up"
-                size={16}
-                color="#36B37E" />
-              
-            </View>
-
-            <View>
-              <Text style={styles.statValue}>
-                {items.filter((i) => i.type === 'income').length}
-              </Text>
-              <Text style={styles.statLabel}>
-                Income
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-
-      {/* ───────────── Search ───────────── */}
-      <View style={styles.searchContainer}>
-        <Searchbar
-          placeholder="Search categories"
-          onChangeText={setSearchQuery}
-          value={searchQuery}
-          style={styles.searchBar}
-          inputStyle={styles.searchInput}
-          iconColor="#7A8794"
-          placeholderTextColor="#9AA5B1" />
-        
-      </View>
-
-      {/* ───────────── Category List ───────────── */}
+    <View style={[styles.container, { backgroundColor: palette.bg }]}>
       <FlatList
         data={filteredItems}
-        keyExtractor={(i) => String(i.id)}
+        keyExtractor={(item) => String(item.id)}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={listHeader}
         contentContainerStyle={[
-        styles.listContent,
-        filteredItems.length === 0 && styles.emptyListContent]
-        }
-        ListHeaderComponent={
-        filteredItems.length > 0 ?
-        <View style={styles.listHeader}>
-              <Text style={styles.listTitle}>
-                All Categories
-              </Text>
-
-              <Text style={styles.listCount}>
-                {filteredItems.length}
-              </Text>
-            </View> :
-        null
-        }
+          styles.listContent,
+          filteredItems.length === 0 && styles.emptyListContent,
+        ]}
         ListEmptyComponent={
-        <View style={styles.emptyState}>
-            <View style={styles.emptyIconContainer}>
+          <View
+            style={[
+              styles.emptyStateCard,
+              {
+                backgroundColor: palette.cardBg,
+                borderColor: palette.cardBorder,
+              },
+            ]}
+          >
+            <View style={[styles.emptyIconCircle, { backgroundColor: palette.surfaceSubtle }]}>
               <MaterialCommunityIcons
-              name="tag-multiple-outline"
-              size={38}
-              color="#9AA5B1" />
-            
+                name="tag-multiple-outline"
+                size={34}
+                color={palette.textMuted}
+              />
             </View>
-
-            <Text style={styles.emptyTitle}>
+            <Text style={[styles.emptyTitle, { color: palette.textPrimary }]}>
               No categories found
             </Text>
-
-            <Text style={styles.emptySubtitle}>
-              {searchQuery ?
-            'Try searching with a different name' :
-            'Create your first category to get started'}
+            <Text style={[styles.emptySubtitle, { color: palette.textSecondary }]}>
+              {searchQuery
+                ? `No category matches "${searchQuery}"`
+                : typeFilter !== 'all'
+                  ? `No ${typeFilter} categories found`
+                  : 'Tap + to add your first expense or income category'}
             </Text>
+            {(searchQuery.length > 0 || typeFilter !== 'all') && (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => {
+                  setSearchQuery('');
+                  setTypeFilter('all');
+                }}
+                style={[
+                  styles.resetFilterBtn,
+                  {
+                    backgroundColor: palette.primarySoft,
+                    borderColor: palette.primaryBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.resetFilterText, { color: palette.primaryText }]}>
+                  Show all categories
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         }
         initialNumToRender={15}
         windowSize={10}
-        renderItem={({ item }) =>
-        <Card style={styles.categoryCard}>
-            {editingId === item.id ?
-          <View>
-                {/* Edit Preview */}
-                <View
-              style={[
-              styles.editPreview,
-              {
-                backgroundColor:
-                editType === 'expense' ?
-                '#FFF7F7' :
-                '#F3FCF8'
-              }]
-              }>
-              
-                  <View style={styles.editPreviewLeft}>
+        renderItem={renderCategoryCard}
+      />
+
+      {/* CATEGORY ACTION SHEET (Hidden Edit / Delete / Breakdown Hub) */}
+      <ResponsiveBottomSheet
+        visible={!!actionSheetItem}
+        animationType="slide"
+        maxHeightRatio={0.75}
+        backdropColor={isDarkMode ? 'rgba(0, 0, 0, 0.72)' : 'rgba(15, 23, 42, 0.55)'}
+        onRequestClose={() => setActionSheetItem(null)}
+        sheetStyle={[
+          styles.actionSheetContainer,
+          {
+            backgroundColor: palette.cardBg,
+            borderColor: palette.cardBorder,
+          },
+        ]}
+      >
+        {({ maxHeight }) =>
+          actionSheetItem
+            ? (() => {
+                const sheetItem = actionSheetItem;
+                const sheetColor = sheetItem.color || palette.primary;
+                const sheetIsIncome =
+                  String(sheetItem.type || 'expense').toLowerCase() === 'income';
+                const sheetTypeColor = sheetIsIncome ? palette.income : palette.expense;
+                const sheetAvatarBg = isDarkMode ? `${sheetColor}2E` : `${sheetColor}18`;
+                const sheetUses = Number(usageMap[String(sheetItem.id)] || 0);
+
+                return (
+                  <View style={{ maxHeight }}>
                     <View
-                  style={[
-                  styles.editPreviewIcon,
-                  {
-                    backgroundColor:
-                    (editColor || '#4B7CF3') + '18'
-                  }]
-                  }>
-                  
-                      <MaterialCommunityIcons
-                    name={editIcon || 'tag'}
-                    size={21}
-                    color={editColor || '#4B7CF3'} />
-                  
-                    </View>
-
-                    <View>
-                      <Text style={styles.editPreviewCaption}>
-                        EDITING CATEGORY
-                      </Text>
-
-                      <Text
-                    numberOfLines={1}
-                    style={[
-                    styles.editPreviewName,
-                    {
-                      color:
-                      editType === 'expense' ?
-                      '#E46A6A' :
-                      '#36B37E'
-                    }]
-                    }>
-                    
-                        {editName || 'Category'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View
-                style={[
-                styles.typeBadge,
-                {
-                  backgroundColor:
-                  editType === 'expense' ?
-                  '#FEECEC' :
-                  '#E6F8EF'
-                }]
-                }>
-                
-                    <Text
-                  style={[
-                  styles.typeBadgeText,
-                  {
-                    color:
-                    editType === 'expense' ?
-                    '#D95D5D' :
-                    '#2F9B6D'
-                  }]
-                  }>
-                  
-                      {editType === 'expense' ?
-                  'EXPENSE' :
-                  'INCOME'}
-                    </Text>
-                  </View>
-                </View>
-
-                <PaperTextInput
-              value={editName}
-              onChangeText={handleEditNameChange}
-              disabled={isSaving}
-              mode="outlined"
-              style={styles.editInput}
-              label="Category Name"
-              outlineColor="#E2E7EC"
-              activeOutlineColor="#4B7CF3" />
-            
-
-                <View style={styles.editTypeRow}>
-                  <Chip
-                mode={
-                editType === 'expense' ?
-                'flat' :
-                'outlined'
-                }
-                disabled={isSaving}
-                selected={editType === 'expense'}
-                onPress={() => setEditType('expense')}
-                style={[
-                styles.typeChip,
-                editType === 'expense' &&
-                styles.expenseChipActive]
-                }
-                selectedColor="#D95D5D">
-                
-                    Expense
-                  </Chip>
-
-                  <Chip
-                mode={
-                editType === 'income' ?
-                'flat' :
-                'outlined'
-                }
-                disabled={isSaving}
-                selected={editType === 'income'}
-                onPress={() => setEditType('income')}
-                style={[
-                styles.typeChip,
-                editType === 'income' &&
-                styles.incomeChipActive]
-                }
-                selectedColor="#2F9B6D">
-                
-                    Income
-                  </Chip>
-                </View>
-
-                <View style={styles.customizationRow}>
-                  <TouchableOpacity
-                activeOpacity={0.75}
-                disabled={isSaving}
-                onPress={() =>
-                setShowIconPickerForEdit(true)
-                }
-                style={[
-                styles.iconSelector,
-                {
-                  backgroundColor:
-                  (editColor || '#4B7CF3') + '15',
-                  borderColor:
-                  (editColor || '#4B7CF3') + '30'
-                }]
-                }>
-                
-                    <MaterialCommunityIcons
-                  name={editIcon || 'tag'}
-                  size={24}
-                  color={editColor || '#4B7CF3'} />
-                
-                  </TouchableOpacity>
-
-                  <IconButton
-                label="Colors"
-                icon="droplet"
-                disabled={isSaving}
-                onPress={() =>
-                setShowColorPickerForEdit(true)
-                } />
-              
-
-                  <IconButton
-                label="Icon"
-                icon="image"
-                disabled={isSaving}
-                onPress={() =>
-                setShowIconPickerForEdit(true)
-                } />
-              
-                </View>
-
-                <View style={styles.editButtonsRow}>
-                  <PaperButton
-                mode="contained"
-                onPress={saveEdit}
-                loading={isSaving}
-                style={[
-                styles.saveButton,
-                {
-                  backgroundColor: isSaving ? (editType === 'expense' ? '#F1A5A5' : '#8CE2B4') : (editType === 'expense' ? '#E46A6A' : '#36B37E')
-                }]
-                }
-                contentStyle={styles.buttonContent}
-                labelStyle={styles.saveButtonLabel}>
-                
-                    {isSaving ? '' : 'Save'}
-                  </PaperButton>
-
-                  <View style={{ width: 10 }} />
-
-                  <PaperButton
-                mode="outlined"
-                onPress={cancelEdit}
-                disabled={isSaving}
-                style={styles.cancelButton}
-                contentStyle={styles.buttonContent}>
-                
-                    Cancel
-                  </PaperButton>
-                </View>
-              </View> :
-
-          <View style={styles.categoryRow}>
-            <TouchableOpacity
-              activeOpacity={0.75}
-              style={{ flex: 1 }}
-              onPress={() => {
-                const parent = navigation.getParent();
-
-                parent?.navigate('CategoriesDetails', {
-                  categoryId: item.id,
-                  categoryName: item.name
-                });
-              }}>
-            
-                  {/* Left */}
-                  <View style={styles.categoryLeft}>
-                    <View
-                  style={[
-                  styles.categoryIconWrapper,
-                  {
-                    backgroundColor:
-                    (item.color || '#4B7CF3') + '15'
-                  }]
-                  }>
-                  
-                      <MaterialCommunityIcons
-                    name={item.icon || 'tag'}
-                    size={22}
-                    color={item.color || '#4B7CF3'} />
-                  
-                    </View>
-
-                    <View style={styles.categoryInfo}>
-                      <Text
-                    numberOfLines={1}
-                    style={styles.categoryName}>
-                    
-                        {item.name}
-                      </Text>
-
-                      <View style={styles.categoryMeta}>
-                        <View
                       style={[
-                      styles.smallTypeDot,
-                      {
-                        backgroundColor:
-                        item.type === 'income' ?
-                        '#36B37E' :
-                        '#E46A6A'
-                      }]
-                      } />
-                    
+                        styles.sheetHandle,
+                        { backgroundColor: isDarkMode ? '#475569' : '#CBD5E1' },
+                      ]}
+                    />
 
-                        <Text style={styles.categoryType}>
-                          {item.type === 'income' ?
-                      'Income' :
-                      'Expense'}
-                        </Text>
+                    <ScrollView
+                      showsVerticalScrollIndicator={false}
+                      bounces={false}
+                      style={{
+                        flexGrow: 0,
+                        flexShrink: 1,
+                        maxHeight: Math.max(200, maxHeight - 36),
+                      }}
+                    >
+                      <View style={styles.sheetHeaderRow}>
+                        <View style={styles.sheetHeaderTextWrap}>
+                          <Text style={[styles.sheetTitle, { color: palette.textPrimary }]}>
+                            Category Actions
+                          </Text>
+                          <Text style={[styles.sheetSubtitle, { color: palette.textSecondary }]}>
+                            Manage category details or remove item
+                          </Text>
+                        </View>
+
+                        <TouchableOpacity
+                          activeOpacity={0.75}
+                          onPress={() => setActionSheetItem(null)}
+                          accessibilityLabel="Close actions"
+                          style={[
+                            styles.sheetCloseBtn,
+                            { backgroundColor: palette.surfaceSubtle },
+                          ]}
+                        >
+                          <MaterialCommunityIcons
+                            name="close"
+                            size={18}
+                            color={palette.textSecondary}
+                          />
+                        </TouchableOpacity>
                       </View>
-                    </View>
-                  </View>
-            </TouchableOpacity>
 
-                  {/* Right */}
-                  <View style={styles.categoryRight}>
-                    <View
-                  style={[
-                  styles.typeBadge,
-                  {
-                    backgroundColor:
-                    item.type === 'income' ?
-                    '#E8F8F0' :
-                    '#FDEDED'
-                  }]
-                  }>
-                  
-                      <Text
-                    style={[
-                    styles.typeBadgeText,
-                    {
-                      color:
-                      item.type === 'income' ?
-                      '#2F9B6D' :
-                      '#D95D5D'
-                    }]
-                    }>
-                    
-                        {item.type === 'income' ?
-                    'INCOME' :
-                    'EXPENSE'}
-                      </Text>
-                    </View>
+                      {/* Selected Category Preview Card */}
+                      <View
+                        style={[
+                          styles.sheetPreviewCard,
+                          {
+                            backgroundColor: palette.surfaceSubtle,
+                            borderColor: palette.cardBorder,
+                            borderLeftColor: sheetColor,
+                          },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.sheetPreviewAvatar,
+                            { backgroundColor: sheetAvatarBg },
+                          ]}
+                        >
+                          <MaterialCommunityIcons
+                            name={sheetItem.icon || 'tag'}
+                            size={22}
+                            color={sheetColor}
+                          />
+                        </View>
 
-                    <View style={styles.actionRow}>
-                      <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      navigation.navigate('CategoryCreate', {
-                        editData: item,
-                        currentType: item.type,
-                      });
-                    }}
-                    style={styles.actionButton}>
-                    
-                        <Feather
-                      name="edit-2"
-                      size={15}
-                      color={Colors.primary} />
-                    
-                      </TouchableOpacity>
+                        <View style={styles.sheetPreviewInfo}>
+                          <Text
+                            numberOfLines={2}
+                            style={[styles.sheetPreviewName, { color: palette.textPrimary }]}
+                          >
+                            {sheetItem.name}
+                          </Text>
+                          <Text
+                            numberOfLines={1}
+                            style={[styles.sheetPreviewMeta, { color: sheetTypeColor }]}
+                          >
+                            {sheetIsIncome ? 'Income category' : 'Expense category'}
+                          </Text>
+                        </View>
 
-                      <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      setConfirmTargetId(item.id);
-                      setConfirmMessage(
-                        `Delete "${item.name}"?`
-                      );
-                      setConfirmVisible(true);
-                    }}
-                    style={[
-                    styles.actionButton,
-                    styles.deleteActionButton]
-                    }>
-                    
-                        <Feather
-                      name="trash-2"
-                      size={15}
-                      color="#E46A6A" />
-                    
-                      </TouchableOpacity>
-
-                      <View style={styles.arrowContainer}>
-                        <Feather
-                      name="chevron-right"
-                      size={17}
-                      color="#B5BEC8" />
-                    
+                        <View style={styles.sheetPreviewRight}>
+                          <Text
+                            numberOfLines={1}
+                            style={[styles.sheetPreviewCount, { color: palette.textPrimary }]}
+                          >
+                            {sheetUses}
+                          </Text>
+                          <Text style={[styles.sheetPreviewTag, { color: palette.textMuted }]}>
+                            USES (1Y)
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                  </View>
-                </View>
-          }
-          </Card>
-        } />
-      
 
-      {/* ───────────── Delete Confirmation ───────────── */}
+                      {/* Two-Column Edit & Delete Tiles */}
+                      <View style={styles.actionTilesRow}>
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            const target = sheetItem;
+                            setActionSheetItem(null);
+                            navigation.navigate('CategoryCreate', {
+                              editData: target,
+                              currentType: target.type || 'expense',
+                            });
+                          }}
+                          style={[
+                            styles.actionTile,
+                            {
+                              backgroundColor: palette.editBg,
+                              borderColor: palette.editBorder,
+                            },
+                          ]}
+                        >
+                          <View
+                            style={[
+                              styles.actionTileIconCircle,
+                              { backgroundColor: palette.cardBg },
+                            ]}
+                          >
+                            <Feather name="edit-2" size={18} color={palette.editIcon} />
+                          </View>
+                          <Text style={[styles.actionTileTitle, { color: palette.textPrimary }]}>
+                            Edit Category
+                          </Text>
+                          <Text style={[styles.actionTileSub, { color: palette.textSecondary }]}>
+                            Name, icon & color
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            const target = sheetItem;
+                            setActionSheetItem(null);
+                            setConfirmTargetItem(target);
+                            setConfirmVisible(true);
+                          }}
+                          style={[
+                            styles.actionTile,
+                            {
+                              backgroundColor: palette.deleteBg,
+                              borderColor: palette.deleteBorder,
+                            },
+                          ]}
+                        >
+                          <View
+                            style={[
+                              styles.actionTileIconCircle,
+                              { backgroundColor: palette.cardBg },
+                            ]}
+                          >
+                            <Feather name="trash-2" size={18} color={palette.deleteIcon} />
+                          </View>
+                          <Text style={[styles.actionTileTitle, { color: palette.deleteIcon }]}>
+                            Delete Category
+                          </Text>
+                          <Text style={[styles.actionTileSub, { color: palette.textSecondary }]}>
+                            Remove from active list
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* View Category Analytics Strip */}
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          const target = sheetItem;
+                          setActionSheetItem(null);
+                          navigateTarget('CategoriesDetails', {
+                            categoryId: target.id,
+                            categoryName: target.name,
+                          });
+                        }}
+                        style={[
+                          styles.sheetHistoryRow,
+                          {
+                            backgroundColor: palette.surfaceSubtle,
+                            borderColor: palette.cardBorder,
+                          },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.sheetHistoryIcon,
+                            { backgroundColor: palette.primarySoft },
+                          ]}
+                        >
+                          <MaterialCommunityIcons
+                            name="chart-timeline-variant"
+                            size={18}
+                            color={palette.primary}
+                          />
+                        </View>
+                        <View style={styles.sheetHistoryTextWrap}>
+                          <Text style={[styles.sheetHistoryTitle, { color: palette.textPrimary }]}>
+                            View Transactions & Breakdown
+                          </Text>
+                          <Text style={[styles.sheetHistorySub, { color: palette.textSecondary }]}>
+                            See monthly charts & category entries
+                          </Text>
+                        </View>
+                        <Feather name="chevron-right" size={18} color={palette.textMuted} />
+                      </TouchableOpacity>
+                    </ScrollView>
+                  </View>
+                );
+              })()
+            : null
+        }
+      </ResponsiveBottomSheet>
+
+      {/* DELETE CONFIRMATION */}
       <CommonBottomSheetModal
         visible={confirmVisible}
         type="danger"
         title="Delete Category?"
-        subtitle="Are you sure you want to permanently delete this category?"
+        subtitle={
+          confirmTargetItem?.name
+            ? `Are you sure you want to permanently delete "${confirmTargetItem.name}"?`
+            : 'Are you sure you want to permanently delete this category?'
+        }
         confirmLabel="Delete Category"
         cancelLabel="Keep Category"
         loading={isDeletingCategory}
         warnings={[
-          { title: 'Category Removed', text: 'Category will be permanently deleted from your active list.' },
-          { title: 'Transactions Preserved', text: 'Associated transactions will retain their historical records.' },
-          { title: 'Cannot Be Undone', text: 'Once deleted, this category cannot be recovered.' },
+          {
+            title: 'Category Removed',
+            text: 'Category will be permanently deleted from your active list.',
+          },
+          {
+            title: 'Transactions Preserved',
+            text: 'Associated transactions will retain their historical records.',
+          },
+          {
+            title: 'Cannot Be Undone',
+            text: 'Once deleted, this category cannot be recovered.',
+          },
         ]}
         onCancel={() => {
           if (isDeletingCategory) return;
           setConfirmVisible(false);
-          setConfirmTargetId(null);
+          setConfirmTargetItem(null);
         }}
         onConfirm={async () => {
-          if (confirmTargetId && !isDeletingCategory) {
+          if (confirmTargetItem?.id && !isDeletingCategory) {
             try {
               setIsDeletingCategory(true);
-              await remove(confirmTargetId);
+              await remove(confirmTargetItem.id);
               setConfirmVisible(false);
-              setConfirmTargetId(null);
+              setConfirmTargetItem(null);
             } finally {
               setIsDeletingCategory(false);
             }
           }
         }}
       />
-      
 
-      {/* ───────────── Add Icon Picker ───────────── */}
-      <IconPicker
-        visible={showIconPickerForAdd}
-        onClose={() =>
-        setShowIconPickerForAdd(false)
-        }
-        onSelect={(name) => {
-          setSelectedIcon(name);
-          setUserPickedIconAdd(true);
-        }} />
-      
-
-      {/* ───────────── Edit Icon Picker ───────────── */}
-      <IconPicker
-        visible={showIconPickerForEdit}
-        onClose={() =>
-        setShowIconPickerForEdit(false)
-        }
-        onSelect={(name) => {
-          setEditIcon(name);
-          setUserPickedIconEdit(true);
-        }} />
-      
-
-      {/* ───────────── Add Color Picker ───────────── */}
-      <ColorPickerModal
-        visible={showColorPickerForAdd}
-        onClose={() =>
-        setShowColorPickerForAdd(false)
-        }
-        onSelect={setSelectedColor}
-        currentColor={selectedColor} />
-      
-
-      {/* ───────────── Edit Color Picker ───────────── */}
-      <ColorPickerModal
-        visible={showColorPickerForEdit}
-        onClose={() =>
-        setShowColorPickerForEdit(false)
-        }
-        onSelect={setEditColor}
-        currentColor={editColor} />
-      
-
-
-
-      {/* ───────────── FAB ───────────── */}
+      {/* ADD CATEGORY FAB */}
       <ContextualFAB
         icon="plus"
         actions={[
           {
             icon: 'arrow-down',
             label: 'Expense',
+            subtitle: 'New spending category',
             color: '#E35D6A',
-            style: { backgroundColor: '#fff' },
+            style: { backgroundColor: palette.cardBg },
             onPress: () => {
               navigation.navigate('CategoryCreate', {
                 currentType: 'expense',
@@ -770,8 +1016,9 @@ export default function CategoriesScreen({ route, navigation }) {
           {
             icon: 'arrow-up',
             label: 'Income',
+            subtitle: 'New earnings category',
             color: '#3F8F6B',
-            style: { backgroundColor: '#fff' },
+            style: { backgroundColor: palette.cardBg },
             onPress: () => {
               navigation.navigate('CategoryCreate', {
                 currentType: 'income',
@@ -780,426 +1027,547 @@ export default function CategoriesScreen({ route, navigation }) {
           },
         ]}
       />
-      
-    </View>);
-
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F9FB'
   },
-
-  /* Header */
-  headerSection: {
+  listContent: {
     paddingHorizontal: 16,
     paddingTop: 14,
-    paddingBottom: 10
+    paddingBottom: 112,
   },
+  emptyListContent: {
+    flexGrow: 1,
+  },
+  headerBlock: {
+    marginBottom: 4,
+  },
+  cardShadowLight: Platform.select({
+    ios: {
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.06,
+      shadowRadius: 10,
+    },
+    android: {
+      elevation: 2,
+    },
+    default: {
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+    },
+  }),
 
-  titleRow: {
+  /* Hero Overview Card */
+  heroCard: {
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 12,
+  },
+  heroTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14
+    marginBottom: 10,
   },
-
-  pageTitle: {
-    fontSize: 23,
-    fontWeight: '900',
-    color: '#24313D',
-    letterSpacing: -0.4
+  heroTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
   },
-
-  pageSubtitle: {
-    fontSize: 12,
-    color: '#8A96A3',
-    marginTop: 3
-  },
-
-  totalBadge: {
-    minWidth: 55,
-    height: 50,
-    borderRadius: 15,
-    backgroundColor: '#EAF5EF',
+  heroBadgeIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10
+    marginRight: 10,
   },
-
-  totalBadgeNumber: {
-    fontSize: 19,
-    fontWeight: '900',
-    color: '#3F8F6B',
-    lineHeight: 21
-  },
-
-  totalBadgeLabel: {
-    fontSize: 8,
-    fontWeight: '800',
-    color: '#6DA68A',
-    letterSpacing: 0.8,
-    marginTop: 2
-  },
-
-  /* Stats */
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10
-  },
-
-  statCard: {
+  heroTitleTextCol: {
     flex: 1,
-    minHeight: 62,
+    minWidth: 0,
+  },
+  heroEyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  heroSubMeta: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  budgetsPillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 32,
+    paddingHorizontal: 10,
+    borderRadius: 11,
+    borderWidth: 1,
+    gap: 5,
+    marginLeft: 8,
+  },
+  budgetsPillText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+  heroHeadlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+    gap: 10,
+  },
+  heroTotalValue: {
+    fontSize: 30,
+    fontWeight: '900',
+    letterSpacing: -0.7,
+    lineHeight: 34,
+  },
+  heroHeadlineMetaCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  heroHeadlineUnit: {
+    fontSize: 14.5,
+    fontWeight: '800',
+  },
+  heroHeadlineSub: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  heroStatsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  heroStatTile: {
+    flex: 1,
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 10,
+  },
+  heroStatTop: {
     flexDirection: 'row',
-    alignItems: 'center'
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
-
-  expenseStat: {
-    backgroundColor: '#FFF3F3'
-  },
-
-  incomeStat: {
-    backgroundColor: '#EFFAF5'
-  },
-
-  statIconExpense: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
-    backgroundColor: '#FFE3E3',
+  heroStatIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 9
   },
-
-  statIconIncome: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
-    backgroundColor: '#DDF6EA',
+  heroStatCountPill: {
+    minWidth: 24,
+    height: 20,
+    paddingHorizontal: 7,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 9
+  },
+  heroStatCountText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  heroStatLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  heroStatValue: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    marginTop: 2,
   },
 
-  statValue: {
-    fontSize: 17,
-    fontWeight: '900',
-    color: '#263440'
-  },
-
-  statLabel: {
-    fontSize: 10,
-    color: '#8B97A3',
-    marginTop: 1,
-    fontWeight: '600'
-  },
-
-  /* Search */
-  searchContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 6
-  },
-
-  searchBar: {
+  /* Search & Controls */
+  searchBarBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
     height: 46,
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    elevation: 0,
     borderWidth: 1,
-    borderColor: '#E7EBEF'
+    paddingHorizontal: 13,
+    marginBottom: 12,
   },
-
   searchInput: {
-    fontSize: 13,
-    color: '#354250'
+    flex: 1,
+    minWidth: 0,
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 9,
+    paddingVertical: 0,
   },
-
-  /* List */
-  listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 110
+  controlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 12,
   },
-
-  emptyListContent: {
-    flexGrow: 1
+  filterPillsWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
   },
-
+  filterPill: {
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  filterPillText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  sortPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 4,
+    flexShrink: 0,
+  },
+  sortPillText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
   listHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 5,
-    marginBottom: 9,
-    paddingHorizontal: 2
+    marginBottom: 10,
+    paddingHorizontal: 2,
   },
-
   listTitle: {
-    fontSize: 14,
+    fontSize: 14.5,
     fontWeight: '800',
-    color: '#42515E'
   },
-
-  listCount: {
-    marginLeft: 7,
-    minWidth: 22,
+  listCountBadge: {
+    marginLeft: 8,
+    minWidth: 24,
     height: 20,
-    paddingHorizontal: 6,
+    paddingHorizontal: 7,
     borderRadius: 10,
-    backgroundColor: '#E9EDF1',
-    textAlign: 'center',
-    lineHeight: 20,
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#778491'
-  },
-
-  /* Category Card */
-  categoryCard: {
-    marginBottom: 9,
-    paddingVertical: 0,
-    paddingHorizontal: 0,
-    borderRadius: 17,
-    overflow: 'hidden'
-  },
-
-  categoryRow: {
-    minHeight: 76,
-    paddingHorizontal: 13,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between'
-  },
-
-  categoryLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    minWidth: 0
-  },
-
-  categoryIconWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12
   },
-
-  categoryInfo: {
-    flex: 1,
-    minWidth: 0
-  },
-
-  categoryName: {
-    fontSize: 15,
+  listCountText: {
+    fontSize: 11,
     fontWeight: '800',
-    color: '#293743'
   },
 
-  categoryMeta: {
+  /* Category Cards */
+  categoryCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderLeftWidth: 4,
+    paddingHorizontal: 14,
+    paddingTop: 13,
+    paddingBottom: 11,
+    marginBottom: 11,
+  },
+  categoryTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 5
   },
-
-  smallTypeDot: {
+  categoryIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  categoryInfoCol: {
+    flex: 1,
+    minWidth: 0,
+    marginLeft: 12,
+    marginRight: 10,
+  },
+  categoryName: {
+    fontSize: 15.5,
+    fontWeight: '800',
+    lineHeight: 20,
+  },
+  categoryStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  statusDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    marginRight: 6
+    marginRight: 5,
   },
-
-  categoryType: {
+  statusBadgeText: {
     fontSize: 11,
-    color: '#8A96A2',
-    fontWeight: '600'
+    fontWeight: '700',
   },
-
-  categoryRight: {
+  categoryUsageCol: {
     alignItems: 'flex-end',
-    marginLeft: 8
+    flexShrink: 0,
+    maxWidth: '30%',
   },
-
-  typeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8
-  },
-
-  typeBadgeText: {
-    fontSize: 8,
+  categoryUsageValue: {
+    fontSize: 17,
     fontWeight: '900',
-    letterSpacing: 0.6
   },
-
-  actionRow: {
+  usageCaptionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 7
+    marginTop: 3,
+    gap: 2,
   },
-
-  actionButton: {
-    width: 27,
-    height: 27,
-    borderRadius: 9,
-    backgroundColor: '#F0F5FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 5
+  usageCaption: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    letterSpacing: 0.6,
   },
-
-  deleteActionButton: {
-    backgroundColor: '#FFF1F1'
-  },
-
-  arrowContainer: {
-    width: 25,
-    height: 27,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 2
-  },
-
-  /* Edit */
-  editPreview: {
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 12,
+  categoryFooter: {
+    marginTop: 11,
+    paddingTop: 9,
+    borderTopWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
   },
-
-  editPreviewLeft: {
+  footerMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    minWidth: 0
+    minWidth: 0,
+    marginRight: 8,
+  },
+  footerMetaText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  cardActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  moreActionsPill: {
+    height: 28,
+    minWidth: 38,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
-  editPreviewIcon: {
+  /* Hidden Category Action Sheet */
+  actionSheetContainer: {
+    width: '100%',
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 20,
+  },
+  sheetHandle: {
+    width: 42,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 14,
+  },
+  sheetHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  sheetHeaderTextWrap: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 10,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  sheetSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  sheetCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  sheetPreviewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderLeftWidth: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    marginBottom: 14,
+  },
+  sheetPreviewAvatar: {
     width: 42,
     height: 42,
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10
+    flexShrink: 0,
   },
-
-  editPreviewCaption: {
-    fontSize: 8,
-    fontWeight: '900',
-    color: '#9AA4AE',
-    letterSpacing: 0.7,
-    marginBottom: 2
+  sheetPreviewInfo: {
+    flex: 1,
+    minWidth: 0,
+    marginLeft: 10,
+    marginRight: 8,
   },
-
-  editPreviewName: {
+  sheetPreviewName: {
     fontSize: 15,
+    fontWeight: '800',
+  },
+  sheetPreviewMeta: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  sheetPreviewRight: {
+    alignItems: 'flex-end',
+    flexShrink: 0,
+    maxWidth: '34%',
+  },
+  sheetPreviewCount: {
+    fontSize: 16,
     fontWeight: '900',
-    maxWidth: 150
   },
-
-  editInput: {
-    marginBottom: 9,
-    backgroundColor: '#fff'
+  sheetPreviewTag: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    marginTop: 2,
   },
-
-  editTypeRow: {
+  actionTilesRow: {
     flexDirection: 'row',
-    marginBottom: 10
+    gap: 10,
+    marginBottom: 10,
   },
-
-  typeChip: {
-    marginRight: 7,
-    height: 36
-  },
-
-  expenseChipActive: {
-    backgroundColor: '#FEE4E4'
-  },
-
-  incomeChipActive: {
-    backgroundColor: '#DDF6EA'
-  },
-
-  customizationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12
-  },
-
-  iconSelector: {
-    width: 48,
-    height: 48,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
+  actionTile: {
+    flex: 1,
+    borderRadius: 16,
     borderWidth: 1,
-    marginRight: 9
+    padding: 14,
+    alignItems: 'flex-start',
   },
-
-  editButtonsRow: {
-    flexDirection: 'row'
+  actionTileIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
   },
-
-  saveButton: {
-    flex: 1,
-    borderRadius: 11
+  actionTileTitle: {
+    fontSize: 14,
+    fontWeight: '800',
   },
-
-  cancelButton: {
-    flex: 1,
+  actionTileSub: {
+    fontSize: 11.5,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  sheetHistoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+  },
+  sheetHistoryIcon: {
+    width: 36,
+    height: 36,
     borderRadius: 11,
-    borderColor: '#D8DEE4'
-  },
-
-  buttonContent: {
-    paddingVertical: 3
-  },
-
-  saveButtonLabel: {
-    color: '#fff',
-    fontWeight: '800'
-  },
-
-  /* Empty */
-  emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 30,
-    paddingTop: 65
+    marginRight: 10,
+  },
+  sheetHistoryTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sheetHistoryTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+  },
+  sheetHistorySub: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 1,
   },
 
-  emptyIconContainer: {
-    width: 76,
-    height: 76,
-    borderRadius: 24,
-    backgroundColor: '#EDF1F4',
+  /* Empty State */
+  emptyStateCard: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 36,
+    marginTop: 8,
   },
-
+  emptyIconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
   emptyTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#465461'
   },
-
   emptySubtitle: {
-    fontSize: 12,
-    color: '#9AA5AF',
+    fontSize: 12.5,
+    fontWeight: '500',
     textAlign: 'center',
     marginTop: 6,
-    lineHeight: 18
-  }
+    lineHeight: 18,
+  },
+  resetFilterBtn: {
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  resetFilterText: {
+    fontSize: 12.5,
+    fontWeight: '800',
+  },
 });

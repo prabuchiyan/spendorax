@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { formatCompactAmount } from '../utils/numberUtils';
 import { Colors } from './Theme';
+import { useTheme } from '../context/ThemeContext';
 
 const BAR_TRACK_HEIGHT = 100;
 
@@ -38,7 +39,13 @@ export default function PremiumRoundedBarChart({
   selectedId = null,
   isEmpty = false,
 }) {
+  const { isDarkMode, theme } = useTheme();
   const scrollRef = useRef(null);
+
+  const trackBg = isDarkMode ? '#1E293B' : '#F4F8FB';
+  const trackSelectedBg = isDarkMode ? 'rgba(52, 211, 153, 0.14)' : '#F0FDFA';
+  const trackBorder = isDarkMode ? '#334155' : '#E2EBF8';
+  const mutedTextColor = isDarkMode ? (theme?.textSecondary || '#9CA3AF') : '#64748B';
 
   useEffect(() => {
     if (isEmpty || (!selectedLabel && selectedId == null) || !scrollRef.current) return;
@@ -65,7 +72,7 @@ export default function PremiumRoundedBarChart({
   if (isEmpty) {
     return (
       <View style={[styles.emptyChartArea, { width, height }]}>
-        <Text style={styles.emptyChartText}>No data yet</Text>
+        <Text style={[styles.emptyChartText, { color: mutedTextColor }]}>No data yet</Text>
       </View>
     );
   }
@@ -120,15 +127,15 @@ export default function PremiumRoundedBarChart({
                 <View style={styles.customBarTrack}>
                   <View style={[styles.customBarGroup, { height: barHeight + 24 }]}>
                     {selected ? (
-                      <View style={[styles.selectedTooltipBadge, baseColor ? { backgroundColor: baseColor } : null]}>
-                        <Text style={styles.selectedTooltipText}>
+                      <View style={[styles.selectedTooltipBadge, { backgroundColor: baseColor || '#059669' }]}>
+                        <Text style={[styles.selectedTooltipText, { color: isDarkMode ? '#0B1C30' : '#ffffff' }]}>
                           {formatCompactAmount(due)}
                         </Text>
                       </View>
                     ) : (
                       <Text
                         numberOfLines={1}
-                        style={styles.customBarValue}
+                        style={[styles.customBarValue, { color: mutedTextColor }]}
                       >
                         {formatCompactAmount(due)}
                       </Text>
@@ -139,10 +146,10 @@ export default function PremiumRoundedBarChart({
                         {
                           height: BAR_TRACK_HEIGHT,
                           width: selected ? 32 : 26,
-                          backgroundColor: selected ? "#f0fdfa" : "#f4f8fb",
+                          backgroundColor: selected ? trackSelectedBg : trackBg,
                           borderRadius: selected ? 20 : 16,
                           borderWidth: selected ? 2 : 1,
-                          borderColor: selected ? (baseColor || "#006a61") : "#e2ebf8",
+                          borderColor: selected ? (baseColor || '#059669') : trackBorder,
                           overflow: "hidden",
                         },
                       ]}
@@ -153,7 +160,7 @@ export default function PremiumRoundedBarChart({
                           bottom: 0,
                           width: "100%",
                           height: paidHeight,
-                          backgroundColor: selected ? (baseColor || "#006a61") : barColor,
+                          backgroundColor: selected ? (baseColor || '#059669') : barColor,
                           borderRadius: selected ? 18 : 15,
                         }}
                       />
@@ -164,6 +171,7 @@ export default function PremiumRoundedBarChart({
                   numberOfLines={1}
                   style={[
                     styles.customBarLabel,
+                    { color: mutedTextColor },
                     selected && { color: baseColor || Colors.primary, fontWeight: '800' },
                   ]}
                 >

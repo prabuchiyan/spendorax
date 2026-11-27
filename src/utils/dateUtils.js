@@ -25,7 +25,8 @@ export const formatDate = (dateString) => {
 
 export const getLabelForDate = (d, periodType) => {
   if (!(d instanceof Date) || isNaN(d.getTime())) return '';
-  const type = periodType.replace(/ly$/, ''); // daily -> day, monthly -> month
+  const rawType = String(periodType || '').toLowerCase();
+  const type = rawType === 'daily' ? 'day' : rawType.replace(/ly$/, ''); // daily -> day, monthly -> month
   
   if (type === 'day' || type === 'daily') {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

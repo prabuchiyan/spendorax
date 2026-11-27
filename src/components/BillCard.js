@@ -1,11 +1,11 @@
-import React, { memo, useState } from 'react';
+import React, { memo } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
+  Platform,
 } from 'react-native';
-import { Menu, Portal } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {
   formatDueDate,
@@ -19,111 +19,78 @@ function BillCard({
   category,
   onPress,
   onMarkPaid,
-  onSkip,
-  onEdit,
-  onDelete,
-  isDarkMode: propIsDark,
-
-  // CREDIT CARD EXPAND / COLLAPSE
-  showExpandButton = false,
-  expanded = false,
+  onOpenActions,
   onToggleExpand,
+  isDarkMode: propIsDark,
 }) {
-  const [menuVisible, setMenuVisible] = useState(false);
-
-  const { isDarkMode: globalIsDark } = useTheme();
+  const { isDarkMode: globalIsDark, theme } = useTheme();
   const isDarkMode = propIsDark !== undefined ? propIsDark : globalIsDark;
-  const theme = isDarkMode
+
+  const palette = isDarkMode
     ? {
-      cardBg: "#182234",
-      cardBorder: "#334155",
-      textPrimary: "#F3F4F6",
-      textSecondary: "#9CA3AF",
-      textMuted: "#64748b",
-      iconContainerBg: "#1e293b",
-      iconContainerBorder: "#334155",
-      iconColor: "#cbd5e1",
-      menuBg: "#1e293b",
+        cardBg: theme?.cardBg || '#182234',
+        cardBorder: theme?.cardBorder || '#334155',
+        surfaceSubtle: '#1E293B',
+        divider: '#253248',
+        textPrimary: theme?.textPrimary || '#F3F4F6',
+        textSecondary: theme?.textSecondary || '#9CA3AF',
+        textMuted: '#64748B',
+        primary: theme?.primary || '#4B7CF3',
 
-      // Overdue
-      overdueLeftBorder: "#f43f5e",
-      overdueBadgeBg: "rgba(159, 18, 57, 0.4)",
-      overdueBadgeBorder: "rgba(244, 63, 94, 0.3)",
-      overdueBadgeText: "#fda4af",
-      overdueActionBg: "#e11d48",
-      overdueActionText: "#ffffff",
+        overdueAccent: '#F87171',
+        overdueBg: 'rgba(239, 68, 68, 0.14)',
+        overdueText: '#FCA5A5',
+        overdueBtnBg: '#E11D48',
 
-      // Paid
-      paidLeftBorder: "#2dd4bf",
-      paidBadgeBg: "rgba(13, 148, 136, 0.15)",
-      paidBadgeBorder: "rgba(45, 212, 191, 0.3)",
-      paidBadgeText: "#5eead4",
+        paidAccent: '#34D399',
+        paidBg: 'rgba(16, 185, 129, 0.14)',
+        paidText: '#34D399',
 
-      // Partially Paid
-      partialLeftBorder: "#3b82f6",
-      partialBadgeBg: "rgba(59, 130, 246, 0.2)",
-      partialBadgeBorder: "rgba(59, 130, 246, 0.4)",
-      partialBadgeText: "#60a5fa",
+        partialAccent: '#60A5FA',
+        partialBg: 'rgba(59, 130, 246, 0.16)',
+        partialText: '#93C5FD',
 
-      // Pending
-      pendingLeftBorder: "#fbbf24",
-      pendingBadgeBg: "rgba(69, 26, 3, 0.4)",
-      pendingBadgeBorder: "rgba(245, 158, 11, 0.3)",
-      pendingBadgeText: "#fcd34d",
-      pendingActionBg: "#006a61",
-      pendingActionText: "#ffffff",
+        pendingAccent: '#FBBF24',
+        pendingBg: 'rgba(245, 158, 11, 0.14)',
+        pendingText: '#FCD34D',
+        pendingBtnBg: '#059669',
 
-      // Skipped / Inactive
-      skippedLeftBorder: "#64748b",
-      skippedBadgeBg: "#1e293b",
-      skippedBadgeBorder: "#334155",
-      skippedBadgeText: "#cbd5e1",
-    }
+        skippedAccent: '#64748B',
+        skippedBg: '#1E293B',
+        skippedText: '#94A3B8',
+      }
     : {
-      cardBg: "#ffffff",
-      cardBorder: "#e2ebf8",
-      textPrimary: "#0b1c30",
-      textSecondary: "#45464d",
-      textMuted: "#94a3b8",
-      iconContainerBg: "#f8faff",
-      iconContainerBorder: "#edf3fc",
-      iconColor: "#45464d",
-      menuBg: "#ffffff",
+        cardBg: theme?.cardBg || '#FFFFFF',
+        cardBorder: theme?.cardBorder || '#E2E8F0',
+        surfaceSubtle: '#F1F5F9',
+        divider: '#F1F5F9',
+        textPrimary: theme?.textPrimary || '#0B1C30',
+        textSecondary: theme?.textSecondary || '#64748B',
+        textMuted: '#94A3B8',
+        primary: theme?.primary || '#4B7CF3',
 
-      // Overdue
-      overdueLeftBorder: "#ba1a1a",
-      overdueBadgeBg: "#fee2e2",
-      overdueBadgeBorder: "#fecdd3",
-      overdueBadgeText: "#ba1a1a",
-      overdueActionBg: "#ba1a1a",
-      overdueActionText: "#ffffff",
+        overdueAccent: '#DC2626',
+        overdueBg: '#FEF2F2',
+        overdueText: '#DC2626',
+        overdueBtnBg: '#DC2626',
 
-      // Paid
-      paidLeftBorder: "#006a61",
-      paidBadgeBg: "#e6f7f3",
-      paidBadgeBorder: "#a7f3d0",
-      paidBadgeText: "#006a61",
+        paidAccent: '#059669',
+        paidBg: '#ECFDF5',
+        paidText: '#059669',
 
-      // Partially Paid
-      partialLeftBorder: "#2563eb",
-      partialBadgeBg: "#eff6ff",
-      partialBadgeBorder: "#bfdbfe",
-      partialBadgeText: "#2563eb",
+        partialAccent: '#2563EB',
+        partialBg: '#EFF6FF',
+        partialText: '#2563EB',
 
-      // Pending
-      pendingLeftBorder: "#c76c00",
-      pendingBadgeBg: "#ffedd5",
-      pendingBadgeBorder: "#fed7aa",
-      pendingBadgeText: "#c76c00",
-      pendingActionBg: "#006a61",
-      pendingActionText: "#ffffff",
+        pendingAccent: '#D97706',
+        pendingBg: '#FFFBEB',
+        pendingText: '#B45309',
+        pendingBtnBg: '#059669',
 
-      // Skipped / Inactive
-      skippedLeftBorder: "#94a3b8",
-      skippedBadgeBg: "#f1f5f9",
-      skippedBadgeBorder: "#e2e8f0",
-      skippedBadgeText: "#64748b",
-    };
+        skippedAccent: '#94A3B8',
+        skippedBg: '#F1F5F9',
+        skippedText: '#64748B',
+      };
 
   const roundedPaid = Math.round(Number(bill.paid_amount || bill.total_paid || 0) * 100);
   const roundedAmount = Math.round(Number(bill.amount || 0) * 100);
@@ -141,450 +108,414 @@ function BillCard({
       Boolean(bill.is_partially_paid) ||
       (roundedPaid > 0 && roundedPaid < roundedAmount));
   const isSkipped = status === 'skipped';
+
   const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const isDueDatePast = Boolean(
-    bill.due_date && String(bill.due_date).slice(0, 10) < today,
-  );
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+    now.getDate()
+  ).padStart(2, '0')}`;
+  const isDueDatePast = Boolean(bill.due_date && String(bill.due_date).slice(0, 10) < today);
   const isOverdue = !isPaid && !isPartiallyPaid && !isSkipped && (status === 'overdue' || isDueDatePast);
 
   let statusConfig = {
-    leftBorder: theme.pendingLeftBorder,
-    badgeBg: theme.pendingBadgeBg,
-    badgeBorder: theme.pendingBadgeBorder,
-    badgeText: theme.pendingBadgeText,
-    label: "• PENDING",
-    icon: "clock-outline",
-    iconColor: theme.pendingBadgeText,
+    leftBorder: palette.pendingAccent,
+    badgeBg: palette.pendingBg,
+    badgeText: palette.pendingText,
+    label: 'Pending',
+    icon: 'clock-outline',
   };
 
   if (isOverdue) {
     statusConfig = {
-      leftBorder: theme.overdueLeftBorder,
-      badgeBg: theme.overdueBadgeBg,
-      badgeBorder: theme.overdueBadgeBorder,
-      badgeText: theme.overdueBadgeText,
-      label: "• OVERDUE",
-      icon: "history",
-      iconColor: theme.overdueBadgeText,
+      leftBorder: palette.overdueAccent,
+      badgeBg: palette.overdueBg,
+      badgeText: palette.overdueText,
+      label: 'Overdue',
+      icon: 'alert-circle-outline',
     };
   } else if (isPaid) {
     statusConfig = {
-      leftBorder: theme.paidLeftBorder,
-      badgeBg: theme.badgeBg || theme.paidBadgeBg,
-      badgeBorder: theme.paidBadgeBorder,
-      badgeText: theme.paidBadgeText,
-      label: "• PAID",
-      icon: "check-circle",
-      iconColor: theme.paidBadgeText,
+      leftBorder: palette.paidAccent,
+      badgeBg: palette.paidBg,
+      badgeText: palette.paidText,
+      label: 'Paid',
+      icon: 'check-circle',
     };
   } else if (isPartiallyPaid) {
     statusConfig = {
-      leftBorder: theme.partialLeftBorder,
-      badgeBg: theme.partialBadgeBg,
-      badgeBorder: theme.partialBadgeBorder,
-      badgeText: theme.partialBadgeText,
-      label: "• PARTIAL",
-      icon: "progress-clock",
-      iconColor: theme.partialBadgeText,
+      leftBorder: palette.partialAccent,
+      badgeBg: palette.partialBg,
+      badgeText: palette.partialText,
+      label: 'Partial',
+      icon: 'progress-clock',
     };
   } else if (isSkipped) {
     statusConfig = {
-      leftBorder: theme.skippedLeftBorder,
-      badgeBg: theme.skippedBadgeBg,
-      badgeBorder: theme.skippedBadgeBorder,
-      badgeText: theme.skippedBadgeText,
-      label: "• SKIPPED",
-      icon: "skip-next-circle-outline",
-      iconColor: theme.skippedBadgeText,
+      leftBorder: palette.skippedAccent,
+      badgeBg: palette.skippedBg,
+      badgeText: palette.skippedText,
+      label: 'Skipped',
+      icon: 'skip-next-circle-outline',
     };
   }
 
-  const handleDelete = () => {
-    setMenuVisible(false);
-    if (typeof onDelete === 'function') {
-      onDelete(bill);
-    }
-  };
+  const iconColor = category?.color || (bill._isCreditCardParent ? palette.paidAccent : palette.primary);
+  const avatarBg = isDarkMode ? `${iconColor}2E` : `${iconColor}18`;
 
-  const handleEdit = () => {
-    setMenuVisible(false);
-    if (typeof onEdit === 'function') {
-      onEdit(bill);
-    }
-  };
+  const displayAmount =
+    isPartiallyPaid && bill.remaining_amount != null
+      ? bill.remaining_amount
+      : isPartiallyPaid
+        ? remainingAmount
+        : bill.amount;
 
-  const handleSkip = () => {
-    setMenuVisible(false);
-    if (typeof onSkip === 'function') {
-      onSkip(bill);
-    }
-  };
+  const amountVal = Number(displayAmount || 0);
+  const amountDecimals = amountVal % 1 !== 0 ? 2 : 0;
 
-  const handleCardPress = () => {
-    if (typeof onPress === 'function') {
-      onPress(bill);
-    }
-  };
+  const dueDateText =
+    bill._noDueDate || !bill.due_date
+      ? 'No due date'
+      : `Due ${formatDueDate(bill.due_date)}`;
 
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={0.84}
+      onPress={() => typeof onPress === 'function' && onPress(bill)}
+      onLongPress={() => typeof onOpenActions === 'function' && onOpenActions(bill)}
+      delayLongPress={260}
       style={[
-        styles.cardContainer,
+        styles.billCard,
         {
-          backgroundColor: theme.cardBg,
-          borderColor: theme.cardBorder,
+          backgroundColor: palette.cardBg,
+          borderColor: palette.cardBorder,
           borderLeftColor: statusConfig.leftBorder,
         },
+        !isDarkMode && styles.cardShadowLight,
       ]}
     >
-      <TouchableOpacity activeOpacity={0.88} onPress={handleCardPress}>
-        {/* Top Section: Avatar, Title & Due Date, Amount & More */}
-        <View style={styles.cardHeaderRow}>
-          <View style={styles.cardHeaderLeft}>
-            {/* Category / Source Avatar */}
-            <View
-              style={[
-                styles.iconWrap,
-                {
-                  backgroundColor: category?.color ? `${category.color}15` : theme.iconContainerBg,
-                  borderColor: category?.color ? `${category.color}30` : theme.iconContainerBorder,
-                },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name={category?.icon || (bill._isCreditCardParent ? "credit-card" : "receipt")}
-                size={22}
-                color={category?.color || (bill._isCreditCardParent ? "#006a61" : theme.iconColor)}
-              />
+      {/* Top Row: Icon + 2-line Name & Badges + Right Amount (No inline menu icon crowding) */}
+      <View style={styles.cardTopRow}>
+        <View style={[styles.iconBox, { backgroundColor: avatarBg }]}>
+          <MaterialCommunityIcons
+            name={category?.icon || (bill._isCreditCardParent ? 'credit-card' : 'receipt')}
+            size={22}
+            color={iconColor}
+          />
+        </View>
+
+        <View style={styles.infoCol}>
+          <Text
+            numberOfLines={2}
+            style={[
+              styles.billName,
+              { color: isPaid ? palette.textSecondary : palette.textPrimary },
+            ]}
+          >
+            {bill.name}
+          </Text>
+
+          <View style={styles.badgesRow}>
+            <View style={[styles.statusBadge, { backgroundColor: statusConfig.badgeBg }]}>
+              <View style={[styles.statusDot, { backgroundColor: statusConfig.badgeText }]} />
+              <Text style={[styles.statusBadgeText, { color: statusConfig.badgeText }]}>
+                {statusConfig.label}
+              </Text>
             </View>
 
-            {/* Bill Name & Subtitle */}
-            <View style={{ flex: 1, paddingRight: 6 }}>
-              <Text
-                style={[
-                  styles.billName,
-                  { color: isPaid ? theme.textSecondary : theme.textPrimary },
-                ]}
-                numberOfLines={1}
-              >
-                {bill.name}
-              </Text>
-
-              <View style={styles.subMetaRow}>
-                <MaterialCommunityIcons
-                  name={statusConfig.icon}
-                  size={13}
-                  color={statusConfig.iconColor}
-                  style={{ marginRight: 3 }}
-                />
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.subDueDate,
-                    {
-                      color: isOverdue ? theme.overdueBadgeText : theme.textSecondary,
-                      fontWeight: isOverdue ? "700" : "500",
-                    },
-                  ]}
-                >
-                  {bill._noDueDate || !bill.due_date ? 'No due date' : `Due ${formatDueDate(bill.due_date)}`}
+            {category?.name ? (
+              <View style={[styles.catBadge, { backgroundColor: palette.surfaceSubtle }]}>
+                <Text numberOfLines={1} style={[styles.catBadgeText, { color: palette.textSecondary }]}>
+                  {category.name}
                 </Text>
-
-                {category?.name ? (
-                  <>
-                    <Text style={[styles.subBullet, { color: theme.textMuted }]}>·</Text>
-                    <Text numberOfLines={1} style={[styles.subCategory, { color: theme.textSecondary }]}>
-                      {category.name}
-                    </Text>
-                  </>
-                ) : null}
               </View>
-            </View>
-          </View>
-
-          {/* Amount & More Options Menu */}
-          <View style={styles.cardHeaderRight}>
-            <Text
-              style={[
-                styles.amountText,
-                {
-                  color: isPaid ? theme.textMuted : theme.textPrimary,
-                  textDecorationLine: isPaid ? 'line-through' : 'none',
-                },
-              ]}
-            >
-              <CurrencyText amount={isPartiallyPaid && bill.remaining_amount != null ? bill.remaining_amount : (isPartiallyPaid ? remainingAmount : bill.amount)} />
-            </Text>
-            {isPartiallyPaid ? (
-              <Text style={{ fontSize: 10, color: theme.textMuted, textAlign: 'right', marginTop: 1 }}>
-                left of {formatCurrency(bill.amount)}
-              </Text>
             ) : null}
-
-            <View style={{ position: 'relative', zIndex: 10, marginLeft: 2 }}>
-              {menuVisible && (
-                <Portal>
-                  <View
-                    style={{
-                      ...StyleSheet.absoluteFillObject,
-                      backgroundColor: isDarkMode ? 'rgba(0,0,0,0.4)' : 'rgba(230,230,240,0.3)',
-                    }}
-                    pointerEvents="none"
-                  />
-                </Portal>
-              )}
-              <Menu
-                visible={menuVisible}
-                onDismiss={() => setMenuVisible(false)}
-                anchor={
-                  <TouchableOpacity
-                    onPress={() => setMenuVisible(true)}
-                    activeOpacity={0.6}
-                    style={styles.moreOptionsBtn}
-                  >
-                    <MaterialCommunityIcons
-                      name="dots-vertical"
-                      size={20}
-                      color={theme.textMuted}
-                    />
-                  </TouchableOpacity>
-                }
-                contentStyle={{
-                  backgroundColor: theme.menuBg,
-                  borderRadius: 14,
-                  elevation: 6,
-                }}
-              >
-                {typeof onEdit === 'function' && (
-                  <Menu.Item
-                    onPress={handleEdit}
-                    title="Edit Bill"
-                    leadingIcon="pencil-outline"
-                    titleStyle={{ fontSize: 13, color: theme.textPrimary }}
-                  />
-                )}
-                {!isPaid && typeof onSkip === 'function' && (
-                  <Menu.Item
-                    onPress={handleSkip}
-                    title="Skip This Period"
-                    leadingIcon="skip-next"
-                    titleStyle={{ fontSize: 13, color: theme.textPrimary }}
-                  />
-                )}
-                {typeof onDelete === 'function' && (
-                  <Menu.Item
-                    onPress={handleDelete}
-                    title="Delete Bill"
-                    leadingIcon="trash-can-outline"
-                    titleStyle={{ fontSize: 13, color: "#dc2626" }}
-                  />
-                )}
-              </Menu>
-            </View>
           </View>
         </View>
 
-        {/* Bottom Card Controls */}
-        <View style={[styles.bottomControlRow, { borderTopColor: theme.cardBorder }]}>
-          {/* Status Badge */}
-          <View
+        <View style={styles.amountCol}>
+          <CurrencyText
+            amount={displayAmount}
+            minimumFractionDigits={amountDecimals}
+            maximumFractionDigits={amountDecimals}
+            numberOfLines={1}
             style={[
-              styles.statusBadge,
+              styles.amountText,
               {
-                backgroundColor: statusConfig.badgeBg,
-                borderColor: statusConfig.badgeBorder,
+                color: isOverdue
+                  ? palette.overdueText
+                  : isPaid
+                    ? palette.paidText
+                    : palette.textPrimary,
+              },
+            ]}
+          />
+          {isPartiallyPaid ? (
+            <Text style={[styles.partialSub, { color: palette.textMuted }]}>
+              of {formatCurrency(bill.amount)}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+
+      {/* Footer: Full Readable Due Date + Primary CTA / Hidden Actions Pill */}
+      <View style={[styles.cardFooter, { borderTopColor: palette.divider }]}>
+        <View style={styles.dueDateRow}>
+          <MaterialCommunityIcons
+            name={statusConfig.icon}
+            size={14}
+            color={isOverdue ? palette.overdueText : palette.textMuted}
+          />
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.dueDateText,
+              {
+                color: isOverdue ? palette.overdueText : palette.textSecondary,
+                fontWeight: isOverdue ? '700' : '600',
               },
             ]}
           >
-            <Text
-              style={[
-                styles.statusBadgeText,
-                { color: statusConfig.badgeText },
-              ]}
-            >
-              {statusConfig.label}
-            </Text>
-          </View>
+            {dueDateText}
+          </Text>
+        </View>
 
-          {/* Action Button: Pay Now / Statements / Review */}
+        <View style={styles.footerActionsRow}>
           {bill._isCreditCardParent && typeof onToggleExpand === 'function' ? (
             <TouchableOpacity
-              onPress={onToggleExpand}
               activeOpacity={0.8}
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                onToggleExpand();
+              }}
               style={[
-                styles.secondaryCardBtn,
+                styles.secondaryBtn,
                 {
-                  backgroundColor: isDarkMode ? "#1e293b" : "#f1f5f9",
-                  borderColor: theme.cardBorder,
+                  backgroundColor: palette.surfaceSubtle,
+                  borderColor: palette.cardBorder,
                 },
               ]}
             >
-              <Text style={[styles.secondaryCardBtnText, { color: theme.textPrimary }]}>
+              <Text style={[styles.secondaryBtnText, { color: palette.textPrimary }]}>
                 Statements
               </Text>
               <MaterialCommunityIcons
                 name="chevron-right"
-                size={16}
-                color={theme.textPrimary}
+                size={15}
+                color={palette.textSecondary}
               />
             </TouchableOpacity>
           ) : isOverdue && typeof onMarkPaid === 'function' ? (
             <TouchableOpacity
-              onPress={() => onMarkPaid(bill)}
-              activeOpacity={0.8}
-              style={[styles.payNowBtn, { backgroundColor: theme.overdueActionBg }]}
+              activeOpacity={0.85}
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                onMarkPaid(bill);
+              }}
+              style={[styles.payNowBtn, { backgroundColor: palette.overdueBtnBg }]}
             >
               <Text style={styles.payNowBtnText}>Pay Now</Text>
-              <MaterialCommunityIcons
-                name="arrow-right"
-                size={15}
-                color="#ffffff"
-                style={{ marginLeft: 3 }}
-              />
+              <MaterialCommunityIcons name="arrow-right" size={14} color="#FFFFFF" />
             </TouchableOpacity>
           ) : !isPaid && !isSkipped && typeof onMarkPaid === 'function' ? (
             <TouchableOpacity
-              onPress={() => onMarkPaid(bill)}
-              activeOpacity={0.8}
-              style={[styles.payNowBtn, { backgroundColor: theme.pendingActionBg }]}
+              activeOpacity={0.85}
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                onMarkPaid(bill);
+              }}
+              style={[styles.payNowBtn, { backgroundColor: palette.pendingBtnBg }]}
             >
               <Text style={styles.payNowBtnText}>Pay</Text>
-              <MaterialCommunityIcons
-                name="check"
-                size={15}
-                color="#ffffff"
-                style={{ marginLeft: 3 }}
-              />
+              <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />
             </TouchableOpacity>
           ) : null}
+
+          {typeof onOpenActions === 'function' && (
+            <TouchableOpacity
+              activeOpacity={0.75}
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                onOpenActions(bill);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel={`More actions for ${bill.name}`}
+              style={[
+                styles.moreActionsPill,
+                {
+                  backgroundColor: palette.surfaceSubtle,
+                  borderColor: palette.cardBorder,
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="dots-horizontal"
+                size={18}
+                color={palette.textSecondary}
+              />
+            </TouchableOpacity>
+          )}
         </View>
-      </TouchableOpacity>
-    </View>
+      </View>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  cardContainer: {
-    borderRadius: 16,
-    marginBottom: 10,
+  cardShadowLight: Platform.select({
+    ios: {
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.06,
+      shadowRadius: 10,
+    },
+    android: {
+      elevation: 2,
+    },
+    default: {
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+    },
+  }),
+  billCard: {
+    borderRadius: 18,
     borderWidth: 1,
     borderLeftWidth: 4,
-    padding: 13,
-    shadowColor: "#0b1c30",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    paddingHorizontal: 14,
+    paddingTop: 13,
+    paddingBottom: 11,
+    marginBottom: 11,
   },
-  cardHeaderRow: {
+  cardTopRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
-  cardHeaderLeft: {
+  iconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  infoCol: {
+    flex: 1,
+    minWidth: 0,
+    marginLeft: 12,
+    marginRight: 10,
+  },
+  billName: {
+    fontSize: 15.5,
+    fontWeight: '800',
+    lineHeight: 20,
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginTop: 6,
+    gap: 6,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 5,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  catBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    maxWidth: 140,
+  },
+  catBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  amountCol: {
+    alignItems: 'flex-end',
+    flexShrink: 0,
+    maxWidth: '34%',
+  },
+  amountText: {
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  partialSub: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  cardFooter: {
+    marginTop: 11,
+    paddingTop: 9,
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  dueDateRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    minWidth: 0,
+    gap: 6,
   },
-  iconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 11,
-  },
-  billName: {
-    fontSize: 15,
-    fontWeight: '700',
-    fontFamily: 'Plus Jakarta Sans',
-    lineHeight: 20,
-  },
-  subMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 3,
-  },
-  subDueDate: {
-    fontSize: 12,
-    fontFamily: 'Inter',
-  },
-  subBullet: {
-    marginHorizontal: 4,
+  dueDateText: {
     fontSize: 12,
   },
-  subCategory: {
-    fontSize: 12,
-    fontFamily: 'Inter',
-    fontWeight: '500',
-  },
-  cardHeaderRight: {
-    alignItems: 'center',
+  footerActionsRow: {
     flexDirection: 'row',
-    marginLeft: 6,
-  },
-  amountText: {
-    fontWeight: '800',
-    fontSize: 15.5,
-    fontFamily: 'Plus Jakarta Sans',
-  },
-  moreOptionsBtn: {
-    padding: 4,
-    marginLeft: 2,
-  },
-  bottomControlRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 10,
-    paddingTop: 8,
-    borderTopWidth: 1,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2.5,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  statusBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-    fontFamily: 'Inter',
+    gap: 8,
+    flexShrink: 0,
   },
   payNowBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 5.5,
+    height: 28,
+    paddingHorizontal: 11,
     borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
+    gap: 4,
   },
   payNowBtnText: {
-    color: "#ffffff",
-    fontWeight: "700",
-    fontSize: 12,
-    fontFamily: "Inter",
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '800',
   },
-  secondaryCardBtn: {
+  secondaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    height: 28,
     paddingHorizontal: 10,
-    paddingVertical: 5,
     borderRadius: 10,
     borderWidth: 1,
+    gap: 2,
   },
-  secondaryCardBtnText: {
-    fontWeight: "700",
+  secondaryBtnText: {
     fontSize: 11.5,
-    fontFamily: "Inter",
-    marginRight: 2,
+    fontWeight: '700',
+  },
+  moreActionsPill: {
+    height: 28,
+    minWidth: 38,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

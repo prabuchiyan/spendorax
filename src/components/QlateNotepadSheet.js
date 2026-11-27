@@ -20,6 +20,8 @@ function QlateNotepadSheet(
     colDividerColor,
     tableHeaderBg,
     cardBg,
+    minVisibleLines = 8,
+    onLineFocus,
   },
   ref
 ) {
@@ -29,8 +31,8 @@ function QlateNotepadSheet(
   const rawLines = (text || '').split('\n');
   const evaluatedLines = (evaluatedDoc && evaluatedDoc.lines) || [];
 
-  // Maintain at least 8 compact ruled lines for the open notebook stationery look
-  const displayLineCount = Math.max(rawLines.length, 8);
+  // Dynamically stretch ruled rows to fill the full visible sheet viewport
+  const displayLineCount = Math.max(rawLines.length, minVisibleLines, 8);
 
   // Expose focus() to external refs if needed
   const forwardedRef = ref || textInputRef;
@@ -147,7 +149,10 @@ function QlateNotepadSheet(
                   value={lineValue}
                   onChangeText={(val) => handleLineChange(idx, val)}
                   onKeyPress={(e) => handleKeyPress(idx, e)}
-                  onFocus={() => setFocusedIndex(idx)}
+                  onFocus={() => {
+                    setFocusedIndex(idx);
+                    onLineFocus?.(idx);
+                  }}
                   onBlur={() => setFocusedIndex((prev) => (prev === idx ? null : prev))}
                   placeholder={
                     idx === 0 && !text
@@ -197,26 +202,27 @@ export default forwardRef(QlateNotepadSheet);
 const styles = StyleSheet.create({
   sheetWrapper: {
     width: '100%',
+    flexGrow: 1,
     overflow: 'hidden',
   },
   tableHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
-    height: 32,
+    height: 34,
   },
   headerColNote: {
     flex: 1,
     height: '100%',
     justifyContent: 'center',
-    paddingLeft: 10,
+    paddingLeft: 12,
   },
   headerColResult: {
-    width: 80,
+    minWidth: 88,
     height: '100%',
     justifyContent: 'center',
     alignItems: 'flex-end',
-    paddingRight: 8,
+    paddingRight: 12,
   },
   headerLabel: {
     fontSize: 10,
@@ -230,14 +236,15 @@ const styles = StyleSheet.create({
   },
   sheetBody: {
     position: 'relative',
+    flexGrow: 1,
   },
   paragraphRow: {
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    minHeight: 32,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
+    minHeight: 34,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
   },
   noteInputWrapper: {
     flex: 1,
